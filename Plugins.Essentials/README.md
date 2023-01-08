@@ -1,0 +1,3 @@
+# VNLib.Plugins.Essentials
+
+A library to add essential http processing features to your VNLib http application. This library is a part of the VNLib project and mostly focuses on the http content processing. It provides a layer between the base HTTP protocol and serving web content. It provides essential processing layers, extension methods, helper namespaces and more. Some features include stateful sessions, dynamic content routing, runtime extensible plugins, and abstractions for building plugins.  

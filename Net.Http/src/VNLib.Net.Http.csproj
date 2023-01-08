@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>VNLib.Net.Http</RootNamespace>
+    <Authors>Vaughn Nugent</Authors>
+    <Company>$(Authors)</Company>
+    <Product>VNLib HTTP Library</Product>
+    <Description>Provides a high performance HTTP 0.9-1.1 application processing layer for handling transport *agnostic connections and asynchronous event support for applications serving HTTP 
+requests such as web content. This library has a large focus on low/no GC allocations using unmanaged memory support provided by the VNLib.Utils library. No external dependencies 
+outside of the VNLib ecosystem are required. The VNLib.Plugins and VNLib.Plugins.Essentials libraries are highly recommended for serving web content.</Description>
+    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
+    <PackageId>VNLib.Net.Http</PackageId>
+    <Version>1.0.1.5</Version>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <AssemblyName>VNLib.Net.Http</AssemblyName>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  
+  <!-- Resolve nuget dll files and store them in the output dir -->
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Deterministic>False</Deterministic>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <Deterministic>False</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="ErrorProne.NET.Structs" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+</Project>

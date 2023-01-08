@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>VNLib.Net.Transport</RootNamespace>
+    <Version>1.0.1.4</Version>
+    <Product>VNLib Simple Transport Library</Product>
+    <Description>Provides a library for single process asynchronous, event driven, TCP socket listening and supporting structures to implement 
+simple high performance TCP servers with or without TLS security.</Description>
+    <Authors>Vaughn Nugent</Authors>
+    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <AssemblyName>VNLib.Net.Transport.SimpleTCP</AssemblyName>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <!-- Resolve nuget dll files and store them in the output dir -->
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+ 
+    <Nullable>enable</Nullable>
+ 
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+ 
+    <AnalysisLevel>latest-all</AnalysisLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="ErrorProne.NET.Structs" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="System.IO.Pipelines" Version="6.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+</Project>

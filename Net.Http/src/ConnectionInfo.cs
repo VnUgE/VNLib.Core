@@ -1,0 +1,166 @@
+﻿/*
+* Copyright (c) 2022 Vaughn Nugent
+* 
+* Library: VNLib
+* Package: VNLib.Net.Http
+* File: ConnectionInfo.cs 
+*
+* ConnectionInfo.cs is part of VNLib.Net.Http which is part of the larger 
+* VNLib collection of libraries and utilities.
+*
+* VNLib.Net.Http is free software: you can redistribute it and/or modify 
+* it under the terms of the GNU Affero General Public License as 
+* published by the Free Software Foundation, either version 3 of the
+* License, or (at your option) any later version.
+*
+* VNLib.Net.Http is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU Affero General Public License for more details.
+*
+* You should have received a copy of the GNU Affero General Public License
+* along with this program.  If not, see https://www.gnu.org/licenses/.
+*/
+
+using System;
+using System.Net;
+using System.Linq;
+using System.Text;
+using System.Collections.Generic;
+using System.Security.Authentication;
+
+using VNLib.Net.Http.Core;
+using VNLib.Utils.Extensions;
+
+namespace VNLib.Net.Http
+{
+    ///<inheritdoc/>
+    internal sealed class ConnectionInfo : IConnectionInfo
+    {
+        private HttpContext Context;
+
+        ///<inheritdoc/>
+        public Uri RequestUri => Context.Request.Location;
+        ///<inheritdoc/>
+        public string Path => RequestUri.LocalPath;
+        ///<inheritdoc/>
+        public string? UserAgent => Context.Request.UserAgent;
+        ///<inheritdoc/>
+        public IHeaderCollection Headers { get; private set; }
+        ///<inheritdoc/>
+        public bool CrossOrigin { get; }
+        ///<inheritdoc/>
+        public bool IsWebSocketRequest { get; }
+        ///<inheritdoc/>
+        public ContentType ContentType => Context.Request.ContentType;
+        ///<inheritdoc/>
+        public HttpMethod Method => Context.Request.Method;
+        ///<inheritdoc/>
+        public HttpVersion ProtocolVersion => Context.Request.HttpVersion;
+        ///<inheritdoc/>
+        public bool IsSecure => Context.Request.EncryptionVersion != SslProtocols.None;
+        ///<inheritdoc/>
+        public SslProtocols SecurityProtocol => Context.Request.EncryptionVersion;
+        ///<inheritdoc/>
+        public Uri? Origin => Context.Request.Origin;
+        ///<inheritdoc/>
+        public Uri? Referer => Context.Request.Referrer;
+        ///<inheritdoc/>
+        public Tuple<long, long>? Range => Context.Request.Range;
+        ///<inheritdoc/>
+        public IPEndPoint LocalEndpoint => Context.Request.LocalEndPoint;
+        ///<inheritdoc/>
+        public IPEndPoint RemoteEndpoint => Context.Request.RemoteEndPoint;
+        ///<inheritdoc/>
+        public Encoding Encoding => Context.ParentServer.Config.HttpEncoding;
+        ///<inheritdoc/>
+        public IReadOnlyDictionary<string, string> RequestCookies => Context.Request.Cookies;
+        ///<inheritdoc/>
+        public IEnumerable<string> Accept => Context.Request.Accept;
+        ///<inheritdoc/>
+        public TransportSecurityInfo? TransportSecurity => Context.GetSecurityInfo();
+
+        ///<inheritdoc/>
+        public bool Accepts(ContentType type)
+        {
+            //Get the content type string from he specified content type
+            string contentType = HttpHelpers.GetContentTypeString(type);
+            return Accepts(contentType);
+        }
+        ///<inheritdoc/>
+        public bool Accepts(string contentType)
+        {
+            if (AcceptsAny())
+            {
+                return true;
+            }
+
+            //If client accepts exact requested encoding 
+            if (Accept.Contains(contentType))
+            {
+                return true;
+            }
+            
+            //Search accept types to determine if the content type is acceptable
+            bool accepted = Accept
+                .Where(ctype =>
+                {
+                    //Get prinary side of mime type
+                    ReadOnlySpan<char> primary = contentType.AsSpan().SliceBeforeParam('/');
+                    ReadOnlySpan<char> ctSubType = ctype.AsSpan().SliceBeforeParam('/');
+                    //See if accepts any subtype, or the primary sub-type matches
+                    return ctSubType[0] == '*' || ctSubType.Equals(primary, StringComparison.OrdinalIgnoreCase);
+                }).Any();
+            return accepted;
+        }
+        /// <summary>
+        /// Determines if the connection accepts any content type
+        /// </summary>
+        /// <returns>true if the connection accepts any content typ, false otherwise</returns>
+        private bool AcceptsAny()
+        {
+            //Accept any if no accept header was present, or accept all value */*
+            return Context.Request.Accept.Count == 0 || Accept.Where(static t => t.StartsWith("*/*", StringComparison.OrdinalIgnoreCase)).Any();
+        }
+        ///<inheritdoc/>
+        public void SetCookie(string name, string value, string? domain, string? path, TimeSpan Expires, CookieSameSite sameSite, bool httpOnly, bool secure)
+        {
+            //Create the new cookie
+            HttpCookie cookie = new(name)
+            {
+                Value = value,
+                Domain = domain,
+                Path = path,
+                MaxAge = Expires,
+                //Set the session lifetime flag if the timeout is max value
+                IsSession = Expires == TimeSpan.MaxValue,
+                //If the connection is cross origin, then we need to modify the secure and samsite values
+                SameSite = CrossOrigin ? CookieSameSite.None : sameSite,
+                Secure = secure | CrossOrigin,
+                HttpOnly = httpOnly
+            };
+            //Set the cookie
+            Context.Response.AddCookie(cookie);
+        }
+       
+        internal ConnectionInfo(HttpContext ctx)
+        {
+            //Create new header collection
+            Headers = new VnHeaderCollection(ctx);
+            //set co value
+            CrossOrigin = ctx.Request.IsCrossOrigin();
+            //Set websocket status
+            IsWebSocketRequest = ctx.Request.IsWebSocketRequest();
+            //Update the context referrence
+            Context = ctx;
+        }
+
+#nullable disable
+        internal void Clear()
+        {
+            Context = null;
+            (Headers as VnHeaderCollection).Clear();
+            Headers = null;
+        }
+    }
+}

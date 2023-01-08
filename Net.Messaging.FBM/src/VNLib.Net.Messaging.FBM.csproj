@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Authors>Vaughn Nugent</Authors>
+    <Version>1.0.1.1</Version>
+    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
+    <Nullable>enable</Nullable>
+    <PackageProjectUrl>www.vaughnnugent.com/resources</PackageProjectUrl>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+ 
+
+  <ItemGroup>
+    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="ErrorProne.NET.Structs" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Essentials\src\VNLib.Plugins.Essentials.csproj" />
+    <ProjectReference Include="..\..\Http\src\VNLib.Net.Http.csproj" />
+    <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+</Project>

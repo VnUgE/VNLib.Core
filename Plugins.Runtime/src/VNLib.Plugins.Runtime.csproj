@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+     <Nullable>enable</Nullable>
+    <TargetFramework>net6.0</TargetFramework>
+    <Authors>Vaughn Nugent</Authors>
+    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
+    <Description>A runtime plugin loader for .NET. Allows runtime loading and tracking of .NET assemblies 
+that export the VNLib.Plugin.IPlugin interface.</Description>
+    <Version>1.0.1.1</Version>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <!-- Resolve nuget dll files and store them in the output dir -->
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Deterministic>False</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <Deterministic>False</Deterministic>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="ErrorProne.NET.Structs" Version="0.1.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="McMaster.NETCore.Plugins" Version="1.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Essentials\src\VNLib.Plugins.Essentials.csproj" />
+    <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+</Project>

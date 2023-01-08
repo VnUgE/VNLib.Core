@@ -348,10 +348,22 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
-*/Taskfile.yml
-*.yaml
+
+#Task build files
+**/[Tt]askfile*
+
+#no build dlls in source
 *.dll
-/Net.Http/src/Properties/launchSettings.json
+
+**[Ll]aunchSettings*
+
+#licenseheader vs extension files
 *.licenseheader
-/WinRpMalloc/packages.config
+
+#package config files
+**[Pp]ackages*
+
+#Do not include sln files for build process only
 *.sln
+
+*.filters

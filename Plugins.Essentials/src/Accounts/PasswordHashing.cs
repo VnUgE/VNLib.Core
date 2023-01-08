@@ -1,0 +1,244 @@
+﻿/*
+* Copyright (c) 2022 Vaughn Nugent
+* 
+* Library: VNLib
+* Package: VNLib.Plugins.Essentials
+* File: PasswordHashing.cs 
+*
+* PasswordHashing.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+* VNLib collection of libraries and utilities.
+*
+* VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
+* it under the terms of the GNU Affero General Public License as 
+* published by the Free Software Foundation, either version 3 of the
+* License, or (at your option) any later version.
+*
+* VNLib.Plugins.Essentials is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU Affero General Public License for more details.
+*
+* You should have received a copy of the GNU Affero General Public License
+* along with this program.  If not, see https://www.gnu.org/licenses/.
+*/
+
+using System;
+using System.Security.Cryptography;
+
+using VNLib.Hashing;
+using VNLib.Utils;
+using VNLib.Utils.Memory;
+
+namespace VNLib.Plugins.Essentials.Accounts
+{
+    /// <summary>
+    /// A delegate method to recover a temporary copy of the secret/pepper
+    /// for a request
+    /// </summary>
+    /// <param name="buffer">The buffer to write the pepper to</param>
+    /// <returns>The number of bytes written to the buffer</returns>
+    public delegate ERRNO SecretAction(Span<byte> buffer);
+
+    /// <summary>
+    /// Provides a structrued password hashing system implementing the <seealso cref="VnArgon2"/> library
+    /// with fixed time comparison
+    /// </summary>
+    public sealed class PasswordHashing
+    {
+        private readonly SecretAction _getter;
+        private readonly int _secretSize;
+        
+        private readonly uint TimeCost;
+        private readonly uint MemoryCost;
+        private readonly uint HashLen;
+        private readonly int SaltLen;
+        private readonly uint Parallelism;
+
+        /// <summary>
+        /// Initalizes the <see cref="PasswordHashing"/> class
+        /// </summary>
+        /// <param name="getter"></param>
+        /// <param name="secreteSize">The expected size of the secret (the size of the buffer to alloc for a copy)</param>
+        /// <param name="saltLen">A positive integer for the size of the random salt used during the hashing proccess</param>
+        /// <param name="timeCost">The Argon2 time cost parameter</param>
+        /// <param name="memoryCost">The Argon2 memory cost parameter</param>
+        /// <param name="hashLen">The size of the hash to produce during hashing operations</param>
+        /// <param name="parallism">
+        /// The Argon2 parallelism parameter (the number of threads to use for hasing) 
+        /// (default = 0 - the number of processors)
+        /// </param>
+        /// <exception cref="ArgumentNullException"></exception> 
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public PasswordHashing(SecretAction getter, int secreteSize, int saltLen = 32, uint timeCost = 4, uint memoryCost = UInt16.MaxValue, uint parallism = 0, uint hashLen = 128)
+        {
+            //Store getter
+            _getter = getter ?? throw new ArgumentNullException(nameof(getter));
+            _secretSize = secreteSize;
+            
+            //Store parameters
+            HashLen = hashLen;
+            //Store maginitude as a unit
+            MemoryCost = memoryCost;
+            TimeCost = timeCost;
+            SaltLen = saltLen;
+            Parallelism = parallism < 1 ? (uint)Environment.ProcessorCount : parallism;
+        }
+
+        /// <summary>
+        /// Verifies a password against its previously encoded hash.
+        /// </summary>
+        /// <param name="passHash">Previously hashed password</param>
+        /// <param name="password">Raw password to compare against</param>
+        /// <returns>true if bytes derrived from password match the hash, false otherwise</returns>
+        /// <exception cref="FormatException"></exception>
+        /// <exception cref="VnArgon2Exception"></exception>
+        /// <exception cref="VnArgon2PasswordFormatException"></exception>
+        public bool Verify(PrivateString passHash, PrivateString password)
+        {
+            //Casting PrivateStrings to spans will reference the base string directly
+            return Verify((ReadOnlySpan<char>)passHash, (ReadOnlySpan<char>)password);
+        }
+        /// <summary>
+        /// Verifies a password against its previously encoded hash.
+        /// </summary>
+        /// <param name="passHash">Previously hashed password</param>
+        /// <param name="password">Raw password to compare against</param>
+        /// <returns>true if bytes derrived from password match the hash, false otherwise</returns>
+        /// <exception cref="FormatException"></exception>
+        /// <exception cref="VnArgon2Exception"></exception>
+        /// <exception cref="VnArgon2PasswordFormatException"></exception>
+        public bool Verify(ReadOnlySpan<char> passHash, ReadOnlySpan<char> password)
+        {
+            if(passHash.IsEmpty || password.IsEmpty)
+            {
+                return false;
+            }
+            //alloc secret buffer
+            using UnsafeMemoryHandle<byte> secretBuffer = Memory.UnsafeAlloc<byte>(_secretSize, true);
+            try
+            {
+                //Get the secret from the callback
+                ERRNO count = _getter(secretBuffer.Span);
+                //Verify
+                return VnArgon2.Verify2id(password, passHash, secretBuffer.Span[..(int)count]);
+            }
+            finally
+            {
+                //Erase secret buffer
+                Memory.InitializeBlock(secretBuffer.Span);
+            }
+        }
+        /// <summary>
+        /// Verifies a password against its hash. Partially exposes the Argon2 api.
+        /// </summary>
+        /// <param name="hash">Previously hashed password</param>
+        /// <param name="salt">The salt used to hash the original password</param>
+        /// <param name="password">The password to hash and compare against </param>
+        /// <returns>true if bytes derrived from password match the hash, false otherwise</returns>
+        /// <exception cref="VnArgon2Exception"></exception>
+        /// <remarks>Uses fixed time comparison from <see cref="CryptographicOperations"/> class</remarks>
+        public bool Verify(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> password)
+        {
+            //Alloc a buffer with the same size as the hash
+            using UnsafeMemoryHandle<byte> hashBuf = Memory.UnsafeAlloc<byte>(hash.Length, true);
+            //Hash the password with the current config
+            Hash(password, salt, hashBuf.Span);
+            //Compare the hashed password to the specified hash and return results
+            return CryptographicOperations.FixedTimeEquals(hash, hashBuf.Span);
+        }
+
+        /// <summary>
+        /// Hashes a specified password, with the initialized pepper, and salted with CNG random bytes.
+        /// </summary>
+        /// <param name="password">Password to be hashed</param>
+        /// <exception cref="VnArgon2Exception"></exception>
+        /// <returns>A <see cref="PrivateString"/> of the hashed and encoded password</returns>
+        public PrivateString Hash(PrivateString password) => Hash((ReadOnlySpan<char>)password);
+        
+        /// <summary>
+        /// Hashes a specified password, with the initialized pepper, and salted with CNG random bytes.
+        /// </summary>
+        /// <param name="password">Password to be hashed</param>
+        /// <exception cref="VnArgon2Exception"></exception>
+        /// <returns>A <see cref="PrivateString"/> of the hashed and encoded password</returns>
+        public PrivateString Hash(ReadOnlySpan<char> password)
+        {
+            //Alloc shared buffer for the salt and secret buffer
+            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(SaltLen + _secretSize, true);
+            try
+            {
+                //Split buffers
+                Span<byte> saltBuf = buffer.Span[..SaltLen];
+                Span<byte> secretBuf = buffer.Span[SaltLen..];
+                
+                //Fill the buffer with random bytes
+                RandomHash.GetRandomBytes(saltBuf);
+                
+                //recover the secret
+                ERRNO count = _getter(secretBuf);
+
+                //Hashes a password, with the current parameters
+                return (PrivateString)VnArgon2.Hash2id(password, saltBuf, secretBuf[..(int)count], TimeCost, MemoryCost, Parallelism, HashLen);
+            }
+            finally
+            {
+                Memory.InitializeBlock(buffer.Span);
+            }
+        }
+        
+        /// <summary>
+        /// Hashes a specified password, with the initialized pepper, and salted with a CNG random bytes.
+        /// </summary>
+        /// <param name="password">Password to be hashed</param>
+        /// <exception cref="VnArgon2Exception"></exception>
+        /// <returns>A <see cref="PrivateString"/> of the hashed and encoded password</returns>
+        public PrivateString Hash(ReadOnlySpan<byte> password)
+        {
+            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(SaltLen + _secretSize, true);
+            try
+            {
+                //Split buffers
+                Span<byte> saltBuf = buffer.Span[..SaltLen];
+                Span<byte> secretBuf = buffer.Span[SaltLen..];
+
+                //Fill the buffer with random bytes
+                RandomHash.GetRandomBytes(saltBuf);
+
+                //recover the secret
+                ERRNO count = _getter(secretBuf);
+
+                //Hashes a password, with the current parameters
+                return (PrivateString)VnArgon2.Hash2id(password, saltBuf, secretBuf[..(int)count], TimeCost, MemoryCost, Parallelism, HashLen);
+            }
+            finally
+            {
+                Memory.InitializeBlock(buffer.Span);
+            }
+        }
+        /// <summary>
+        /// Partially exposes the Argon2 api. Hashes the specified password, with the initialized pepper.
+        /// Writes the raw hash output to the specified buffer
+        /// </summary>
+        /// <param name="password">Password to be hashed</param>
+        /// <param name="salt">Salt to hash the password with</param>
+        /// <param name="hashOutput">The output buffer to store the hashed password to. The exact length of this buffer is the hash size</param>
+        /// <exception cref="VnArgon2Exception"></exception>
+        public void Hash(ReadOnlySpan<byte> password, ReadOnlySpan<byte> salt, Span<byte> hashOutput)
+        {
+            //alloc secret buffer
+            using UnsafeMemoryHandle<byte> secretBuffer = Memory.UnsafeAlloc<byte>(_secretSize, true);
+            try
+            {
+                //Get the secret from the callback
+                ERRNO count = _getter(secretBuffer.Span);
+                //Hashes a password, with the current parameters
+                VnArgon2.Hash2id(password, salt, secretBuffer.Span[..(int)count], hashOutput, TimeCost, MemoryCost, Parallelism);
+            }
+            finally
+            {
+                //Erase secret buffer
+                Memory.InitializeBlock(secretBuffer.Span);
+            }
+        }
+    }
+}
