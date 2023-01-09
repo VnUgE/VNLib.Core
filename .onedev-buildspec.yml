@@ -1,0 +1,44 @@
+version: 17
+jobs:
+- name: Push to GitHub
+  steps:
+  - !PushRepository
+    name: GitHub Sync
+    remoteUrl: https://github.com/VnUgE/VNLib.Core.git
+    userName: VnUgE
+    passwordSecret: git-access-token
+    withLfs: false
+    force: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !TagCreateTrigger
+    projects: VNLib.Core
+  - !BranchUpdateTrigger
+    projects: VNLib.Core
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  cpuRequirement: 250
+  memoryRequirement: 256
+  timeout: 3600
+- name: Pull from GitHub
+  steps:
+  - !PullRepository
+    name: Sync from GitHub
+    remoteUrl: https://github.com/VnUgE/VNLib.Core.git
+    userName: VnUgE
+    passwordSecret: git-access-token
+    refs: refs/heads/* refs/tags/*
+    withLfs: false
+    force: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !ScheduleTrigger
+    cronExpression: 0 15 10 ? * *
+    projects: VNLib.Core
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  cpuRequirement: 250
+  memoryRequirement: 256
+  timeout: 3600
