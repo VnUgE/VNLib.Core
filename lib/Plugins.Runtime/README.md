@@ -2,6 +2,9 @@
 
 A library that manages the runtime loading/unloading of a managed .NET assembly that exposes one or more types that implement the VNLib.Plugins.IPlugin interface, and the plugins lifecycle. The `DynamicPluginLoader` class also handles "hot" assembly reload and exposes lifecycle hooks for applications to correctly detect those changes.
 
+#### Builds
+Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my [website](https://www.vaughnnugent.com/resources/software). All tar-gzip (.tgz) files will have an associated .sha384 appended checksum of the desired download file.
+
 ### 3rd Party Dependencies
 This library does not, modify, contribute, or affect the functionality of any of the 3rd party libraries below.
 

@@ -4,6 +4,9 @@ A compact and simple contract interface and supporting types for runtime loadabl
 
 **This library has no internal or external dependencies**
 
+#### Builds
+Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my [website](https://www.vaughnnugent.com/resources/software). All tar-gzip (.tgz) files will have an associated .sha384 appended checksum of the desired download file.
+
 ### Usage with VNLib.Plugins.Essentials.
 
 The **VNLib.Plugins.Essentials** library discovers IEndpoint types at runtime inside `EventProcessor` types. For correct usage with the `EventProcessor` class you should implement the interface `IVirtualEndpoint<HttpEntity>` otherwise your endpoint will not get loaded.

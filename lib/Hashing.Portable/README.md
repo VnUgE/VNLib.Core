@@ -4,6 +4,9 @@
 This library is a collection of common cryptographic functions, optimized using the VNLib.Utils
 library for interop and memory management.
 
+#### Builds
+Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my [website](https://www.vaughnnugent.com/resources/software). All tar-gzip (.tgz) files will have an associated .sha384 appended checksum of the desired download file.
+
 ## Argon2
 This library contains an native library interface with the Argon2 Cryptographic Hashing library. If you wish to use the Argon2 hashing functions, you must include the [Argon2 native library](https://github.com/P-H-C/phc-winner-argon2) in your project, and accept the license.
 
@@ -12,7 +15,7 @@ The Argon2 native libary is lazy loaded and therefor not required for the other 
 **Notice:**
 This library does not, modify, contribute, or affect the functionality of the Argon2 library in any way. 
 
-#### Usage:
+### Usage:
 ```
 //Using the managed hash version, inputs may be binary or utf8 chars
 string encodedHash = VnArgon2.Hash2id(<password>,<salt>,<secret>,...<argon params>)

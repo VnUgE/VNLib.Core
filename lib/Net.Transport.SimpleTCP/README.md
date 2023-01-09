@@ -4,6 +4,9 @@ _A managed .NET simple, high performance - single process, low/no allocation, fu
 
 This library was created for use with the VNLib.Net.Http library and subsequent stacked framework libraries, however it was designed to be useful as a standalone high-performance .NET tcp listener. This library relies on the managed .NET [System.IO.Pipelines](https://github.com/dotnet/docs/blob/main/docs/standard/io/pipelines.md) library, and the **VNLib.Utils** library. 
 
+#### Builds
+Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my [website](https://www.vaughnnugent.com/resources/software). All tar-gzip (.tgz) files will have an associated .sha384 appended checksum of the desired download file.
+
 ##### SSL Support
 The TcpServer manages ssl/tls using the SslStream class to make tls as transparent to the application as possible. The server manages authentication and negotiation based on the configured `SslServerAuthenticationOptions` 
 
