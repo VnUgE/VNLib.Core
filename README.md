@@ -12,7 +12,7 @@ Any libraries in this repository that contain external dependencies will be ment
 I use many internal tools to build and maintain these projects. I use [OneDev](https://code.onedev.io/) for my internal source control and updates are pushed to GitHub as part of a build process. I use [Task](https://taskfile.dev) to maintain the build/release for all projects in this repository. Builds are publicly available on my [website](https://www.vaughnnugent.com/resources/software) described in the builds section. I do *not* intend to expose my internal tools for security reasons.
 
 ### Licensing
-Projects contained in this repository are individually licensed, either GNU GPL V2+ or GNU GPL GPL Aferro V3+. Builds contain the required license txt files in the archive.
+Projects contained in this repository are individually licensed, either GNU GPL V2+ or GNU GPL GPL Affero V3+. Builds contain the required license txt files in the archive.
 
 ### Why so many individual projects?
 Motivation: I work on many different types of projects and often require modules that I have built before but haven't maintained etc. To solve this issue I prioritize code-reuse by maintaining a smaller subset of libraries that I may include as-needed (similar to how .NET core/5+ maintains libraries outside of mscorelib). I also have a strong dislike for including projects that require many external dependencies for a simple feature/function. I would prefer the ability to include the least amount if code required to get the job done with the least amount of side-effects. Finally I prefer homogeneity in my projects so I tend to use .NET implementations opposed to 3rd party even if the implementation is not as performant for my use-cases.

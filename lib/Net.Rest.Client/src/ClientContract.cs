@@ -23,8 +23,9 @@
 */
 
 using RestSharp;
-using VNLib.Utils.Memory.Caching;
+
 using VNLib.Utils.Resources;
+using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Rest.Client
 {

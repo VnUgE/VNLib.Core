@@ -367,3 +367,5 @@ MigrationBackup/
 *.sln
 
 *.filters
+*.ps1
+/lib/.task/checksum

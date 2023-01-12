@@ -178,7 +178,6 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Asynchronously discards all remaining data in the stream 
         /// </summary>
-        /// <param name="heap">The heap to alloc buffers from</param>
         /// <param name="maxBufferSize">The maxium size of the buffer to allocate</param>
         /// <returns>A task that represents the discard operations</returns>
         public async ValueTask DiscardRemainingAsync(int maxBufferSize)
