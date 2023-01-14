@@ -23,16 +23,12 @@
 */
 
 using System;
+using System.Text;
 using System.Buffers;
 using System.Buffers.Text;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VNLib.Utils;
 
 namespace VNLib.Utils.Tests
 {

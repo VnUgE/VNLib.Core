@@ -49,12 +49,19 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         internal JsonResponse(IObjectRental<JsonResponse> pool)
         {
+            /*
+             * I am breaking the memoryhandle rules by referrencing the same
+             * memory handle in two different wrappers.
+             */
+
             _pool = pool;
             
             //Alloc buffer
-            _handle = Memory.Shared.Alloc<byte>(4096, false);
+            _handle = MemoryUtil.Shared.Alloc<byte>(4096, false);
+            
             //Consume handle for stream, but make sure not to dispose the stream
             _asStream = VnMemoryStream.ConsumeHandle(_handle, 0, false);
+            
             //Get memory owner from handle
             _memoryOwner = _handle.ToMemoryManager(false);
         }

@@ -39,7 +39,6 @@ using VNLib.Plugins.Essentials.Users;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
 
-
 #nullable enable
 
 namespace VNLib.Plugins.Essentials.Accounts
@@ -50,7 +49,7 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// to facilitate unified user-controls, athentication, and security
     /// application-wide
     /// </summary>
-    public static partial class AccountManager
+    public static partial class AccountUtil
     {
         public const int MAX_EMAIL_CHARS = 50;
         public const int ID_FIELD_CHARS = 65;
@@ -104,6 +103,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         private const string FAILED_LOGIN_ENTRY = "acnt.flc";
         private const string LOCAL_ACCOUNT_ENTRY = "acnt.ila";
         private const string ACC_ORIGIN_ENTRY = "__.org";
+        private const string TOKEN_UPDATE_TIME_ENTRY = "acnt.tut";
         //private const string CHALLENGE_HASH_ENTRY = "acnt.chl";
 
         //Privlage masks 
@@ -164,7 +164,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 throw new ObjectDisposedException("The specifed user object has been released");
             }
             //Alloc a buffer
-            using IMemoryHandle<byte> buffer = Memory.SafeAlloc<byte>(size);
+            using IMemoryHandle<byte> buffer = MemoryUtil.SafeAlloc<byte>(size);
             //Use the CGN to get a random set
             RandomHash.GetRandomBytes(buffer.Span);
             //Hash the new random password
@@ -189,6 +189,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// This field is not required
         /// </summary>
         /// <returns>The origin of the account</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetAccountOrigin(this IUser ud) => ud[ACC_ORIGIN_ENTRY];
         /// <summary>
         /// If this account was created by any means other than a local account creation. 
@@ -196,6 +197,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// </summary>
         /// <param name="ud"></param> 
         /// <param name="origin">Value of the account origin</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void SetAccountOrigin(this IUser ud, string origin) => ud[ACC_ORIGIN_ENTRY] = origin;
 
         /// <summary>
@@ -241,6 +243,8 @@ namespace VNLib.Plugins.Essentials.Accounts
             {
                 throw new InvalidOperationException("The session is not set or the session is not a web-based session type");
             }
+            //Update session-id for "upgrade"
+            ev.Session.RegenID();
             //derrive token from login data
             TryGenerateToken(base64PubKey, out string base64ServerToken, out string base64ClientData);
             //Clear flags
@@ -260,6 +264,8 @@ namespace VNLib.Plugins.Essentials.Accounts
             ev.Session.HasLocalAccount(localAccount);
             //Store the base64 server key to compute the hmac later
             ev.Session.Token = base64ServerToken;
+            //Update the last token upgrade time
+            ev.Session.LastTokenUpgrade(ev.RequestedTimeUtc);
             //Return the client encrypted data
             return base64ClientData;
         }
@@ -325,7 +331,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         private static void TryGenerateToken(string base64clientPublicKey, out string base64Digest, out string base64ClientData)
         {
             //Temporary work buffer
-            using IMemoryHandle<byte> buffer = Memory.SafeAlloc<byte>(4096, true);
+            using IMemoryHandle<byte> buffer = MemoryUtil.SafeAlloc<byte>(4096, true);
             /*
              * Create a new token buffer for bin buffers.
              * This buffer struct is used to break up 
@@ -396,7 +402,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             * are equal it should mean that the client must have the private
             * key that generated the public key that was sent
             */
-            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(TokenHashSize * 2, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(TokenHashSize * 2, true);
             //Slice up buffers 
             Span<byte> headerBuffer = buffer.Span[..TokenHashSize];
             Span<byte> sessionBuffer = buffer.Span[TokenHashSize..];
@@ -405,8 +411,31 @@ namespace VNLib.Plugins.Essentials.Accounts
                 && Convert.TryFromBase64String(ev.Session.Token, sessionBuffer, out int sessionTokenLen))
             {
                 //Do a fixed time equal (probably overkill, but should not matter too much)
-                return CryptographicOperations.FixedTimeEquals(headerBuffer[..headerTokenLen], sessionBuffer[..sessionTokenLen]);
+                if(CryptographicOperations.FixedTimeEquals(headerBuffer[..headerTokenLen], sessionBuffer[..sessionTokenLen]))
+                {
+                    return true;
+                }
             }
+
+            /*
+             * If the token does not match, or cannot be found, check if the client
+             * has login cookies set, if not remove them.
+             * 
+             * This does not affect the session, but allows for a web client to update
+             * its login state if its no-longer logged in
+             */
+
+            //Expire login cookie if set
+            if (ev.Server.RequestCookies.ContainsKey(LOGIN_COOKIE_NAME))
+            {
+                ev.Server.ExpireCookie(LOGIN_COOKIE_NAME, sameSite: CookieSameSite.SameSite);
+            }
+            //Expire the LI cookie if set
+            if (ev.Server.RequestCookies.ContainsKey(LOGIN_COOKIE_IDENTIFIER))
+            {
+                ev.Server.ExpireCookie(LOGIN_COOKIE_IDENTIFIER, sameSite: CookieSameSite.SameSite);
+            }
+
             return false;
         }
 
@@ -432,6 +461,8 @@ namespace VNLib.Plugins.Essentials.Accounts
             TryGenerateToken(clientPublicKey, out string base64Digest, out string base64ClientData);
             //store the token to the user's session
             ev.Session.Token = base64Digest;
+            //Update the last token upgrade time
+            ev.Session.LastTokenUpgrade(ev.RequestedTimeUtc);
             //return the clients encrypted secret
             return base64ClientData;
         }
@@ -478,7 +509,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 return false;
             }
             //Alloc a buffer for decoding the public key
-            using UnsafeMemoryHandle<byte> pubKeyBuffer = Memory.UnsafeAlloc<byte>(PUBLIC_KEY_BUFFER_SIZE, true);
+            using UnsafeMemoryHandle<byte> pubKeyBuffer = MemoryUtil.UnsafeAlloc<byte>(PUBLIC_KEY_BUFFER_SIZE, true);
             //Decode the public key
             ERRNO pbkBytesWritten = VnEncoding.TryFromBase64Chars(base64PubKey, pubKeyBuffer);
             //Try to encrypt the data
@@ -590,7 +621,7 @@ namespace VNLib.Plugins.Essentials.Accounts
              * be 2 * LOGIN_COOKIE_SIZE, and it can be split in half and shared
              * for both conversions
              */
-            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(2 * LOGIN_COOKIE_SIZE, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(2 * LOGIN_COOKIE_SIZE, true);
             //Slice up buffers 
             Span<byte> cookieBuffer = buffer.Span[..LOGIN_COOKIE_SIZE];
             Span<byte> sessionBuffer = buffer.Span.Slice(LOGIN_COOKIE_SIZE, LOGIN_COOKIE_SIZE);
@@ -602,7 +633,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 if(CryptographicOperations.FixedTimeEquals(cookieBuffer, sessionBuffer))
                 {
                     //If the user is "logged in" and the request is using the POST method, then we can update the cookie
-                    if(ev.Server.Method == HttpMethod.POST && ev.Session.Created.Add(RegenIdPeriod) < DateTimeOffset.UtcNow)
+                    if(ev.Server.Method == HttpMethod.POST && ev.Session.Created.Add(RegenIdPeriod) < ev.RequestedTimeUtc)
                     {
                         //Regen login token
                         ev.SetLogin();
@@ -655,7 +686,26 @@ namespace VNLib.Plugins.Essentials.Accounts
                 }
             }
         }
-      
+
+        /// <summary>
+        /// Gets the last time the session token was set
+        /// </summary>
+        /// <param name="session"></param>
+        /// <returns>The last time the token was updated/generated, or <see cref="DateTimeOffset.MinValue"/> if not set</returns>
+        public static DateTimeOffset LastTokenUpgrade(this in SessionInfo session)
+        {
+            //Get the serialized time value
+            string timeString = session[TOKEN_UPDATE_TIME_ENTRY];
+            return long.TryParse(timeString, out long time) ? DateTimeOffset.FromUnixTimeSeconds(time) : DateTimeOffset.MinValue;
+        }
+
+        /// <summary>
+        /// Updates the last time the session token was set
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="updated">The UTC time the last token was set</param>
+        private static void LastTokenUpgrade(this in SessionInfo session, DateTimeOffset updated) 
+            => session[TOKEN_UPDATE_TIME_ENTRY] = updated.ToUnixTimeSeconds().ToString();
 
         /// <summary>
         /// Stores the browser's id during a login process
@@ -711,7 +761,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             //Calculate the password buffer size required
             int passByteCount = Encoding.UTF8.GetByteCount(rawPass);
             //Allocate the buffer
-            using UnsafeMemoryHandle<byte> bufferHandle = Memory.UnsafeAlloc<byte>(passByteCount + 64, true);
+            using UnsafeMemoryHandle<byte> bufferHandle = MemoryUtil.UnsafeAlloc<byte>(passByteCount + 64, true);
             //Slice buffers
             Span<byte> utf8PassBytes = bufferHandle.Span[..passByteCount];
             Span<byte> hashBuffer = bufferHandle.Span[passByteCount..];
@@ -750,7 +800,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             int bufSize = base32Digest.Length + base64PasswordDigest.Length;
             //Alloc buffer
-            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(bufSize);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(bufSize);
             //Split buffers
             Span<byte> localBuf = buffer.Span[..base32Digest.Length];
             Span<byte> passBuf = buffer.Span[base32Digest.Length..];

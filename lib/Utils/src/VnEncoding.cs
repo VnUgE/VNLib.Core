@@ -61,7 +61,7 @@ namespace VNLib.Utils
                 //get number of bytes
                 int byteCount = encoding.GetByteCount(data);
                 //resize the handle to fit the data
-                handle = Memory.Memory.Shared.Alloc<byte>(byteCount);
+                handle = Memory.MemoryUtil.Shared.Alloc<byte>(byteCount);
                 //encode
                 int size = encoding.GetBytes(data, handle);
                 //Consume the handle into a new vnmemstream and return it
@@ -479,7 +479,7 @@ namespace VNLib.Utils
             //Calculate the base32 entropy to alloc an appropriate buffer (minium buffer of 2 chars)
             int entropy = Base32CalcMaxBufferSize(binBuffer.Length);
             //Alloc buffer for enough size (2*long bytes) is not an issue
-            using (UnsafeMemoryHandle<char> charBuffer = Memory.Memory.UnsafeAlloc<char>(entropy))
+            using (UnsafeMemoryHandle<char> charBuffer = Memory.MemoryUtil.UnsafeAlloc<char>(entropy))
             {
                 //Encode
                 ERRNO encoded = TryToBase32Chars(binBuffer, charBuffer.Span);
@@ -512,7 +512,7 @@ namespace VNLib.Utils
             //calc size of bin buffer
             int size = base32.Length;
             //Rent a bin buffer
-            using UnsafeMemoryHandle<byte> binBuffer = Memory.Memory.UnsafeAlloc<byte>(size);
+            using UnsafeMemoryHandle<byte> binBuffer = Memory.MemoryUtil.UnsafeAlloc<byte>(size);
             //Try to decode the data
             ERRNO decoded = TryFromBase32Chars(base32, binBuffer.Span);
             //Marshal back to a struct 
@@ -532,7 +532,7 @@ namespace VNLib.Utils
                 return null;
             }
             //Buffer size of the base32 string will always be enough buffer space
-            using UnsafeMemoryHandle<byte> tempBuffer = Memory.Memory.UnsafeAlloc<byte>(base32.Length);
+            using UnsafeMemoryHandle<byte> tempBuffer = Memory.MemoryUtil.UnsafeAlloc<byte>(base32.Length);
             //Try to decode the data
             ERRNO decoded = TryFromBase32Chars(base32, tempBuffer.Span);
             
@@ -903,7 +903,7 @@ namespace VNLib.Utils
             int decodedSize = encoding.GetByteCount(chars);
 
             //alloc buffer
-            using UnsafeMemoryHandle<byte> decodeHandle = Memory.Memory.UnsafeAlloc<byte>(decodedSize);
+            using UnsafeMemoryHandle<byte> decodeHandle = Memory.MemoryUtil.UnsafeAlloc<byte>(decodedSize);
             //Get the utf8 binary data
             int count = encoding.GetBytes(chars, decodeHandle);
             return Base64UrlDecode(decodeHandle.Span[..count], output);

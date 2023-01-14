@@ -79,10 +79,13 @@ namespace VNLib.Hashing
         public static ERRNO ComputeHash(ReadOnlySpan<char> data, Span<byte> buffer, HashAlg type)
         {
             int byteCount = CharEncoding.GetByteCount(data);
+            
             //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = Memory.UnsafeAlloc<byte>(byteCount, true);
+            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc<byte>(byteCount, true);
+
             //Encode data
             byteCount = CharEncoding.GetBytes(data, binbuf);
+            
             //hash the buffer
             return ComputeHash(binbuf.Span[..byteCount], buffer, type);
         }
@@ -99,7 +102,7 @@ namespace VNLib.Hashing
         {
             int byteCount = CharEncoding.GetByteCount(data);
             //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = Memory.UnsafeAlloc<byte>(byteCount, true);
+            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc<byte>(byteCount, true);
             //Encode data
             byteCount = CharEncoding.GetBytes(data, binbuf);
             //hash the buffer
@@ -229,10 +232,13 @@ namespace VNLib.Hashing
         public static ERRNO ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<char> data, Span<byte> output, HashAlg type)
         {
             int byteCount = CharEncoding.GetByteCount(data);
+            
             //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = Memory.UnsafeAlloc<byte>(byteCount, true);
+            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc<byte>(byteCount, true);
+            
             //Encode data
             byteCount = CharEncoding.GetBytes(data, binbuf);
+
             //hash the buffer
             return ComputeHmac(key, binbuf.Span[..byteCount], output, type);
         }
@@ -249,10 +255,13 @@ namespace VNLib.Hashing
         public static byte[] ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<char> data, HashAlg type)
         {
             int byteCount = CharEncoding.GetByteCount(data);
+            
             //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = Memory.UnsafeAlloc<byte>(byteCount, true);
+            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc<byte>(byteCount, true);
+
             //Encode data
             byteCount = CharEncoding.GetBytes(data, binbuf);
+
             //hash the buffer
             return ComputeHmac(key, binbuf.Span[..byteCount], type);
         }
@@ -317,12 +326,15 @@ namespace VNLib.Hashing
         {
             //Alloc hash buffer
             Span<byte> hashBuffer = stackalloc byte[(int)type];
+            
             //hash the buffer
             ERRNO count = ComputeHmac(key, data, hashBuffer, type);
+            
             if (!count)
             {
                 throw new InternalBufferTooSmallException("Failed to compute the hash of the data");
             }
+            
             //Convert to hex string
             return mode switch
             {
@@ -347,12 +359,15 @@ namespace VNLib.Hashing
         {
             //Alloc hash buffer
             Span<byte> hashBuffer = stackalloc byte[(int)type];
+
             //hash the buffer
             ERRNO count = ComputeHmac(key, data, hashBuffer, type);
+            
             if (!count)
             {
                 throw new InternalBufferTooSmallException("Failed to compute the hash of the data");
             }
+            
             //Convert to hex string
             return mode switch
             {

@@ -25,10 +25,9 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using VNLib.Utils;
 using VNLib.Utils.Extensions;
 
-using static VNLib.Utils.Memory.Memory;
+using static VNLib.Utils.Memory.MemoryUtil;
 
 namespace VNLib.Utils.Memory.Tests
 {
@@ -43,7 +42,7 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => Shared.Alloc<byte>(-1));
 
             //Make sure over-alloc throws
-            Assert.ThrowsException<NativeMemoryOutOfMemoryException>(() => Shared.Alloc<byte>(ulong.MaxValue, false));
+            Assert.ThrowsException<NativeMemoryOutOfMemoryException>(() => Shared.Alloc<byte>(nuint.MaxValue, false));
         }
 #if TARGET_64_BIT
         [TestMethod]
@@ -54,9 +53,9 @@ namespace VNLib.Utils.Memory.Tests
             using MemoryHandle<byte> handle = Shared.Alloc<byte>(bigHandleSize);
 
             //verify size
-            Assert.AreEqual(handle.ByteLength, (ulong)bigHandleSize);
+            Assert.IsTrue(handle.ByteLength, (ulong)bigHandleSize);
             //Since handle is byte, should also match
-            Assert.AreEqual(handle.Length, (ulong)bigHandleSize);
+            Assert.IsTrue(handle.Length, (ulong)bigHandleSize);
 
             //Should throw overflow
             Assert.ThrowsException<OverflowException>(() => _ = handle.Span);
@@ -68,8 +67,6 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetOffsetSpan((long)int.MaxValue + 1, 1024));
 
         }
-#else
-        
 #endif
 
         [TestMethod]
@@ -77,15 +74,15 @@ namespace VNLib.Utils.Memory.Tests
         {
             using MemoryHandle<byte> handle = Shared.Alloc<byte>(128, true);
 
-            Assert.AreEqual(handle.IntLength, 128);
+            Assert.IsTrue(handle.Length == 128);
 
-            Assert.AreEqual(handle.Length, (ulong)128);
+            Assert.IsTrue(handle.Length == 128);
 
             //Check span against base pointer deref
 
             handle.Span[120] = 10;
 
-            Assert.AreEqual(*handle.GetOffset(120), 10);
+            Assert.IsTrue(*handle.GetOffset(120) == 10);
         }
 
 
@@ -153,14 +150,14 @@ namespace VNLib.Utils.Memory.Tests
         {
             using MemoryHandle<byte> handle = Shared.Alloc<byte>(1024);
 
-            Assert.AreEqual(handle.IntLength, 1024);
+            Assert.IsTrue(handle.Length == 1024);
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => handle.Resize(-1));
 
             //Resize the handle 
             handle.Resize(2048);
 
-            Assert.AreEqual(handle.IntLength, 2048);
+            Assert.IsTrue(handle.Length == 2048);
 
             Assert.IsTrue(handle.AsSpan(2048).IsEmpty);
 
@@ -173,11 +170,11 @@ namespace VNLib.Utils.Memory.Tests
             //test resize
             handle.ResizeIfSmaller(100);
             //Handle should be unmodified
-            Assert.AreEqual(handle.IntLength, 2048);
+            Assert.IsTrue(handle.Length == 2048);
             
             //test working
             handle.ResizeIfSmaller(4096);
-            Assert.AreEqual(handle.IntLength, 4096);
+            Assert.IsTrue(handle.Length == 4096);
         }
     }
 }

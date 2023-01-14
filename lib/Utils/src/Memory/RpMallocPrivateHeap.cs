@@ -28,7 +28,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
-using size_t = System.UInt64;
 using LPVOID = System.IntPtr;
 using LPHEAPHANDLE = System.IntPtr;
 
@@ -59,22 +58,22 @@ namespace VNLib.Utils.Memory
         static extern void rpmalloc_heap_release(LPHEAPHANDLE heap);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpmalloc_heap_alloc(LPHEAPHANDLE heap, size_t size);
+        static extern LPVOID rpmalloc_heap_alloc(LPHEAPHANDLE heap, nuint size);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpmalloc_heap_aligned_alloc(LPHEAPHANDLE heap, size_t alignment, size_t size);
+        static extern LPVOID rpmalloc_heap_aligned_alloc(LPHEAPHANDLE heap, nuint alignment, nuint size);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpmalloc_heap_calloc(LPHEAPHANDLE heap, size_t num, size_t size);
+        static extern LPVOID rpmalloc_heap_calloc(LPHEAPHANDLE heap, nuint num, nuint size);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpmalloc_heap_aligned_calloc(LPHEAPHANDLE heap, size_t alignment, size_t num, size_t size);
+        static extern LPVOID rpmalloc_heap_aligned_calloc(LPHEAPHANDLE heap, nuint alignment, nuint num, nuint size);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpmalloc_heap_realloc(LPHEAPHANDLE heap, LPVOID ptr, size_t size, nuint flags);
+        static extern LPVOID rpmalloc_heap_realloc(LPHEAPHANDLE heap, LPVOID ptr, nuint size, nuint flags);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpmalloc_heap_aligned_realloc(LPHEAPHANDLE heap, LPVOID ptr, size_t alignment, size_t size, nuint flags);
+        static extern LPVOID rpmalloc_heap_aligned_realloc(LPHEAPHANDLE heap, LPVOID ptr, nuint alignment, nuint size, nuint flags);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         static extern void rpmalloc_heap_free(LPHEAPHANDLE heap, LPVOID ptr);
@@ -96,13 +95,13 @@ namespace VNLib.Utils.Memory
         static extern void rpmalloc_thread_finalize(int release_caches);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpmalloc(size_t size);
+        static extern LPVOID rpmalloc(nuint size);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rpcalloc(size_t num, size_t size);
+        static extern LPVOID rpcalloc(nuint num, nuint size);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        static extern LPVOID rprealloc(LPVOID ptr, size_t size);
+        static extern LPVOID rprealloc(LPVOID ptr, nuint size);
         [DllImport(DLL_NAME, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         static extern void rpfree(LPVOID ptr);
@@ -111,9 +110,9 @@ namespace VNLib.Utils.Memory
 
         private sealed class RpMallocGlobalHeap : IUnmangedHeap
         {
-            IntPtr IUnmangedHeap.Alloc(ulong elements, ulong size, bool zero)
+            IntPtr IUnmangedHeap.Alloc(nuint elements, nuint size, bool zero)
             {
-                return RpMalloc(elements, (nuint)size, zero);
+                return RpMalloc(elements, size, zero);
             }
 
             //Global heap does not need to be disposed
@@ -127,17 +126,13 @@ namespace VNLib.Utils.Memory
                 return true;
             }
 
-            void IUnmangedHeap.Resize(ref IntPtr block, ulong elements, ulong size, bool zero)
+            void IUnmangedHeap.Resize(ref IntPtr block, nuint elements, nuint size, bool zero)
             {
                 //Try to resize the block
-                IntPtr resize = RpRealloc(block, elements, (nuint)size);
-
-                if (resize == IntPtr.Zero)
-                {
-                    throw new NativeMemoryOutOfMemoryException("Failed to resize the block");
-                }
+                IntPtr resize = RpRealloc(block, elements, size);
+                
                 //assign ptr
-                block = resize;
+                block = resize != IntPtr.Zero ? resize : throw new NativeMemoryOutOfMemoryException("Failed to resize the block");
             }
         }
 
@@ -164,7 +159,7 @@ namespace VNLib.Utils.Memory
         /// <param name="size">The number of bytes per element type (aligment)</param>
         /// <param name="zero">Zero the block of memory before returning</param>
         /// <returns>A pointer to the block, (zero if failed)</returns>
-        public static LPVOID RpMalloc(size_t elements, nuint size, bool zero)
+        public static LPVOID RpMalloc(nuint elements, nuint size, bool zero)
         {
             //See if the current thread has been initialized
             if (rpmalloc_is_thread_initialized() == 0)
@@ -172,8 +167,10 @@ namespace VNLib.Utils.Memory
                 //Initialize the current thread
                 rpmalloc_thread_initialize();
             }
+            
             //Alloc block
             LPVOID block;
+            
             if (zero)
             {
                 block = rpcalloc(elements, size);
@@ -181,7 +178,8 @@ namespace VNLib.Utils.Memory
             else
             {
                 //Calculate the block size
-                ulong blockSize = checked(elements * size);
+                nuint blockSize = checked(elements * size);
+                
                 block = rpmalloc(blockSize);
             }
             return block;
@@ -209,14 +207,16 @@ namespace VNLib.Utils.Memory
         /// <returns>A pointer to the new block if the reallocation succeeded, null if the resize failed</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OverflowException"></exception>
-        public static LPVOID RpRealloc(LPVOID block, size_t elements, nuint size)
+        public static LPVOID RpRealloc(LPVOID block, nuint elements, nuint size)
         {
             if(block == IntPtr.Zero)
             {
                 throw new ArgumentException("The supplied block is not valid", nameof(block));
             }
+            
             //Calc new block size
-            size_t blockSize = checked(elements * size);
+            nuint blockSize = checked(elements * size);
+            
             return rprealloc(block, blockSize);
         }
 
@@ -239,6 +239,7 @@ namespace VNLib.Utils.Memory
             Trace.WriteLine($"RPMalloc heap {handle:x} created");
 #endif
         }
+        
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
         {
@@ -252,13 +253,15 @@ namespace VNLib.Utils.Memory
             //Release base
             return base.ReleaseHandle();
         }
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected sealed override LPVOID AllocBlock(ulong elements, ulong size, bool zero)
+        protected sealed override LPVOID AllocBlock(nuint elements, nuint size, bool zero)
         {
             //Alloc or calloc and initalize
             return zero ? rpmalloc_heap_calloc(handle, elements, size) : rpmalloc_heap_alloc(handle, checked(size * elements));
         }
+        
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected sealed override bool FreeBlock(LPVOID block)
@@ -267,13 +270,15 @@ namespace VNLib.Utils.Memory
             rpmalloc_heap_free(handle, block);
             return true;
         }
+        
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected sealed override LPVOID ReAllocBlock(LPVOID block, ulong elements, ulong size, bool zero)
+        protected sealed override LPVOID ReAllocBlock(LPVOID block, nuint elements, nuint size, bool zero)
         {
             //Realloc
             return rpmalloc_heap_realloc(handle, block, checked(elements * size), 0);
         }
+        
         #endregion
     }
 }

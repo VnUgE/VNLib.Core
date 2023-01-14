@@ -52,6 +52,7 @@ namespace VNLib.Utils.Memory
         /// The number of unicode characters the current instance can reference
         /// </summary>
         public int Length => _stringSequence.Size;
+        
         /// <summary>
         /// Gets a value indicating if the current instance is empty
         /// </summary>
@@ -62,14 +63,7 @@ namespace VNLib.Utils.Memory
             _stringSequence = sequence;
         }
 
-        private VnString(
-            MemoryHandle<char> handle,
-#if TARGET_64_BIT
-            ulong start,
-#else
-            int start,
-#endif 
-            int length)
+        private VnString(MemoryHandle<char> handle, nuint start, int length)
         {
             Handle = handle ?? throw new ArgumentNullException(nameof(handle));
             //get sequence
@@ -83,6 +77,7 @@ namespace VNLib.Utils.Memory
         {
             //Default string sequence is empty and does not hold any memory
         }
+        
         /// <summary>
         /// Creates a new <see cref="VnString"/> around a <see cref="ReadOnlySpan{T}"/> or a <see cref="string"/> of data
         /// </summary>
@@ -90,13 +85,13 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OutOfMemoryException"></exception>
         public VnString(ReadOnlySpan<char> data)
         {
-            //Create new handle with enough size (heap)
-            Handle = Memory.Shared.Alloc<char>(data.Length);
-            //Copy
-            Memory.Copy(data, Handle, 0);
+            //Create new handle and copy incoming data to it
+            Handle = MemoryUtil.Shared.AllocAndCopy(data);
+            
             //Get subsequence over the whole copy of data
             _stringSequence = Handle.GetSubSequence(0, data.Length);
         }
+        
         /// <summary>
         /// Allocates a temporary buffer to read data from the stream until the end of the stream is reached.
         /// Decodes data from the user-specified encoding
@@ -122,7 +117,7 @@ namespace VNLib.Utils.Memory
                 //Get the number of characters
                 int numChars = encoding.GetCharCount(vnms.AsSpan());
                 //New handle
-                MemoryHandle<char> charBuffer = Memory.Shared.Alloc<char>(numChars);
+                MemoryHandle<char> charBuffer = MemoryUtil.Shared.Alloc<char>(numChars);
                 try
                 {
                     //Write characters to character buffer
@@ -141,9 +136,9 @@ namespace VNLib.Utils.Memory
             else
             {
                 //Create a new char bufer that will expand dyanmically
-                MemoryHandle<char> charBuffer = Memory.Shared.Alloc<char>(bufferSize);
+                MemoryHandle<char> charBuffer = MemoryUtil.Shared.Alloc<char>(bufferSize);
                 //Allocate a binary buffer 
-                MemoryHandle<byte> binBuffer = Memory.Shared.Alloc<byte>(bufferSize);
+                MemoryHandle<byte> binBuffer = MemoryUtil.Shared.Alloc<byte>(bufferSize);
                 try
                 {
                     int length = 0;
@@ -194,6 +189,7 @@ namespace VNLib.Utils.Memory
                 }
             }
         }
+        
         /// <summary>
         /// Creates a new Vnstring from the <see cref="MemoryHandle{T}"/> buffer provided. This function "consumes"
         /// a handle, meaning it now takes ownsership of the the memory it points to.
@@ -203,27 +199,24 @@ namespace VNLib.Utils.Memory
         /// <param name="length">The number of characters this string points to</param>
         /// <returns>The new <see cref="VnString"/></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static VnString ConsumeHandle(
-            MemoryHandle<char> handle,
-
-#if TARGET_64_BIT
-            ulong start,
-#else
-            int start,
-#endif 
-
-            int length)
+        public static VnString ConsumeHandle(MemoryHandle<char> handle, nuint start, int length)
         {
-            if(length < 0)
+            if (handle is null)
+            {
+                throw new ArgumentNullException(nameof(handle));
+            }
+
+            if (length < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(length));
             }
-            if((uint)length > handle.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(length));
-            }
+
+            //Check handle bounts
+            MemoryUtil.CheckBounds(handle, start, (nuint)length);
+
             return new VnString(handle, start, length);
         }        
+        
         /// <summary>
         /// Asynchronously reads data from the specified stream and uses the specified encoding 
         /// to decode the binary data to a new <see cref="VnString"/> heap character buffer.
@@ -354,10 +347,11 @@ namespace VNLib.Utils.Memory
                 throw new ArgumentOutOfRangeException(nameof(count));
             }
             //get sub-sequence slice for the current string
-            SubSequence<char> sub = _stringSequence.Slice((uint)start, count);
+            SubSequence<char> sub = _stringSequence.Slice((nuint)start, count);
             //Create new string with offsets pointing to same internal referrence
             return new VnString(sub);
         }
+        
         /// <summary>
         /// Creates a <see cref="VnString"/> that is a window within the current string,
         /// the referrence points to the same memory as the first instnace.
@@ -403,13 +397,12 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <returns><see cref="string"/> representation of internal data</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public override unsafe string ToString()
+        public override string ToString()
         {
-            //Check
-            Check();
             //Create a new 
             return AsSpan().ToString();
         }
+       
         /// <summary>
         /// Gets the value of the character at the specified index
         /// </summary>
@@ -474,7 +467,21 @@ namespace VNLib.Utils.Memory
         /// a character span etc
         /// </remarks>
         /// <exception cref="ObjectDisposedException"></exception>
-        public override int GetHashCode() => string.GetHashCode(AsSpan());
+        public override int GetHashCode() => GetHashCode(StringComparison.Ordinal);
+
+        /// <summary>
+        /// Gets a hashcode for the underyling string by using the .NET <see cref="string.GetHashCode()"/>
+        /// method on the character representation of the data
+        /// </summary>
+        /// <param name="stringComparison">The string comperison mode</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// It is safe to compare hashcodes of <see cref="VnString"/> to the <see cref="string"/> class or 
+        /// a character span etc
+        /// </remarks>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public int GetHashCode(StringComparison stringComparison) => string.GetHashCode(AsSpan(), stringComparison);
+        
         ///<inheritdoc/>
         protected override void Free()
         {

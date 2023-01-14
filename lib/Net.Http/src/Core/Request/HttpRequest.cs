@@ -137,9 +137,12 @@ namespace VNLib.Net.Http.Core
         public string Compile()
         {
             //Alloc char buffer for compilation
-            using UnsafeMemoryHandle<char> buffer = Memory.UnsafeAlloc<char>(16 * 1024, true);
+            using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAlloc<char>(16 * 1024, true);
+
             ForwardOnlyWriter<char> writer = new(buffer.Span);
+            
             Compile(ref writer);
+            
             return writer.ToString();
         }
 

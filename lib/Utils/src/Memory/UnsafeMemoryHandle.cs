@@ -40,7 +40,7 @@ namespace VNLib.Utils.Memory
     [StructLayout(LayoutKind.Sequential)]
     public readonly struct UnsafeMemoryHandle<T> : IMemoryHandle<T>, IEquatable<UnsafeMemoryHandle<T>> where T : unmanaged
     {
-        private enum HandleType
+        private enum HandleType : byte
         {
             None,
             Pool,
@@ -60,10 +60,12 @@ namespace VNLib.Utils.Memory
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _handleType == HandleType.Pool ? _poolArr.AsSpan(0, IntLength) : new (_memoryPtr.ToPointer(), IntLength);
         }
-        ///<inheritdoc/>
+        /// <summary>
+        /// Gets the integer number of elements of the block of memory pointed to by this handle
+        /// </summary>
         public readonly int IntLength => _length;
         ///<inheritdoc/>
-        public readonly ulong Length => (ulong)_length;
+        public readonly nuint Length => (nuint)_length;
 
         /// <summary>
         /// Creates an empty <see cref="UnsafeMemoryHandle{T}"/>
@@ -153,11 +155,18 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         public readonly unsafe MemoryHandle Pin(int elementIndex)
         {
-            //Guard
+            //guard empty handle
+            if (_handleType == HandleType.None)
+            {
+                throw new InvalidOperationException("The handle is empty, and cannot be pinned");
+            }
+            
+            //Guard size
             if (elementIndex < 0 || elementIndex >= IntLength)
             {
                 throw new ArgumentOutOfRangeException(nameof(elementIndex));
             }
+           
             
             if (_handleType == HandleType.Pool)
             {

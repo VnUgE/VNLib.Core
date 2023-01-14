@@ -104,7 +104,7 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         public static IUnmangedHeap HttpPrivateHeap => _lazyHeap.Value;
 
-        private static readonly Lazy<IUnmangedHeap> _lazyHeap = new(Memory.InitializeNewHeapForProcess, LazyThreadSafetyMode.PublicationOnly);
+        private static readonly Lazy<IUnmangedHeap> _lazyHeap = new(MemoryUtil.InitializeNewHeapForProcess, LazyThreadSafetyMode.PublicationOnly);
 
         /// <summary>
         /// Alloctes an unsafe block of memory from the internal heap, or buffer pool
@@ -120,11 +120,11 @@ namespace VNLib.Net.Http.Core
             size = (size / 4096 + 1) * 4096;
 
             //If rpmalloc lib is loaded, use it
-            if (Memory.IsRpMallocLoaded)
+            if (MemoryUtil.IsRpMallocLoaded)
             {
-                return Memory.Shared.UnsafeAlloc<byte>(size, zero);
+                return MemoryUtil.Shared.UnsafeAlloc<byte>(size, zero);
             }
-            else if (size > Memory.MAX_UNSAFE_POOL_SIZE)
+            else if (size > MemoryUtil.MAX_UNSAFE_POOL_SIZE)
             {
                 return HttpPrivateHeap.UnsafeAlloc<byte>(size, zero);
             }
@@ -140,12 +140,12 @@ namespace VNLib.Net.Http.Core
             size = (size / 4096 + 1) * 4096;
 
             //If rpmalloc lib is loaded, use it
-            if (Memory.IsRpMallocLoaded)
+            if (MemoryUtil.IsRpMallocLoaded)
             {
-                return Memory.Shared.DirectAlloc<byte>(size, zero);
+                return MemoryUtil.Shared.DirectAlloc<byte>(size, zero);
             }
             //Avoid locking in heap unless the buffer is too large to alloc array
-            else if (size > Memory.MAX_UNSAFE_POOL_SIZE)
+            else if (size > MemoryUtil.MAX_UNSAFE_POOL_SIZE)
             {
                 return HttpPrivateHeap.DirectAlloc<byte>(size, zero);
             }

@@ -33,26 +33,13 @@ namespace VNLib.Utils.Memory.Tests
         [TestMethod()]
         public void VnTableTest()
         {
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
-            {
-                using VnTable<int> table = new(-1, 0);
-            });
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
-            {
-                using VnTable<int> table = new(0, -1);
-            });
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
-            {
-                using VnTable<int> table = new(-1, -1);
-            });
-
             //Empty table
             using (VnTable<int> empty = new(0, 0))
             {
                 Assert.IsTrue(empty.Empty);
                 //Test 0 rows/cols
-                Assert.AreEqual(0, empty.Rows);
-                Assert.AreEqual(0, empty.Cols);
+                Assert.IsTrue(0 == empty.Rows);
+                Assert.IsTrue(0 == empty.Cols);
             }
 
             using (VnTable<int> table = new(40000, 10000))
@@ -60,8 +47,8 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsFalse(table.Empty);
 
                 //Test table size
-                Assert.AreEqual(40000, table.Rows);
-                Assert.AreEqual(10000, table.Cols);
+                Assert.IsTrue(40000 == table.Rows);
+                Assert.IsTrue(10000 == table.Cols);
             }
 
             
@@ -89,41 +76,41 @@ namespace VNLib.Utils.Memory.Tests
         [TestMethod()]
         public void GetSetTest()
         {
-            static void TestIndexAt(VnTable<int> table, int row, int col, int value)
+            static void TestIndexAt(VnTable<int> table, uint row, uint col, int value)
             {
                 table[row, col] = value;
-                Assert.AreEqual(value, table[row, col]);
-                Assert.AreEqual(value, table.Get(row, col));
+                Assert.IsTrue(value == table[row, col]);
+                Assert.IsTrue(value == table.Get(row, col));
             }
 
-            static void TestSetAt(VnTable<int> table, int row, int col, int value)
+            static void TestSetAt(VnTable<int> table, uint row, uint col, int value)
             {
                 table.Set(row, col, value);
-                Assert.AreEqual(value, table[row, col]);
-                Assert.AreEqual(value, table.Get(row, col));
+                Assert.IsTrue(value == table[row, col]);
+                Assert.IsTrue(value == table.Get(row, col));
             }
 
-            static void TestSetDirectAccess(VnTable<int> table, int row, int col, int value)
+            static void TestSetDirectAccess(VnTable<int> table, uint row, uint col, int value)
             {
-                int address = row * table.Cols + col;
-                table[(uint)address] = value;
+                uint address = row * table.Cols + col;
+                table[address] = value;
 
                 //Get value using indexer
-                Assert.AreEqual(value, table[row, col]);
+                Assert.IsTrue(value == table[row, col]);
             }
 
-            static void TestGetDirectAccess(VnTable<int> table, int row, int col, int value)
+            static void TestGetDirectAccess(VnTable<int> table, uint row, uint col, int value)
             {
                 table[row, col] = value;
 
-                int address = row * table.Cols + col;
+                uint address = row * table.Cols + col;
 
                 //Test direct access
-                Assert.AreEqual(value, table[(uint)address]);
+                Assert.IsTrue(value == table[address]);
                 
                 //Get value using indexer
-                Assert.AreEqual(value, table[row, col]);
-                Assert.AreEqual(value, table.Get(row, col));
+                Assert.IsTrue(value == table[row, col]);
+                Assert.IsTrue(value == table.Get(row, col));
             }
         
 

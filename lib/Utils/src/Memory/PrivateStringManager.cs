@@ -63,7 +63,7 @@ namespace VNLib.Utils.Memory
                 //Clear the old value before setting the new one
                 if (!string.IsNullOrEmpty(ProtectedElements[index]))
                 {
-                    Memory.UnsafeZeroMemory<char>(ProtectedElements[index]);
+                    MemoryUtil.UnsafeZeroMemory<char>(ProtectedElements[index]);
                 }
                 //set new value
                 ProtectedElements[index] = value;
@@ -87,7 +87,7 @@ namespace VNLib.Utils.Memory
                 if (!string.IsNullOrEmpty(ProtectedElements[i]))
                 {
                     //Zero the string memory
-                    Memory.UnsafeZeroMemory<char>(ProtectedElements[i]);
+                    MemoryUtil.UnsafeZeroMemory<char>(ProtectedElements[i]);
                     //Set to null
                     ProtectedElements[i] = null;
                 }

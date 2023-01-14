@@ -33,7 +33,7 @@ using System.Runtime.CompilerServices;
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 
-using static VNLib.Utils.Memory.Memory;
+using static VNLib.Utils.Memory.MemoryUtil;
 
 namespace VNLib.Utils.Extensions
 {

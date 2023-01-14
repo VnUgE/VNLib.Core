@@ -34,15 +34,9 @@ namespace VNLib.Utils.Memory
     public interface IMemoryHandle<T> : IDisposable, IPinnable
     {
         /// <summary>
-        /// The size of the block as an integer
-        /// </summary>
-        /// <exception cref="OverflowException"></exception>
-        int IntLength { get; }
-
-        /// <summary>
         /// The number of elements in the block
         /// </summary>
-        ulong Length { get; }
+        nuint Length { get; }
 
         /// <summary>
         /// Gets the internal block as a span

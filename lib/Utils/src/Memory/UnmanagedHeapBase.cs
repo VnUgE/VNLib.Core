@@ -28,7 +28,6 @@ using System.Runtime.InteropServices;
 
 using Microsoft.Win32.SafeHandles;
 
-using size_t = System.UInt64;
 using LPVOID = System.IntPtr;
 
 namespace VNLib.Utils.Memory
@@ -43,6 +42,7 @@ namespace VNLib.Utils.Memory
         /// The heap synchronization handle
         /// </summary>
         protected readonly SemaphoreSlim HeapLock;
+        
         /// <summary>
         /// The global heap zero flag
         /// </summary>
@@ -63,7 +63,7 @@ namespace VNLib.Utils.Memory
         ///<remarks>Increments the handle count</remarks>
         ///<exception cref="OutOfMemoryException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
-        public LPVOID Alloc(size_t elements, size_t size, bool zero)
+        public LPVOID Alloc(nuint elements, nuint size, bool zero)
         {
             //Force zero if global flag is set
             zero |= GlobalZero;
@@ -93,6 +93,7 @@ namespace VNLib.Utils.Memory
                 throw;
             }
         }
+        
         ///<inheritdoc/>
         ///<remarks>Decrements the handle count</remarks>
         public bool Free(ref LPVOID block)
@@ -116,10 +117,11 @@ namespace VNLib.Utils.Memory
             block = IntPtr.Zero;
             return result;
         }
+        
         ///<inheritdoc/>
         ///<exception cref="OutOfMemoryException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
-        public void Resize(ref LPVOID block, size_t elements, size_t size, bool zero)
+        public void Resize(ref LPVOID block, nuint elements, nuint size, bool zero)
         {
             //wait for lock
             HeapLock.Wait();
@@ -155,12 +157,14 @@ namespace VNLib.Utils.Memory
         /// <param name="size">The size of the element type (in bytes)</param>
         /// <param name="zero">A flag to zero the allocated block</param>
         /// <returns>A pointer to the allocated block</returns>
-        protected abstract LPVOID AllocBlock(size_t elements, size_t size, bool zero);
+        protected abstract LPVOID AllocBlock(nuint elements, nuint size, bool zero);
+        
         /// <summary>
         /// Frees a previously allocated block of memory
         /// </summary>
         /// <param name="block">The block to free</param>
         protected abstract bool FreeBlock(LPVOID block);
+        
         /// <summary>
         /// Resizes the previously allocated block of memory on the current heap
         /// </summary>
@@ -173,9 +177,11 @@ namespace VNLib.Utils.Memory
         /// Heap base relies on the block pointer to remain unchanged if the resize fails so the
         /// block is still valid, and the return value is used to determine if the resize was successful
         /// </remarks>
-        protected abstract LPVOID ReAllocBlock(LPVOID block, size_t elements, size_t size, bool zero);
+        protected abstract LPVOID ReAllocBlock(LPVOID block, nuint elements, nuint size, bool zero);
+        
         ///<inheritdoc/>
         public override int GetHashCode() => handle.GetHashCode();
+        
         ///<inheritdoc/>
         public override bool Equals(object? obj)
         {

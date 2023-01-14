@@ -51,7 +51,7 @@ namespace VNLib.Hashing
         public const string ARGON2_DEFUALT_LIB_NAME = "Argon2";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;
-        private static readonly Lazy<IUnmangedHeap> _heap = new (Memory.InitializeNewHeapForProcess, LazyThreadSafetyMode.PublicationOnly);
+        private static readonly Lazy<IUnmangedHeap> _heap = new (MemoryUtil.InitializeNewHeapForProcess, LazyThreadSafetyMode.PublicationOnly);
         private static readonly Lazy<Argon2NativeLibary> _nativeLibrary = new(LoadNativeLib, LazyThreadSafetyMode.PublicationOnly);
      
 
@@ -137,16 +137,22 @@ namespace VNLib.Hashing
         {
             //Get bytes count
             int saltbytes = LocEncoding.GetByteCount(salt);
+            
             //Get bytes count for password
             int passBytes = LocEncoding.GetByteCount(password);
+            
             //Alloc memory for salt
             using MemoryHandle<byte> buffer = PwHeap.Alloc<byte>(saltbytes + passBytes, true);
+            
             Span<byte> saltBuffer = buffer.AsSpan(0, saltbytes);
             Span<byte> passBuffer = buffer.AsSpan(passBytes);
+            
             //Encode salt with span the same size of the salt
             _ = LocEncoding.GetBytes(salt, saltBuffer);
+
             //Encode password, create a new span to make sure its proper size 
             _ = LocEncoding.GetBytes(password, passBuffer);
+            
             //Hash
             return Hash2id(passBuffer, saltBuffer, secret, timeCost, memCost, parallelism, hashLen);
         }
@@ -170,10 +176,13 @@ namespace VNLib.Hashing
         {
             //Get bytes count
             int passBytes = LocEncoding.GetByteCount(password);
+            
             //Alloc memory for password
             using MemoryHandle<byte> pwdHandle = PwHeap.Alloc<byte>(passBytes, true);
+            
             //Encode password, create a new span to make sure its proper size 
             _ = LocEncoding.GetBytes(password, pwdHandle);
+            
             //Hash
             return Hash2id(pwdHandle.Span, salt, secret, timeCost, memCost, parallelism, hashLen);
         }
@@ -197,12 +206,16 @@ namespace VNLib.Hashing
             string hash, salts;
             //Alloc data for hash output
             using MemoryHandle<byte> hashHandle = PwHeap.Alloc<byte>(hashLen, true);
+            
             //hash the password
             Hash2id(password, salt, secret, hashHandle.Span, timeCost, memCost, parallelism);
+
             //Encode hash
             hash = Convert.ToBase64String(hashHandle.Span);
+            
             //encode salt
             salts = Convert.ToBase64String(salt);
+            
             //Encode salt in base64
             return $"${ID_MODE},v={(int)Argon2_version.VERSION_13},m={memCost},t={timeCost},p={parallelism},s={salts}${hash}";
         }
@@ -277,6 +290,7 @@ namespace VNLib.Hashing
         {
             //Alloc data for hash output
             using MemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(hashBytes.Length, true);
+            
             //Get pointers
             fixed (byte* secretptr = secret, pwd = rawPass, slptr = salt)
             {
@@ -333,6 +347,7 @@ namespace VNLib.Hashing
             {
                 throw new VnArgon2PasswordFormatException("The hash argument supplied is not a valid format and cannot be decoded");
             }
+            
             Argon2PasswordEntry entry;
             try
             {
@@ -343,12 +358,15 @@ namespace VNLib.Hashing
             {
                 throw new VnArgon2PasswordFormatException("Password format was not recoverable", ex);
             }
+            
             //Calculate base64 buffer sizes
             int passBase64BufSize = Base64.GetMaxDecodedFromUtf8Length(entry.Hash.Length);
             int saltBase64BufSize = Base64.GetMaxDecodedFromUtf8Length(entry.Salt.Length);
             int rawPassLen = LocEncoding.GetByteCount(rawPass);
+
             //Alloc buffer for decoded data
-            using MemoryHandle<byte> rawBufferHandle = Memory.Shared.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen, true);
+            using MemoryHandle<byte> rawBufferHandle = MemoryUtil.Shared.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen, true);
+            
             //Split buffers
             Span<byte> saltBuf = rawBufferHandle.Span[..saltBase64BufSize];
             Span<byte> passBuf = rawBufferHandle.AsSpan(saltBase64BufSize, passBase64BufSize);
@@ -362,6 +380,7 @@ namespace VNLib.Hashing
                 //Resize pass buff
                 passBuf = passBuf[..actualHashLen];
             }
+            
             //Decode salt
             {
                 if (!Convert.TryFromBase64Chars(entry.Salt, saltBuf, out int actualSaltLen))
@@ -371,6 +390,7 @@ namespace VNLib.Hashing
                 //Resize salt buff
                 saltBuf = saltBuf[..actualSaltLen];
             }
+            
             //encode password bytes
             rawPassLen = LocEncoding.GetBytes(rawPass, rawPassBuf);
             //Verify password

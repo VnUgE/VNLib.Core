@@ -276,8 +276,11 @@ namespace VNLib.Net.Messaging.FBM.Client
         public string Compile()
         {
             int charSize = Helpers.DefaultEncoding.GetCharCount(RequestData.Span);
-            using UnsafeMemoryHandle<char> buffer = Memory.UnsafeAlloc<char>(charSize + 128);
+            
+            using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAlloc<char>(charSize + 128);
+            
             ERRNO count = Compile(buffer.Span);
+            
             return buffer.AsSpan(0, count).ToString();
         }
         ///<inheritdoc/>

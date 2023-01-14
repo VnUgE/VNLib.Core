@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: INonce.cs 
+* File: ISecretProvider.cs 
 *
-* INonce.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+* ISecretProvider.cs is part of VNLib.Plugins.Essentials which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
@@ -24,25 +24,26 @@
 
 using System;
 
+using VNLib.Utils;
+
 namespace VNLib.Plugins.Essentials.Accounts
 {
     /// <summary>
-    /// Represents a object that performs storage and computation of nonce values
+    /// Provides a password hashing secret aka pepper.
     /// </summary>
-    public interface INonce
+    public interface ISecretProvider
     {
         /// <summary>
-        /// Generates a random nonce for the current instance and 
-        /// returns a base32 encoded string.
+        /// The size of the buffer to use when retrieving the secret
         /// </summary>
-        /// <param name="buffer">The buffer to write a copy of the nonce value to</param>
-        void ComputeNonce(Span<byte> buffer);
+        int BufferSize { get; }
+
         /// <summary>
-        /// Compares the raw nonce bytes to the current nonce to determine 
-        /// if the supplied nonce value is valid
+        /// Writes the secret to the buffer and returns the number of bytes
+        /// written to the buffer
         /// </summary>
-        /// <param name="nonceBytes">The binary value of the nonce</param>
-        /// <returns>True if the nonce values are equal, flase otherwise</returns>
-        bool VerifyNonce(ReadOnlySpan<byte> nonceBytes);
+        /// <param name="buffer">The buffer to write the secret data to</param>
+        /// <returns>The number of secret bytes written to the buffer</returns>
+        ERRNO GetSecret(Span<byte> buffer);
     }
 }

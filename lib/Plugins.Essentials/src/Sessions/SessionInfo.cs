@@ -106,7 +106,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// </summary>
         public readonly Uri SpecifiedOrigin;
         /// <summary>
-        /// Privilages associated with user specified during login
+        /// The time the session was created
         /// </summary>
         public readonly DateTimeOffset Created;
         /// <summary>

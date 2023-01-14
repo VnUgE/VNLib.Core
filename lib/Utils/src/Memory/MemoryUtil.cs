@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.IO;
 using System.Buffers;
 using System.Security;
 using System.Threading;
@@ -39,7 +38,7 @@ namespace VNLib.Utils.Memory
     /// </summary>
     [SecurityCritical]
     [ComVisible(false)]
-    public unsafe static class Memory
+    public unsafe static class MemoryUtil
     {
         public const string SHARED_HEAP_TYPE_ENV= "VNLIB_SHARED_HEAP_TYPE";
         public const string SHARED_HEAP_INTIAL_SIZE_ENV = "VNLIB_SHARED_HEAP_SIZE";
@@ -47,7 +46,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Initial shared heap size (bytes)
         /// </summary>
-        public const ulong SHARED_HEAP_INIT_SIZE = 20971520;
+        public const nuint SHARED_HEAP_INIT_SIZE = 20971520;
 
         public const int MAX_BUF_SIZE = 2097152;
         public const int MIN_BUF_SIZE = 16000;
@@ -68,14 +67,18 @@ namespace VNLib.Utils.Memory
         /// </remarks>
         public static IUnmangedHeap Shared => _sharedHeap.Value;
 
-        private static readonly Lazy<IUnmangedHeap> _sharedHeap;
+        
+        private static readonly Lazy<IUnmangedHeap> _sharedHeap = InitHeapInternal();
 
-        static Memory()
+        //Avoiding statit initializer
+        private static Lazy<IUnmangedHeap> InitHeapInternal()
         {
-            _sharedHeap = new Lazy<IUnmangedHeap>(() => InitHeapInternal(true), LazyThreadSafetyMode.PublicationOnly);
+            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true), LazyThreadSafetyMode.PublicationOnly);
             //Cleanup the heap on process exit
             AppDomain.CurrentDomain.DomainUnload += DomainUnloaded;
+            return heap;
         }
+     
 
         private static void DomainUnloaded(object? sender, EventArgs e)
         {
@@ -99,11 +102,11 @@ namespace VNLib.Utils.Memory
         {
             bool IsWindows = OperatingSystem.IsWindows();
             //Get environment varable
-            string heapType = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV);
+            string? heapType = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV);
             //Get inital size
-            string sharedSize = Environment.GetEnvironmentVariable(SHARED_HEAP_INTIAL_SIZE_ENV);
+            string? sharedSize = Environment.GetEnvironmentVariable(SHARED_HEAP_INTIAL_SIZE_ENV);
             //Try to parse the shared size from the env
-            if (!ulong.TryParse(sharedSize, out ulong defaultSize))
+            if (!nuint.TryParse(sharedSize, out nuint defaultSize))
             {
                 defaultSize = SHARED_HEAP_INIT_SIZE;
             }
@@ -115,12 +118,12 @@ namespace VNLib.Utils.Memory
                     {
                         throw new PlatformNotSupportedException("Win32 private heaps are not supported on non-windows platforms");
                     }
-                    return PrivateHeap.Create(defaultSize);
+                    return Win32PrivateHeap.Create(defaultSize);
                 case "rpmalloc":
                     //If the shared heap is being allocated, then return a lock free global heap
                     return isShared ? RpMallocPrivateHeap.GlobalHeap : new RpMallocPrivateHeap(false);
                 default:
-                    return IsWindows ? PrivateHeap.Create(defaultSize) : new ProcessHeap();
+                    return IsWindows ? Win32PrivateHeap.Create(defaultSize) : new ProcessHeap();
             }
         }
 
@@ -130,6 +133,7 @@ namespace VNLib.Utils.Memory
         public static bool IsRpMallocLoaded { get; } = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV) == "rpmalloc";
 
         #region Zero
+
         /// <summary>
         /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
@@ -150,6 +154,7 @@ namespace VNLib.Utils.Memory
                 }
             }
         }
+        
         /// <summary>
         /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
@@ -175,12 +180,15 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <typeparam name="T">The unmanaged</typeparam>
         /// <param name="block">The block of memory to initialize</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InitializeBlock<T>(Span<T> block) where T : unmanaged => UnsafeZeroMemory<T>(block);
+
         /// <summary>
         /// Initializes a block of memory with zeros 
         /// </summary>
         /// <typeparam name="T">The unmanaged</typeparam>
         /// <param name="block">The block of memory to initialize</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InitializeBlock<T>(Memory<T> block) where T : unmanaged => UnsafeZeroMemory<T>(block);
 
         /// <summary>
@@ -195,6 +203,7 @@ namespace VNLib.Utils.Memory
             //Zero block
             Unsafe.InitBlock(block.ToPointer(), 0, (uint)size);
         }
+        
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
         /// </summary>
@@ -207,6 +216,7 @@ namespace VNLib.Utils.Memory
             //Zero block
             Unsafe.InitBlock(structPtr, 0, (uint)size);
         }
+        
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
         /// </summary>
@@ -223,6 +233,7 @@ namespace VNLib.Utils.Memory
         #endregion
 
         #region Copy
+
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
@@ -231,24 +242,25 @@ namespace VNLib.Utils.Memory
         /// <param name="dest">Destination <see cref="MemoryHandle{T}"/></param>
         /// <param name="destOffset">Dest offset</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(ReadOnlySpan<T> source, MemoryHandle<T> dest, Int64 destOffset) where T : unmanaged
+        public static void Copy<T>(ReadOnlySpan<T> source, MemoryHandle<T> dest, nuint destOffset) where T : unmanaged
         {
+            if (dest is null)
+            {
+                throw new ArgumentNullException(nameof(dest));
+            }
+
             if (source.IsEmpty)
             {
                 return;
             }
-            if (dest.Length < (ulong)(destOffset + source.Length))
-            {
-                throw new ArgumentException("Source data is larger than the dest data block", nameof(source));
-            }
-            //Get long offset from the destination handle
-            T* offset = dest.GetOffset(destOffset);
-            fixed(void* src = &MemoryMarshal.GetReference(source))
-            {
-                int byteCount = checked(source.Length * sizeof(T));
-                Unsafe.CopyBlock(offset, src, (uint)byteCount);
-            }
+
+            //Get long offset from the destination handle (also checks bounds)
+            Span<T> dst = dest.GetOffsetSpan(destOffset, source.Length);
+
+            //Copy data
+            source.CopyTo(dst);
         }
+
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
@@ -257,24 +269,25 @@ namespace VNLib.Utils.Memory
         /// <param name="dest">Destination <see cref="MemoryHandle{T}"/></param>
         /// <param name="destOffset">Dest offset</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(ReadOnlyMemory<T> source, MemoryHandle<T> dest, Int64 destOffset) where T : unmanaged
+        public static void Copy<T>(ReadOnlyMemory<T> source, MemoryHandle<T> dest, nuint destOffset) where T : unmanaged
         {
+            if (dest is null)
+            {
+                throw new ArgumentNullException(nameof(dest));
+            }
+
             if (source.IsEmpty)
             {
                 return;
             }
-            if (dest.Length < (ulong)(destOffset + source.Length))
-            {
-                throw new ArgumentException("Dest constraints are larger than the dest data block", nameof(source));
-            }
-            //Get long offset from the destination handle
-            T* offset = dest.GetOffset(destOffset);
-            //Pin the source memory
-            using MemoryHandle srcHandle = source.Pin();
-            int byteCount = checked(source.Length * sizeof(T));
-            //Copy block using unsafe class
-            Unsafe.CopyBlock(offset, srcHandle.Pointer, (uint)byteCount);
+
+            //Get long offset from the destination handle (also checks bounds)
+            Span<T> dst = dest.GetOffsetSpan(destOffset, source.Length);
+
+            //Copy data
+            source.Span.CopyTo(dst);
         }
+
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
@@ -285,31 +298,27 @@ namespace VNLib.Utils.Memory
         /// <param name="destOffset">Dest offset</param>
         /// <param name="count">Number of elements to copy</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(MemoryHandle<T> source, Int64 sourceOffset, Span<T> dest, int destOffset, int count) where T : unmanaged
+        public static void Copy<T>(MemoryHandle<T> source, nint sourceOffset, Span<T> dest, int destOffset, int count) where T : unmanaged
         {
-            if (count <= 0)
+            //Validate source/dest/count
+            ValidateArgs(sourceOffset, destOffset, count);
+
+            //Check count last for debug reasons
+            if (count == 0)
             {
                 return;
             }
-            if (source.Length < (ulong)(sourceOffset + count))
-            {
-                throw new ArgumentException("Source constraints are larger than the source data block", nameof(count));
-            }
-            if (dest.Length < destOffset + count)
-            {
-                throw new ArgumentOutOfRangeException(nameof(destOffset), "Destination offset range cannot exceed the size of the destination buffer");
-            }
-            //Get offset to allow large blocks of memory
-            T* src = source.GetOffset(sourceOffset);
-            fixed(T* dst = &MemoryMarshal.GetReference(dest))
-            {
-                //Cacl offset
-                T* dstoffset = dst + destOffset;
-                int byteCount = checked(count * sizeof(T));
-                //Aligned copy
-                Unsafe.CopyBlock(dstoffset, src, (uint)byteCount);
-            }
+
+            //Get offset span, also checks bounts
+            Span<T> src = source.GetOffsetSpan(sourceOffset, count);
+
+            //slice the dest span
+            Span<T> dst = dest.Slice(destOffset, count);
+
+            //Copy data
+            src.CopyTo(dst);
         }
+
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
@@ -319,76 +328,213 @@ namespace VNLib.Utils.Memory
         /// <param name="dest">Destination <see cref="Memory{T}"/></param>
         /// <param name="destOffset">Dest offset</param>
         /// <param name="count">Number of elements to copy</param>
+        /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(MemoryHandle<T> source, Int64 sourceOffset, Memory<T> dest, int destOffset, int count) where T : unmanaged
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Copy<T>(MemoryHandle<T> source, nint sourceOffset, Memory<T> dest, int destOffset, int count) where T : unmanaged
         {
+            //Call copy method with dest as span
+            Copy(source, sourceOffset, dest.Span, destOffset, count);
+        }
+
+        private static void ValidateArgs(nint sourceOffset, nint destOffset, nint count)
+        {
+            if(sourceOffset < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sourceOffset), "Source offset must be a postive integer");
+            }
+
+            if(destOffset < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(destOffset), "Destination offset must be a positive integer");
+            }
+
+            if(count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Count parameter must be a postitive integer");
+            }
+        }
+
+        /// <summary>
+        /// 32/64 bit large block copy
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">The source memory handle to copy data from</param>
+        /// <param name="offset">The element offset to begin reading from</param>
+        /// <param name="dest">The destination array to write data to</param>
+        /// <param name="destOffset"></param>
+        /// <param name="count">The number of elements to copy</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static void Copy<T>(IMemoryHandle<T> source, nuint offset, T[] dest, nuint destOffset, nuint count) where T : unmanaged
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (dest is null)
+            {
+                throw new ArgumentNullException(nameof(dest));
+            }
+
             if (count == 0)
             {
                 return;
             }
-            if (source.Length < (ulong)(sourceOffset + count))
+
+            //Check source bounds
+            CheckBounds(source, offset, count);
+
+            //Check dest bounts
+            CheckBounds(dest, destOffset, count);
+
+
+#if TARGET_64BIT
+            //Get the number of bytes to copy
+            nuint byteCount = ByteCount<T>(count);
+
+            //Get memory handle from source
+            using MemoryHandle srcHandle = source.Pin(0);
+
+            //get source offset
+            T* src = (T*)srcHandle.Pointer + offset;
+
+            //pin array
+            fixed (T* dst = dest)
             {
-                throw new ArgumentException("Source constraints are larger than the source data block", nameof(count));
+                //Offset dest ptr
+                T* dstOffset = dst + destOffset;
+
+                //Copy src to set
+                Buffer.MemoryCopy(src, dstOffset, byteCount, byteCount);
             }
-            if(dest.Length < destOffset + count)
-            {
-                throw new ArgumentOutOfRangeException(nameof(destOffset), "Destination offset range cannot exceed the size of the destination buffer");
-            }
-            //Get offset to allow large blocks of memory
-            T* src = source.GetOffset(sourceOffset);
-            //Pin the memory handle
-            using MemoryHandle handle = dest.Pin();
-            //Byte count
-            int byteCount = checked(count * sizeof(T));
-            //Dest offset
-            T* dst = ((T*)handle.Pointer) + destOffset;
-            //Aligned copy
-            Unsafe.CopyBlock(dst, src, (uint)byteCount);
+#else
+            //If 32bit its safe to use spans
+
+            Span<T> src = source.Span.Slice((int)offset, (int)count);
+            Span<T> dst = dest.AsSpan((int)destOffset, (int)count);
+            //Copy
+            src.CopyTo(dst);
+#endif
         }
+
         #endregion
 
-        #region Streams
+        #region Validation
+
         /// <summary>
-        /// Copies data from one stream to another in specified blocks
+        /// Gets the size in bytes of the handle
         /// </summary>
-        /// <param name="source">Source memory</param>
-        /// <param name="srcOffset">Source offset</param>
-        /// <param name="dest">Destination memory</param>
-        /// <param name="destOffst">Destination offset</param>
-        /// <param name="count">Number of elements to copy</param>
-        public static void Copy(Stream source, Int64 srcOffset, Stream dest, Int64 destOffst, Int64 count)
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle">The handle to get the byte size of</param>
+        /// <returns>The number of bytes pointed to by the handle</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nuint ByteSize<T>(IMemoryHandle<T> handle)
         {
-            if (count == 0)
-            {
-                return;
-            }
-            if (count < 0)
-            {
-                throw new ArgumentException("Count must be a positive integer", nameof(count));
-            }
-            //Seek streams
-            _ = source.Seek(srcOffset, SeekOrigin.Begin);
-            _ = dest.Seek(destOffst, SeekOrigin.Begin);
-            //Create new buffer
-            using IMemoryHandle<byte> buffer = Shared.Alloc<byte>(count);
-            Span<byte> buf = buffer.Span;
-            int total = 0;
-            do
-            {
-                //read from source
-                int read = source.Read(buf);
-                //guard
-                if (read == 0)
-                {
-                    break;
-                }
-                //write read slice to dest
-                dest.Write(buf[..read]);
-                //update total read
-                total += read;
-            } while (total < count);
+            _ = handle ?? throw new ArgumentNullException(nameof(handle));
+            return checked(handle.Length * (nuint)Unsafe.SizeOf<T>());
         }
+
+        /// <summary>
+        /// Gets the size in bytes of the handle
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle">The handle to get the byte size of</param>
+        /// <returns>The number of bytes pointed to by the handle</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nuint ByteSize<T>(in UnsafeMemoryHandle<T> handle) where T : unmanaged => checked(handle.Length * (nuint)sizeof(T));
+
+        /// <summary>
+        /// Gets the byte multiple of the length parameter
+        /// </summary>
+        /// <typeparam name="T">The type to get the byte offset of</typeparam>
+        /// <param name="elementCount">The number of elements to get the byte count of</param>
+        /// <returns>The byte multiple of the number of elments</returns>
+        /// <exception cref="OverflowException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nuint ByteCount<T>(nuint elementCount) => checked(elementCount * (nuint)Unsafe.SizeOf<T>());
+        /// <summary>
+        /// Gets the byte multiple of the length parameter
+        /// </summary>
+        /// <typeparam name="T">The type to get the byte offset of</typeparam>
+        /// <param name="elementCount">The number of elements to get the byte count of</param>
+        /// <returns>The byte multiple of the number of elments</returns>
+        /// <exception cref="OverflowException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint ByteCount<T>(uint elementCount) => checked(elementCount * (uint)Unsafe.SizeOf<T>());
+
+        /// <summary>
+        /// Checks if the offset/count paramters for the given memory handle 
+        /// point outside the block wrapped in the handle
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle">The handle to check bounds of</param>
+        /// <param name="offset">The base offset to add</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckBounds<T>(IMemoryHandle<T> handle, nuint offset, nuint count)
+        {
+            if (offset + count > handle.Length)
+            {
+                throw new ArgumentException("The offset or count is outside of the range of the block of memory");
+            }
+        }
+
+        /// <summary>
+        /// Checks if the offset/count paramters for the given block
+        /// point outside the block wrapped in the handle
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="block">The handle to check bounds of</param>
+        /// <param name="offset">The base offset to add</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckBounds<T>(ReadOnlySpan<T> block, int offset, int count)
+        {
+            //Call slice and discard to raise exception
+            _ = block.Slice(offset, count);
+        }
+
+        /// <summary>
+        /// Checks if the offset/count paramters for the given block
+        /// point outside the block wrapped in the handle
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="block">The handle to check bounds of</param>
+        /// <param name="offset">The base offset to add</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckBounds<T>(Span<T> block, int offset, int count)
+        {
+            //Call slice and discard to raise exception
+            _ = block.Slice(offset, count);
+        }
+
+        /// <summary>
+        /// Checks if the offset/count paramters for the given block
+        /// point outside the block bounds
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="block">The handle to check bounds of</param>
+        /// <param name="offset">The base offset to add</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CheckBounds<T>(T[] block, nuint offset, nuint count)
+        {
+            if (((nuint)block.LongLength - offset) <= count)
+            {
+                throw new ArgumentException("The offset or count is outside of the range of the block of memory");
+            }
+        }
+
         #endregion
+
 
         #region alloc
 
@@ -408,6 +554,7 @@ namespace VNLib.Utils.Memory
             {
                 throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
             }
+
             if(elements > MAX_UNSAFE_POOL_SIZE || IsRpMallocLoaded)
             {
                 // Alloc from heap

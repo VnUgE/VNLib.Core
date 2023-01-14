@@ -28,7 +28,7 @@ using System.Buffers;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Provides a <see cref="MemoryPool{T}"/> wrapper for using unmanged <see cref="PrivateHeap"/>s
+    /// Provides a <see cref="MemoryPool{T}"/> wrapper for using unmanged <see cref="Win32PrivateHeap"/>s
     /// </summary>
     /// <typeparam name="T">Unamanged memory type to provide data memory instances from</typeparam>
     public sealed class PrivateBuffersMemoryPool<T> : MemoryPool<T> where T : unmanaged

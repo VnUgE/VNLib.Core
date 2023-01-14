@@ -28,7 +28,6 @@ using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
 
 using DWORD = System.Int64;
-using SIZE_T = System.UInt64;
 using LPVOID = System.IntPtr;
 
 namespace VNLib.Utils.Memory
@@ -39,13 +38,13 @@ namespace VNLib.Utils.Memory
     ///</para>
     ///</summary>
     ///<remarks>
-    /// <see cref="PrivateHeap"/> implements <see cref="SafeHandle"/> and tracks allocated blocks by its 
+    /// <see cref="Win32PrivateHeap"/> implements <see cref="SafeHandle"/> and tracks allocated blocks by its 
     /// referrence counter. Allocations increment the count, and free's decrement the count, so the heap may 
     /// be disposed safely
     /// </remarks>
     [ComVisible(false)]
     [SupportedOSPlatform("Windows")]
-    public sealed class PrivateHeap : UnmanagedHeapBase
+    public sealed class Win32PrivateHeap : UnmanagedHeapBase
     {
         private const string KERNEL_DLL = "Kernel32";
        
@@ -59,10 +58,12 @@ namespace VNLib.Utils.Memory
 
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern LPVOID HeapAlloc(IntPtr hHeap, DWORD flags, SIZE_T dwBytes);
+        private static extern LPVOID HeapAlloc(IntPtr hHeap, DWORD flags, nuint dwBytes);
+        
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern LPVOID HeapReAlloc(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes);
+        private static extern LPVOID HeapReAlloc(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem, nuint dwBytes);
+        
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -70,32 +71,35 @@ namespace VNLib.Utils.Memory
 
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern LPVOID HeapCreate(DWORD flOptions, SIZE_T dwInitialSize, SIZE_T dwMaximumSize);
+        private static extern LPVOID HeapCreate(DWORD flOptions, nuint dwInitialSize, nuint dwMaximumSize);
+        
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool HeapDestroy(IntPtr hHeap);
+        
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern bool HeapValidate(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem);
+        
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
-        [return: MarshalAs(UnmanagedType.U8)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern SIZE_T HeapSize(IntPtr hHeap, DWORD flags, LPVOID lpMem);
+        private static extern nuint HeapSize(IntPtr hHeap, DWORD flags, LPVOID lpMem);
         
         #endregion
 
         /// <summary>
-        /// Create a new <see cref="PrivateHeap"/> with the specified sizes and flags
+        /// Create a new <see cref="Win32PrivateHeap"/> with the specified sizes and flags
         /// </summary>
         /// <param name="initialSize">Intial size of the heap</param>
         /// <param name="maxHeapSize">Maximum size allowed for the heap (disabled = 0, default)</param>
         /// <param name="flags">Defalt heap flags to set globally for all blocks allocated by the heap (default = 0)</param>
-        public static PrivateHeap Create(SIZE_T initialSize, SIZE_T maxHeapSize = 0, DWORD flags = HEAP_NO_FLAGS)
+        public static Win32PrivateHeap Create(nuint initialSize, nuint maxHeapSize = 0, DWORD flags = HEAP_NO_FLAGS)
         {
             //Call create, throw exception if the heap falled to allocate
             IntPtr heapHandle = HeapCreate(flags, initialSize, maxHeapSize);
+            
             if (heapHandle == IntPtr.Zero)
             {
                 throw new NativeMemoryException("Heap could not be created");
@@ -112,16 +116,16 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="win32HeapHandle">An open and valid handle to a win32 private heap</param>
         /// <returns>A wrapper around the specified heap</returns>
-        public static PrivateHeap ConsumeExisting(IntPtr win32HeapHandle) => new (win32HeapHandle);
+        public static Win32PrivateHeap ConsumeExisting(IntPtr win32HeapHandle) => new (win32HeapHandle);
 
-        private PrivateHeap(IntPtr heapPtr) : base(false, true) => handle = heapPtr;
+        private Win32PrivateHeap(IntPtr heapPtr) : base(false, true) => handle = heapPtr;
 
         /// <summary>
         /// Retrieves the size of a memory block allocated from the current heap.
         /// </summary>
         /// <param name="block">The pointer to a block of memory to get the size of</param>
         /// <returns>The size of the block of memory, (SIZE_T)-1 if the operation fails</returns>
-        public SIZE_T HeapSize(ref LPVOID block) => HeapSize(handle, HEAP_NO_FLAGS, block);
+        public nuint HeapSize(ref LPVOID block) => HeapSize(handle, HEAP_NO_FLAGS, block);
 
         /// <summary>
         /// Validates the specified block of memory within the current heap instance. This function will block hte 
@@ -167,17 +171,20 @@ namespace VNLib.Utils.Memory
             return HeapDestroy(handle) && base.ReleaseHandle();
         }
         ///<inheritdoc/>
-        protected override sealed LPVOID AllocBlock(ulong elements, ulong size, bool zero)
+        protected override sealed LPVOID AllocBlock(nuint elements, nuint size, bool zero)
         {
-            ulong bytes = checked(elements * size);
+            nuint bytes = checked(elements * size);
+            
             return HeapAlloc(handle, zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, bytes);
         }
         ///<inheritdoc/>
         protected override sealed bool FreeBlock(LPVOID block) => HeapFree(handle, HEAP_NO_FLAGS, block);
+        
         ///<inheritdoc/>
-        protected override sealed LPVOID ReAllocBlock(LPVOID block, ulong elements, ulong size, bool zero)
+        protected override sealed LPVOID ReAllocBlock(LPVOID block, nuint elements, nuint size, bool zero)
         {
-            ulong bytes = checked(elements * size);
+            nuint bytes = checked(elements * size);
+            
             return HeapReAlloc(handle, zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, block, bytes);
         }
     }

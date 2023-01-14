@@ -39,7 +39,7 @@ namespace VNLib.Hashing.IdentityUtility
     /// Provides a dynamic JSON Web Token class that will store and 
     /// compute Base64Url encoded WebTokens
     /// </summary>
-    public class JsonWebToken : VnDisposeable, IStringSerializeable, IDisposable
+    public class JsonWebToken : VnDisposeable, IStringSerializeable
     {
         internal const byte SAEF_PERIOD = 0x2e;
         internal const byte PADDING_BYTES = 0x3d;
@@ -53,15 +53,19 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="FormatException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static JsonWebToken Parse(ReadOnlySpan<char> urlEncJwtString, IUnmangedHeap heap = null)
+        public static JsonWebToken Parse(ReadOnlySpan<char> urlEncJwtString, IUnmangedHeap? heap = null)
         {
-            heap ??= Memory.Shared;
+            heap ??= MemoryUtil.Shared;
+
             //Calculate the decoded size of the characters to alloc a buffer
             int utf8Size = Encoding.UTF8.GetByteCount(urlEncJwtString);
+
             //Alloc bin buffer to store decode data
             using MemoryHandle<byte> binBuffer = heap.Alloc<byte>(utf8Size, true);
+
             //Decode to utf8
             utf8Size = Encoding.UTF8.GetBytes(urlEncJwtString, binBuffer);
+            
             //Parse and return the jwt
             return ParseRaw(binBuffer.Span[..utf8Size], heap);
         }
@@ -75,14 +79,16 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="FormatException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static JsonWebToken ParseRaw(ReadOnlySpan<byte> utf8JWTData, IUnmangedHeap heap = null)
+        public static JsonWebToken ParseRaw(ReadOnlySpan<byte> utf8JWTData, IUnmangedHeap? heap = null)
         {
             if (utf8JWTData.IsEmpty)
             {
                 throw new ArgumentException("JWT data may not be empty", nameof(utf8JWTData));
             }
+            
             //Set default heap of non was specified
-            heap ??= Memory.Shared;
+            heap ??= MemoryUtil.Shared;
+
             //Alloc the token and copy the supplied data to a new mem stream
             JsonWebToken jwt = new(heap, new (heap, utf8JWTData));
             try
@@ -144,17 +150,19 @@ namespace VNLib.Hashing.IdentityUtility
         {
             Heap = heap;
             DataStream = initialData;
+            
+            //Update position to the end of the initial data
             initialData.Position = initialData.Length;
         }
 
         /// <summary>
         /// Creates a new empty JWT instance, with an optional heap to alloc
-        /// buffers from. (<see cref="Memory.Shared"/> is used as default)
+        /// buffers from. (<see cref="MemoryUtil.Shared"/> is used as default)
         /// </summary>
         /// <param name="heap">The <see cref="IUnmangedHeap"/> to alloc buffers from</param>
-        public JsonWebToken(IUnmangedHeap heap = null)
+        public JsonWebToken(IUnmangedHeap? heap = null)
         {
-            Heap = heap ?? Memory.Shared;
+            Heap = heap ?? MemoryUtil.Shared;
             DataStream = new(Heap, 100, true);         
         }
         
@@ -186,8 +194,10 @@ namespace VNLib.Hashing.IdentityUtility
         #endregion
 
         #region Payload
+        
         private int PayloadStart => HeaderEnd + 1;
         private int PayloadEnd;
+        
         /// <summary>
         /// The Base64URL encoded UTF8 bytes of the payload portion of the current JWT
         /// </summary>
@@ -218,6 +228,7 @@ namespace VNLib.Hashing.IdentityUtility
             //Store final position
             PayloadEnd = ByteSize;
         }
+        
         /// <summary>
         /// Encodes the specified value and writes it to the 
         /// internal buffer
@@ -233,7 +244,7 @@ namespace VNLib.Hashing.IdentityUtility
             //Slice off the begiing of the buffer for the base64 encoding
             if(Base64.EncodeToUtf8(value, binBuffer.Span, out _, out int written) != OperationStatus.Done)
             {
-                throw new OutOfMemoryException();
+                throw new InternalBufferTooSmallException("Failed to encode the specified value to base64");
             }
             //Base64 encoded
             Span<byte> base64Data = binBuffer.Span[..written].Trim(PADDING_BYTES);
@@ -245,8 +256,10 @@ namespace VNLib.Hashing.IdentityUtility
         #endregion
 
         #region Signature
+        
         private int SignatureStart => PayloadEnd + 1;
         private int SignatureEnd => ByteSize;
+        
         /// <summary>
         /// The Base64URL encoded UTF8 bytes of the signature portion of the current JWT
         /// </summary>
@@ -266,23 +279,31 @@ namespace VNLib.Hashing.IdentityUtility
         public virtual void Sign(HashAlgorithm signatureAlgorithm)
         {
             Check();
+            
             _ = signatureAlgorithm ?? throw new ArgumentNullException(nameof(signatureAlgorithm));
+            
             //Calculate the size of the buffer to use for the current algorithm
             int bufferSize = signatureAlgorithm.HashSize / 8;
+            
             //Alloc buffer for signature output
             Span<byte> signatureBuffer = stackalloc byte[bufferSize];
+
             //Compute the hash of the current payload
             if(!signatureAlgorithm.TryComputeHash(DataBuffer, signatureBuffer, out int bytesWritten))
             {
-                throw new OutOfMemoryException();
+                throw new InternalBufferTooSmallException();
             }
+            
             //Reset the stream position to the end of the payload
             DataStream.SetLength(PayloadEnd);
+            
             //Write leading period
             DataStream.WriteByte(SAEF_PERIOD);
+            
             //Write the signature data to the buffer
             WriteValue(signatureBuffer[..bytesWritten]);
         }
+        
         /// <summary>
         /// Use an RSA algorithm to sign the JWT message
         /// </summary>
@@ -296,20 +317,27 @@ namespace VNLib.Hashing.IdentityUtility
         public virtual void Sign(RSA rsa, in HashAlgorithmName hashAlg, RSASignaturePadding padding, int hashSize)
         {
             Check();
+            
             _ = rsa ?? throw new ArgumentNullException(nameof(rsa));
+            
             //Calculate the size of the buffer to use for the current algorithm
             using UnsafeMemoryHandle<byte> sigBuffer = Heap.UnsafeAlloc<byte>(hashSize);
+            
             if(!rsa.TrySignData(HeaderAndPayload, sigBuffer.Span, hashAlg, padding, out int hashBytesWritten))
             {
-                throw new OutOfMemoryException("Signature buffer is not large enough to store the hash");
+                throw new InternalBufferTooSmallException("Signature buffer is not large enough to store the hash");
             }
+            
             //Reset the stream position to the end of the payload
             DataStream.SetLength(PayloadEnd);
+            
             //Write leading period
             DataStream.WriteByte(SAEF_PERIOD);
+            
             //Write the signature data to the buffer
             WriteValue(sigBuffer.Span[..hashBytesWritten]);
         }
+        
         /// <summary>
         /// Use an RSA algorithm to sign the JWT message
         /// </summary>
@@ -322,17 +350,23 @@ namespace VNLib.Hashing.IdentityUtility
         public virtual void Sign(ECDsa alg, in HashAlgorithmName hashAlg, int hashSize)
         {
             Check();
+            
             _ = alg ?? throw new ArgumentNullException(nameof(alg));
+            
             //Calculate the size of the buffer to use for the current algorithm
             using UnsafeMemoryHandle<byte> sigBuffer = Heap.UnsafeAlloc<byte>(hashSize);
+            
             if (!alg.TrySignData(HeaderAndPayload, sigBuffer.Span, hashAlg, out int hashBytesWritten))
             {
-                throw new OutOfMemoryException("Signature buffer is not large enough to store the hash");
+                throw new InternalBufferTooSmallException("Signature buffer is not large enough to store the hash");
             }
+            
             //Reset the stream position to the end of the payload
             DataStream.SetLength(PayloadEnd);
+            
             //Write leading period
             DataStream.WriteByte(SAEF_PERIOD);
+
             //Write the signature data to the buffer
             WriteValue(sigBuffer.Span[..hashBytesWritten]);
         }
@@ -379,7 +413,6 @@ namespace VNLib.Hashing.IdentityUtility
             //Clear pointers, so buffer get operations just return empty instead of throwing
             Reset();
             DataStream.Dispose();
-        }
-        
+        }        
     }
 }

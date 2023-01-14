@@ -77,6 +77,9 @@ namespace VNLib.Plugins.Essentials
             IsLocalConnection = entity.Server.LocalEndpoint.Address.IsLocalSubnet(TrustedRemoteIp);
             //Cache value
             IsSecure = entity.Server.IsSecure(IsBehindDownStreamServer);
+
+            //Cache current time
+            RequestedTimeUtc = DateTimeOffset.UtcNow;
         }
 
         /// <summary>
@@ -100,6 +103,11 @@ namespace VNLib.Plugins.Essentials
         /// or behind a trusted downstream server that is using tls.
         /// </summary>
         public readonly bool IsSecure;
+        /// <summary>
+        /// Caches a <see cref="DateTimeOffset"/> that was created when the connection was created.
+        /// The approximate current UTC time
+        /// </summary>
+        public readonly DateTimeOffset RequestedTimeUtc;
 
         /// <summary>
         /// The connection info object assocated with the entity

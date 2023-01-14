@@ -449,10 +449,13 @@ namespace VNLib.Hashing.IdentityUtility
             {
                 return null;
             }
+            
             //bin buffer for temp decoding
-            using UnsafeMemoryHandle<byte> binBuffer = Memory.UnsafeAlloc<byte>(base64.Length + 16, false);
+            using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAlloc<byte>(base64.Length + 16, false);
+
             //base64url decode
             ERRNO count = VnEncoding.Base64UrlDecode(base64, binBuffer.Span);
+            
             //Return buffer or null if failed
             return count ? binBuffer.AsSpan(0, count).ToArray() : null;
         }

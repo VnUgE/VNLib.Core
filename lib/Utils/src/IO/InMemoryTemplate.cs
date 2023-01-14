@@ -165,7 +165,7 @@ namespace VNLib.Utils.IO
             try
             {
                 //Copy async
-                await fs.CopyToAsync(newBuf, 8192, Memory.Memory.Shared, cancellationToken);
+                await fs.CopyToAsync(newBuf, 8192, Memory.MemoryUtil.Shared, cancellationToken);
             }
             catch
             {

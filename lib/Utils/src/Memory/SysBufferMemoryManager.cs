@@ -40,7 +40,7 @@ namespace VNLib.Utils.Memory
         private readonly bool _ownsHandle;
 
         /// <summary>
-        /// Consumes an exisitng <see cref="MemoryHandle{T}"/> to provide <see cref="Memory"/> wrappers.
+        /// Consumes an exisitng <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
         /// The handle should no longer be referrenced directly
         /// </summary>
         /// <param name="existingHandle">The existing handle to consume</param>
@@ -52,12 +52,12 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Allocates a fized size buffer from the specified unmanaged <see cref="PrivateHeap"/>
+        /// Allocates a fized size buffer from the specified unmanaged <see cref="Win32PrivateHeap"/>
         /// </summary>
         /// <param name="heap">The heap to perform allocations from</param>
         /// <param name="elements">The number of elements to allocate</param>
         /// <param name="zero">Zero allocations</param>
-        public SysBufferMemoryManager(IUnmangedHeap heap, ulong elements, bool zero)
+        public SysBufferMemoryManager(IUnmangedHeap heap, nuint elements, bool zero)
         {
             BackingMemory = heap.Alloc<T>(elements, zero);
             _ownsHandle = true;

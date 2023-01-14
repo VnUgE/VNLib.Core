@@ -35,10 +35,7 @@ namespace VNLib.Utils.Memory
     public readonly struct SubSequence<T> : IEquatable<SubSequence<T>> where T: unmanaged 
     {
         private readonly MemoryHandle<T> _handle;
-        /// <summary>
-        /// The number of elements in the current window
-        /// </summary>
-        public readonly int Size { get; }
+        private readonly nuint _offset;
 
         /// <summary>
         /// Creates a new <see cref="SubSequence{T}"/> to the handle to get a window of the block
@@ -46,33 +43,23 @@ namespace VNLib.Utils.Memory
         /// <param name="block"></param>
         /// <param name="offset"></param>
         /// <param name="size"></param>
-#if TARGET_64_BIT
-        public SubSequence(MemoryHandle<T> block, ulong offset, int size)
-#else
-        public SubSequence(MemoryHandle<T> block, int offset, int size)
-#endif
+        public SubSequence(MemoryHandle<T> block, nuint offset, int size)
         {
             _offset = offset;
             Size = size >= 0 ? size : throw new ArgumentOutOfRangeException(nameof(size));
             _handle = block ?? throw new ArgumentNullException(nameof(block));
         }
 
+        /// <summary>
+        /// The number of elements in the current window
+        /// </summary>
+        public readonly int Size { get; }
 
-#if TARGET_64_BIT
-        private readonly ulong _offset;
-#else
-        private readonly int _offset;
-#endif
         /// <summary>
         /// Gets a <see cref="Span{T}"/> that is offset from the base of the handle
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-
-#if TARGET_64_BIT 
-        public readonly Span<T> Span => Size > 0 ? _handle.GetOffsetSpan(_offset, Size) : Span<T>.Empty; 
-#else
-        public readonly Span<T> Span => Size > 0 ? _handle.Span.Slice(_offset, Size) : Span<T>.Empty;
-#endif
+        public readonly Span<T> Span => Size > 0 ? _handle.GetOffsetSpan(_offset, Size) : Span<T>.Empty;
 
         /// <summary>
         /// Slices the current sequence into a smaller <see cref="SubSequence{T}"/>
@@ -80,7 +67,7 @@ namespace VNLib.Utils.Memory
         /// <param name="offset">The relative offset from the current window offset</param>
         /// <param name="size">The size of the block</param>
         /// <returns>A <see cref="SubSequence{T}"/> of the current sequence</returns>
-        public readonly SubSequence<T> Slice(uint offset, int size) => new (_handle, _offset + checked((int)offset), size);
+        public readonly SubSequence<T> Slice(nuint offset, int size) => new (_handle, checked(_offset + offset), size);
 
         /// <summary>
         /// Returns the signed 32-bit hashcode

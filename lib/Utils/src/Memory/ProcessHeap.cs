@@ -48,20 +48,23 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         ///<exception cref="OverflowException"></exception>
         ///<exception cref="OutOfMemoryException"></exception>
-        public IntPtr Alloc(ulong elements, ulong size, bool zero)
+        public IntPtr Alloc(nuint elements, nuint size, bool zero)
         {
             return zero
-                ? (IntPtr)NativeMemory.AllocZeroed((nuint)elements, (nuint)size)
-                : (IntPtr)NativeMemory.Alloc((nuint)elements, (nuint)size);
+                ? (IntPtr)NativeMemory.AllocZeroed(elements, size)
+                : (IntPtr)NativeMemory.Alloc(elements, size);
         }
         ///<inheritdoc/>
         public bool Free(ref IntPtr block)
         {
             //Free native mem from ptr
             NativeMemory.Free(block.ToPointer());
+            
             block = IntPtr.Zero;
+
             return true;
         }
+        
         ///<inheritdoc/>
         protected override void Free()
         {
@@ -69,14 +72,25 @@ namespace VNLib.Utils.Memory
             Trace.WriteLine($"Default heap instnace disposed {GetHashCode():x}");
 #endif
         }
+        
         ///<inheritdoc/>
         ///<exception cref="OverflowException"></exception>
         ///<exception cref="OutOfMemoryException"></exception>
-        public void Resize(ref IntPtr block, ulong elements, ulong size, bool zero)
+        public void Resize(ref IntPtr block, nuint elements, nuint size, bool zero)
         {
-            nuint bytes = checked((nuint)(elements * size));
-            IntPtr old = block;
-            block = (IntPtr)NativeMemory.Realloc(old.ToPointer(), bytes);
+            nuint bytes = checked(elements * size);
+            
+            //Alloc
+            void* newBlock = NativeMemory.Realloc(block.ToPointer(), bytes);
+            
+            //Check
+            if (newBlock == null)
+            {
+                throw new NativeMemoryOutOfMemoryException("Failed to resize the allocated block");
+            }
+
+            //Assign block ptr
+            block = (IntPtr)newBlock;
         }
     }
 }

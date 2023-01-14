@@ -28,7 +28,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Extensions;
-using System.Security.Cryptography;
 
 namespace VNLib.Utils.Memory
 {
@@ -52,12 +51,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Actual length of internal buffer
         /// </summary>
-        public ulong Length => (ulong)Buffer.LongLength;
-
-        /// <summary>
-        /// Actual length of internal buffer
-        /// </summary>
-        public int IntLength => Buffer.Length;
+        public nuint Length => (nuint)Buffer.LongLength;
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
@@ -77,6 +71,7 @@ namespace VNLib.Utils.Memory
         /// <param name="zero">Set the zero memory flag on close</param>
         public VnTempBuffer(int minSize, bool zero = false) :this(ArrayPool<T>.Shared, minSize, zero)
         {}
+        
         /// <summary>
         /// Allocates a new <see cref="VnTempBuffer{BufType}"/> with a new buffer from specified array-pool
         /// </summary>
@@ -89,6 +84,7 @@ namespace VNLib.Utils.Memory
             Buffer = pool.Rent(minSize, zero);
             InitSize = minSize;
         }
+        
         /// <summary>
         /// Gets an offset wrapper around the current buffer
         /// </summary>
@@ -101,6 +97,7 @@ namespace VNLib.Utils.Memory
             //Let arraysegment throw exceptions for checks 
             return new ArraySegment<T>(Buffer, offset, count);
         }
+        
         ///<inheritdoc/>
         public T this[int index]
         {
@@ -127,6 +124,7 @@ namespace VNLib.Utils.Memory
             Check();
             return new Memory<T>(Buffer, 0, InitSize);
         }
+        
         /// <summary>
         /// Gets a memory structure around the internal buffer
         /// </summary>
@@ -140,6 +138,7 @@ namespace VNLib.Utils.Memory
             Check();
             return new Memory<T>(Buffer, start, count);
         }
+
         /// <summary>
         /// Gets a memory structure around the internal buffer
         /// </summary>
@@ -181,17 +180,20 @@ namespace VNLib.Utils.Memory
         unsafe MemoryHandle IPinnable.Pin(int elementIndex)
         {
             //Guard
-            if (elementIndex < 0 || elementIndex >= IntLength)
+            if (elementIndex < 0 || elementIndex >= Buffer.Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(elementIndex));
             }
 
             //Pin the array
             GCHandle arrHandle = GCHandle.Alloc(Buffer, GCHandleType.Pinned);
+            
             //Get array base address
             void* basePtr = (void*)arrHandle.AddrOfPinnedObject();
+            
             //Get element offset
             void* indexOffet = Unsafe.Add<T>(basePtr, elementIndex);
+
             return new(indexOffet, arrHandle, this);
         }
 

@@ -25,13 +25,17 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
 using VNLib.Utils.Memory;
+using System.Runtime.CompilerServices;
+
+#pragma warning disable CA1062 // Validate arguments of public methods
 
 namespace VNLib.Utils.Extensions
 {
-    [SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "<Pending>")]
+    /// <summary>
+    /// A collection of extensions for <see cref="VnString"/>
+    /// </summary>
     public static class VnStringExtensions
     {
         /// <summary>
@@ -41,7 +45,9 @@ namespace VNLib.Utils.Extensions
         /// <param name="value">The value to find</param>
         /// <returns>True if the character exists within the instance</returns>
         /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Contains(this VnString str, char value) => str.AsSpan().Contains(value);
+
         /// <summary>
         /// Derermines if the sequence exists within the instance
         /// </summary>
@@ -50,8 +56,9 @@ namespace VNLib.Utils.Extensions
         /// <param name="stringComparison"></param>
         /// <returns>True if the character exists within the instance</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-       
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Contains(this VnString str, ReadOnlySpan<char> value, StringComparison stringComparison) => str.AsSpan().Contains(value, stringComparison);
+
 
         /// <summary>
         ///  Searches for the first occurrance of the specified character within the current instance
@@ -60,7 +67,9 @@ namespace VNLib.Utils.Extensions
         /// <param name="value">The character to search for within the instance</param>
         /// <returns>The 0 based index of the occurance, -1 if the character was not found</returns>
         /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf(this VnString str, char value) => str.IsEmpty ? -1 : str.AsSpan().IndexOf(value);
+
         /// <summary>
         /// Searches for the first occurrance of the specified sequence within the current instance
         /// </summary>
@@ -68,12 +77,9 @@ namespace VNLib.Utils.Extensions
         /// <param name="search">The sequence to search for</param>
         /// <returns>The 0 based index of the occurance, -1 if the sequence was not found</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public static int IndexOf(this VnString str, ReadOnlySpan<char> search)
-        {
-            //Using spans to avoid memory leaks...
-            ReadOnlySpan<char> self = str.AsSpan();
-            return self.IndexOf(search);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int IndexOf(this VnString str, ReadOnlySpan<char> search) => str.AsSpan().IndexOf(search);
+
         /// <summary>
         /// Searches for the first occurrance of the specified sequence within the current instance
         /// </summary>
@@ -82,12 +88,9 @@ namespace VNLib.Utils.Extensions
         /// <param name="comparison">The <see cref="StringComparison"/> type to use in searchr</param>
         /// <returns>The 0 based index of the occurance, -1 if the sequence was not found</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public static int IndexOf(this VnString str, ReadOnlySpan<char> search, StringComparison comparison)
-        {
-            //Using spans to avoid memory leaks...
-            ReadOnlySpan<char> self = str.AsSpan();
-            return self.IndexOf(search, comparison);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int IndexOf(this VnString str, ReadOnlySpan<char> search, StringComparison comparison) => str.AsSpan().IndexOf(search, comparison);
+        
         /// <summary>
         /// Searches for the 0 based index of the first occurance of the search parameter after the start index.
         /// </summary>
@@ -136,11 +139,13 @@ namespace VNLib.Utils.Extensions
         /// <returns>The trimmed <see cref="VnString"/> instance as a child of the original entry</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="IndexOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VnString AbsoluteTrim(this VnString data, int start, int end)
         {
             AbsoluteTrim(data, ref start, ref end);
             return data[start..end];
         }
+        
         /// <summary>
         /// Finds whitespace characters within the sequence defined between start and end parameters 
         /// and adjusts the specified window to "trim" whitespace
@@ -175,6 +180,7 @@ namespace VNLib.Utils.Extensions
                 end--;
             }
         }
+
         /// <summary>
         /// Allows for trimming whitespace characters in a realtive sequence from 
         /// within a <see cref="VnString"/> buffer and returning the trimmed entry.
@@ -184,13 +190,16 @@ namespace VNLib.Utils.Extensions
         /// <returns>The trimmed <see cref="VnString"/> instance as a child of the original entry</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="IndexOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VnString AbsoluteTrim(this VnString data, int start) => AbsoluteTrim(data, start, data.Length);
+
         /// <summary>
         /// Trims leading or trailing whitespace characters and returns a new child instance 
         /// without leading or trailing whitespace
         /// </summary>
         /// <returns>A child <see cref="VnString"/> of the current instance without leading or trailing whitespaced</returns>
         /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VnString RelativeTirm(this VnString data) => AbsoluteTrim(data, 0);
 
         /// <summary>
@@ -349,19 +358,6 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Unoptimized character enumerator. You should use <see cref="VnString.AsSpan"/> to enumerate the unerlying data.
-        /// </summary>
-        /// <returns>The next character in the sequence</returns>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public static IEnumerator<char> GetEnumerator(this VnString data)
-        {
-            int index = 0;
-            while (index < data.Length)
-            {
-                yield return data[index++];
-            }
-        }
-        /// <summary>
         /// Converts the current handle to a <see cref="VnString"/>, a zero-alloc immutable wrapper 
         /// for a memory handle
         /// </summary>
@@ -370,14 +366,9 @@ namespace VNLib.Utils.Extensions
         /// <returns>The new <see cref="VnString"/> wrapper</returns>
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static VnString ToVnString(this MemoryHandle<char> handle, int length)
-        {
-            if(handle.Length > int.MaxValue)
-            {
-                throw new OverflowException("The handle is larger than 2GB in size");
-            }
-            return VnString.ConsumeHandle(handle, 0, length);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static VnString ToVnString(this MemoryHandle<char> handle, int length) => VnString.ConsumeHandle(handle, 0, length);
+
         /// <summary>
         /// Converts the current handle to a <see cref="VnString"/>, a zero-alloc immutable wrapper 
         /// for a memory handle
@@ -386,10 +377,9 @@ namespace VNLib.Utils.Extensions
         /// <returns>The new <see cref="VnString"/> wrapper</returns>
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static VnString ToVnString(this MemoryHandle<char> handle)
-        {
-            return VnString.ConsumeHandle(handle, 0, handle.IntLength);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static VnString ToVnString(this MemoryHandle<char> handle) => VnString.ConsumeHandle(handle, 0, handle.GetIntLength());
+
         /// <summary>
         /// Converts the current handle to a <see cref="VnString"/>, a zero-alloc immutable wrapper 
         /// for a memory handle
@@ -398,21 +388,8 @@ namespace VNLib.Utils.Extensions
         /// <param name="offset">The offset in characters that represents the begining of the string</param>
         /// <param name="length">The number of characters from the handle to reference (length of the string)</param>
         /// <returns>The new <see cref="VnString"/> wrapper</returns>
-        /// <exception cref="OverflowException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static VnString ToVnString(this MemoryHandle<char> handle,
-#if TARGET_64_BIT
-             ulong offset,
-#else
-            int offset,
-#endif  
-            int length)
-        {
-            if (handle.Length > int.MaxValue)
-            {
-                throw new OverflowException("The handle is larger than 2GB in size");
-            }
-            return VnString.ConsumeHandle(handle, offset, length);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static VnString ToVnString(this MemoryHandle<char> handle, nuint offset, int length) => VnString.ConsumeHandle(handle, offset, length);
     }
 }

@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
 using VNLib.Utils;
@@ -36,6 +37,8 @@ namespace VNLib.Hashing
     public static class RandomHash
     {
 
+        private const int MAX_STACK_ALLOC = 128;
+
         /// <summary>
         /// Generates a cryptographic random number, computes the hash, and encodes the hash as a string.
         /// </summary>
@@ -45,12 +48,28 @@ namespace VNLib.Hashing
         /// <returns>String containing hash of the random number</returns>
         public static string GetRandomHash(HashAlg alg, int size = 64, HashEncodingMode encoding = HashEncodingMode.Base64)
         {
-            //Get temporary buffer for storing random keys
-            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(size);
-            //Fill with random non-zero bytes
-            GetRandomBytes(buffer.Span);
-            //Compute hash
-            return ManagedHash.ComputeHash(buffer.Span, alg, encoding); 
+            if(size > MAX_STACK_ALLOC)
+            {
+                //Get temporary buffer for storing random keys
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+
+                //Fill with random non-zero bytes
+                GetRandomBytes(buffer.Span);
+
+                //Compute hash
+                return ManagedHash.ComputeHash(buffer.Span, alg, encoding);
+            }
+            else
+            {
+                //Get temporary buffer for storing random keys
+                Span<byte> buffer = stackalloc byte[size];
+
+                //Fill with random non-zero bytes
+                GetRandomBytes(buffer);
+
+                //Compute hash
+                return ManagedHash.ComputeHash(buffer, alg, encoding);
+            }
         }
 
         /// <summary>
@@ -60,25 +79,27 @@ namespace VNLib.Hashing
         /// <exception cref="FormatException"></exception>
         public static string GetGuidHash(HashAlg alg, HashEncodingMode encoding = HashEncodingMode.Base64)
         {
-            //Get temp buffer
-            Span<byte> buffer = stackalloc byte[16];
+            //Get temp buffer, the size of the guid
+            Span<byte> buffer = stackalloc byte[Unsafe.SizeOf<Guid>()];
+            
             //Get a new GUID and write bytes to 
-            if (!Guid.NewGuid().TryWriteBytes(buffer))
-            {
-                throw new FormatException("Failed to get a guid hash");
-            }
-            return ManagedHash.ComputeHash(buffer, alg, encoding);
+            return Guid.NewGuid().TryWriteBytes(buffer)
+                ? ManagedHash.ComputeHash(buffer, alg, encoding)
+                : throw new FormatException("Failed to get a guid hash");
         }
+        
         /// <summary>
         /// Generates a secure random number and seeds a GUID object, then returns the string GUID
         /// </summary>
         /// <returns>Guid string</returns>
         public static Guid GetSecureGuid()
         {
-            //Get temp buffer
-            Span<byte> buffer = stackalloc byte[16];
+            //Get temp buffer size of Guid
+            Span<byte> buffer = stackalloc byte[Unsafe.SizeOf<Guid>()];
+
             //Generate non zero bytes
             GetRandomBytes(buffer);
+            
             //Get a GUID initialized with the key data and return the string represendation
             return new Guid(buffer);
         }
@@ -90,13 +111,30 @@ namespace VNLib.Hashing
         /// <returns>Base64 string of the random number</returns>
         public static string GetRandomBase64(int size = 64)
         {
-            //Get temp buffer
-            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(size);
-            //Generate non zero bytes
-            GetRandomBytes(buffer.Span);
-            //Convert to base 64
-            return Convert.ToBase64String(buffer.Span, Base64FormattingOptions.None);
+            if (size > MAX_STACK_ALLOC)
+            {
+                //Get temp buffer
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+
+                //Generate non zero bytes
+                GetRandomBytes(buffer.Span);
+
+                //Convert to base 64
+                return Convert.ToBase64String(buffer.Span, Base64FormattingOptions.None);
+            }
+            else
+            {
+                //Get temp buffer
+                Span<byte> buffer = stackalloc byte[size];
+
+                //Generate non zero bytes
+                GetRandomBytes(buffer);
+
+                //Convert to base 64
+                return Convert.ToBase64String(buffer, Base64FormattingOptions.None);
+            }
         }
+        
         /// <summary>
         /// Generates a cryptographic random number and returns the hex string of that number
         /// </summary>
@@ -104,13 +142,30 @@ namespace VNLib.Hashing
         /// <returns>Hex string of the random number</returns>
         public static string GetRandomHex(int size = 64)
         {
-            //Get temp buffer
-            using UnsafeMemoryHandle<byte> buffer = Memory.UnsafeAlloc<byte>(size);
-            //Generate non zero bytes
-            GetRandomBytes(buffer.Span);
-            //Convert to hex
-            return Convert.ToHexString(buffer.Span);
+            if (size > MAX_STACK_ALLOC)
+            {
+                //Get temp buffer
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+
+                //Generate non zero bytes
+                GetRandomBytes(buffer.Span);
+
+                //Convert to hex
+                return Convert.ToHexString(buffer.Span);
+            }
+            else
+            {
+                //Get temp buffer
+                Span<byte> buffer = stackalloc byte[size];
+
+                //Generate non zero bytes
+                GetRandomBytes(buffer);
+
+                //Convert to hex
+                return Convert.ToHexString(buffer);
+            }
         }
+        
         /// <summary>
         /// Generates a cryptographic random number and returns the Base32 encoded string of that number
         /// </summary>
@@ -118,12 +173,28 @@ namespace VNLib.Hashing
         /// <returns>Base32 string of the random number</returns>
         public static string GetRandomBase32(int size = 64)
         {
-            //Get temporary buffer for storing random keys
-            using UnsafeMemoryHandle<byte> buffer =  Memory.UnsafeAlloc<byte>(size);
-            //Fill with random non-zero bytes
-            GetRandomBytes(buffer.Span);
-            //Return string of encoded data
-            return VnEncoding.ToBase32String(buffer.Span);
+            if (size > MAX_STACK_ALLOC)
+            {
+                //Get temp buffer
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+
+                //Generate non zero bytes
+                GetRandomBytes(buffer.Span);
+
+                //Convert to hex
+                return VnEncoding.ToBase32String(buffer.Span);
+            }
+            else
+            {
+                //Get temp buffer
+                Span<byte> buffer = stackalloc byte[size];
+
+                //Generate non zero bytes
+                GetRandomBytes(buffer);
+
+                //Convert to hex
+                return VnEncoding.ToBase32String(buffer);
+            }
         }
 
         /// <summary>
@@ -137,13 +208,11 @@ namespace VNLib.Hashing
             GetRandomBytes(rand);
             return rand;
         }
+
         /// <summary>
         /// Fill the buffer with non-zero bytes 
         /// </summary>
         /// <param name="data">Buffer to fill</param>
-        public static void GetRandomBytes(Span<byte> data)
-        {
-            RandomNumberGenerator.Fill(data);
-        }
+        public static void GetRandomBytes(Span<byte> data) => RandomNumberGenerator.Fill(data);
     }
 }

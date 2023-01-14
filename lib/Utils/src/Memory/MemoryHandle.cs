@@ -34,7 +34,7 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Provides a wrapper for using umanged memory handles from an assigned <see cref="PrivateHeap"/> for <see cref="UnmanagedType"/> types
+    /// Provides a wrapper for using umanged memory handles from an assigned <see cref="Win32PrivateHeap"/> for <see cref="UnmanagedType"/> types
     /// </summary>
     /// <remarks>
     /// Handles are configured to address blocks larger than 2GB,
@@ -72,30 +72,20 @@ namespace VNLib.Utils.Memory
             get
             {
                 this.ThrowIfClosed();
-                return _length == 0 ? Span<T>.Empty : new Span<T>(Base, IntLength);
+                int len = Convert.ToInt32(_length);
+                return _length == 0 ? Span<T>.Empty : new Span<T>(Base, len);
             }
         }
 
         private readonly bool ZeroMemory;
         private readonly IUnmangedHeap Heap;
-        private ulong _length;
+        private nuint _length;
 
-        /// <summary>
-        /// Number of elements allocated to the current instance
-        /// </summary>
-        public ulong Length 
+        ///<inheritdoc/>
+        public nuint Length 
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _length; 
-        }
-        /// <summary>
-        /// Number of elements in the memory block casted to an integer
-        /// </summary>
-        /// <exception cref="OverflowException"></exception>
-        public int IntLength
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => checked((int)_length);
         }
 
         /// <summary>
@@ -106,7 +96,7 @@ namespace VNLib.Utils.Memory
         {
             //Check for overflows when converting to bytes (should run out of memory before this is an issue, but just incase)
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => checked(_length * (UInt64)sizeof(T));
+            get => MemoryUtil.ByteCount<T>(_length);
         }
 
         /// <summary>
@@ -116,7 +106,7 @@ namespace VNLib.Utils.Memory
         /// <param name="elements">Number of elements to allocate</param>
         /// <param name="zero">Zero all memory during allocations from heap</param>
         /// <param name="initial">The initial block of allocated memory to wrap</param>
-        internal MemoryHandle(IUnmangedHeap heap, IntPtr initial, ulong elements, bool zero) : base(true)
+        internal MemoryHandle(IUnmangedHeap heap, IntPtr initial, nuint elements, bool zero) : base(true)
         {
             //Set element size (always allocate at least 1 object)
             _length = elements;
@@ -133,7 +123,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        public unsafe void Resize(ulong elements)
+        public unsafe void Resize(nuint elements)
         {
             this.ThrowIfClosed();
             //Update size (should never be less than inital size)
@@ -141,7 +131,7 @@ namespace VNLib.Utils.Memory
             //Re-alloc (Zero if required)
             try
             {
-                Heap.Resize(ref handle, Length, (ulong)sizeof(T), ZeroMemory);
+                Heap.Resize(ref handle, Length, (nuint)sizeof(T), ZeroMemory);
             }
             //Catch the disposed exception so we can invalidate the current ptr
             catch (ObjectDisposedException)
@@ -161,7 +151,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <returns><typeparamref name="T"/> pointer to the memory offset specified</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe T* GetOffset(ulong elements)
+        public unsafe T* GetOffset(nuint elements)
         {
             if (elements >= _length)
             {
@@ -176,10 +166,14 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
         ///<exception cref="ArgumentOutOfRangeException"></exception>
+        ///<remarks>
+        ///Calling this method increments the handle's referrence count. 
+        ///Disposing the returned handle decrements the handle count.
+        ///</remarks>
         public unsafe MemoryHandle Pin(int elementIndex)
         {
             //Get ptr and guard checks before adding the referrence
-            T* ptr = GetOffset((ulong)elementIndex);
+            T* ptr = GetOffset((nuint)elementIndex);
             
             bool addRef = false;
             //use the pinned field as success val
@@ -198,15 +192,12 @@ namespace VNLib.Utils.Memory
             DangerousRelease();
         }
 
-
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
         {
             //Return result of free
             return Heap.Free(ref handle);
-        }
-
-      
+        }      
 
         /// <summary>
         /// Determines if the memory blocks are equal by comparing their base addresses.

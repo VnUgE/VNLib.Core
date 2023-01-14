@@ -28,24 +28,23 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
+using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
 namespace VNLib.Utils.IO
 {
-
-    using Utils.Memory; 
-
     /// <summary>
     /// Provides an unmanaged memory stream. Desigend to help reduce garbage collector load for 
     /// high frequency memory operations. Similar to <see cref="UnmanagedMemoryStream"/>
     /// </summary>
     public sealed class VnMemoryStream : Stream, ICloneable
     {
-        private long _position;
-        private long _length;
+        private nint _position;
+        private nint _length;
+        private bool _isReadonly;
+        
         //Memory
         private readonly MemoryHandle<byte> _buffer;
-        private bool IsReadonly;
         //Default owns handle
         private readonly bool OwnsHandle = true;
 
@@ -57,7 +56,7 @@ namespace VNLib.Utils.IO
         /// <param name="readOnly">Should the stream be readonly?</param>
         /// <exception cref="ArgumentException"></exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
-        public static VnMemoryStream ConsumeHandle(MemoryHandle<byte> handle, Int64 length, bool readOnly)
+        public static VnMemoryStream ConsumeHandle(MemoryHandle<byte> handle, nint length, bool readOnly)
         {
             handle.ThrowIfClosed();
             return new VnMemoryStream(handle, length, readOnly, true);
@@ -71,7 +70,7 @@ namespace VNLib.Utils.IO
         public static VnMemoryStream CreateReadonly(VnMemoryStream stream)
         {
             //Set the readonly flag
-            stream.IsReadonly = true;
+            stream._isReadonly = true;
             //Return the stream
             return stream;
         }
@@ -79,11 +78,12 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// Creates a new memory stream
         /// </summary>
-        public VnMemoryStream() : this(Memory.Shared) { }
+        public VnMemoryStream() : this(MemoryUtil.Shared) { }
+        
         /// <summary>
         /// Create a new memory stream where buffers will be allocated from the specified heap
         /// </summary>
-        /// <param name="heap"><see cref="PrivateHeap"/> to allocate memory from</param>
+        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         public VnMemoryStream(IUnmangedHeap heap) : this(heap, 0, false) { }
@@ -92,13 +92,13 @@ namespace VNLib.Utils.IO
         /// Creates a new memory stream and pre-allocates the internal
         /// buffer of the specified size on the specified heap to avoid resizing.
         /// </summary>
-        /// <param name="heap"><see cref="PrivateHeap"/> to allocate memory from</param>
+        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <param name="bufferSize">Number of bytes (length) of the stream if known</param>
         /// <param name="zero">Zero memory allocations during buffer expansions</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public VnMemoryStream(IUnmangedHeap heap, long bufferSize, bool zero)
+        public VnMemoryStream(IUnmangedHeap heap, nuint bufferSize, bool zero)
         {
             _ = heap ?? throw new ArgumentNullException(nameof(heap));
             _buffer = heap.Alloc<byte>(bufferSize, zero);
@@ -107,7 +107,7 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// Creates a new memory stream from the data provided
         /// </summary>
-        /// <param name="heap"><see cref="PrivateHeap"/> to allocate memory from</param>
+        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <param name="data">Initial data</param>
         public VnMemoryStream(IUnmangedHeap heap, ReadOnlySpan<byte> data)
         {
@@ -116,8 +116,7 @@ namespace VNLib.Utils.IO
             _buffer = heap.AllocAndCopy(data);
             //Set length
             _length = data.Length;
-            //Position will default to 0 cuz its dotnet :P
-            return;
+            _position = 0;
         }
         
         /// <summary>
@@ -127,18 +126,18 @@ namespace VNLib.Utils.IO
         /// <param name="length">The length property of the stream</param>
         /// <param name="readOnly">Is the stream readonly (should mostly be true!)</param>
         /// <param name="ownsHandle">Does the new stream own the memory -> <paramref name="buffer"/></param>
-        private VnMemoryStream(MemoryHandle<byte> buffer, long length, bool readOnly, bool ownsHandle)
+        private VnMemoryStream(MemoryHandle<byte> buffer, nint length, bool readOnly, bool ownsHandle)
         {
             OwnsHandle = ownsHandle;
             _buffer = buffer;                  //Consume the handle
             _length = length;                  //Store length of the buffer
-            IsReadonly = readOnly;
+            _isReadonly = readOnly;
         }
       
         /// <summary>
         /// UNSAFE Number of bytes between position and length. Never negative
         /// </summary>
-        private long LenToPosDiff => Math.Max(_length - _position, 0);
+        private nint LenToPosDiff => Math.Max(_length - _position, 0);
 
         /// <summary>
         /// If the current stream is a readonly stream, creates an unsafe shallow copy for reading only.
@@ -148,7 +147,7 @@ namespace VNLib.Utils.IO
         public VnMemoryStream GetReadonlyShallowCopy()
         {
             //Create a new readonly copy (stream does not own the handle)
-            return !IsReadonly
+            return !_isReadonly
                 ? throw new NotSupportedException("This stream is not readonly. Cannot create shallow copy on a mutable stream")
                 : new VnMemoryStream(_buffer, _length, true, false);
         }
@@ -163,6 +162,10 @@ namespace VNLib.Utils.IO
         public override void CopyTo(Stream destination, int bufferSize)
         {
             _ = destination ?? throw new ArgumentNullException(nameof(destination));
+            if(bufferSize < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bufferSize), "Buffer size must be greater than 0");
+            }
             
             if (!destination.CanWrite)
             {
@@ -250,7 +253,7 @@ namespace VNLib.Utils.IO
         /// True unless the stream is (or has been converted to) a readonly
         /// stream.
         /// </summary>
-        public override bool CanWrite => !IsReadonly;
+        public override bool CanWrite => !_isReadonly;
         ///<inheritdoc/>
         public override long Length => _length;
         ///<inheritdoc/>
@@ -279,7 +282,7 @@ namespace VNLib.Utils.IO
         ///<inheritdoc/>
         public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         ///<inheritdoc/>
-        public override int Read(byte[] buffer, int offset, int count) => Read(new Span<byte>(buffer, offset, count));
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
         ///<inheritdoc/>
         public override int Read(Span<byte> buffer)
         {
@@ -288,12 +291,14 @@ namespace VNLib.Utils.IO
                 return 0;
             }
             //Number of bytes to read from memory buffer
-            int bytesToRead = checked((int)Math.Min(LenToPosDiff, buffer.Length));
+            int bytesToRead = (int)Math.Min(LenToPosDiff, buffer.Length);
+            
             //Copy bytes to buffer
-            Memory.Copy(_buffer, _position, buffer, 0, bytesToRead);
+            MemoryUtil.Copy(_buffer, _position, buffer, 0, bytesToRead);
+            
             //Increment buffer position
             _position += bytesToRead;
-            //Bytestoread should never be larger than int.max because span length is an integer
+            
             return bytesToRead;
         }
 
@@ -322,22 +327,27 @@ namespace VNLib.Utils.IO
             {
                 throw new ArgumentOutOfRangeException(nameof(offset), "Offset cannot be less than 0");
             }
+            if(offset > nint.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset), "Offset cannot be less than nint.MaxValue");
+            }
+
+            //safe cast to nint
+            nint _offset = (nint)offset;
+
             switch (origin)
             {
                 case SeekOrigin.Begin:
-                    //Length will never be greater than int.Max so output will never exceed int.max
-                    _position = Math.Min(_length, offset);
-                    return _position;
+                    //Length will never be greater than nint.Max so output will never exceed nint.max
+                    return _position = Math.Min(_length, _offset);
                 case SeekOrigin.Current:
-                    long newPos = _position + offset;
-                    //Length will never be greater than int.Max so output will never exceed length
-                    _position = Math.Min(_length, newPos);
-                    return newPos;
+                    //Calc new seek position from current position
+                    nint newPos = _position + _offset;
+                    return _position = Math.Min(_length, newPos);
                 case SeekOrigin.End:
-                    long real_index = _length - offset;
-                    //If offset moves the position negative, just set the position to 0 and continue
-                    _position = Math.Min(real_index, 0);
-                    return real_index;
+                    //Calc new seek position from end of stream, should be len -1 so 0 can be specified from the end
+                    nint realIndex = _length - (_offset - 1);
+                    return _position = Math.Min(realIndex, 0);
                 default:
                     throw new ArgumentException("Stream operation is not supported on current stream");
             }
@@ -356,7 +366,7 @@ namespace VNLib.Utils.IO
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public override void SetLength(long value)
         {
-            if (IsReadonly)
+            if (_isReadonly)
             {
                 throw new NotSupportedException("This stream is readonly");
             }
@@ -364,25 +374,33 @@ namespace VNLib.Utils.IO
             {
                 throw new ArgumentOutOfRangeException(nameof(value), "Value cannot be less than 0");
             }
+            if(value > nint.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), "Value cannot be greater than nint.MaxValue");
+            }
+            
+            nint _value = (nint)value;
+
             //Resize the buffer to the specified length
-            _buffer.Resize(value);
+            _buffer.Resize(_value);
+            
             //Set length
-            _length = value;
-            //Make sure the position is not pointing outside of the buffer
+            _length = _value;
+            
+            //Make sure the position is not pointing outside of the buffer after resize
             _position = Math.Min(_position, _length);
-            return;
         }
         ///<inheritdoc/>
-        public override void Write(byte[] buffer, int offset, int count) => Write(new ReadOnlySpan<byte>(buffer, offset, count));
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
         ///<inheritdoc/>
         public override void Write(ReadOnlySpan<byte> buffer)
         {
-            if (IsReadonly)
+            if (_isReadonly)
             {
                 throw new NotSupportedException("Write operation is not allowed on readonly stream!");
             }
             //Calculate the new final position
-            long newPos = (_position + buffer.Length);
+            nint newPos = (_position + buffer.Length);
             //Determine if the buffer needs to be expanded
             if (buffer.Length > LenToPosDiff)
             {
@@ -392,10 +410,9 @@ namespace VNLib.Utils.IO
                 _length = newPos;
             }
             //Copy the input buffer to the internal buffer
-            Memory.Copy(buffer, _buffer, _position);
+            MemoryUtil.Copy(buffer, _buffer, (nuint)_position);
             //Update the position
             _position = newPos;
-            return;
         }
         ///<inheritdoc/>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -423,16 +440,17 @@ namespace VNLib.Utils.IO
         /// </summary>
         /// <returns>Copy of internal buffer</returns>
         /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
         public byte[] ToArray()
         {
-            //Alloc a new array of the size of the internal buffer
+            //Alloc a new array of the size of the internal buffer, may be 64 bit large block
             byte[] data = new byte[_length];
-            //Copy data from the internal buffer to the output buffer
-            _buffer.Span.CopyTo(data);
+            
+            //Copy the internal buffer to the new array
+            MemoryUtil.Copy(_buffer, 0, data, 0, (nuint)_length);
+            
             return data;
-
         }
+        
         /// <summary>
         /// Returns a <see cref="ReadOnlySpan{T}"/> window over the data within the entire stream
         /// </summary>
@@ -440,8 +458,10 @@ namespace VNLib.Utils.IO
         /// <exception cref="OverflowException"></exception>
         public ReadOnlySpan<byte> AsSpan()
         {
-            ReadOnlySpan<byte> output = _buffer.Span;
-            return output[..(int)_length];
+            //Get 32bit length or throw
+            int len = Convert.ToInt32(_length);
+            //Get span with no offset
+            return _buffer.AsSpan(0, len);
         }
       
         /// <summary>

@@ -35,33 +35,38 @@ namespace VNLib.Utils.Memory
     public sealed class VnTable<T> : VnDisposeable, IIndexable<uint, T> where T : unmanaged
     {
         private readonly MemoryHandle<T>? BufferHandle;
+        
         /// <summary>
         /// A value that indicates if the table does not contain any values
         /// </summary>
         public bool Empty { get; }
+        
         /// <summary>
         /// The number of rows in the table
         /// </summary>
-        public int Rows { get; }
+        public uint Rows { get; }
+        
         /// <summary>
         /// The nuber of columns in the table
         /// </summary>
-        public int Cols { get; }
+        public uint Cols { get; }
+        
         /// <summary>
-        /// Creates a new 2 dimensional table in unmanaged heap memory, using the <see cref="Memory.Shared"/> heap.
+        /// Creates a new 2 dimensional table in unmanaged heap memory, using the <see cref="MemoryUtil.Shared"/> heap.
         /// User should dispose of the table when no longer in use
         /// </summary>
         /// <param name="rows">Number of rows in the table</param>
         /// <param name="cols">Number of columns in the table</param>
-        public VnTable(int rows, int cols) : this(Memory.Shared, rows, cols) { }
+        public VnTable(uint rows, uint cols) : this(MemoryUtil.Shared, rows, cols) { }
+        
         /// <summary>
         /// Creates a new 2 dimensional table in unmanaged heap memory, using the specified heap.
         /// User should dispose of the table when no longer in use
         /// </summary>
-        /// <param name="heap"><see cref="PrivateHeap"/> to allocate table memory from</param>
+        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate table memory from</param>
         /// <param name="rows">Number of rows in the table</param>
         /// <param name="cols">Number of columns in the table</param>
-        public VnTable(IUnmangedHeap heap, int rows, int cols)
+        public VnTable(IUnmangedHeap heap, uint rows, uint cols)
         {
             if (rows < 0 || cols < 0)
             {
@@ -71,19 +76,28 @@ namespace VNLib.Utils.Memory
             if (rows == 0 && cols == 0)
             {
                 Empty = true;
-                return;
             }
+            else
+            {
+                _ = heap ?? throw new ArgumentNullException(nameof(heap));
 
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+                this.Rows = rows;
+                this.Cols = cols;
 
-            this.Rows = rows;
-            this.Cols = cols;
+                ulong tableSize = checked((ulong) rows * (ulong) cols);
 
-            long tableSize = Math.BigMul(rows, cols);
+                if (tableSize > nuint.MaxValue)
+                {
+#pragma warning disable CA2201 // Do not raise reserved exception types
+                    throw new OutOfMemoryException("Table size is too large");
+#pragma warning restore CA2201 // Do not raise reserved exception types
+                }
 
-            //Alloc a buffer with zero memory enabled, with Rows * Cols number of elements
-            BufferHandle = heap.Alloc<T>(tableSize, true);
+                //Alloc a buffer with zero memory enabled, with Rows * Cols number of elements
+                BufferHandle = heap.Alloc<T>((nuint)tableSize, true);
+            }
         }
+        
         /// <summary>
         /// Gets the value of an item in the table at the given indexes
         /// </summary>
@@ -93,7 +107,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public T Get(int row, int col)
+        public T Get(uint row, uint col)
         {
             Check();
             if (this.Empty)
@@ -114,15 +128,18 @@ namespace VNLib.Utils.Memory
             }
             //Calculate the address in memory for the item
             //Calc row offset
-            long address = Cols * row;
+            ulong address = checked(row * this.Cols);
+            
             //Calc column offset
             address += col;
+            
             unsafe
             {
                 //Get the value item
-                return *(BufferHandle!.GetOffset(address));
+                return *(BufferHandle!.GetOffset((nuint)address));
             }
         }
+        
         /// <summary>
         /// Sets the value of an item in the table at the given address
         /// </summary>
@@ -133,7 +150,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public void Set(int row, int col, T item)
+        public void Set(uint row, uint col, T item)
         {
             Check();
             if (this.Empty)
@@ -152,28 +169,34 @@ namespace VNLib.Utils.Memory
             {
                 throw new ArgumentOutOfRangeException(nameof(col), "Column address out of range of current table");
             }
+            
             //Calculate the address in memory for the item
+            
             //Calc row offset
-            long address = Cols * row;
+            ulong address = checked(Cols * row);
+            
             //Calc column offset
             address += col;
+            
             //Set the value item
             unsafe
             {
-                *BufferHandle!.GetOffset(address) = item;
+                *BufferHandle!.GetOffset((nuint)address) = item;
             }
         }
+        
         /// <summary>
-        /// Equivalent to <see cref="VnTable{T}.Get(int, int)"/> and <see cref="VnTable{T}.Set(int, int, T)"/>
+        /// Equivalent to <see cref="VnTable{T}.Get(uint, uint)"/> and <see cref="VnTable{T}.Set(uint, uint, T)"/>
         /// </summary>
         /// <param name="row">Row address of item</param>
         /// <param name="col">Column address of item</param>
         /// <returns>The value of the item</returns>
-        public T this[int row, int col]
+        public T this[uint row, uint col]
         {
             get => Get(row, col);
             set => Set(row, col, value);
         }
+        
         /// <summary>
         /// Allows for direct addressing in the table. 
         /// </summary>
@@ -200,10 +223,11 @@ namespace VNLib.Utils.Memory
                 *(BufferHandle!.GetOffset(index)) = value;
             }
         }
+        
         ///<inheritdoc/>
         protected override void Free()
         {
-            if (!this.Empty)
+            if (!Empty)
             {
                 //Dispose the buffer
                 BufferHandle!.Dispose();
