@@ -26,6 +26,9 @@ Valid allocator value for the `VNLIB_SHARED_HEAP_TYPE` environment variable:
 - "rpmalloc" - to load the RPMalloc native library if compiled for your platform
 - none - the default value, will attempt to load the win32 private heap Kernel32 library, otherwise, the native ProcessHeap() cross platform allocator
 
+#### Heap Diagnostics
+The Memory.Diagnostics namespace was added to provide a wrapper for tracking IUnmanagedHeap memory allocations. Diagnostics can be enabled for the SharedHeap by setting the `VNLIB_SHARED_HEAP_DIAGNOSTICS` environment variable to "1". When enabled, calling MemoryUtil.GetSharedHeapStats() will return the heap's current statistics, otherwise an empty struct is returned. The SharedHeap diagnostics are disabled by default.
+
 
 ## Usage
 A usage breakdown would be far to lengthy for this library, and instead I intend to keep valid and comprehensive documentation in Visual Studio XML documentation files included in this project's src directory. 

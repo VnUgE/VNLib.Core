@@ -70,13 +70,13 @@ namespace VNLib.Net.Http
         bool HeaderSet(HttpRequestHeader header);
 
         /// <summary>
-        /// Overwrites (sets) the given response header to the exact value specified
+        /// Appends the header value to the current header value
         /// </summary>
         /// <param name="header">The enumrated header id</param>
         /// <param name="value">The value to specify</param>
         void Append(HttpResponseHeader header, string? value);
         /// <summary>
-        /// Overwrites (sets) the given response header to the exact value specified
+        ///  Appends the header value to the current header value
         /// </summary>
         /// <param name="header">The header name</param>
         /// <param name="value">The value to specify</param>

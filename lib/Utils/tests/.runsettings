@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <RunConfiguration>
+        <EnvironmentVariables>
+            <VNLIB_SHARED_HEAP_DIAGNOSTICS>1</VNLIB_SHARED_HEAP_DIAGNOSTICS>
+        </EnvironmentVariables>
+    </RunConfiguration>
+</RunSettings>

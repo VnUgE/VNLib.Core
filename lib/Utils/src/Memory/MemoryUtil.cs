@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: Memory.cs 
+* File: MemoryUtil.cs 
 *
-* Memory.cs is part of VNLib.Utils which is part of the larger 
+* MemoryUtil.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -26,10 +26,12 @@ using System;
 using System.Buffers;
 using System.Security;
 using System.Threading;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Extensions;
+using VNLib.Utils.Memory.Diagnostics;
 
 namespace VNLib.Utils.Memory
 {
@@ -40,8 +42,20 @@ namespace VNLib.Utils.Memory
     [ComVisible(false)]
     public unsafe static class MemoryUtil
     {
+        /// <summary>
+        /// The environment variable name used to specify the shared heap type
+        /// to create
+        /// </summary>
         public const string SHARED_HEAP_TYPE_ENV= "VNLIB_SHARED_HEAP_TYPE";
+        /// <summary>
+        /// When creating a heap that accepts an initial size, this value is passed
+        /// to it, otherwise no initial heap size is set.
+        /// </summary>
         public const string SHARED_HEAP_INTIAL_SIZE_ENV = "VNLIB_SHARED_HEAP_SIZE";
+        /// <summary>
+        /// The environment variable name used to enable share heap diagnostics
+        /// </summary>
+        public const string SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV = "VNLIB_SHARED_HEAP_DIAGNOSTICS";
 
         /// <summary>
         /// Initial shared heap size (bytes)
@@ -70,15 +84,21 @@ namespace VNLib.Utils.Memory
         
         private static readonly Lazy<IUnmangedHeap> _sharedHeap = InitHeapInternal();
 
-        //Avoiding statit initializer
+        //Avoiding static initializer
         private static Lazy<IUnmangedHeap> InitHeapInternal()
         {
-            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true), LazyThreadSafetyMode.PublicationOnly);
+            //Get env for heap diag
+            bool enableDiag = Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV) == "1";
+
+            Trace.WriteIf(enableDiag, "Shared heap diagnostics enabled");
+            
+            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true, enableDiag), LazyThreadSafetyMode.PublicationOnly);
+            
             //Cleanup the heap on process exit
             AppDomain.CurrentDomain.DomainUnload += DomainUnloaded;
+            
             return heap;
         }
-     
 
         private static void DomainUnloaded(object? sender, EventArgs e)
         {
@@ -90,47 +110,68 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
+        /// Gets the shared heap statistics if stats are enabled
+        /// </summary>
+        /// <returns>
+        /// The <see cref="HeapStatistics"/> of the shared heap, or an empty 
+        /// <see cref="HeapStatistics"/> if diagnostics are not enabled.
+        /// </returns>
+        public static HeapStatistics GetSharedHeapStats()
+        {
+            /*
+             * If heap is allocated and the heap type is a tracked heap, 
+             * get the heap's stats, otherwise return an empty handle
+             */
+            return _sharedHeap.IsValueCreated && _sharedHeap.Value is TrackedHeapWrapper h 
+                ? h.GetCurrentStats() : new HeapStatistics();
+        }
+
+        /// <summary>
         /// Initializes a new <see cref="IUnmangedHeap"/> determined by compilation/runtime flags
         /// and operating system type for the current proccess.
         /// </summary>
         /// <returns>An <see cref="IUnmangedHeap"/> for the current process</returns>
         /// <exception cref="SystemException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
-        public static IUnmangedHeap InitializeNewHeapForProcess() => InitHeapInternal(false);
+        public static IUnmangedHeap InitializeNewHeapForProcess() => InitHeapInternal(false, false);
 
-        private static IUnmangedHeap InitHeapInternal(bool isShared)
+        private static IUnmangedHeap InitHeapInternal(bool isShared, bool enableStats)
         {
             bool IsWindows = OperatingSystem.IsWindows();
+            
             //Get environment varable
             string? heapType = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV);
+            
             //Get inital size
             string? sharedSize = Environment.GetEnvironmentVariable(SHARED_HEAP_INTIAL_SIZE_ENV);
+            
             //Try to parse the shared size from the env
             if (!nuint.TryParse(sharedSize, out nuint defaultSize))
             {
                 defaultSize = SHARED_HEAP_INIT_SIZE;
             }
-            //Gen the private heap from its type or default
-            switch (heapType)
+
+            //convert to upper
+            heapType = heapType?.ToUpperInvariant();
+            
+            //Create the heap
+            IUnmangedHeap heap = heapType switch
             {
-                case "win32":
-                    if (!IsWindows)
-                    {
-                        throw new PlatformNotSupportedException("Win32 private heaps are not supported on non-windows platforms");
-                    }
-                    return Win32PrivateHeap.Create(defaultSize);
-                case "rpmalloc":
-                    //If the shared heap is being allocated, then return a lock free global heap
-                    return isShared ? RpMallocPrivateHeap.GlobalHeap : new RpMallocPrivateHeap(false);
-                default:
-                    return IsWindows ? Win32PrivateHeap.Create(defaultSize) : new ProcessHeap();
-            }
+                "WIN32" => IsWindows ? Win32PrivateHeap.Create(defaultSize) : throw new PlatformNotSupportedException("Win32 private heaps are not supported on non-windows platforms"),
+                //If the shared heap is being allocated, then return a lock free global heap
+                "RPMALLOC" => isShared ? RpMallocPrivateHeap.GlobalHeap : new RpMallocPrivateHeap(false),
+                //Get the process heap if the heap is shared, otherwise create a new win32 private heap
+                _ => IsWindows && !isShared ? Win32PrivateHeap.Create(defaultSize) : new ProcessHeap(),
+            };
+
+            //If diagnosticts is enabled, wrap the heap in a stats heap
+            return enableStats ? new TrackedHeapWrapper(heap) : heap;
         }
 
         /// <summary>
         /// Gets a value that indicates if the Rpmalloc native library is loaded
         /// </summary>
-        public static bool IsRpMallocLoaded { get; } = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV) == "rpmalloc";
+        public static bool IsRpMallocLoaded { get; } = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV)?.ToUpperInvariant() == "RPMALLOC";
 
         #region Zero
 
@@ -142,19 +183,23 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void UnsafeZeroMemory<T>(ReadOnlySpan<T> block) where T : unmanaged
         {
-            if (!block.IsEmpty)
+            if (block.IsEmpty)
             {
-                checked
+                return;
+            }
+            
+            uint byteSize = ByteCount<T>((uint)block.Length);
+            
+            checked
+            {
+                fixed (void* ptr = &MemoryMarshal.GetReference(block))
                 {
-                    fixed (void* ptr = &MemoryMarshal.GetReference(block))
-                    {
-                        //Calls memset
-                        Unsafe.InitBlock(ptr, 0, (uint)(block.Length * sizeof(T)));
-                    }
+                    //Calls memset
+                    Unsafe.InitBlock(ptr, 0, byteSize);
                 }
             }
         }
-        
+
         /// <summary>
         /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
@@ -163,15 +208,19 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void UnsafeZeroMemory<T>(ReadOnlyMemory<T> block) where T : unmanaged
         {
-            if (!block.IsEmpty)
+            if (block.IsEmpty)
             {
-                checked
-                {
-                    //Pin memory and get pointer
-                    using MemoryHandle handle = block.Pin();
-                    //Calls memset
-                    Unsafe.InitBlock(handle.Pointer, 0, (uint)(block.Length * sizeof(T)));
-                }
+                return;
+            }
+            
+            uint byteSize = ByteCount<T>((uint)block.Length);
+            
+            checked
+            {
+                //Pin memory and get pointer
+                using MemoryHandle handle = block.Pin();
+                //Calls memset
+                Unsafe.InitBlock(handle.Pointer, 0, byteSize);
             }
         }
 

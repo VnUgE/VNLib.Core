@@ -47,9 +47,9 @@ namespace VNLib.Utils.Extensions
         /// <param name="timer"></param>
         /// <param name="resumeTime"><see cref="TimeSpan"/> representing the amount of time the timer should wait before invoking the callback function</param>
         /// <returns>A new <see cref="OpenHandle"/> if the timer was stopped successfully that will resume the timer when closed, null otherwise</returns>
-        public static TimerResetHandle? Stop(this Timer timer, TimeSpan resumeTime)
+        public static TimerResumeHandle? Stop(this Timer timer, TimeSpan resumeTime)
         {
-            return timer.Change(Timeout.Infinite, Timeout.Infinite) ? new TimerResetHandle(timer, resumeTime) : null;
+            return timer.Change(Timeout.Infinite, Timeout.Infinite) ? new TimerResumeHandle(timer, resumeTime) : null;
         }
 
         /// <summary>

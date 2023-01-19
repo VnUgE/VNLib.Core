@@ -78,6 +78,7 @@ namespace VNLib.Net.Messaging.FBM
         /// Alloctes a random integer to use as a message id
         /// </summary>
         public static int RandomMessageId => RandomNumberGenerator.GetInt32(1, int.MaxValue);
+        
         /// <summary>
         /// Gets the remaining data after the current position of the stream.
         /// </summary>
@@ -197,7 +198,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="header">The <see cref="HeaderCommand"/> of the header</param>
         /// <param name="value">The value of the header</param>
         /// <param name="encoding">Encoding to use when writing character message</param>
-        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void WriteHeader(ref this ForwardOnlyWriter<byte> buffer, byte header, ReadOnlySpan<char> value, Encoding encoding)
         {
             //get char count
@@ -205,7 +206,7 @@ namespace VNLib.Net.Messaging.FBM
             //make sure there is enough room in the buffer
             if (buffer.RemainingSize < byteCount)
             {
-                throw new OutOfMemoryException();
+                throw new ArgumentOutOfRangeException(nameof(value),"The internal buffer is too small to write header");
             }
             //Write header command enum value
             buffer.Append(header);

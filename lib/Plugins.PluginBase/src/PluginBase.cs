@@ -197,11 +197,19 @@ namespace VNLib.Plugins
                 {
                     interval = Enum.Parse<RollingInterval>(intervalEl.GetString()!, true);
                 }
+
+                if(filePath != null)
+                {
+                    //Get the file name to replace with the plugin name
+                    string appLogName = Path.GetFileNameWithoutExtension(filePath);
+                    
+                    //Replace the file name
+                    filePath = filePath.Replace(appLogName, PluginName, StringComparison.Ordinal);
+                }
             }
 
             //Default if not set
             filePath ??= Path.Combine(Environment.CurrentDirectory, $"{PluginName}.txt");
-            template ??= LogTemplate;
 
             //Configure the log file writer
             logConfig.WriteTo.File(filePath,

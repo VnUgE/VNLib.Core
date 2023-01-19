@@ -42,7 +42,7 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => Shared.Alloc<byte>(-1));
 
             //Make sure over-alloc throws
-            Assert.ThrowsException<NativeMemoryOutOfMemoryException>(() => Shared.Alloc<byte>(nuint.MaxValue, false));
+            Assert.ThrowsException<OutOfMemoryException>(() => Shared.Alloc<byte>(nuint.MaxValue, false));
         }
 #if TARGET_64_BIT
         [TestMethod]

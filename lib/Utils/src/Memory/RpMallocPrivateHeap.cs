@@ -226,7 +226,7 @@ namespace VNLib.Utils.Memory
         /// Initializes a new RpMalloc first class heap to allocate memory blocks from
         /// </summary>
         /// <param name="zeroAll">A global flag to zero all blocks of memory allocated</param>
-        /// <exception cref="NativeMemoryOutOfMemoryException"></exception>
+        /// <exception cref="NativeMemoryException"></exception>
         public RpMallocPrivateHeap(bool zeroAll):base(zeroAll, true)
         {
             //Alloc the heap

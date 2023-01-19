@@ -86,6 +86,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             //Casting PrivateStrings to spans will reference the base string directly
             return Verify((ReadOnlySpan<char>)passHash, (ReadOnlySpan<char>)password);
         }
+        
         /// <summary>
         /// Verifies a password against its previously encoded hash.
         /// </summary>
@@ -116,6 +117,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 MemoryUtil.InitializeBlock(secretBuffer.Span);
             }
         }
+        
         /// <summary>
         /// Verifies a password against its hash. Partially exposes the Argon2 api.
         /// </summary>
@@ -203,6 +205,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 MemoryUtil.InitializeBlock(buffer.Span);
             }
         }
+        
         /// <summary>
         /// Partially exposes the Argon2 api. Hashes the specified password, with the initialized pepper.
         /// Writes the raw hash output to the specified buffer

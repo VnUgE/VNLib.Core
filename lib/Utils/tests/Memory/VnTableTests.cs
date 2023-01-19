@@ -53,9 +53,9 @@ namespace VNLib.Utils.Memory.Tests
 
             
             //Test oom, should be native
-            Assert.ThrowsException<NativeMemoryOutOfMemoryException>(() =>
+            Assert.ThrowsException<OutOfMemoryException>(() =>
             {
-                using VnTable<int> table = new(int.MaxValue, 2);
+                using VnTable<int> table = new(uint.MaxValue, 3);
             });
         }
 

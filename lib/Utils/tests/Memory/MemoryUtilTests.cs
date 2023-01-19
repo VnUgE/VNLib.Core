@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using VNLib.Utils.Extensions;
+using VNLib.Utils.Memory.Diagnostics;
 
 namespace VNLib.Utils.Memory.Tests
 {
@@ -243,7 +244,7 @@ namespace VNLib.Utils.Memory.Tests
                 //Test pinned outsie handle size
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(1024));
             }
-           
+
 
             //Negative value
             Assert.ThrowsException<ArgumentException>(() => _ = MemoryUtil.SafeAlloc<byte>(-1));
@@ -328,6 +329,80 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(0 == s->Y);
             //Free struct
             MemoryUtil.Shared.StructFree(s);
+        }
+
+        [TestMethod()]
+        public void GetSharedHeapStatsTest()
+        {
+            //Confirm heap diagnostics are enabled
+            Assert.AreEqual<string?>(Environment.GetEnvironmentVariable(MemoryUtil.SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), "1");
+
+            //Get current stats
+            HeapStatistics preTest = MemoryUtil.GetSharedHeapStats();
+
+            //Alloc block
+            using IMemoryHandle<byte> handle = MemoryUtil.Shared.Alloc<byte>(1024);
+
+            //Get stats
+            HeapStatistics postTest = MemoryUtil.GetSharedHeapStats();
+
+            Assert.IsTrue(postTest.AllocatedBytes == preTest.AllocatedBytes + 1024);
+            Assert.IsTrue(postTest.AllocatedBlocks == preTest.AllocatedBlocks + 1);
+
+            //Free block
+            handle.Dispose();
+
+            //Get stats
+            HeapStatistics postFree = MemoryUtil.GetSharedHeapStats();
+
+            //Confirm stats are back to pre test
+            Assert.IsTrue(preTest.AllocatedBytes == postFree.AllocatedBytes);
+            Assert.IsTrue(preTest.AllocatedBlocks == postFree.AllocatedBlocks);
+        }
+
+        [TestMethod()]
+        public void DiagnosticsHeapWraperTest()
+        {
+            //Get a fresh heap
+            IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess();
+
+            //Init wrapper and dispose
+            using TrackedHeapWrapper wrapper = new(heap);
+
+            //Confirm 0 stats
+            HeapStatistics preTest = wrapper.GetCurrentStats();
+
+            Assert.IsTrue(preTest.AllocatedBytes == 0);
+            Assert.IsTrue(preTest.AllocatedBlocks == 0);
+            Assert.IsTrue(preTest.MaxHeapSize == 0);
+            Assert.IsTrue(preTest.MaxBlockSize == 0);
+            Assert.IsTrue(preTest.MinBlockSize == ulong.MaxValue);
+
+            //Alloc a test block
+            using IMemoryHandle<byte> handle = wrapper.Alloc<byte>(1024);
+
+            //Get stats
+            HeapStatistics postTest = wrapper.GetCurrentStats();
+
+            //Confirm stats represent a single block
+            Assert.IsTrue(postTest.AllocatedBytes == 1024);
+            Assert.IsTrue(postTest.AllocatedBlocks == 1);
+            Assert.IsTrue(postTest.MaxHeapSize == 1024);
+            Assert.IsTrue(postTest.MaxBlockSize == 1024);
+            Assert.IsTrue(postTest.MinBlockSize == 1024);
+
+            //Free the block
+            handle.Dispose();
+
+            //Get stats
+            HeapStatistics postFree = wrapper.GetCurrentStats();
+
+            //Confirm stats are back to 0, or represent the single block
+            Assert.IsTrue(postFree.AllocatedBytes == 0);
+            Assert.IsTrue(postFree.AllocatedBlocks == 0);
+            Assert.IsTrue(postFree.MaxHeapSize == 1024);
+            Assert.IsTrue(postFree.MaxBlockSize == 1024);
+            Assert.IsTrue(postFree.MinBlockSize == 1024);
         }
     }
 }
