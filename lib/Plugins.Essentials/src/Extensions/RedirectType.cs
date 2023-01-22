@@ -31,7 +31,29 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// </summary>
     public enum RedirectType
     {
+        /// <summary>
+        /// NOT-USED
+        /// </summary>
         None,
-        Moved = 301, Found = 302, SeeOther = 303, Temporary = 307, Permanent = 308
+        /// <summary>
+        /// Sets the HTTP 301 response code for a "moved" redirect 
+        /// </summary>
+        Moved = 301,
+        /// <summary>
+        /// Sets the HTTP 302 response code for a "Found" redirect
+        /// </summary>
+        Found = 302, 
+        /// <summary>
+        /// Sets the HTTP 303 response code for a "SeeOther" redirect
+        /// </summary>
+        SeeOther = 303,
+        /// <summary>
+        /// Sets the HTTP 307 response code for a "Temporary" redirect
+        /// </summary>
+        Temporary = 307,
+        /// <summary>
+        /// Sets the HTTP 308 response code for a "Permanent" redirect
+        /// </summary>
+        Permanent = 308
     }
 }

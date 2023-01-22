@@ -88,11 +88,11 @@ namespace VNLib.Utils.Memory
         private static Lazy<IUnmangedHeap> InitHeapInternal()
         {
             //Get env for heap diag
-            bool enableDiag = Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV) == "1";
-
-            Trace.WriteIf(enableDiag, "Shared heap diagnostics enabled");
+            _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
+           
+            Trace.WriteIf(diagEnable, "Shared heap diagnostics enabled");
             
-            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true, enableDiag), LazyThreadSafetyMode.PublicationOnly);
+            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true, diagEnable), LazyThreadSafetyMode.PublicationOnly);
             
             //Cleanup the heap on process exit
             AppDomain.CurrentDomain.DomainUnload += DomainUnloaded;
@@ -505,6 +505,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OverflowException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nuint ByteCount<T>(nuint elementCount) => checked(elementCount * (nuint)Unsafe.SizeOf<T>());
+
         /// <summary>
         /// Gets the byte multiple of the length parameter
         /// </summary>

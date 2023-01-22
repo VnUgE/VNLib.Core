@@ -35,7 +35,6 @@ using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 
-
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
@@ -187,7 +186,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                     try
                     {
                         sw.Start();
+
                         await plugin.InitLoaderAsync();
+
                         //Listen for reload events to remove and re-add endpoints
                         plugin.Reloaded += OnPluginReloaded;
 

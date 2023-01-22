@@ -11,6 +11,9 @@
     <RootNamespace>VNLib.Net.Rest.Client</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

@@ -155,9 +155,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                 //No more contexts in use, dispose internals
                 if (Cancellation.IsCancellationRequested && current == 0)
                 {
-                    ResponseLock.Dispose();
-                    Cancellation.Dispose();
-                    CtxStore.Dispose();
+                    CleanupInternal();
                 }
             }
         }

@@ -210,6 +210,7 @@ namespace VNLib.Plugins
 
             //Default if not set
             filePath ??= Path.Combine(Environment.CurrentDirectory, $"{PluginName}.txt");
+            template ??= LogTemplate;
 
             //Configure the log file writer
             logConfig.WriteTo.File(filePath,

@@ -124,14 +124,36 @@ namespace VNLib.Utils
         public readonly override int GetHashCode() => ErrorCode.GetHashCode();
 
         /// <summary>
+        /// Attempts to parse the value of the character sequence as a new error code
+        /// </summary>
+        /// <param name="value">The character sequence value to parse</param>
+        /// <param name="result">The value </param>
+        /// <returns>True if the value was successfully parsed, false othwerwise</returns>
+        public static bool TryParse(ReadOnlySpan<char> value, out ERRNO result)
+        {
+            result = 0;
+            if (nint.TryParse(value, out nint res))
+            {
+                result = new ERRNO(res);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// The integer error value of the current instance in radix 10
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The radix 10 formatted error code</returns>
         public readonly override string ToString()
         {
             //Return the string of the error code number
             return ErrorCode.ToString();
         }
+        /// <summary>
+        /// Formats the internal nint error code as a string in specified format
+        /// </summary>
+        /// <param name="format">The format to use</param>
+        /// <returns>The formatted error code</returns>
         public readonly string ToString(string format)
         {
             //Return the string of the error code number
@@ -143,6 +165,7 @@ namespace VNLib.Utils
         {
             return ErrorCode.TryFormat(destination, out charsWritten, format, provider);
         }
+        
         ///<inheritdoc/>
         public readonly string ToString(string format, IFormatProvider formatProvider)
         {

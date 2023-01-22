@@ -20,6 +20,7 @@ outside of the VNLib ecosystem are required. The VNLib.Plugins and VNLib.Plugins
     <AnalysisLevel>latest-all</AnalysisLevel>
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
   
   <!-- Resolve nuget dll files and store them in the output dir -->

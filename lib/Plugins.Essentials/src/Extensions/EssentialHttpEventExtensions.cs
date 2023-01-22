@@ -428,9 +428,16 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Redirect(this IHttpEvent ev, RedirectType type, Uri location)
         {
+            
+            if(type == RedirectType.None)
+            {
+                throw new ArgumentException("Invalid redirect type of none", nameof(type));
+            }
+
             //Encode the string for propery http url formatting and set the location header
             ev.Server.Headers[HttpResponseHeader.Location] = location.ToString();
             ev.Server.SetNoCache();
+
             //Set redirect the ressponse redirect code type
             ev.CloseResponse((HttpStatusCode)type);
         }
