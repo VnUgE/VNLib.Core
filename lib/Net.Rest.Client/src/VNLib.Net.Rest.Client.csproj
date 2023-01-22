@@ -2,18 +2,21 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
-    <Authors>Vaughn Nugent</Authors>
-    <Version>1.0.1.1</Version>
-    <Description>An Oauth2 rest client connection pool for OAuth2 authenticated services</Description>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>    
     <AssemblyName>VNLib.Net.Rest.Client</AssemblyName>
     <RootNamespace>VNLib.Net.Rest.Client</RootNamespace>
+    <Version>1.0.1.1</Version>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Vaughn Nugent</Authors>
+    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Description>An Oauth2 rest client connection pool for OAuth2 authenticated services</Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

@@ -1,21 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-     <Nullable>enable</Nullable>
+    <Nullable>enable</Nullable>
     <TargetFramework>net6.0</TargetFramework>
-    <Authors>Vaughn Nugent</Authors>
-    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
-    <Description>A runtime plugin loader for .NET. Allows runtime loading and tracking of .NET assemblies 
-that export the VNLib.Plugin.IPlugin interface.</Description>
+    <RootNamespace>VNLib.Plugins.Runtime</RootNamespace>
+    <AssemblyName>VNLib.Plugins.Runtime</AssemblyName>
     <Version>1.0.1.1</Version>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
-    <!-- Resolve nuget dll files and store them in the output dir -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <AnalysisLevel>latest-all</AnalysisLevel>
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
+    <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Vaughn Nugent</Authors>
+    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Description>
+      A runtime plugin loader for .NET. Allows runtime loading and tracking of .NET assemblies
+      that export the VNLib.Plugin.IPlugin interface.
+    </Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

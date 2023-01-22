@@ -1,28 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    
     <TargetFramework>net6.0</TargetFramework>
-    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
-    <Version>1.0.1.3</Version>
-    <Product>VNLib Hashing Function/Alg Library</Product>
-    <Description>Provides managed and random cryptocraphic hashing helper classes, including complete Argon2 password hashing.</Description>
-    <Authors>Vaughn Nugent</Authors>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    
+    <Version>1.0.1.3</Version>    
+    
     <AssemblyName>VNLib.Hashing.Portable</AssemblyName>
     <RootNamespace>VNLib.Hashing</RootNamespace>
+
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    
+    <Nullable>enable</Nullable>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
-  <!-- Resolve nuget dll files and store them in the output dir -->
   <PropertyGroup>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <AnalysisLevel>latest-all</AnalysisLevel>
-    <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <Product>VNLib Hashing Function/Alg Library</Product>
+    <Description>Provides managed and random cryptocraphic hashing helper classes, including complete Argon2 password hashing.</Description>
+    <Authors>Vaughn Nugent</Authors>
+    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,15 +42,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Argon2.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-    <None Update="Argon2RefDll.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

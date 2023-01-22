@@ -3,17 +3,24 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>VNLib.Plugins.Essentials.ServiceStack</RootNamespace>
+    <AssemblyName>VNLib.Plugins.Essentials.ServiceStack</AssemblyName>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <Authors>Vaughn Nugent</Authors>
-    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
+    
     <Version>1.0.1.2</Version>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Vaughn Nugent</Authors>
+    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

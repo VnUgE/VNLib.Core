@@ -4,23 +4,22 @@
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Plugins</RootNamespace>
     <PackageId>VNLib.Plugins.PluginBase</PackageId>
+    <AssemblyName>VNLib.Plugins.PluginBase</AssemblyName>
     <Version>1.0.1.2</Version>
-    <Authors>Vaughn Nugent</Authors>
-    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
-    <DocumentationFile></DocumentationFile>
+    <AnalysisLevel>latest-all</AnalysisLevel>
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <!-- Resolve nuget dll files and store them in the output dir -->
   <PropertyGroup>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <AnalysisLevel>latest-all</AnalysisLevel>
+    <Authors>Vaughn Nugent</Authors>
+    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
     <Description>A base class for VNLib.Plugins that provides all supported loading functionalities, with built-in logging, loading, task-managment and endpoint routing.</Description>
   </PropertyGroup>
+  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <Deterministic>False</Deterministic>
   </PropertyGroup>

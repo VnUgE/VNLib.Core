@@ -3,13 +3,9 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Utils</RootNamespace>
-    <Authors>Vaughn Nugent</Authors>
-    <Product>VNLib Utilities Library</Product>
-    <Copyright>Copyright © 2022 Vaughn Nugent</Copyright>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+
     <AssemblyName>VNLib.Utils</AssemblyName>
-    <Version>1.0.1.10</Version>
-    <Description>Base utilities library, structs, classes</Description>
+    <Version>1.0.1.10</Version>    
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
@@ -18,7 +14,15 @@
     <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
- 
+
+  <PropertyGroup>
+    <Authors>Vaughn Nugent</Authors>
+    <Product>VNLib Utilities Library</Product>
+    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <Description>Base utilities library, structs, classes</Description>
+  </PropertyGroup>
+  
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
   </ItemGroup>
