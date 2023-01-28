@@ -24,6 +24,9 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 using VNLib.Utils.IO;
 
 namespace VNLib.Net.Messaging.FBM.Client
@@ -31,7 +34,7 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// <summary>
     /// Represents a shared internal character and bianry buffer for
     /// </summary>
-    internal sealed class FBMBuffer : IDisposable
+    internal sealed class FBMBuffer : IFBMHeaderBuffer, IDisposable
     {
         private readonly IMemoryOwner<byte> Handle;
 
@@ -70,16 +73,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Return the internal writer
             return _writer;
         }
-
-        /// <summary>
-        /// Gets the buffer manager for managing response headers
-        /// </summary>
-        /// <returns>The <see cref="FBMHeaderBuffer"/> for managing response header buffers</returns>
-        public FBMHeaderBuffer GetResponseHeaderBuffer()
-        {
-            //Get a buffer wrapper around the memory handle
-            return new FBMHeaderBuffer(Handle.Memory);
-        }
+       
 
         public void Dispose()
         {
@@ -99,6 +93,20 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Write message id to accumulator, it should already be reset
             Helpers.WriteMessageid(RequestBuffer, messageId);
         }
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        Span<char> IFBMHeaderBuffer.GetSpan(int offset, int count)
+        {
+            //Get the character span
+            Span<char> span = MemoryMarshal.Cast<byte, char>(Handle.Memory.Span);
+            return span.Slice(offset, count);
+        }
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        Span<char> IFBMHeaderBuffer.GetSpan() => MemoryMarshal.Cast<byte, char>(Handle.Memory.Span);
+
 
         private sealed class BinaryRequestAccumulator : IDataAccumulator<byte>
         {

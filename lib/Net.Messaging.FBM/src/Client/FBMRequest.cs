@@ -210,12 +210,9 @@ namespace VNLib.Net.Messaging.FBM.Client
                  * The headers are read into a list of key-value pairs and the stream
                  * is positioned to the start of the message body
                  */
-               
-                //Get the response header buffer for parsing
-                FBMHeaderBuffer headerBuf = Buffer.GetResponseHeaderBuffer();
 
                 //Parse message headers
-                HeaderParseError statusFlags = Helpers.ParseHeaders(Response, in headerBuf, ResponseHeaderList, HeaderEncoding);
+                HeaderParseError statusFlags = Helpers.ParseHeaders(Response, Buffer, ResponseHeaderList, HeaderEncoding);
 
                 //return response structure
                 return new(Response, statusFlags, ResponseHeaderList, OnResponseDisposed);

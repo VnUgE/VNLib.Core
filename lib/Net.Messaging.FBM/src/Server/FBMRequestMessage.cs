@@ -27,6 +27,7 @@ using System.Text;
 using System.Buffers;
 using System.Text.Json;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
@@ -37,7 +38,7 @@ namespace VNLib.Net.Messaging.FBM.Server
     /// <summary>
     /// Represents a client request message to be serviced
     /// </summary>
-    public sealed class FBMRequestMessage : IReusable
+    public sealed class FBMRequestMessage : IFBMHeaderBuffer, IReusable
     {
         private readonly List<FBMMessageHeader> _headers;
         private readonly int HeaderBufferSize;
@@ -52,7 +53,7 @@ namespace VNLib.Net.Messaging.FBM.Server
             _headers = new();
         }
 
-        private byte[]? _headerBuffer;
+        private char[]? _headerBuffer;
         
         /// <summary>
         /// The ID of the current message
@@ -109,13 +110,10 @@ namespace VNLib.Net.Messaging.FBM.Server
                 return;
             }
 
-            ConnectionId = socketId;
-
-            //Get mesage buffer wrapper around the header
-            FBMHeaderBuffer buffer = new(_headerBuffer);
+            ConnectionId = socketId;          
 
             //Parse headers
-            ParseStatus = Helpers.ParseHeaders(vms, in buffer, _headers, dataEncoding);
+            ParseStatus = Helpers.ParseHeaders(vms, this, _headers, dataEncoding);
         }
         
         /// <summary>
@@ -145,7 +143,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         {
             ParseStatus = HeaderParseError.None;
             //Alloc header buffer
-            _headerBuffer = ArrayPool<byte>.Shared.Rent(HeaderBufferSize);
+            _headerBuffer = ArrayPool<char>.Shared.Rent(HeaderBufferSize);
         }
         
        
@@ -157,12 +155,21 @@ namespace VNLib.Net.Messaging.FBM.Server
             //Clear headers before freeing buffer
             _headers.Clear();
             //Free header-buffer
-            ArrayPool<byte>.Shared.Return(_headerBuffer!);
+            ArrayPool<char>.Shared.Return(_headerBuffer!);
             _headerBuffer = null;
             ConnectionId = null;
             MessageId = 0;
             IsControlFrame = false;
             return true;
         }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        Span<char> IFBMHeaderBuffer.GetSpan(int offset, int count) 
+            => _headerBuffer != null ? _headerBuffer.AsSpan(offset, count) : throw new InvalidOperationException("The buffer is no longer available");
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        Span<char> IFBMHeaderBuffer.GetSpan() => _headerBuffer ?? throw new InvalidOperationException("The buffer is no longer available");
+
     }
 }

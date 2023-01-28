@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
-* File: FBMHeaderBuffer.cs 
+* File: IFBMHeaderBuffer.cs 
 *
-* FBMHeaderBuffer.cs is part of VNLib.Net.Messaging.FBM which is part of the larger 
+* IFBMHeaderBuffer.cs is part of VNLib.Net.Messaging.FBM which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Messaging.FBM is free software: you can redistribute it and/or modify 
@@ -24,17 +24,11 @@
 
 using System;
 
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
-
 namespace VNLib.Net.Messaging.FBM
 {
-    internal readonly struct FBMHeaderBuffer
+
+    internal interface IFBMHeaderBuffer
     {
-        private readonly Memory<byte> _handle;
-
-        internal FBMHeaderBuffer(Memory<byte> handle) => _handle = handle;
-
         /// <summary>
         /// Gets a character squence within the binary buffer of the specified
         /// character offset and length
@@ -42,19 +36,12 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="offset">The character offset within the internal buffer</param>
         /// <param name="count">The number of characters within the desired span</param>
         /// <returns>A span at the given character offset and of the specified length</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<char> GetSpan(int offset, int count)
-        {
-            //Get the character span
-            Span<char> span = GetSpan();
-            return span.Slice(offset, count);
-        }
+        Span<char> GetSpan(int offset, int count);
 
         /// <summary>
         /// Gets the entire internal buffer as a character span
         /// </summary>
         /// <returns>A span over the entire internal buffer</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<char> GetSpan() => MemoryMarshal.Cast<byte, char>(_handle.Span);
+        Span<char> GetSpan();
     }
 }

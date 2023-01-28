@@ -32,7 +32,14 @@ namespace VNLib.Net.Messaging.FBM
     /// </summary>
     public readonly struct FBMMessageHeader : IEquatable<FBMMessageHeader>
     {
-        private readonly FBMHeaderBuffer _buffer;
+        private readonly IFBMHeaderBuffer _buffer;
+
+        /*
+         * Header values are all stored consecutively inside a single
+         * buffer, position the value is stored within the buffer
+         * is designated by it's absolute offset and length within
+         * the buffer segment
+         */
         private readonly int _headerOffset;
         private readonly int _headerLength;
 
@@ -42,15 +49,15 @@ namespace VNLib.Net.Messaging.FBM
         public readonly HeaderCommand Header { get; }
 
         /// <summary>
-        /// The header value
+        /// The header value, or <see cref="ReadOnlySpan{T}.Empty"/> if default
         /// </summary>
-        public readonly ReadOnlySpan<char> Value => _buffer.GetSpan(_headerOffset, _headerLength);
+        public readonly ReadOnlySpan<char> Value => _buffer != null ? _buffer.GetSpan(_headerOffset, _headerLength) : null;
 
         /// <summary>
-        /// Gets the header value as a <see cref="string"/>
+        /// Gets the header value as a <see cref="string"/> or null if default instance
         /// </summary>
         /// <returns>The allocates string of the value</returns>
-        public readonly string GetValueString() => Value.ToString();
+        public readonly string? GetValueString() => _buffer != null ? Value.ToString() : null;
 
         /// <summary>
         /// Initializes a new <see cref="FBMMessageHeader"/> of the sepcified command 
@@ -60,7 +67,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="command">The command this header represents</param>
         /// <param name="offset">The char offset within the buffer our header begins</param>
         /// <param name="length">The character length of our header value</param>
-        internal FBMMessageHeader(FBMHeaderBuffer buffer, HeaderCommand command, int offset, int length)
+        internal FBMMessageHeader(IFBMHeaderBuffer buffer, HeaderCommand command, int offset, int length)
         {
             Header = command;
             _buffer = buffer;

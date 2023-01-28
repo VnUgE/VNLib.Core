@@ -155,7 +155,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="headers">The collection to store headers in</param>
         /// <param name="encoding">The encoding type used to deocde header values</param>
         /// <returns>The results of the parse operation</returns>
-        internal static HeaderParseError ParseHeaders(VnMemoryStream vms, in FBMHeaderBuffer buffer, ICollection<FBMMessageHeader> headers, Encoding encoding)
+        internal static HeaderParseError ParseHeaders(VnMemoryStream vms, IFBMHeaderBuffer buffer, ICollection<FBMMessageHeader> headers, Encoding encoding)
         {
             HeaderParseError status = HeaderParseError.None;
             
