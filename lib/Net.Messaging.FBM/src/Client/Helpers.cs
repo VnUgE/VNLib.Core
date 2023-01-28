@@ -25,14 +25,15 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-
 
 namespace VNLib.Net.Messaging.FBM
 {
@@ -46,8 +47,15 @@ namespace VNLib.Net.Messaging.FBM
         /// </summary>
         public const int CONTROL_FRAME_MID = -500;
 
-        public static readonly Encoding DefaultEncoding = Encoding.UTF8;
-        public static readonly ReadOnlyMemory<byte> Termination = new byte[] { 0xFF, 0xF1 };
+        /// <summary>
+        /// Gets the default header character encoding instance
+        /// </summary>
+        public static Encoding DefaultEncoding { get; } = Encoding.UTF8;
+        
+        /// <summary>
+        /// The FBM protocol header line termination symbols
+        /// </summary>
+        public static ReadOnlyMemory<byte> Termination { get; } = new byte[] { 0xFF, 0xF1 };
 
         /// <summary>
         /// Parses the header line for a message-id
@@ -61,29 +69,57 @@ namespace VNLib.Net.Messaging.FBM
             {
                 return -1;
             }
+            
             //The first byte should be the header id
             HeaderCommand headerId = (HeaderCommand)line[0];
+            
             //Make sure the headerid is set
             if (headerId != HeaderCommand.MessageId)
             {
                 return -2;
             }
+            
             //Get the messageid after the header byte
             ReadOnlySpan<byte> messageIdSegment = line.Slice(1, sizeof(int));
+            
             //get the messageid from the messageid segment
-            return BitConverter.ToInt32(messageIdSegment);
+            return BinaryPrimitives.ReadInt32BigEndian(messageIdSegment);
         }
+
+        /// <summary>
+        /// Appends the message id header to the accumulator 
+        /// </summary>
+        /// <param name="accumulator">The accumulatore to write the message id to</param>
+        /// <param name="messageid">The message id to write to the accumulator</param>
+        public static void WriteMessageid(IDataAccumulator<byte> accumulator, int messageid)
+        {
+            //Alloc buffer for message id + the message id header
+            Span<byte> buffer = stackalloc byte[sizeof(int) + 1];
+
+            //Set 1st byte as message id
+            buffer[0] = (byte)HeaderCommand.MessageId;
+
+            //Write the message id as a big-endian message
+            BinaryPrimitives.WriteInt32BigEndian(buffer[1..], messageid);
+            
+            //Write the header and message id + the trailing termination
+            accumulator.Append(buffer);
+
+            WriteTermination(accumulator);
+        }
+       
 
         /// <summary>
         /// Alloctes a random integer to use as a message id
         /// </summary>
         public static int RandomMessageId => RandomNumberGenerator.GetInt32(1, int.MaxValue);
-        
+
         /// <summary>
         /// Gets the remaining data after the current position of the stream.
         /// </summary>
         /// <param name="response">The stream to segment</param>
         /// <returns>The remaining data segment</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ReadOnlySpan<byte> GetRemainingData(VnMemoryStream response)
         {
             return response.AsSpan()[(int)response.Position..];
@@ -109,6 +145,7 @@ namespace VNLib.Net.Messaging.FBM
             //slice up line and exclude the termination
             return line[..index];
         }
+
         /// <summary>
         /// Parses headers from the request stream, stores headers from the buffer into the 
         /// header collection
@@ -118,24 +155,31 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="headers">The collection to store headers in</param>
         /// <param name="encoding">The encoding type used to deocde header values</param>
         /// <returns>The results of the parse operation</returns>
-        public static HeaderParseError ParseHeaders(VnMemoryStream vms, char[] buffer, ICollection<KeyValuePair<HeaderCommand, ReadOnlyMemory<char>>> headers, Encoding encoding)
+        internal static HeaderParseError ParseHeaders(VnMemoryStream vms, in FBMHeaderBuffer buffer, ICollection<FBMMessageHeader> headers, Encoding encoding)
         {
             HeaderParseError status = HeaderParseError.None;
-            //sliding window
-            Memory<char> currentWindow = buffer;
+            
+            //Get a sliding window writer over the enitre buffer
+            ForwardOnlyWriter<char> writer = new(buffer.GetSpan());
+
             //Accumulate headers
             while (true)
             {
                 //Read the next line from the current stream
                 ReadOnlySpan<byte> line = ReadLine(vms);
+
                 if (line.IsEmpty)
                 {
                     //Done reading headers
                     break;
                 }
+
+                //Read the header command from the next line
                 HeaderCommand cmd = GetHeaderCommand(line);
-                //Get header value
-                ERRNO charsRead = GetHeaderValue(line, currentWindow.Span, encoding);
+
+                //Write the next header value from the line to the remaining space in the buffer
+                ERRNO charsRead = GetHeaderValue(line, writer.Remaining, encoding);
+
                 if (charsRead < 0)
                 {
                     //Out of buffer space
@@ -149,10 +193,14 @@ namespace VNLib.Net.Messaging.FBM
                 }
                 else
                 {
+                    //Use the writer to capture the offset, and the character size
+                    FBMMessageHeader header = new(buffer, cmd, writer.Written, (int)charsRead);
+
                     //Store header as a read-only sequence
-                    headers.Add(new(cmd, currentWindow[..(int)charsRead]));
-                    //Shift buffer window
-                    currentWindow = currentWindow[(int)charsRead..];
+                    headers.Add(header);
+
+                    //Advance the writer
+                    writer.Advance(charsRead);
                 }
             }
             return status;
@@ -163,10 +211,12 @@ namespace VNLib.Net.Messaging.FBM
         /// </summary>
         /// <param name="line"></param>
         /// <returns>The <see cref="HeaderCommand"/> enum value from hte first byte of the message</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static HeaderCommand GetHeaderCommand(ReadOnlySpan<byte> line)
         {
             return (HeaderCommand)line[0];
         }
+
         /// <summary>
         /// Gets the value of the header following the colon bytes in the specifed
         /// data message data line
@@ -174,7 +224,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="line">The message header line to get the value of</param>
         /// <param name="output">The output character buffer to write characters to</param>
         /// <param name="encoding">The encoding to decode the specified data with</param>
-        /// <returns>The number of characters encoded</returns>
+        /// <returns>The number of characters encoded or -1 if the output buffer is too small</returns>
         public static ERRNO GetHeaderValue(ReadOnlySpan<byte> line, Span<char> output, Encoding encoding)
         {
             //Get the data following the header byte
@@ -190,31 +240,7 @@ namespace VNLib.Net.Messaging.FBM
             _ = encoding.GetChars(value, output);
             return charCount;
         }
-
-        /// <summary>
-        /// Appends an arbitrary header to the current request buffer
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="header">The <see cref="HeaderCommand"/> of the header</param>
-        /// <param name="value">The value of the header</param>
-        /// <param name="encoding">Encoding to use when writing character message</param>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void WriteHeader(ref this ForwardOnlyWriter<byte> buffer, byte header, ReadOnlySpan<char> value, Encoding encoding)
-        {
-            //get char count
-            int byteCount = encoding.GetByteCount(value);
-            //make sure there is enough room in the buffer
-            if (buffer.RemainingSize < byteCount)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value),"The internal buffer is too small to write header");
-            }
-            //Write header command enum value
-            buffer.Append(header);
-            //Convert the characters to binary and write to the buffer
-            encoding.GetBytes(value, ref buffer);
-            //Write termination (0)
-            buffer.WriteTermination();
-        }
+      
 
         /// <summary>
         /// Ends the header section of the request and appends the message body to 
@@ -223,32 +249,38 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="buffer"></param>
         /// <param name="body">The message body to send with request</param>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static void WriteBody(ref this ForwardOnlyWriter<byte> buffer, ReadOnlySpan<byte> body)
+        public static void WriteBody(IDataAccumulator<byte> buffer, ReadOnlySpan<byte> body)
         {
             //start with termination
-            buffer.WriteTermination();
+            WriteTermination(buffer);
             //Write the body
             buffer.Append(body);
         }
+
+
         /// <summary>
-        /// Writes a line termination to the message buffer
+        /// Rounds the requested byte size up to the 1kb 
+        /// number of bytes
         /// </summary>
-        /// <param name="buffer"></param>
-        public static void WriteTermination(ref this ForwardOnlyWriter<byte> buffer)
+        /// <param name="byteSize">The number of bytes to get the rounded 1kb size of</param>
+        /// <returns>The number of bytes equivalent to the requested byte size rounded to the next 1kb size</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nint ToNearestKb(nint byteSize)
         {
-            //write termination 
-            buffer.Append(Termination.Span);
+            //Get page count by dividing count by number of pages
+            nint kbs = (nint)Math.Ceiling(byteSize / (double)1024);
+
+            //Multiply back to page sizes
+            return kbs * 1024;
         }
+
 
         /// <summary>
         /// Writes a line termination to the message buffer
         /// </summary>
         /// <param name="buffer"></param>
-        public static void WriteTermination(this IDataAccumulator<byte> buffer)
-        {
-            //write termination 
-            buffer.Append(Termination.Span);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteTermination(IDataAccumulator<byte> buffer) => buffer.Append(Termination.Span);
 
         /// <summary>
         /// Appends an arbitrary header to the current request buffer
@@ -258,7 +290,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="value">The value of the header</param>
         /// <param name="encoding">Encoding to use when writing character message</param>
         /// <exception cref="ArgumentException"></exception>
-        public static void WriteHeader(this IDataAccumulator<byte> buffer, byte header, ReadOnlySpan<char> value, Encoding encoding)
+        public static void WriteHeader(IDataAccumulator<byte> buffer, byte header, ReadOnlySpan<char> value, Encoding encoding)
         {
             //Write header command enum value
             buffer.Append(header);
@@ -267,7 +299,7 @@ namespace VNLib.Net.Messaging.FBM
             //Advance the buffer
             buffer.Advance(written);
             //Write termination (0)
-            buffer.WriteTermination();
+            WriteTermination(buffer);
         }
     }
 }

@@ -92,7 +92,7 @@ namespace VNLib.Utils.Memory
         /// Number of bytes allocated to the current instance
         /// </summary>
         /// <exception cref="OverflowException"></exception>
-        public unsafe ulong ByteLength
+        public nuint ByteLength
         {
             //Check for overflows when converting to bytes (should run out of memory before this is an issue, but just incase)
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

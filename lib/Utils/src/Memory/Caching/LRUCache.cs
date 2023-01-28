@@ -56,17 +56,17 @@ namespace VNLib.Utils.Memory.Caching
         /// Adds a new record to the LRU cache 
         /// </summary>
         /// <param name="item">A <see cref="KeyValuePair{TKey, TValue}"/> to add to the cache store</param>
-        public override void Add(KeyValuePair<TKey, TValue> item)
+        public override void Add(in KeyValuePair<TKey, TValue> item)
         {
             //See if the store is at max capacity and an item needs to be evicted
-            if(Count == MaxCapacity)
+            if (Count == MaxCapacity)
             {
                 //A record needs to be evicted before a new record can be added
 
                 //Get the oldest node from the list to reuse its instance and remove the old value
                 LinkedListNode<KeyValuePair<TKey, TValue>> oldNode = List.First!; //not null because count is at max capacity so an item must be at the end of the list
                 //Store old node value field
-                KeyValuePair<TKey, TValue> oldRecord = oldNode.Value;
+                ref KeyValuePair<TKey, TValue> oldRecord = ref oldNode.ValueRef;
                 //Remove from lookup
                 LookupTable.Remove(oldRecord.Key);
                 //Remove the node
@@ -78,14 +78,15 @@ namespace VNLib.Utils.Memory.Caching
                 //Add to end of list
                 List.AddLast(oldNode);
                 //Invoke evicted method
-                Evicted(oldRecord);
+                Evicted(ref oldRecord);
             }
             else
             {
                 //Add new item to the list
-                base.Add(item);
+                base.Add(in item);
             }
         }
+
         /// <summary>
         /// Attempts to get a value by the given key. 
         /// </summary>
@@ -115,7 +116,7 @@ namespace VNLib.Utils.Memory.Caching
         /// Invoked when a record is evicted from the cache
         /// </summary>
         /// <param name="evicted">The record that is being evicted</param>
-        protected abstract void Evicted(KeyValuePair<TKey, TValue> evicted);
+        protected abstract void Evicted(ref KeyValuePair<TKey, TValue> evicted);
         /// <summary>
         /// Invoked when an entry was requested and was not found in cache.
         /// </summary>

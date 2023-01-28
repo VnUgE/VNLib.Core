@@ -70,7 +70,7 @@ namespace VNLib.Net.Http.Core
                 LastChunk = encoding.GetBytes(LAST_CHUNK_STRING);
 
                 //get the min buffer by rounding to the nearest page
-                int actualBufSize = (chunkBufferSize / 4096 + 1) * 4096;
+                int actualBufSize = (int)MemoryUtil.NearestPage(chunkBufferSize);
 
                 //Init accumulator
                 ChunckAccumulator = new(encoding, actualBufSize);

@@ -588,6 +588,39 @@ namespace VNLib.Utils.Memory
 
         #region alloc
 
+
+        /// <summary>
+        /// Rounds the requested byte size up to the nearest page
+        /// number of bytes
+        /// </summary>
+        /// <param name="byteSize">The number of bytes to get the rounded page size of</param>
+        /// <returns>The number of bytes equivalent to the requested byte size rounded to the next system memory page</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nuint NearestPage(nuint byteSize)
+        {
+            //Get page count by dividing count by number of pages
+            nuint pages = (uint)Math.Ceiling(byteSize / (double)Environment.SystemPageSize);
+
+            //Multiply back to page sizes
+            return pages * (nuint)Environment.SystemPageSize;
+        }
+
+        /// <summary>
+        /// Rounds the requested byte size up to the nearest page
+        /// number of bytes
+        /// </summary>
+        /// <param name="byteSize">The number of bytes to get the rounded page size of</param>
+        /// <returns>The number of bytes equivalent to the requested byte size rounded to the next system memory page</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nint NearestPage(nint byteSize)
+        {
+            //Get page count by dividing count by number of pages
+            nint pages = (int)Math.Ceiling(byteSize / (double)Environment.SystemPageSize);
+
+            //Multiply back to page sizes
+            return pages * Environment.SystemPageSize;
+        }
+
         /// <summary>
         /// Allocates a block of unmanaged, or pooled manaaged memory depending on
         /// compilation flags and runtime unamanged allocators.

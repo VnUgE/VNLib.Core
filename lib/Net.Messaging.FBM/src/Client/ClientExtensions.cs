@@ -25,6 +25,8 @@
 using System;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils;
+
 namespace VNLib.Net.Messaging.FBM.Client
 {
 
@@ -57,12 +59,19 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <param name="response"></param>
         /// <exception cref="InvalidResponseException"></exception>
+        /// <exception cref="InternalBufferTooSmallException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ThrowIfNotSet(this in FBMResponse response)
         {
             if (!response.IsSet)
             {
                 throw new InvalidResponseException("The response state is undefined (no response received)");
+            }
+
+            //Also throw if buffer header buffer size was too small
+            if(response.StatusFlags == HeaderParseError.HeaderOutOfMem)
+            {
+                throw new InternalBufferTooSmallException("The internal header buffer was too small to store response headers");
             }
         }
     }

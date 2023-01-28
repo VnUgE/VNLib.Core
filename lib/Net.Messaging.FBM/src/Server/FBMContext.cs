@@ -35,6 +35,9 @@ namespace VNLib.Net.Messaging.FBM.Server
     public sealed class FBMContext : IReusable
     {
         private readonly Encoding _headerEncoding;
+
+        private readonly IReusable _request;
+        private readonly IReusable _response;
         
         /// <summary>
         /// The request message to process
@@ -54,8 +57,8 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <param name="headerEncoding">The message header encoding instance</param>
         public FBMContext(int requestHeaderBufferSize, int responseBufferSize, Encoding headerEncoding)
         {
-            Request = new(requestHeaderBufferSize);
-            Response = new(responseBufferSize, headerEncoding);
+            _request = Request = new(requestHeaderBufferSize);
+            _response = Response = new(responseBufferSize, headerEncoding);
             _headerEncoding = headerEncoding;
         }
 
@@ -73,13 +76,13 @@ namespace VNLib.Net.Messaging.FBM.Server
 
         void IReusable.Prepare()
         {
-            (Request as IReusable).Prepare();
-            (Response as IReusable).Prepare();
+            _request.Prepare();
+            _response.Prepare();
         }
 
         bool IReusable.Release()
         {
-            return (Request as IReusable).Release() & (Response as IReusable).Release();
+            return _request.Release() & _response.Release();
         }
     }
 }

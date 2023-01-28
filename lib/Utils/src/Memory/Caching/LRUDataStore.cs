@@ -44,7 +44,7 @@ namespace VNLib.Utils.Memory.Caching
         protected Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>> LookupTable { get; }
         /// <summary>
         /// A linked list that tracks the least recently used item. 
-        /// New items (or recently access items) are moved to the end of the list.
+        /// New items (or recently accessed items) are moved to the end of the list.
         /// The head contains the least recently used item
         /// </summary>
         protected LinkedList<KeyValuePair<TKey, TValue>> List { get; }
@@ -57,6 +57,7 @@ namespace VNLib.Utils.Memory.Caching
             LookupTable = new();
             List = new();
         }
+
         /// <summary>
         /// Initializes an empty <see cref="LRUDataStore{TKey, TValue}"/> and sets
         /// the lookup table's inital capacity
@@ -67,6 +68,7 @@ namespace VNLib.Utils.Memory.Caching
             LookupTable = new(initialCapacity);
             List = new();
         }
+
         /// <summary>
         /// Initializes an empty <see cref="LRUDataStore{TKey, TValue}"/> and uses the 
         /// specified keycomparison 
@@ -77,6 +79,7 @@ namespace VNLib.Utils.Memory.Caching
             LookupTable = new(keyComparer);
             List = new();
         }
+
         /// <summary>
         /// Initializes an empty <see cref="LRUDataStore{TKey, TValue}"/> and uses the 
         /// specified keycomparison, and sets the lookup table's initial capacity
@@ -110,8 +113,11 @@ namespace VNLib.Utils.Memory.Caching
                 {
                     //Remove the node before re-adding it
                     List.Remove(oldNode);
-                    oldNode.Value = new KeyValuePair<TKey, TValue>(key, value);
-                    //Move the item to the front of the list
+
+                    //Reuse the node
+                    oldNode.ValueRef = new KeyValuePair<TKey, TValue>(key, value);
+
+                    //Move the item to the back of the list
                     List.AddLast(oldNode);
                 }
                 else
@@ -123,9 +129,12 @@ namespace VNLib.Utils.Memory.Caching
         }
         ///<inheritdoc/>
         public ICollection<TKey> Keys => LookupTable.Keys;
-        ///<inheritdoc/>
+
+        ///<summary>
+        /// Not supported
+        /// </summary>
         ///<exception cref="NotImplementedException"></exception>
-        public ICollection<TValue> Values => throw new NotImplementedException();
+        public virtual ICollection<TValue> Values => throw new NotSupportedException("Values are not stored in an independent collection, as they are not directly mutable");
         IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => LookupTable.Keys;
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => List.Select(static node => node.Value);
         IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator() => List.Select(static node => node.Value).GetEnumerator();
@@ -134,6 +143,7 @@ namespace VNLib.Utils.Memory.Caching
         /// Gets the number of items within the LRU store
         /// </summary>
         public int Count => List.Count;
+        
         ///<inheritdoc/>
         public abstract bool IsReadOnly { get; }
 
@@ -147,10 +157,11 @@ namespace VNLib.Utils.Memory.Caching
             //Create new kvp lookup ref
             KeyValuePair<TKey, TValue> lookupRef = new(key, value);
             //Insert the lookup
-            Add(lookupRef);
+            Add(in lookupRef);
         }
+
         ///<inheritdoc/>
-        public bool Remove(KeyValuePair<TKey, TValue> item) => Remove(item.Key);
+        public bool Remove(in KeyValuePair<TKey, TValue> item) => Remove(item.Key);
         ///<inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => List.GetEnumerator();
         ///<inheritdoc/>
@@ -164,7 +175,7 @@ namespace VNLib.Utils.Memory.Caching
         /// Adds the specified record to the store and places it at the end of the LRU queue
         /// </summary>
         /// <param name="item">The item to add</param>
-        public virtual void Add(KeyValuePair<TKey, TValue> item)
+        public virtual void Add(in KeyValuePair<TKey, TValue> item)
         {
             //Init new ll node
             LinkedListNode<KeyValuePair<TKey, TValue>> newNode = new(item);
@@ -173,6 +184,7 @@ namespace VNLib.Utils.Memory.Caching
             //Add to the end of the linked list
             List.AddLast(newNode);
         }
+
         /// <summary>
         /// Removes all elements from the LRU store
         /// </summary>
@@ -187,7 +199,7 @@ namespace VNLib.Utils.Memory.Caching
         /// </summary>
         /// <param name="item">The record to search for</param>
         /// <returns>True if the key was found in the store and the value equals the stored value, false otherwise</returns>
-        public virtual bool Contains(KeyValuePair<TKey, TValue> item)
+        public virtual bool Contains(in KeyValuePair<TKey, TValue> item)
         {
             if (LookupTable.TryGetValue(item.Key, out LinkedListNode<KeyValuePair<TKey, TValue>>? lookup))
             {
@@ -227,6 +239,17 @@ namespace VNLib.Utils.Memory.Caching
             value = default;
             return false;
         }
-      
+
+        /// <summary>
+        /// Adds the specified record to the store and places it at the end of the LRU queue
+        /// </summary>
+        /// <param name="item">The item to add</param>
+        public virtual void Add(KeyValuePair<TKey, TValue> item) => Add(in item);
+
+        ///<inheritdoc/>
+        public virtual bool Contains(KeyValuePair<TKey, TValue> item) => Contains(in item);
+
+        ///<inheritdoc/>
+        public bool Remove(KeyValuePair<TKey, TValue> item) => Remove(in item);       
     }
 }

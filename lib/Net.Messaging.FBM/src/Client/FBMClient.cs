@@ -199,7 +199,10 @@ namespace VNLib.Net.Messaging.FBM.Client
             }
             try
             {
-                Debug("Sending {bytes} with id {id}", request.RequestData.Length, request.MessageId);
+                //Get the request data segment
+                ReadOnlyMemory<byte> requestData = request.GetRequestData();
+
+                Debug("Sending {bytes} with id {id}", requestData.Length, request.MessageId);
                 
                 //Reset the wait handle
                 request.ResponseWaitEvent.Reset();
@@ -208,7 +211,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 using (SemSlimReleaser releaser = await SendLock.GetReleaserAsync(cancellationToken))
                 {
                     //Send the data to the server
-                    await ClientSocket.SendAsync(request.RequestData, WebSocketMessageType.Binary, true, cancellationToken);
+                    await ClientSocket.SendAsync(requestData, WebSocketMessageType.Binary, true, cancellationToken);
                 }
 
                 //wait for the response to be set
@@ -253,16 +256,22 @@ namespace VNLib.Net.Messaging.FBM.Client
             }
             try
             {
-                Debug("Streaming {bytes} with id {id}", request.RequestData.Length, request.MessageId);
+                //Get the request data segment
+                ReadOnlyMemory<byte> requestData = request.GetRequestData();
+
+                Debug("Streaming {bytes} with id {id}", requestData.Length, request.MessageId);
+
                 //Reset the wait handle
                 request.ResponseWaitEvent.Reset();
+
                 //Write an empty body in the request
                 request.WriteBody(ReadOnlySpan<byte>.Empty, ct);
+
                 //Wait for send-lock
                 using (SemSlimReleaser releaser = await SendLock.GetReleaserAsync(cancellationToken))
                 {
                     //Send the initial request packet
-                    await ClientSocket.SendAsync(request.RequestData, WebSocketMessageType.Binary, false, cancellationToken);
+                    await ClientSocket.SendAsync(requestData, WebSocketMessageType.Binary, false, cancellationToken);
                     //Calc buffer size
                     int bufSize = (int)Math.Clamp(payload.Length, Config.MessageBufferSize, Config.MaxMessageSize);
                     //Alloc a streaming buffer

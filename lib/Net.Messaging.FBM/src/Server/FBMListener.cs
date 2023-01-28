@@ -85,7 +85,6 @@ namespace VNLib.Net.Messaging.FBM.Server
                 Cancellation = new();
                 Registration = session.Token.Register(Cancellation.Cancel);
 
-
                 ResponseLock = new(1);
                 CtxStore = ObjectRental.CreateReusable(ContextCtor);
             }
@@ -324,7 +323,11 @@ namespace VNLib.Net.Messaging.FBM.Server
                     ValueTask sendTask;
 
                     //Syncrhonize access to send data because we may need to stream data to the client
-                    await session.ResponseLock.WaitAsync(SEND_SEMAPHORE_TIMEOUT_MS);
+                    if (!session.ResponseLock.Wait(0))
+                    {
+                        await session.ResponseLock.WaitAsync(SEND_SEMAPHORE_TIMEOUT_MS);
+                    }
+
                     try
                     {
                         do

@@ -24,6 +24,7 @@
 
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 using Serilog;
 using Serilog.Core;
@@ -46,21 +47,31 @@ namespace VNLib.Plugins
         /// </summary>
         /// <param name="config">Configuration to generate the logger from</param>
         public VLogProvider(LoggerConfiguration config) => LogCore = config.CreateLogger();
+
         ///<inheritdoc/>
-        public void Flush() { }
+        public void Flush() {}
+
         ///<inheritdoc/>
         public object GetLogProvider() => LogCore;
+
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsEnabled(LogLevel level) => LogCore.IsEnabled((LogEventLevel)level);
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(LogLevel level, string value)
         {
             LogCore.Write((LogEventLevel)level, value);
         }
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(LogLevel level, Exception exception, string value = "")
         {
             LogCore.Write((LogEventLevel)level, exception, value);
         }
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(LogLevel level, string value, params object[] args)
         {
             LogCore.Write((LogEventLevel)level, value, args);

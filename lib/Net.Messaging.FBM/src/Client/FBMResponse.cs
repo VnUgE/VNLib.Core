@@ -48,7 +48,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <summary>
         /// A collection of response message headers
         /// </summary>
-        public readonly IReadOnlyList<KeyValuePair<HeaderCommand, ReadOnlyMemory<char>>> Headers { get; }
+        public readonly IReadOnlyList<FBMMessageHeader> Headers { get; }
         /// <summary>
         /// Status flags of the message parse operation
         /// </summary>
@@ -66,7 +66,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="status">The size of the buffer to alloc for header value storage</param>
         /// <param name="headerList">The collection of headerse</param>
         /// <param name="onDispose">A method that will be invoked when the message response body is disposed</param>
-        public FBMResponse(VnMemoryStream? vms, HeaderParseError status, IReadOnlyList<KeyValuePair<HeaderCommand, ReadOnlyMemory<char>>> headerList, Action onDispose)
+        public FBMResponse(VnMemoryStream? vms, HeaderParseError status, IReadOnlyList<FBMMessageHeader> headerList, Action onDispose)
         {
             MessagePacket = vms;
             StatusFlags = status;
@@ -82,7 +82,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         {
             MessagePacket = null;
             StatusFlags = HeaderParseError.InvalidHeaderRead;
-            Headers = Array.Empty<KeyValuePair<HeaderCommand, ReadOnlyMemory<char>>>();
+            Headers = Array.Empty<FBMMessageHeader>();
             IsSet = false;
             _onDispose = null;
         }

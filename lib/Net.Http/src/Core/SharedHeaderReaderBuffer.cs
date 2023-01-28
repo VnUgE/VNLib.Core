@@ -27,8 +27,6 @@ using System.Runtime.InteropServices;
 
 using VNLib.Utils.Memory;
 
-
-
 namespace VNLib.Net.Http.Core
 {
     sealed class SharedHeaderReaderBuffer : IHttpLifeCycle
@@ -45,6 +43,9 @@ namespace VNLib.Net.Http.Core
         internal SharedHeaderReaderBuffer(int length)
         {
             _bufferSize = length + (length * sizeof(char));
+
+            //Round to nearest page
+            _bufferSize = (int)MemoryUtil.NearestPage(_bufferSize);
 
             //Bin buffer is the specified size
             BinLength = length;

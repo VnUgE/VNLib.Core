@@ -38,7 +38,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// </summary>
         public readonly int RecvBufferSize { get; init; }
         /// <summary>
-        /// The size of the character buffer to store FBMheader values in 
+        /// The size of the buffer to store <see cref="FBMMessageHeader"/> values in 
         /// the <see cref="FBMRequestMessage"/>
         /// </summary>
         public readonly int MaxHeaderBufferSize { get; init; }

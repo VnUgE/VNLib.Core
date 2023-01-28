@@ -70,6 +70,14 @@ namespace VNLib.Utils.Logging
         /// </summary>
         /// <returns>The underlying log source</returns>
         object GetLogProvider();
+
+        /// <summary>
+        /// Checks if the desired log level is enabled.
+        /// </summary>
+        /// <param name="level">The log level to check</param>
+        /// <returns>True if the log level is available to write logs to, false if the level is not available to write to</returns>
+        bool IsEnabled(LogLevel level);
+
         /// <summary>
         /// Gets the underlying log source
         /// </summary>

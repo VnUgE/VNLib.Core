@@ -14,7 +14,7 @@ messages. Headers are identified by a single byte, followed by a variable length
 encoded character sequence, followed by a termination of 0xFF, 0xF1 (may change).
 
 ### Message structure
-	4 byte positive (signed 32-bit integer) message id
+	4 byte positive (big endian signed 32-bit integer) message id
 	2 byte termination
 	1 byte header-id
 	variable length UTF8 value

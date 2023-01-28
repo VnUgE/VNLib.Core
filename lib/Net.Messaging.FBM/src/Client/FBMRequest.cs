@@ -28,6 +28,7 @@ using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
 using VNLib.Utils;
@@ -38,61 +39,34 @@ using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Messaging.FBM.Client
 {
+
     /// <summary>
+    /// <para>
     /// A reusable Fixed Buffer Message request container. This class is not thread-safe
+    /// </para>
+    /// <para>
+    /// The internal buffer is used for storing headers, body data (unless streaming)
+    /// </para>
     /// </summary>
     public sealed class FBMRequest : VnDisposeable, IReusable, IFBMMessage, IStringSerializeable
     {
-        private sealed class BufferWriter : IBufferWriter<byte>
-        {
-            private readonly FBMRequest _request;
-
-            public BufferWriter(FBMRequest request)
-            {
-                _request = request;
-            }
-
-            public void Advance(int count)
-            {
-                _request.Position += count;
-            }
-
-            public Memory<byte> GetMemory(int sizeHint = 0)
-            {
-                return sizeHint > 0 ? _request.RemainingBuffer[0..sizeHint] : _request.RemainingBuffer;
-            }
-
-            public Span<byte> GetSpan(int sizeHint = 0)
-            {
-                return sizeHint > 0 ? _request.RemainingBuffer.Span[0..sizeHint] : _request.RemainingBuffer.Span;
-            }
-        }
-
-        private readonly IMemoryOwner<byte> HeapBuffer;
-      
-      
-        private readonly BufferWriter _writer;
-        private int Position;
-
+#pragma warning disable CA2213 // Disposable fields should be disposed
+        private readonly FBMBuffer Buffer;
+#pragma warning restore CA2213 // Disposable fields should be disposed
         private readonly Encoding HeaderEncoding;
-        private readonly int ResponseHeaderBufferSize;
-        private readonly List<KeyValuePair<HeaderCommand, ReadOnlyMemory<char>>> ResponseHeaderList = new();
-        private char[]? ResponseHeaderBuffer;
+
+        private readonly List<FBMMessageHeader> ResponseHeaderList = new();
 
         /// <summary>
         /// The size (in bytes) of the request message
         /// </summary>
-        public int Length => Position;
-        private Memory<byte> RemainingBuffer => HeapBuffer.Memory[Position..];
+        public int Length => Buffer.RequestBuffer.AccumulatedSize;
 
         /// <summary>
         /// The id of the current request message
         /// </summary>
         public int MessageId { get; }
-        /// <summary>
-        /// The request message packet
-        /// </summary>
-        public ReadOnlyMemory<byte> RequestData => HeapBuffer.Memory[..Position];
+
         /// <summary>
         /// An <see cref="ManualResetEvent"/> to signal request/response
         /// event completion
@@ -100,6 +74,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         internal ManualResetEvent ResponseWaitEvent { get; }
 
         internal VnMemoryStream? Response { get; private set; }
+
         /// <summary>
         /// Initializes a new <see cref="FBMRequest"/> with the sepcified message buffer size,
         /// and a random messageid
@@ -107,77 +82,71 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="config">The fbm client config storing required config variables</param>
         public FBMRequest(in FBMClientConfig config) : this(Helpers.RandomMessageId, in config)
         { }
+
         /// <summary>
         /// Initializes a new <see cref="FBMRequest"/> with the sepcified message buffer size and a custom MessageId
         /// </summary>
         /// <param name="messageId">The custom message id</param>
         /// <param name="config">The fbm client config storing required config variables</param>
         public FBMRequest(int messageId, in FBMClientConfig config)
-        {
-            //Setup response wait handle but make sure the contuation runs async
-            ResponseWaitEvent = new(true);
-            
-            //Alloc the buffer as a memory owner so a memory buffer can be used
-            HeapBuffer = config.BufferHeap.DirectAlloc<byte>(config.MessageBufferSize);
-            
-            MessageId = messageId;
+        :this(messageId, config.BufferHeap, config.MessageBufferSize, config.HeaderEncoding)
+        { }
 
-            HeaderEncoding = config.HeaderEncoding;
-            ResponseHeaderBufferSize = config.MaxHeaderBufferSize;
-
-            WriteMessageId();
-            _writer = new(this);
-        }
 
         /// <summary>
-        /// Resets the internal buffer and writes the message-id header to the begining 
-        /// of the buffer
+        /// Initializes a new <see cref="FBMRequest"/> with the sepcified message buffer size and a custom MessageId
         /// </summary>
-        private void WriteMessageId()
+        /// <param name="messageId">The custom message id</param>
+        /// <param name="heap">The heap to allocate the internal buffer from</param>
+        /// <param name="bufferSize">The size of the internal buffer</param>
+        /// <param name="headerEncoding">The encoding instance used for header character encoding</param>
+        public FBMRequest(int messageId, IUnmangedHeap heap, int bufferSize, Encoding headerEncoding)
         {
-            //Get writer over buffer
-            ForwardOnlyWriter<byte> buffer = new(HeapBuffer.Memory.Span);
-            //write messageid header to the buffer
-            buffer.Append((byte)HeaderCommand.MessageId);
-            buffer.Append(MessageId);
-            buffer.WriteTermination();
-            //Store intial position
-            Position = buffer.Written;
+            MessageId = messageId;
+            HeaderEncoding = headerEncoding;
+
+            //Alloc the buffer as a memory owner so a memory buffer can be used
+            IMemoryOwner<byte> HeapBuffer = heap.DirectAlloc<byte>(bufferSize);
+            Buffer = new(HeapBuffer);
+
+            //Setup response wait handle but make sure the contuation runs async
+            ResponseWaitEvent = new(true);
+
+            //Prepare the message incase the request is fresh
+            Reset();
         }
 
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) => WriteHeader((byte)header, value);
         ///<inheritdoc/>
-        public void WriteHeader(byte header, ReadOnlySpan<char> value)
-        {
-            ForwardOnlyWriter<byte> buffer = new(RemainingBuffer.Span);
-            buffer.WriteHeader(header, value, Helpers.DefaultEncoding);
-            //Update position
-            Position += buffer.Written;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteHeader(byte header, ReadOnlySpan<char> value) => Helpers.WriteHeader(Buffer.RequestBuffer, header, value, Helpers.DefaultEncoding);
         ///<inheritdoc/>
         public void WriteBody(ReadOnlySpan<byte> body, ContentType contentType = ContentType.Binary)
         {
             //Write content type header
             WriteHeader(HeaderCommand.ContentType, HttpHelpers.GetContentTypeString(contentType));
-            //Get writer over buffer
-            ForwardOnlyWriter<byte> buffer = new(RemainingBuffer.Span);
             //Now safe to write body
-            buffer.WriteBody(body);
-            //Update position
-            Position += buffer.Written;
+            Helpers.WriteBody(Buffer.RequestBuffer, body);
         }
+
         /// <summary>
         /// Returns buffer writer for writing the body data to the internal message buffer
         /// </summary>
-        /// <returns>A <see cref="BufferWriter"/> to write message body to</returns>
-        public IBufferWriter<byte> GetBodyWriter()
+        /// <returns>A <see cref="IBufferWriter{T}"/> to write message body to</returns>
+        /// <remarks>Calling this method ends the headers section of the request</remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IBufferWriter<byte> GetBodyWriter() => Buffer.GetBodyWriter();
+
+
+        /// <summary>
+        /// The request message packet, this may cause side effects
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ReadOnlyMemory<byte> GetRequestData()
         {
-            //Write body termination
-            Helpers.Termination.CopyTo(RemainingBuffer);
-            Position += Helpers.Termination.Length;
-            //Return buffer writer
-            return _writer;
+            return Buffer.RequestData;
         }
 
         /// <summary>
@@ -186,8 +155,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         public void Reset()
         {
-            //Re-writing the message-id will reset the buffer
-            WriteMessageId();
+            Buffer.Reset(MessageId);
         }
 
         internal void SetResponse(VnMemoryStream? vms)
@@ -204,20 +172,25 @@ namespace VNLib.Net.Messaging.FBM.Client
         ///<inheritdoc/>
         protected override void Free()
         {
-            HeapBuffer.Dispose();
+            Buffer.Dispose();
             ResponseWaitEvent.Dispose();
-            OnResponseDisposed();
+            Response?.Dispose();
         }
         void IReusable.Prepare() => Reset();
         bool IReusable.Release()
         {
+            //Make sure response header list is clear
+            ResponseHeaderList.Clear();
+
             //Clear old response data if error occured
             Response?.Dispose();
             Response = null;
-            
+
             return true;
         }
 
+        #region Response 
+        
         /// <summary>
         /// Gets the response of the sent message
         /// </summary>
@@ -237,13 +210,12 @@ namespace VNLib.Net.Messaging.FBM.Client
                  * The headers are read into a list of key-value pairs and the stream
                  * is positioned to the start of the message body
                  */
-
-
-                //Alloc rseponse buffer
-                ResponseHeaderBuffer ??= ArrayPool<char>.Shared.Rent(ResponseHeaderBufferSize);
+               
+                //Get the response header buffer for parsing
+                FBMHeaderBuffer headerBuf = Buffer.GetResponseHeaderBuffer();
 
                 //Parse message headers
-                HeaderParseError statusFlags = Helpers.ParseHeaders(Response, ResponseHeaderBuffer, ResponseHeaderList, HeaderEncoding);
+                HeaderParseError statusFlags = Helpers.ParseHeaders(Response, in headerBuf, ResponseHeaderList, HeaderEncoding);
 
                 //return response structure
                 return new(Response, statusFlags, ResponseHeaderList, OnResponseDisposed);
@@ -263,19 +235,17 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Clear old response
             Response?.Dispose();
             Response = null;
-
-            if (ResponseHeaderBuffer != null)
-            {
-                //Free response buffer
-                ArrayPool<char>.Shared.Return(ResponseHeaderBuffer!);
-                ResponseHeaderBuffer = null;
-            }
         }
+        #endregion
+
+        #region Diagnostics
 
         ///<inheritdoc/>
         public string Compile()
         {
-            int charSize = Helpers.DefaultEncoding.GetCharCount(RequestData.Span);
+            ReadOnlyMemory<byte> requestData = GetRequestData();
+
+            int charSize = Helpers.DefaultEncoding.GetCharCount(requestData.Span);
             
             using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAlloc<char>(charSize + 128);
             
@@ -286,10 +256,11 @@ namespace VNLib.Net.Messaging.FBM.Client
         ///<inheritdoc/>
         public void Compile(ref ForwardOnlyWriter<char> writer)
         {
+            ReadOnlyMemory<byte> requestData = GetRequestData();
             writer.Append("Message ID:");
             writer.Append(MessageId);
             writer.Append(Environment.NewLine);
-            Helpers.DefaultEncoding.GetChars(RequestData.Span, ref writer);
+            Helpers.DefaultEncoding.GetChars(requestData.Span, ref writer);
         }
         ///<inheritdoc/>
         public ERRNO Compile(in Span<char> buffer)
@@ -300,6 +271,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         }
         ///<inheritdoc/>
         public override string ToString() => Compile();
-       
+
+        #endregion
     }
 }

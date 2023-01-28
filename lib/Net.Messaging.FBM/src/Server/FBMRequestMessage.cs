@@ -28,9 +28,7 @@ using System.Buffers;
 using System.Text.Json;
 using System.Collections.Generic;
 
-using VNLib.Utils;
 using VNLib.Utils.IO;
-using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
 
@@ -41,19 +39,20 @@ namespace VNLib.Net.Messaging.FBM.Server
     /// </summary>
     public sealed class FBMRequestMessage : IReusable
     {
-        private readonly List<KeyValuePair<HeaderCommand, ReadOnlyMemory<char>>> _headers;
-        private readonly int HeaderCharBufferSize;
+        private readonly List<FBMMessageHeader> _headers;
+        private readonly int HeaderBufferSize;
+
         /// <summary>
         /// Creates a new resusable <see cref="FBMRequestMessage"/>
         /// </summary>
         /// <param name="headerBufferSize">The size of the buffer to alloc during initialization</param>
         internal FBMRequestMessage(int headerBufferSize)
         {
-            HeaderCharBufferSize = headerBufferSize;
+            HeaderBufferSize = headerBufferSize;
             _headers = new();
         }
 
-        private char[]? _headerBuffer;
+        private byte[]? _headerBuffer;
         
         /// <summary>
         /// The ID of the current message
@@ -70,7 +69,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <summary>
         /// A collection of headers for the current request
         /// </summary>
-        public IReadOnlyList<KeyValuePair<HeaderCommand, ReadOnlyMemory<char>>> Headers => _headers;
+        public IReadOnlyList<FBMMessageHeader> Headers => _headers;
         /// <summary>
         /// Status flags set during the message parsing
         /// </summary>
@@ -95,8 +94,10 @@ namespace VNLib.Net.Messaging.FBM.Server
         {
             //Store request body
             RequestBody = vms;
+            
             //Store message id
             MessageId = Helpers.GetMessageId(Helpers.ReadLine(vms));
+
             //Check mid for control frame
             if(MessageId == Helpers.CONTROL_FRAME_MID)
             {
@@ -110,41 +111,11 @@ namespace VNLib.Net.Messaging.FBM.Server
 
             ConnectionId = socketId;
 
-            //sliding window over remaining data from internal buffer
-            ForwardOnlyMemoryWriter<char> writer = new(_headerBuffer);
-            
-            //Accumulate headers
-            while (true)
-            {
-                //Read the next line from the current stream
-                ReadOnlySpan<byte> line = Helpers.ReadLine(vms);
-                if (line.IsEmpty)
-                {
-                    //Done reading headers
-                    break;
-                }
-                HeaderCommand cmd = Helpers.GetHeaderCommand(line);
-                //Get header value
-                ERRNO charsRead = Helpers.GetHeaderValue(line, writer.Remaining.Span, dataEncoding);
-                if (charsRead < 0)
-                {
-                    //Out of buffer space
-                    ParseStatus |= HeaderParseError.HeaderOutOfMem;
-                    break;
-                }
-                else if (!charsRead)
-                {
-                    //Invalid header
-                    ParseStatus |= HeaderParseError.InvalidHeaderRead;
-                }
-                else
-                {
-                    //Store header as a read-only sequence
-                    _headers.Add(new(cmd, writer.Remaining[..(int)charsRead]));
-                    //Shift buffer window
-                    writer.Advance(charsRead);
-                }
-            }
+            //Get mesage buffer wrapper around the header
+            FBMHeaderBuffer buffer = new(_headerBuffer);
+
+            //Parse headers
+            ParseStatus = Helpers.ParseHeaders(vms, in buffer, _headers, dataEncoding);
         }
         
         /// <summary>
@@ -158,6 +129,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         {
             return BodyData.IsEmpty ? default : BodyData.AsJsonObject<T>(jso);
         }
+        
         /// <summary>
         /// Gets a <see cref="JsonDocument"/> of the request body
         /// </summary>
@@ -173,7 +145,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         {
             ParseStatus = HeaderParseError.None;
             //Alloc header buffer
-            _headerBuffer = ArrayPool<char>.Shared.Rent(HeaderCharBufferSize);
+            _headerBuffer = ArrayPool<byte>.Shared.Rent(HeaderBufferSize);
         }
         
        
@@ -185,7 +157,7 @@ namespace VNLib.Net.Messaging.FBM.Server
             //Clear headers before freeing buffer
             _headers.Clear();
             //Free header-buffer
-            ArrayPool<char>.Shared.Return(_headerBuffer!);
+            ArrayPool<byte>.Shared.Return(_headerBuffer!);
             _headerBuffer = null;
             ConnectionId = null;
             MessageId = 0;

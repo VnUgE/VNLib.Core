@@ -138,7 +138,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// Gets or sets the user-id for the current session.
         /// </para>
         /// <para>
-        /// Login code usually sets this value and it should be read-only
+        /// Login routines usually set this value and it should be read-only
         /// </para>
         /// </summary>
         public readonly string UserID

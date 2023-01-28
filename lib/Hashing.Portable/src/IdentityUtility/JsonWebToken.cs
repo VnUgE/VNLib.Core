@@ -47,24 +47,31 @@ namespace VNLib.Hashing.IdentityUtility
         /// <summary>
         /// Parses a JWT from a Base64URL encoded character buffer
         /// </summary>
-        /// <param name="urlEncJwtString"></param>
+        /// <param name="urlEncJwtString">The JWT characters to decode</param>
         /// <param name="heap">An optional <see cref="IUnmangedHeap"/> instance to alloc buffers from</param>
+        /// <param name="textEncoding">The encoding used to decode the text to binary</param>
         /// <returns>The parses <see cref="JsonWebToken"/></returns>
         /// <exception cref="FormatException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static JsonWebToken Parse(ReadOnlySpan<char> urlEncJwtString, IUnmangedHeap? heap = null)
+        public static JsonWebToken Parse(ReadOnlySpan<char> urlEncJwtString, IUnmangedHeap? heap = null, Encoding? textEncoding = null)
         {
             heap ??= MemoryUtil.Shared;
+            textEncoding ??= Encoding.UTF8;
+
+            if (urlEncJwtString.IsEmpty)
+            {
+                throw new ArgumentException("The JWT string is empty", nameof(urlEncJwtString));
+            }
 
             //Calculate the decoded size of the characters to alloc a buffer
-            int utf8Size = Encoding.UTF8.GetByteCount(urlEncJwtString);
+            int utf8Size = textEncoding.GetByteCount(urlEncJwtString);
 
             //Alloc bin buffer to store decode data
             using MemoryHandle<byte> binBuffer = heap.Alloc<byte>(utf8Size, true);
 
             //Decode to utf8
-            utf8Size = Encoding.UTF8.GetBytes(urlEncJwtString, binBuffer);
+            utf8Size = textEncoding.GetBytes(urlEncJwtString, binBuffer);
             
             //Parse and return the jwt
             return ParseRaw(binBuffer.Span[..utf8Size], heap);
@@ -93,18 +100,23 @@ namespace VNLib.Hashing.IdentityUtility
             JsonWebToken jwt = new(heap, new (heap, utf8JWTData));
             try
             {
-                ReadOnlySpan<byte> buffer = jwt.DataBuffer;
+                ForwardOnlyReader<byte> reader = new(utf8JWTData);
+               
                 //Search for the first period to indicate the end of the header section
-                jwt.HeaderEnd = buffer.IndexOf(SAEF_PERIOD);
+                jwt.HeaderEnd = reader.Window.IndexOf(SAEF_PERIOD);
+
                 //Make sure a '.' was found
                 if (jwt.HeaderEnd < 0)
                 {
                     throw new FormatException("The supplied data is not a valid Json Web Token, header end symbol could not be found");
                 }
+
                 //Shift buffer window
-                buffer = buffer[jwt.PayloadStart..];
+                reader.Advance(jwt.PayloadStart);
+
                 //Search for next period to end the payload
-                jwt.PayloadEnd = jwt.PayloadStart + buffer.LastIndexOf(SAEF_PERIOD);
+                jwt.PayloadEnd = jwt.PayloadStart + reader.Window.LastIndexOf(SAEF_PERIOD);
+
                 //Make sure a '.' was found
                 if (jwt.PayloadEnd < 0)
                 {
@@ -130,7 +142,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// The size (in bytes) of the encoded data that makes 
         /// up the current JWT.
         /// </summary>
-        public int ByteSize => (int)DataStream.Position;
+        public int ByteSize => Convert.ToInt32(DataStream.Position);
         /// <summary>
         /// A buffer that represents the current state of the JWT buffer.
         /// Utf8Base64Url encoded data.

@@ -52,7 +52,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         private readonly ISlindingWindowBuffer<byte> _headerAccumulator;
         private readonly Encoding _headerEncoding;
 
-        private IAsyncMessageBody? _messageBody;
+        private IAsyncMessageBody? MessageBody;
 
         ///<inheritdoc/>
         public int MessageId { get; private set; }
@@ -67,7 +67,7 @@ namespace VNLib.Net.Messaging.FBM.Server
             //Release header accumulator
             _headerAccumulator.Close();
            
-            _messageBody = null;
+            MessageBody = null;
 
             MessageId = 0;
            
@@ -83,31 +83,26 @@ namespace VNLib.Net.Messaging.FBM.Server
         {
             //Reset accumulator when message id is written
             _headerAccumulator.Reset();
-            //Write the messageid to the begining of the headers buffer
+           
             MessageId = messageId;
-            _headerAccumulator.Append((byte)HeaderCommand.MessageId);
-            _headerAccumulator.Append(messageId);
-            _headerAccumulator.WriteTermination();
+
+            //Write the messageid to the begining of the headers buffer
+            Helpers.WriteMessageid(_headerAccumulator, messageId);
         }
 
         ///<inheritdoc/>
-        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value)
-        {
-            WriteHeader((byte)header, value);
-        }
+        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) => WriteHeader((byte)header, value);
+        
         ///<inheritdoc/>
-        public void WriteHeader(byte header, ReadOnlySpan<char> value)
-        {
-            _headerAccumulator.WriteHeader(header, value, _headerEncoding);
-        }
-      
+        public void WriteHeader(byte header, ReadOnlySpan<char> value) => Helpers.WriteHeader(_headerAccumulator, header, value, _headerEncoding);
+
         ///<inheritdoc/>
         public void WriteBody(ReadOnlySpan<byte> body, ContentType contentType = ContentType.Binary)
         {
             //Append content type header
             WriteHeader(HeaderCommand.ContentType, HttpHelpers.GetContentTypeString(contentType));
             //end header segment
-            _headerAccumulator.WriteTermination();
+            Helpers.WriteTermination(_headerAccumulator);
             //Write message body
             _headerAccumulator.Append(body);
         }
@@ -119,7 +114,9 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <exception cref="InvalidOperationException"></exception>
         public void AddMessageBody(IAsyncMessageBody messageBody)
         {
-            if(_messageBody != null)
+            _ = messageBody ?? throw new ArgumentNullException(nameof(messageBody));
+
+            if(MessageBody != null)
             {
                 throw new InvalidOperationException("The message body is already set");
             }
@@ -128,11 +125,10 @@ namespace VNLib.Net.Messaging.FBM.Server
             WriteHeader(HeaderCommand.ContentType, HttpHelpers.GetContentTypeString(messageBody.ContentType));
             
             //end header segment
-            _headerAccumulator.WriteTermination();
+            Helpers.WriteTermination(_headerAccumulator);
             
             //Store message body
-            _messageBody = messageBody;
-
+            MessageBody = messageBody;
         }
 
         /// <summary>
@@ -143,10 +139,11 @@ namespace VNLib.Net.Messaging.FBM.Server
         internal async ValueTask<IAsyncMessageReader> GetResponseDataAsync(CancellationToken cancellationToken)
         {
             //try to buffer as much data in the header segment first
-            if(_messageBody?.RemainingSize > 0 && _headerAccumulator.RemainingSize > 0)
+            if(MessageBody?.RemainingSize > 0 && _headerAccumulator.RemainingSize > 0)
             {
                 //Read data from the message
-                int read = await _messageBody.ReadAsync(_headerAccumulator.RemainingBuffer, cancellationToken);
+                int read = await MessageBody.ReadAsync(_headerAccumulator.RemainingBuffer, cancellationToken);
+
                 //Advance accumulator to the read bytes
                 _headerAccumulator.Advance(read);
             }
@@ -178,23 +175,23 @@ namespace VNLib.Net.Messaging.FBM.Server
                     Current = _message._headerAccumulator.AccumulatedBuffer;
 
                     //Update data remaining flag
-                    DataRemaining = _message._messageBody?.RemainingSize > 0;
+                    DataRemaining = _message.MessageBody?.RemainingSize > 0;
 
                     //Set headers read flag
                     HeadersRead = true;
                     
                     return true;
                 }
-                else if (_message._messageBody?.RemainingSize > 0)
+                else if (_message.MessageBody?.RemainingSize > 0)
                 {
                     //Use the header buffer as the buffer for the message body
                     Memory<byte> buffer = _message._headerAccumulator.Buffer;
 
                     //Read body segment
-                    int read = await _message._messageBody.ReadAsync(buffer);
+                    int read = await _message.MessageBody.ReadAsync(buffer);
 
                     //Update data remaining flag
-                    DataRemaining = _message._messageBody.RemainingSize > 0;
+                    DataRemaining = _message.MessageBody.RemainingSize > 0;
 
                     if (read > 0)
                     {
@@ -206,7 +203,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                 return false;
             }
 
-            public async ValueTask DisposeAsync()
+            public ValueTask DisposeAsync()
             {
                 //Clear current segment
                 Current = default;
@@ -215,9 +212,13 @@ namespace VNLib.Net.Messaging.FBM.Server
                 HeadersRead = false;
                 
                 //Dispose the message body if set
-                if (_message._messageBody != null)
+                if (_message.MessageBody != null)
                 {
-                    await _message._messageBody.DisposeAsync();
+                    return _message.MessageBody.DisposeAsync();
+                }
+                else
+                {
+                    return ValueTask.CompletedTask;
                 }
             }
         }

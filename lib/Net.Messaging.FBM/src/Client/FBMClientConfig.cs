@@ -36,7 +36,8 @@ namespace VNLib.Net.Messaging.FBM.Client
     public readonly struct FBMClientConfig
     {
         /// <summary>
-        /// The size (in bytes) of the internal buffer to use when receiving messages from the server
+        /// The size (in bytes) of the internal buffer used to buffer incomming messages,
+        /// this value will also be sent to the server to synchronous recv buffer sizes
         /// </summary>
         public readonly int RecvBufferSize { get; init; }
         /// <summary>
@@ -48,7 +49,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </remarks>
         public readonly int MessageBufferSize { get; init; }
         /// <summary>
-        /// The size (in chars) of the client/server message header buffer
+        /// The size (in bytes) of the client/server message header buffer
         /// </summary>
         public readonly int MaxHeaderBufferSize { get; init; }
         /// <summary>
