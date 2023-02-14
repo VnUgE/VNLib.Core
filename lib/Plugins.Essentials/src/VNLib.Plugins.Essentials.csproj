@@ -4,23 +4,26 @@
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Plugins.Essentials</RootNamespace>
     <AssemblyName>VNLib.Plugins.Essentials</AssemblyName>
-    
     <Version>1.0.1.3</Version>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <EnableNETAnalyzers>True</EnableNETAnalyzers>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
   
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn NUgent</Company>
+    <PackageId>VNLib.Plugins.Essentials</PackageId>
     <Product>VNLib Essentials Plugin Library</Product>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <Description>Provides essential web, user, storage, and database interaction features for use with web applications</Description>
+    <Description>
+      Provides essential web, sessions, users abstractions for building extensable web applications
+      with satefull sessions, user based intraction with login and account security extensions.
+    </Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software</PackageProjectUrl>
     <PackageTags>VNLib, Plugins, VNLib.Plugins.Essentials, Essentials, Essential Plugins, HTTP Essentials, OAuth2</PackageTags>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core</RepositoryUrl>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -39,6 +42,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,9 @@
+{
+  "Description": "A project to maintain a Windows dll for RpMalloc by Mattias Jansson with some basic defaults for .NET loading",
+  "Authors": "Vaughn Nugent",
+  "Copyright": "Copyright &copy; 2023 Vaughn Nugent",
+  "Version": "0.1.1",
+  "Company": "Vaughn Nugent",
+  "Product": "WinRpMalloc",
+  "RepositoryUrl": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/WinRpMalloc"
+}

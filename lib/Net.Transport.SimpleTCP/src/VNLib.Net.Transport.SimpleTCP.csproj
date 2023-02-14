@@ -8,20 +8,20 @@
     <Version>1.0.1.4</Version>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
     <Product>VNLib Simple Transport Library</Product>
     <Description>
-      Provides a library for single process asynchronous, event driven, TCP socket listening and supporting structures to implement
-      simple high performance TCP servers with or without TLS security.
+      Provides a library for single process asynchronous, event driven, TCP socket listening and supporting 
+      structures to implement simple high performance TCP servers with or without TLS security.
     </Description>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Transport.SimpleTCP</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,6 +38,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

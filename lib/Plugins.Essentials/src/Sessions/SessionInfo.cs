@@ -49,6 +49,10 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// When attached to a connection, provides persistant session storage and inforamtion based
     /// on a connection.
     /// </summary>
+    /// <remarks>
+    /// This structure should not be stored and should not be accessed when the parent http entity 
+    /// has been closed.
+    /// </remarks>
     public readonly struct SessionInfo : IObjectStorage, IEquatable<SessionInfo>
     {
         /// <summary>
@@ -58,10 +62,15 @@ namespace VNLib.Plugins.Essentials.Sessions
         public readonly bool IsSet;
 
         private readonly ISession UserSession;
+
         /// <summary>
         /// Key that identifies the current session. (Identical to cookie::sessionid)
         /// </summary>
-        public readonly string SessionID;
+        public readonly string SessionID
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UserSession.SessionID;
+        }
         /// <summary>
         /// Session stored User-Agent
         /// </summary>
@@ -85,17 +94,11 @@ namespace VNLib.Plugins.Essentials.Sessions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RegenID() => UserSession.RegenID();
         ///<inheritdoc/>
-        public T GetObject<T>(string key)
-        {
-            //Attempt to deserialze the object, or return default if it is empty
-            return this[key].AsJsonObject<T>(SR_OPTIONS);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T GetObject<T>(string key) => this[key].AsJsonObject<T>(SR_OPTIONS);
         ///<inheritdoc/>
-        public void SetObject<T>(string key, T obj)
-        {
-            //Serialize and store the object, or set null (remove) if the object is null
-            this[key] = obj?.ToJsonString(SR_OPTIONS);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetObject<T>(string key, T obj) => this[key] = obj?.ToJsonString(SR_OPTIONS);
 
         /// <summary>
         /// Was the original session cross origin?
@@ -161,7 +164,11 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// <summary>
         /// The IP address belonging to the client
         /// </summary>
-        public readonly IPAddress UserIP;
+        public readonly IPAddress UserIP
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UserSession.UserIP;
+        }
         /// <summary>
         /// Was the session Initialy established on a secure connection?
         /// </summary>
@@ -169,7 +176,11 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// <summary>
         /// A value specifying the type of the backing session
         /// </summary>
-        public readonly SessionType SessionType => UserSession.SessionType;
+        public readonly SessionType SessionType
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UserSession.SessionType;
+        }
 
         /// <summary>
         /// Accesses the session's general storage
@@ -189,9 +200,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             UserSession = session;
             //Calculate and store 
             IsNew = session.IsNew;
-            SessionID = session.SessionID;
             Created = session.Created;
-            UserIP = session.UserIP;
             //Ip match
             IPMatch = trueIp.Equals(session.UserIP);
             //If the session is new, we can store intial security variables

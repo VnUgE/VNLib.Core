@@ -12,15 +12,20 @@
     
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <PackageId>VNLib.Plugins.Essentials.ServiceStack</PackageId>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <Description>
+      Provides data structures for building a dynamic HTTP servicing stack with runtime plugin loading,
+      dynamic endpoint routing, middleware* configuration, and multi-server managment.
+    </Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.Essentials.ServiceStack</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

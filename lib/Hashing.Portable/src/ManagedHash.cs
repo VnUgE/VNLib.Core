@@ -31,12 +31,36 @@ using VNLib.Utils.Memory;
 
 namespace VNLib.Hashing
 {
+    /// <summary>
+    /// Defines a hashing algorithm to use when computing a hash.
+    /// </summary>
     public enum HashAlg
     {
+        /// <summary>
+        /// Unused type, will cause a computation method to raise an argument exception when used.
+        /// </summary>
+        None,
+        /// <summary>
+        /// Defines the SHA-512 hashing algorithm
+        /// </summary>
         SHA512 = 64,
+        /// <summary>
+        /// Defines the SHA-384 hashing algorithm
+        /// </summary>
         SHA384 = 48,
+        /// <summary>
+        /// Defines the SHA-256 hashing algorithm
+        /// </summary>
         SHA256 = 32,
+        /// <summary>
+        /// Defines the SHA-1 hashing algorithm
+        /// WARNING: This hashing method is considered insecure and cannot be corrected.
+        /// </summary>
         SHA1 = 20,
+        /// <summary>
+        /// Defines the MD5 hashing algorithm
+        /// WARNING: This hashing method is considered insecure and cannot be corrected.
+        /// </summary>
         MD5 = 16
     }
 

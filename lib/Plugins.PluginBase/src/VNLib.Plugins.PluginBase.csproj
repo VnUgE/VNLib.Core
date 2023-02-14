@@ -3,21 +3,24 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Plugins</RootNamespace>
-    <PackageId>VNLib.Plugins.PluginBase</PackageId>
     <AssemblyName>VNLib.Plugins.PluginBase</AssemblyName>
     <Version>1.0.1.2</Version>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <PackageId>VNLib.Plugins.PluginBase</PackageId>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
-    <Description>A base class for VNLib.Plugins that provides all supported loading functionalities, with built-in logging, loading, task-managment and endpoint routing.</Description>
+    <Description>
+      A base class for VNLib.Plugins that provides all supported loading functionalities, 
+      with built-in logging, loading, task-managment and endpoint routing.
+    </Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.PluginBase</RepositoryUrl>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -47,6 +50,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Plugins\src\VNLib.Plugins.csproj" />
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
  

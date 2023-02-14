@@ -4,20 +4,18 @@
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Net.Http</RootNamespace>
     <AssemblyName>VNLib.Net.Http</AssemblyName>
-    <PackageId>VNLib.Net.Http</PackageId>
     <Version>1.0.1.5</Version>
     <NeutralLanguage>en-US</NeutralLanguage>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
+    <PackageId>VNLib.Net.Http</PackageId>
     <Authors>Vaughn Nugent</Authors>
-    <Company>$(Authors)</Company>
+    <Company>Vaughn Nugent</Company>
     <Product>VNLib HTTP Library</Product>
     <Description>
       Provides a high performance HTTP 0.9-1.1 application processing layer for handling transport *agnostic connections and asynchronous event support for applications serving HTTP
@@ -25,7 +23,8 @@
       outside of the VNLib ecosystem are required. The VNLib.Plugins and VNLib.Plugins.Essentials libraries are highly recommended for serving web content.
     </Description>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Http</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -53,6 +52,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

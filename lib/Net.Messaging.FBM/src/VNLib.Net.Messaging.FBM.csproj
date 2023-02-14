@@ -2,19 +2,27 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <Version>1.0.1.1</Version>    
-    <Nullable>enable</Nullable>   
+    <RootNamespace>VNLib.Net.Messaging.FBM</RootNamespace>
+    <AssemblyName>VNLib.Net.Messaging.FBM</AssemblyName>
+    <Version>1.0.1.1</Version>
+    <Nullable>enable</Nullable>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
+    <PackageId>VNLib.Net.Messaging.FBM</PackageId>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <Description>
+      Fixed Buffer Messaging protocol class library. Implements a high-performance asynchronous 
+      request/response messaging architecture build on top of HTTP websockets. Provides client
+      and server data structures.
+    </Description>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software</PackageProjectUrl>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Messaging.FBM</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,6 +40,13 @@
     <ProjectReference Include="..\..\Net.Http\src\VNLib.Net.Http.csproj" />
     <ProjectReference Include="..\..\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

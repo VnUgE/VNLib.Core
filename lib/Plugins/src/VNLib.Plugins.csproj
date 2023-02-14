@@ -2,22 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <RootNamespace>VNLib.Plugins</RootNamespace>    
-    
-    <Version>1.0.1.3</Version>
-
+    <RootNamespace>VNLib.Plugins</RootNamespace>
     <AssemblyName>VNLib.Plugins</AssemblyName>
-   
+    <Version>1.0.1.3</Version>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <PackageId>VNLib.Plugins</PackageId>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
     <PackageTags>Plugins, VNLIb, VNLib Plugins, Plugin Base</PackageTags>
     <Product>VNLib Plugins Interface Assembly</Product>
@@ -26,7 +23,8 @@
       plugins and asynchronus web endpoint processing, compatible
       with the VNLib.Plugins.Runtime loader library.
     </Description>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,6 +36,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

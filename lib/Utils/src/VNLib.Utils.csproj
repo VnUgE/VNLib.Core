@@ -3,28 +3,39 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Utils</RootNamespace>
-
     <AssemblyName>VNLib.Utils</AssemblyName>
     <Version>1.0.1.10</Version>    
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
+    <PackageId>VNLib.Utils</PackageId>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
     <Product>VNLib Utilities Library</Product>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
-    <Description>Base utilities library, structs, classes</Description>
+    <Description>
+      .NET/6.0 Utilities library for high-performance common operations. Utilities and abstractions for building and 
+      diagnosing native memory implementations. Dyanmic native library loading, IO, extensions, data encoding, resource 
+      access, and asynchronous cooperation primitives.
+    </Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils</RepositoryUrl>
   </PropertyGroup>
   
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">

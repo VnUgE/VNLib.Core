@@ -7,16 +7,22 @@
     <Version>1.0.1.1</Version>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
+    <PackageId>VNLib.Net.Rest.Client</PackageId>
+    <Company>Vaughn Nugent</Company>
     <Authors>Vaughn Nugent</Authors>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <Description>An Oauth2 rest client connection pool for OAuth2 authenticated services</Description>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <Description>
+      Provides a RestClient connection pool using the Utils.ObjectRental
+      framework for reusing RestClients with a common configuration to execute
+      RestRequests against. This library also implements an OAuth2 authenticator
+      for the RestSharp IAuthenticator using the client credentials method.
+    </Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Rest.Client</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -45,6 +51,13 @@
 
   <ItemGroup>
     <Folder Include="Exceptions\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

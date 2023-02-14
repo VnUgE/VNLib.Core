@@ -264,7 +264,7 @@ namespace VNLib.Plugins.Essentials
         }
         
         /// <summary>
-        /// Removes the specified endpoint from the virtual store and oauthendpoints if eneabled and found
+        /// Removes the specified endpoint from the virtual endpoint store
         /// </summary>
         /// <param name="eps">A collection of endpoints to remove from the table</param>
         public void RemoveEndpoint(params IEndpoint[] eps)
@@ -305,7 +305,8 @@ namespace VNLib.Plugins.Essentials
                 {
                     _ = newTable.Remove(eps);
                 }
-                //Store the new table ony if the endpoint existed
+
+                //Store the new table
                 _ = Interlocked.Exchange(ref VirtualEndpoints, newTable);
             }
         }
@@ -320,12 +321,14 @@ namespace VNLib.Plugins.Essentials
             
             //Set ambient processor context
             _currentProcessor.Value = this;
+
             //Start cancellation token
             CancellationTokenSource timeout = new(Options.ExecutionTimeout);
+
             try
             {
                 //Session handle, default to the shared empty session
-                SessionHandle sessionHandle = default;
+                SessionHandle sessionHandle = SessionHandle.Empty;
                 
                 //If sessions are set, get a session for the current connection
                 if (_sessions != null)
@@ -343,8 +346,10 @@ namespace VNLib.Plugins.Essentials
                 {
                     //Setup entity
                     HttpEntity entity = new(httpEvent, this, in sessionHandle, timeout.Token);
+
                     //Pre-process entity
                     FileProcessArgs preProc = await PreProcessEntityAsync(entity);
+
                     //If preprocess returned a value, exit
                     if (preProc != FileProcessArgs.Continue)
                     {
@@ -356,6 +361,7 @@ namespace VNLib.Plugins.Essentials
                     {
                         //Process a virtual file
                         FileProcessArgs virtualArgs = await ProcessVirtualAsync(entity);
+
                         //If the entity was processed, exit
                         if (virtualArgs != FileProcessArgs.Continue)
                         {
@@ -363,14 +369,17 @@ namespace VNLib.Plugins.Essentials
                             return;
                         }
                     }
+
                     //If no virtual processor handled the ws request, deny it
                     if (entity.Server.IsWebSocketRequest)
                     {
                         ProcessFile(httpEvent, in FileProcessArgs.Deny);
                         return;
                     }
+
                     //Finally process as file
                     FileProcessArgs args = await RouteFileAsync(entity);
+
                     //Finally process the file
                     ProcessFile(httpEvent, in args);
                 }

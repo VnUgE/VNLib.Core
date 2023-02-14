@@ -57,7 +57,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         public readonly int MaxMessageSize { get; init; }
         /// <summary>
-        /// The heap to allocate interal (and message) buffers from
+        /// The heap to allocate internal (and message) buffers from
         /// </summary>
         public readonly IUnmangedHeap BufferHeap { get; init; }
         /// <summary>

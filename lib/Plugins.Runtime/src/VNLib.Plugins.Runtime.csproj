@@ -6,8 +6,6 @@
     <RootNamespace>VNLib.Plugins.Runtime</RootNamespace>
     <AssemblyName>VNLib.Plugins.Runtime</AssemblyName>
     <Version>1.0.1.1</Version>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>\\vaughnnugent.com\Internal\Folder Redirection\vman\Documents\Programming\Software\StrongNameingKey.snk</AssemblyOriginatorKeyFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
@@ -15,12 +13,15 @@
 
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <PackageId>VNLib.Plugins.Runtime</PackageId>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
     <Description>
       A runtime plugin loader for .NET. Allows runtime loading and tracking of .NET assemblies
       that export the VNLib.Plugin.IPlugin interface.
     </Description>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources</PackageProjectUrl>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.Runtime</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -45,6 +46,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

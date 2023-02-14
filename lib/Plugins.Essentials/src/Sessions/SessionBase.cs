@@ -113,7 +113,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         public virtual ulong Privilages
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => Convert.ToUInt64(this[PRIV_ENTRY], 16);
+            get => string.IsNullOrWhiteSpace(this[PRIV_ENTRY]) ? 0 : Convert.ToUInt64(this[PRIV_ENTRY], 16);
             //Store in hexadecimal to conserve space
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => this[PRIV_ENTRY] = value.ToString("X");
