@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -32,6 +32,12 @@ using VNLib.Net.Http;
 
 namespace VNLib.Plugins.Essentials.Sessions
 {
+    /// <summary>
+    /// The callback method signature used to release attached sessions
+    /// </summary>
+    /// <param name="session">The session being released</param>
+    /// <param name="event">The connection the session is attached to</param>
+    /// <returns>A value task that resolves when the session has been released from the connection</returns>
     public delegate ValueTask SessionReleaseCallback(ISession session, IHttpEvent @event);
     
     /// <summary>
@@ -47,6 +53,9 @@ namespace VNLib.Plugins.Essentials.Sessions
 
         private readonly SessionReleaseCallback? ReleaseCb;
 
+        /// <summary>
+        /// True when a valid session is held by the current handle
+        /// </summary>
         internal readonly bool IsSet => SessionData != null;
 
         /// <summary>
@@ -83,7 +92,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// Releases the session from use
         /// </summary>
         /// <param name="event">The current connection event object</param>
-        public ValueTask ReleaseAsync(IHttpEvent @event) => ReleaseCb?.Invoke(SessionData!, @event) ?? ValueTask.CompletedTask;
+        public readonly ValueTask ReleaseAsync(IHttpEvent @event) => ReleaseCb?.Invoke(SessionData!, @event) ?? ValueTask.CompletedTask;
 
         /// <summary>
         /// Determines if another <see cref="SessionHandle"/> is equal to the current handle.
@@ -91,15 +100,15 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// </summary>
         /// <param name="other">The other handle to</param>
         /// <returns>true if neither handle is set or if their SessionData object is equal, false otherwise</returns>
-        public bool Equals(SessionHandle other)
+        public readonly bool Equals(SessionHandle other)
         {
             //If neither handle is set, then they are equal, otherwise they are equal if the session objects themselves are equal
             return (!IsSet && !other.IsSet) || (SessionData?.Equals(other.SessionData) ?? false);
         }
         ///<inheritdoc/>
-        public override bool Equals([NotNullWhen(true)] object? obj) => (obj is SessionHandle other) && Equals(other);
+        public readonly override bool Equals([NotNullWhen(true)] object? obj) => (obj is SessionHandle other) && Equals(other);
         ///<inheritdoc/>
-        public override int GetHashCode()
+        public readonly override int GetHashCode()
         {
             return IsSet ? SessionData!.GetHashCode() : base.GetHashCode();
         }

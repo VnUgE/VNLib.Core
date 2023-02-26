@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+
 
 namespace VNLib.Utils.Extensions
 {
@@ -63,6 +64,10 @@ namespace VNLib.Utils.Extensions
         /// <param name="value">The value to serialze</param>
         public static void SetValueType<TKey, TValue>(this IIndexable<TKey, string> lookup, TKey key, TValue value) where TValue : unmanaged where TKey : notnull
         {
+            if (lookup is null)
+            {
+                throw new ArgumentNullException(nameof(lookup));
+            }
             //encode string from value type and store in lookup
             lookup[key] = VnEncoding.ToBase32String(value);
         }
@@ -76,6 +81,16 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="AggregateException"></exception>
         public static void TryForeach<T>(this IEnumerable<T> list, Action<T> handler)
         {
+            if (list is null)
+            {
+                throw new ArgumentNullException(nameof(list));
+            }
+
+            if (handler is null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
             List<Exception>? exceptionList = null;
             foreach(T item in list)
             {

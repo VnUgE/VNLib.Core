@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -55,10 +55,10 @@ namespace VNLib.Utils.Memory
         private readonly int _length;
 
         ///<inheritdoc/>
-        public readonly unsafe Span<T> Span
+        public readonly Span<T> Span
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _handleType == HandleType.Pool ? _poolArr.AsSpan(0, IntLength) : new (_memoryPtr.ToPointer(), IntLength);
+            get => _handleType == HandleType.Pool ? _poolArr.AsSpan(0, IntLength) : MemoryUtil.GetSpan<T>(_memoryPtr, IntLength);
         }
         /// <summary>
         /// Gets the integer number of elements of the block of memory pointed to by this handle
@@ -90,7 +90,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public unsafe UnsafeMemoryHandle(ArrayPool<T> pool, int elements, bool zero)
+        public UnsafeMemoryHandle(ArrayPool<T> pool, int elements, bool zero)
         {
             if (elements < 0)
             {
@@ -170,13 +170,7 @@ namespace VNLib.Utils.Memory
             
             if (_handleType == HandleType.Pool)
             {
-                //Pin the array
-                GCHandle arrHandle = GCHandle.Alloc(_poolArr, GCHandleType.Pinned);
-                //Get array base address
-                void* basePtr = (void*)arrHandle.AddrOfPinnedObject();
-                //Get element offset
-                void* indexOffet = Unsafe.Add<T>(basePtr, elementIndex);
-                return new (indexOffet, arrHandle);
+                return MemoryUtil.PinArrayAndGetHandle(_poolArr!, elementIndex);
             }
             else
             {

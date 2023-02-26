@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Linq;
 using System.Text;
 using System.Buffers;
 using System.Buffers.Text;

@@ -217,7 +217,7 @@ namespace VNLib.Hashing
             salts = Convert.ToBase64String(salt);
             
             //Encode salt in base64
-            return $"${ID_MODE},v={(int)Argon2_version.VERSION_13},m={memCost},t={timeCost},p={parallelism},s={salts}${hash}";
+            return $"${ID_MODE}$v={(int)Argon2_version.VERSION_13},m={memCost},t={timeCost},p={parallelism},s={salts}${hash}";
         }
 
         /// <summary>

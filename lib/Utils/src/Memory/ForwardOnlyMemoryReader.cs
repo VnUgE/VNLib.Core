@@ -39,7 +39,7 @@ namespace VNLib.Utils.Memory
         private int _position;
 
         /// <summary>
-        /// Initializes a new <see cref="FordwardOnlyMemoryReader{T}"/>
+        /// Initializes a new <see cref="ForwardOnlyMemoryReader{T}"/>
         /// of the specified type using the specified internal buffer
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>

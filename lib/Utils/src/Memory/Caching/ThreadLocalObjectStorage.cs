@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Linq;
 using System.Threading;
 
 namespace VNLib.Utils.Memory.Caching
@@ -65,7 +66,13 @@ namespace VNLib.Utils.Memory.Caching
             //Invoke the rent action
             base.ReturnAction?.Invoke(item);
         }
-     
+
+        ///<inheritdoc/>
+        public override T[] GetItems()
+        {
+            return Store.Values.ToArray();
+        }
+
         ///<inheritdoc/>
         protected override void Free()
         {

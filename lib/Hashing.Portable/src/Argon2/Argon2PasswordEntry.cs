@@ -22,16 +22,6 @@
 * along with VNLib.Hashing.Portable. If not, see http://www.gnu.org/licenses/.
 */
 
-/*
- *  VnArgon2.cs
- *  Author: Vaughhn Nugent
- *  Date: July 17, 2021
- *  
- *  Dependencies Argon2.
- *  https://github.com/P-H-C/phc-winner-argon2
- *  
- */
-
 using System;
 using System.Globalization;
 
@@ -54,7 +44,7 @@ namespace VNLib.Hashing
             private static Argon2_version ParseVersion(ReadOnlySpan<char> window)
             {
                 //Version comes after the v= prefix
-                ReadOnlySpan<char> v = window.SliceAfterParam(",v=");
+                ReadOnlySpan<char> v = window.SliceAfterParam("v=");
                 v = v.SliceBeforeParam(',');
                 //Parse the version as an enum value
                 return Enum.Parse<Argon2_version>(v);
@@ -63,7 +53,7 @@ namespace VNLib.Hashing
             private static uint ParseTimeCost(ReadOnlySpan<char> window)
             {
                 //TimeCost comes after the t= prefix
-                ReadOnlySpan<char> t = window.SliceAfterParam(",t=");
+                ReadOnlySpan<char> t = window.SliceAfterParam("t=");
                 t = t.SliceBeforeParam(',');
                 //Parse the time cost as an unsigned integer
                 return uint.Parse(t, NumberStyles.Integer, CultureInfo.InvariantCulture);
@@ -72,7 +62,7 @@ namespace VNLib.Hashing
             private static uint ParseMemoryCost(ReadOnlySpan<char> window)
             {
                 //MemoryCost comes after the m= prefix
-                ReadOnlySpan<char> m = window.SliceAfterParam(",m=");
+                ReadOnlySpan<char> m = window.SliceAfterParam("m=");
                 m = m.SliceBeforeParam(',');
                 //Parse the memory cost as an unsigned integer
                 return uint.Parse(m, NumberStyles.Integer, CultureInfo.InvariantCulture);
@@ -81,7 +71,7 @@ namespace VNLib.Hashing
             private static uint ParseParallelism(ReadOnlySpan<char> window)
             {
                 //Parallelism comes after the p= prefix
-                ReadOnlySpan<char> p = window.SliceAfterParam(",p=");
+                ReadOnlySpan<char> p = window.SliceAfterParam("p=");
                 p = p.SliceBeforeParam(',');
                 //Parse the parallelism as an unsigned integer
                 return uint.Parse(p, NumberStyles.Integer, CultureInfo.InvariantCulture);
@@ -90,7 +80,7 @@ namespace VNLib.Hashing
             private static ReadOnlySpan<char> ParseSalt(ReadOnlySpan<char> window)
             {
                 //Salt comes after the s= prefix
-                ReadOnlySpan<char> s = window.SliceAfterParam(",s=");
+                ReadOnlySpan<char> s = window.SliceAfterParam("s=");
                 s = s.SliceBeforeParam('$');
                 //Parse the salt as a string
                 return s;

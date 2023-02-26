@@ -25,6 +25,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
+using VNLib.Utils.Async;
 using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.Extensions
@@ -48,7 +50,48 @@ namespace VNLib.Utils.Extensions
                 safeCallback(rh.Resource);
             }
         }
-        
+
+        /// <summary>
+        /// Waits for exlcusive access to the resource identified by the given moniker
+        /// and returns a handle that will release the lock when disposed.
+        /// </summary>
+        /// <typeparam name="TMoniker"></typeparam>
+        /// <param name="serialzer"></param>
+        /// <param name="moniker">The moniker used to identify the lock</param>
+        /// <param name="cancellation">A token to cancel the wait operation</param>
+        /// <returns>A task that resolves a handle that holds the lock information and releases the lock when disposed</returns>
+        public static Task<SerializerHandle<TMoniker>> GetHandleAsync<TMoniker>(
+           this IAsyncAccessSerializer<TMoniker> serialzer,
+           TMoniker moniker,
+           CancellationToken cancellation = default
+           )
+        {
+            //Wait async get handle
+            static async Task<SerializerHandle<TMoniker>> AwaitHandle(Task wait, IAsyncAccessSerializer<TMoniker> serialzer, TMoniker moniker)
+            {
+                await wait.ConfigureAwait(false);
+                return new SerializerHandle<TMoniker>(moniker, serialzer);
+            }
+         
+            //Enter the lock async
+            Task wait = serialzer.WaitAsync(moniker, cancellation);
+
+            if (wait.IsCompleted)
+            {
+                //Allow throwing the exception if cancel or error
+
+#pragma warning disable CA1849 // Call async methods when in an async method
+                wait.GetAwaiter().GetResult();
+#pragma warning restore CA1849 // Call async methods when in an async method
+
+                //return the new handle
+                return Task.FromResult(new SerializerHandle<TMoniker>(moniker, serialzer));
+            }
+
+            //Wait async
+            return AwaitHandle(wait, serialzer, moniker);
+        }
+
         /// <summary>
         /// Asynchronously waits to enter the <see cref="SemaphoreSlim"/> while observing a <see cref="CancellationToken"/>
         /// and getting a releaser handle

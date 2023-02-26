@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,12 +23,8 @@
 */
 
 using System;
-using System.Threading;
 using System.Diagnostics;
-using System.Collections;
 using System.Collections.Generic;
-
-using VNLib.Utils.Extensions;
 
 namespace VNLib.Utils.Memory.Caching
 {
@@ -39,14 +35,14 @@ namespace VNLib.Utils.Memory.Caching
     /// and its members is thread-safe
     /// </summary>
     /// <typeparam name="T">The data type to reuse</typeparam>
-    public class ObjectRental<T> : ObjectRental, IObjectRental<T>, ICacheHolder, IEnumerable<T> where T: class
+    public class ObjectRental<T> : ObjectRental, IObjectRental<T>, ICacheHolder where T: class
     {
         /// <summary>
         /// The initial data-structure capacity if quota is not defined
         /// </summary>
         public const int INITIAL_STRUCTURE_SIZE = 50;
 
-        protected readonly SemaphoreSlim StorageLock;
+        protected readonly object StorageLock;
         protected readonly Stack<T> Storage;
         protected readonly HashSet<T> ContainsStore;
 
@@ -74,7 +70,7 @@ namespace VNLib.Utils.Memory.Caching
             //Hashtable for quick lookups
             ContainsStore = new(Math.Max(quota, INITIAL_STRUCTURE_SIZE));
             //Semaphore slim to provide exclusive access
-            StorageLock = new SemaphoreSlim(1, 1);
+            StorageLock = new ();
             //Store quota, if quota is -1, set to int-max to "disable quota"
             QuotaLimit = quota == 0 ? int.MaxValue : quota;
             //Determine if the type is disposeable and store a local value
@@ -102,17 +98,19 @@ namespace VNLib.Utils.Memory.Caching
             Check();
             //See if we have an available object, if not return a new one by invoking the constructor function
             T? rental = default;
-            //Get lock
-            using (SemSlimReleaser releader = StorageLock.GetReleaser())
+
+            //Enter Lock
+            lock (StorageLock)
             {
                 //See if the store contains an item ready to use
-                if(Storage.TryPop(out T? item))
+                if (Storage.TryPop(out T? item))
                 {
                     rental = item;
                     //Remove the item from the hash table
                     ContainsStore.Remove(item);
                 }
             }
+
             //If no object was removed from the store, create a new one
             rental ??= Constructor();
             //If rental cb is defined, invoke it
@@ -124,12 +122,17 @@ namespace VNLib.Utils.Memory.Caching
         /// <exception cref="ObjectDisposedException"></exception>
         public virtual void Return(T item)
         {
+            _ = item ?? throw new ArgumentNullException(nameof(item));
+
             Check();
+            
             //Invoke return callback if set
             ReturnAction?.Invoke(item);
+
             //Keeps track to know if the element was added or need to be cleaned up
             bool wasAdded = false;
-            using (SemSlimReleaser releader = StorageLock.GetReleaser())
+
+            lock (StorageLock)
             {
                 //Check quota limit
                 if (Storage.Count < QuotaLimit)
@@ -144,6 +147,7 @@ namespace VNLib.Utils.Memory.Caching
                     wasAdded = true;
                 }
             }
+
             if (!wasAdded && IsDisposableType)
             {
                 //If the element was not added and is disposeable, we can dispose the element
@@ -162,42 +166,85 @@ namespace VNLib.Utils.Memory.Caching
         public virtual void CacheClear()
         {
             Check();
+
             //If the type is disposeable, cleaning can be a long process, so defer to hard clear
             if (IsDisposableType)
             {
                 return;
             }
-            //take the semaphore
-            using SemSlimReleaser releader = StorageLock.GetReleaser();
-            //Clear stores
-            ContainsStore.Clear();
-            Storage.Clear();
+
+            lock(StorageLock)
+            {
+                //Clear stores
+                ContainsStore.Clear();
+                Storage.Clear();
+            }
         }
+
+        /// <summary>
+        /// Gets all the elements in the store as a "snapshot"
+        /// while holding the lock
+        /// </summary>
+        /// <returns></returns>
+        protected T[] GetElementsWithLock()
+        {
+            T[] result;
+
+            lock (StorageLock)
+            {
+                //Enumerate all items to the array
+                result = Storage.ToArray();
+            }
+
+            return result;
+        }
+     
 
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public virtual void CacheHardClear()
         {
             Check();
-            //take the semaphore
-            using SemSlimReleaser releader = StorageLock.GetReleaser();
-            //If the type is disposable, dispose all elements before clearing storage
+           
+            /*
+             * If the type is disposable, we need to collect all the stored items
+             * and dispose them individually. We need to spend as little time in
+             * the lock as possbile (busywaiting...) so get the array and exit 
+             * the lock after clearing. Then we can dispose the elements.
+             * 
+             * If the type is not disposable, we don't need to get the items 
+             * and we can just call CacheClear()
+             */
+
             if (IsDisposableType)
             {
+                T[] result;
+
+                //Enter Lock
+                lock (StorageLock)
+                {
+                    //Enumerate all items to the array
+                    result = Storage.ToArray();
+
+                    //Clear stores
+                    ContainsStore.Clear();
+                    Storage.Clear();
+                }
+
                 //Dispose all elements
-                foreach (T element in Storage.ToArray())
+                foreach (T element in result)
                 {
                     (element as IDisposable)!.Dispose();
                 }
             }
-            //Clear the storeage
-            Storage.Clear();
-            ContainsStore.Clear();
+            else
+            {
+                CacheClear();
+            }
         }
         ///<inheritdoc/>
         protected override void Free()
         {
-            StorageLock.Dispose();
             //If the element type is disposable, dispose all elements on a hard clear
             if (IsDisposableType)
             {
@@ -209,28 +256,11 @@ namespace VNLib.Utils.Memory.Caching
             }
         }
 
-        ///<inheritdoc/>
-        public IEnumerator<T> GetEnumerator()
-        {
-            Check();
-            //Enter the semaphore
-            using SemSlimReleaser releader = StorageLock.GetReleaser();
-            foreach (T item in Storage)
-            {
-                yield return item;
-            }
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            Check();
-            //Enter the semaphore
-            using SemSlimReleaser releader = StorageLock.GetReleaser();
-            foreach (T item in Storage)
-            {
-                yield return item;
-            }
-        }
+        /// <summary>
+        /// Gets all the elements in the store currently. 
+        /// </summary>
+        /// <returns>The current elements in storage as a "snapshot"</returns>
+        public virtual T[] GetItems() => GetElementsWithLock();
     }
    
 }

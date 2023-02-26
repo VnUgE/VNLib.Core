@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: ForwardOnlyBufferWriter.cs 
+* File: ForwardOnlyWriter.cs 
 *
-* ForwardOnlyBufferWriter.cs is part of VNLib.Utils which is part of the larger 
+* ForwardOnlyWriter.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -56,6 +56,18 @@ namespace VNLib.Utils.Memory
         public ForwardOnlyWriter(in Span<T> buffer)
         {
             Buffer = buffer;
+            Written = 0;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="ForwardOnlyWriter{T}"/> assigning the specified buffer
+        /// at the specified offset
+        /// </summary>
+        /// <param name="buffer">The buffer to write data to</param>
+        /// <param name="offset">The offset to begin the writer at</param>
+        public ForwardOnlyWriter(in Span<T> buffer, int offset)
+        {
+            Buffer = buffer[offset..];
             Written = 0;
         }
 

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -585,9 +585,41 @@ namespace VNLib.Utils.Memory
 
         #endregion
 
+        /// <summary>
+        /// Pins the supplied array and gets the memory handle that controls 
+        /// the pinning lifetime via GC handle
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="array">The array to pin</param>
+        /// <param name="elementOffset">The address offset</param>
+        /// <returns>A <see cref="MemoryHandle"/> that manages the pinning of the supplied array</returns>
+        /// <exception cref="IndexOutOfRangeException"></exception>
+        public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, int elementOffset)
+        {
+            //Quick verify index exists
+            _ = array[elementOffset];
+
+            //Pin the array
+            GCHandle arrHandle = GCHandle.Alloc(array, GCHandleType.Pinned);
+            //Get array base address
+            void* basePtr = (void*)arrHandle.AddrOfPinnedObject();
+            //Get element offset
+            void* indexOffet = Unsafe.Add<T>(basePtr, elementOffset);
+
+            return new(indexOffet, arrHandle);
+        }
 
         #region alloc
 
+        /// <summary>
+        /// Gets a <see cref="Span{T}"/> from the supplied address
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="address">The address of the begining of the memory sequence</param>
+        /// <param name="size">The size of the sequence</param>
+        /// <returns>The span pointing to the memory at the supplied addres</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Span<T> GetSpan<T>(IntPtr address, int size) => new(address.ToPointer(), size);
 
         /// <summary>
         /// Rounds the requested byte size up to the nearest page
@@ -653,6 +685,29 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Allocates a block of unmanaged, or pooled manaaged memory depending on
+        /// compilation flags and runtime unamanged allocators, rounded up to the 
+        /// neareset memory page.
+        /// </summary>
+        /// <typeparam name="T">The unamanged type to allocate</typeparam>
+        /// <param name="elements">The number of elements of the type within the block</param>
+        /// <param name="zero">Flag to zero elements during allocation before the method returns</param>
+        /// <returns>A handle to the block of memory</returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UnsafeMemoryHandle<T> UnsafeAllocNearestPage<T>(int elements, bool zero = false) where T : unmanaged
+        {
+            if (elements < 0)
+            {
+                throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
+            }
+            //Round to nearest page
+            nint np = NearestPage(elements);
+            return UnsafeAlloc<T>((int)np, zero);
+        }
+
+        /// <summary>
+        /// Allocates a block of unmanaged, or pooled manaaged memory depending on
         /// compilation flags and runtime unamanged allocators.
         /// </summary>
         /// <typeparam name="T">The unamanged type to allocate</typeparam>
@@ -679,6 +734,29 @@ namespace VNLib.Utils.Memory
                 //Get temp buffer from shared buffer pool
                 return new VnTempBuffer<T>(elements, zero);
             }
+        }
+
+        /// <summary>
+        /// Allocates a block of unmanaged, or pooled manaaged memory depending on
+        /// compilation flags and runtime unamanged allocators, rounded up to the 
+        /// neareset memory page.
+        /// </summary>
+        /// <typeparam name="T">The unamanged type to allocate</typeparam>
+        /// <param name="elements">The number of elements of the type within the block</param>
+        /// <param name="zero">Flag to zero elements during allocation before the method returns</param>
+        /// <returns>A handle to the block of memory</returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
+        public static IMemoryHandle<T> SafeAllocNearestPage<T>(int elements, bool zero = false) where T : unmanaged
+        {
+            if (elements < 0)
+            {
+                throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
+            }
+
+            //Round to nearest page
+            nint np = NearestPage(elements);
+            return SafeAlloc<T>((int)np, zero);
         }
 
         #endregion

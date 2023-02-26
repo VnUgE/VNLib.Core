@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -22,7 +22,7 @@
 * along with VNLib.UtilsTests. If not, see http://www.gnu.org/licenses/.
 */
 
-
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using VNLib.Utils.Extensions;

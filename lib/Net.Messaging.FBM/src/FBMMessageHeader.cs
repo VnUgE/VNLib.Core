@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -97,5 +97,10 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="other">The other header to compare</param>
         /// <returns>True if both headers have the same commad and value sequence</returns>
         public bool Equals(FBMMessageHeader other) => Header == other.Header && Value.SequenceEqual(other.Value);
+
+        /// <summary>
+        /// Gets a concatinated string of the current instance for debugging purposes
+        /// </summary>
+        public readonly override string ToString() => $"{Header}:{Value.ToString()}";
     }
 }

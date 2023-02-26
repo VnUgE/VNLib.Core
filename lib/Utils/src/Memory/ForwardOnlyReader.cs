@@ -39,7 +39,7 @@ namespace VNLib.Utils.Memory
         private int _position;
 
         /// <summary>
-        /// Initializes a new <see cref="FordwardOnlyReader{T}"/>
+        /// Initializes a new <see cref="ForwardOnlyReader{T}"/>
         /// of the specified type using the specified internal buffer
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
@@ -47,6 +47,20 @@ namespace VNLib.Utils.Memory
         {
             _segment = buffer;
             _size = buffer.Length;
+            _position = 0;
+        }
+
+        /// <summary>
+        /// Initializes a new <see cref="ForwardOnlyReader{T}"/>
+        /// of the specified type using the specified internal buffer
+        /// begining at the specified offset
+        /// </summary>
+        /// <param name="buffer">The buffer to read from</param>
+        /// <param name="offset">The offset within the supplied buffer to begin the reader at</param>
+        public ForwardOnlyReader(in ReadOnlySpan<T> buffer, int offset)
+        {
+            _segment = buffer[offset..];
+            _size = _segment.Length;
             _position = 0;
         }
 

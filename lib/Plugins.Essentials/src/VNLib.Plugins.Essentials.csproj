@@ -21,9 +21,9 @@
       Provides essential web, sessions, users abstractions for building extensable web applications
       with satefull sessions, user based intraction with login and account security extensions.
     </Description>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software</PackageProjectUrl>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <PackageTags>VNLib, Plugins, VNLib.Plugins.Essentials, Essentials, Essential Plugins, HTTP Essentials, OAuth2</PackageTags>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.Essentials</RepositoryUrl>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
