@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -220,7 +220,7 @@ namespace VNLib.Net.Http.Core
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void Check()
+        void Check()
         {
             if (HeadersSent)
             {

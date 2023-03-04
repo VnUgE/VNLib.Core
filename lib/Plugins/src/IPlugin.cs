@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -48,6 +48,11 @@ namespace VNLib.Plugins
         /// Returns all endpoints within the plugin to load into the current root
         /// </summary>
         /// <returns>An enumeration of endpoints to load</returns>
+        /// <remarks>
+        /// Lifecycle: Results returned from this method should be consistant (although its only
+        /// likely to be called once) anytime after the <see cref="Load"/> method, and undefined
+        /// after the <see cref="Unload"/> method is called.
+        /// </remarks>
         IEnumerable<IEndpoint> GetEndpoints();
     }
 }

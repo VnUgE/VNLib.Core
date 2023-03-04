@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -51,7 +51,7 @@ namespace VNLib.Utils
         /// <param name="data">Data to be encoded</param>
         /// <param name="encoding"><see cref="Encoding"/> to encode data with</param>
         /// <returns>A <see cref="Stream"/> contating the encoded data</returns>
-        public static VnMemoryStream GetMemoryStream(in ReadOnlySpan<char> data, Encoding encoding)
+        public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding)
         {
             _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
             //Create new memory handle to copy data to
@@ -61,7 +61,7 @@ namespace VNLib.Utils
                 //get number of bytes
                 int byteCount = encoding.GetByteCount(data);
                 //resize the handle to fit the data
-                handle = Memory.MemoryUtil.Shared.Alloc<byte>(byteCount);
+                handle = MemoryUtil.Shared.Alloc<byte>(byteCount);
                 //encode
                 int size = encoding.GetBytes(data, handle);
                 //Consume the handle into a new vnmemstream and return it
@@ -218,6 +218,7 @@ namespace VNLib.Utils
             ForwardOnlyWriter<char> writer = new(output);
             return TryToBase32Chars(input, ref writer);
         }
+
         /// <summary>
         /// Attempts to convert the specified byte sequence in Base32 encoding 
         /// and writing the encoded data to the output buffer.
@@ -229,11 +230,13 @@ namespace VNLib.Utils
         {
             //calculate char size
             int charCount = (int)Math.Ceiling(input.Length / 5d) * 8;
+            
             //Make sure there is enough room
             if(charCount > writer.RemainingSize)
             {
                 return false;
             }
+
             //sliding window over input buffer
             ForwardOnlyReader<byte> reader = new(input);
            
@@ -241,17 +244,21 @@ namespace VNLib.Utils
             {
                 //Convert the current window
                 WriteChars(reader.Window, ref writer);
+
                 //shift the window
                 reader.Advance(Math.Min(5, reader.WindowSize));
             }
             return writer.Written;
         }
+
         private unsafe static void WriteChars(ReadOnlySpan<byte> input, ref ForwardOnlyWriter<char> writer)
         {
             //Get the input buffer as long 
             ulong inputAsLong = 0;
+
             //Get a byte pointer over the ulong to index it as a byte buffer
             byte* buffer = (byte*)&inputAsLong;
+
             //Check proc endianness
             if (BitConverter.IsLittleEndian)
             {
@@ -271,6 +278,12 @@ namespace VNLib.Utils
                     buffer[i] = input[i];
                 }
             }
+            
+            /*
+             * We need to determine how many bytes can be encoded
+             * and if padding needs to be added
+             */
+
             int rounds = (input.Length) switch
             {
                 1 => 2,
@@ -279,20 +292,26 @@ namespace VNLib.Utils
                 4 => 7,
                 _ => 8
             };
+
             //Convert each byte segment up to the number of bytes encoded
             for (int i = 0; i < rounds; i++)
             {
                 //store the leading byte
                 byte val = buffer[7];
+
                 //right shift the value to lower 5 bits
                 val >>= 3;
+
                 //Lookup charcode
                 char base32Char = RFC_4648_BASE32_CHARS[val];
+
                 //append the character to the writer
                 writer.Append(base32Char);
+
                 //Shift input left by 5 bits so the next 5 bits can be read
                 inputAsLong <<= 5;
             }
+
             //Fill remaining bytes with padding chars
             for(; rounds < 8; rounds++)
             {
@@ -313,6 +332,7 @@ namespace VNLib.Utils
             ForwardOnlyWriter<byte> writer = new(output);
             return TryFromBase32Chars(input, ref writer);
         }
+
         /// <summary>
         /// Attempts to decode the Base32 encoded string
         /// </summary>
@@ -326,8 +346,10 @@ namespace VNLib.Utils
 
             //trim padding characters
             input = input.Trim('=');
+
             //Calc the number of bytes to write
             int outputSize = (input.Length * 5) / 8;
+
             //make sure the output buffer is large enough
             if(writer.RemainingSize < outputSize)
             {
@@ -341,13 +363,17 @@ namespace VNLib.Utils
             byte* buffer = (byte*)&bufferLong;
             
             int count = 0, len = input.Length;
+
             while(count < len)
             {
                 //Convert the character to its char code
                 byte charCode = GetCharCode(input[count]);
+
                 //write byte to buffer
                 buffer[0] |= charCode;
+
                 count++;
+
                 //If 8 characters have been decoded, reset the buffer
                 if((count % 8) == 0)
                 {
@@ -359,18 +385,23 @@ namespace VNLib.Utils
                     //reset
                     bufferLong = 0;
                 }
+
                 //left shift the buffer up by 5 bits
                 bufferLong <<= 5;
             }
+
             //If remaining data has not be written, but has been buffed, finalize it
             if (writer.Written < outputSize)
             {
                 //calculate how many bits the buffer still needs to be shifted by (will be 5 bits off because of the previous loop)
                 int remainingShift = (7 - (count % 8)) * 5;
+
                 //right shift the buffer by the remaining bit count
                 bufferLong <<= remainingShift;
+
                 //calc remaining bytes
                 int remaining = (outputSize - writer.Written);
+
                 //Write remaining bytes to the output
                 for(int i = 0; i < remaining; i++)
                 {
@@ -379,6 +410,8 @@ namespace VNLib.Utils
             }
             return writer.Written;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetCharCode(char c)
         {
             //cast to byte to get its base 10 value
@@ -592,7 +625,7 @@ namespace VNLib.Utils
         /// <param name="utf8Bytes">The buffer to examine</param>
         /// <param name="allowedChars">A sequence of characters that are excluded from encoding</param>
         /// <returns>The size of the buffer required to encode</returns>
-        public static unsafe int PercentEncodeCalcBufferSize(ReadOnlySpan<byte> utf8Bytes, in ReadOnlySpan<byte> allowedChars = default)
+        public static unsafe int PercentEncodeCalcBufferSize(ReadOnlySpan<byte> utf8Bytes, ReadOnlySpan<byte> allowedChars = default)
         {
             /*
              * For every illegal character, the percent encoding adds 3 bytes of 
@@ -607,7 +640,7 @@ namespace VNLib.Utils
                 //Find all unsafe characters and add the entropy size
                 for (int i = 0; i < len; i++)
                 {
-                    if (!IsUrlSafeChar(utfBase[i], in allowedChars))
+                    if (!IsUrlSafeChar(utfBase[i], allowedChars))
                     {
                         count += 2;
                     }
@@ -625,15 +658,16 @@ namespace VNLib.Utils
         /// <param name="utf8Output">The buffer to write the encoded characters to</param>
         /// <param name="allowedChars">A sequence of characters that are excluded from encoding</param>
         /// <returns>The number of characters encoded and written to the output buffer</returns>
-        public static ERRNO PercentEncode(ReadOnlySpan<byte> utf8Bytes, Span<byte> utf8Output, in ReadOnlySpan<byte> allowedChars = default)
+        public static ERRNO PercentEncode(ReadOnlySpan<byte> utf8Bytes, Span<byte> utf8Output, ReadOnlySpan<byte> allowedChars = default)
         {
             int outPos = 0, len = utf8Bytes.Length;
             ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.Span;
+
             for (int i = 0; i < len; i++)
             {
                 byte value = utf8Bytes[i];
                 //Check if value is url safe
-                if(IsUrlSafeChar(value, in allowedChars))
+                if(IsUrlSafeChar(value, allowedChars))
                 {
                     //Skip
                     utf8Output[outPos++] = value;
@@ -652,7 +686,7 @@ namespace VNLib.Utils
             return outPos;
         }
 
-        private static bool IsUrlSafeChar(byte value, in ReadOnlySpan<byte> allowedChars)
+        private static bool IsUrlSafeChar(byte value, ReadOnlySpan<byte> allowedChars)
         {
             return
                 // base10 digits
@@ -683,26 +717,33 @@ namespace VNLib.Utils
         {
             int outPos = 0, len = utf8Encoded.Length;
             ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.Span;
+            
             for (int i = 0; i < len; i++)
             {
                 byte value = utf8Encoded[i];
+
                 //Begining of percent encoding character
                 if(value == 0x25)
                 {
                     //Calculate the base16 multiplier from the upper half of the 
                     int multiplier = lookupTable.IndexOf(utf8Encoded[i + 1]);
+                   
                     //get the base16 lower half to add
                     int lower = lookupTable.IndexOf(utf8Encoded[i + 2]);
+                    
                     //Check format
                     if(multiplier < 0 || lower < 0)
                     {
                         throw new FormatException($"Encoded buffer contains invalid hexadecimal characters following the % character at position {i}");
                     }
+                    
                     //Calculate the new value, shift multiplier to the upper 4 bits, then mask + or the lower 4 bits
                     value = (byte)(((byte)(multiplier << 4)) | ((byte)lower & 0x0f));
+                    
                     //Advance the encoded index by the two consumed chars
                     i += 2;
                 }
+
                 utf8Output[outPos++] = value;
             }
             return outPos;
@@ -903,7 +944,7 @@ namespace VNLib.Utils
             int decodedSize = encoding.GetByteCount(chars);
 
             //alloc buffer
-            using UnsafeMemoryHandle<byte> decodeHandle = Memory.MemoryUtil.UnsafeAlloc<byte>(decodedSize);
+            using UnsafeMemoryHandle<byte> decodeHandle = MemoryUtil.UnsafeAlloc<byte>(decodedSize);
             //Get the utf8 binary data
             int count = encoding.GetBytes(chars, decodeHandle);
             return Base64UrlDecode(decodeHandle.Span[..count], output);

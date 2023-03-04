@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -216,7 +216,7 @@ namespace VNLib.Net.Http
         {
             StopToken = CancellationTokenSource.CreateLinkedTokenSource(token);
             //Start servers with the new token source
-            Transport.Start(token);
+            Transport.Start(StopToken.Token);
             //Start the listen task
             return Task.Run(ListenWorkerDoWork, token);
         }

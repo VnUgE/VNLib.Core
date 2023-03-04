@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -404,6 +405,92 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(postFree.MaxHeapSize == 1024);
             Assert.IsTrue(postFree.MaxBlockSize == 1024);
             Assert.IsTrue(postFree.MinBlockSize == 1024);
+        }
+
+        [TestMethod()]
+        public void NearestPageTest()
+        {
+            //Test less than 1 page
+            const nint TEST_1 = 458;
+
+            nint pageSize = MemoryUtil.NearestPage(TEST_1);
+
+            //Confirm output is the system page size
+            Assert.IsTrue(pageSize == Environment.SystemPageSize);
+
+            //Test over 1 page
+            nint TEST_2 = Environment.SystemPageSize + 1;
+
+            pageSize = MemoryUtil.NearestPage(TEST_2);
+
+            //Should be 2 pages
+            Assert.IsTrue(pageSize == 2 * Environment.SystemPageSize);
+
+            //Exactly one page
+            pageSize = MemoryUtil.NearestPage(Environment.SystemPageSize);
+
+            Assert.IsTrue(pageSize == Environment.SystemPageSize);
+        }
+
+
+        [TestMethod()]
+        public void AllocNearestPage()
+        {
+            //Simple alloc test
+
+            const int TEST_1 = 1;
+
+            //Unsafe byte test
+            using (UnsafeMemoryHandle<byte> byteBuffer = MemoryUtil.UnsafeAllocNearestPage<byte>(TEST_1, false))
+            {
+                nuint byteSize = MemoryUtil.ByteSize(byteBuffer);
+
+                //Confirm byte size is working also
+                Assert.IsTrue(byteSize == byteBuffer.Length);
+
+                //Should be the same as the page size
+                Assert.IsTrue(byteSize == (nuint)Environment.SystemPageSize);
+            }
+
+            using(IMemoryHandle<byte> safeByteBuffer = MemoryUtil.SafeAllocNearestPage<byte>(TEST_1, false))
+            {
+                nuint byteSize = MemoryUtil.ByteSize(safeByteBuffer);
+
+                //Confirm byte size is working also
+                Assert.IsTrue(byteSize == safeByteBuffer.Length);
+
+                //Should be the same as the page size
+                Assert.IsTrue(byteSize == (nuint)Environment.SystemPageSize);
+            }
+
+            /*
+             * When using the Int32 a page size of 4096 would yield a space of 1024 Int32,
+             * so allocating 1025 int32s should cause an overflow to the next page size
+             */
+            const int TEST_2 = 1025;
+
+            //Test for different types
+            using (UnsafeMemoryHandle<int> byteBuffer = MemoryUtil.UnsafeAllocNearestPage<int>(TEST_2, false))
+            {
+                nuint byteSize = MemoryUtil.ByteSize(byteBuffer);
+
+                //Confirm byte size is working also
+                Assert.IsTrue(byteSize != byteBuffer.Length);
+
+                //Should be the same as the page size
+                Assert.IsTrue(byteSize == (nuint)(Environment.SystemPageSize * 2));
+            }
+
+            using (IMemoryHandle<int> safeByteBuffer = MemoryUtil.SafeAllocNearestPage<int>(TEST_2, false))
+            {
+                nuint byteSize = MemoryUtil.ByteSize(safeByteBuffer);
+
+                //Confirm byte size is working also
+                Assert.IsTrue(byteSize != safeByteBuffer.Length);
+
+                //Should be the same as the page size
+                Assert.IsTrue(byteSize == (nuint)(Environment.SystemPageSize * 2));
+            }
         }
     }
 }

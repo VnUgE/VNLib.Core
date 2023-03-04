@@ -701,8 +701,12 @@ namespace VNLib.Utils.Memory
             {
                 throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
             }
-            //Round to nearest page
-            nint np = NearestPage(elements);
+            //Round to nearest page (in bytes)
+            nint np = NearestPage(elements * sizeof(T));
+
+            //Resize to element size
+            np /= sizeof(T);
+
             return UnsafeAlloc<T>((int)np, zero);
         }
 
@@ -754,8 +758,12 @@ namespace VNLib.Utils.Memory
                 throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
             }
 
-            //Round to nearest page
-            nint np = NearestPage(elements);
+            //Round to nearest page (in bytes)
+            nint np = NearestPage(elements * sizeof(T));
+
+            //Resize to element size
+            np /= sizeof(T);
+
             return SafeAlloc<T>((int)np, zero);
         }
 

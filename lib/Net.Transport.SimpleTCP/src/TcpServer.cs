@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -107,8 +107,6 @@ namespace VNLib.Net.Transport.Tcp
       
         private AsyncQueue<VnSocketAsyncArgs>? WaitingSockets;
         private Socket? ServerSock;
-        //private CancellationToken Token;
-        
         private bool _canceledFlag;
 
         /// <summary>
@@ -126,6 +124,7 @@ namespace VNLib.Net.Transport.Tcp
             {
                 throw new InvalidOperationException("The server thread is currently listening and cannot be re-started");
             }
+
             //make sure the token isnt already canceled
             if (token.IsCancellationRequested)
             {
@@ -189,21 +188,22 @@ namespace VNLib.Net.Transport.Tcp
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ReturnCb(VnSocketAsyncArgs args)
+        {
+            //If the server has exited, dispose the args and dont return to pool
+            if (_canceledFlag)
+            {
+                args.Dispose();
+            }
+            else
+            {
+                SockAsyncArgPool.Return(args);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private VnSocketAsyncArgs ArgsConstructor()
         {
-            void ReturnCb(VnSocketAsyncArgs args)
-            {
-                //If the server has exited, dispose the args and dont return to pool
-                if (_canceledFlag)
-                {
-                    args.Dispose();
-                }
-                else
-                {
-                    SockAsyncArgPool.Return(args);
-                }
-            }
-
             //Socket args accept callback functions for this 
             VnSocketAsyncArgs args = new(AcceptCompleted, ReturnCb, PipeOptions);
             return args;
@@ -217,8 +217,10 @@ namespace VNLib.Net.Transport.Tcp
             {
                 return;
             }
+
             //Rent new args
             VnSocketAsyncArgs acceptArgs = SockAsyncArgPool!.Rent();
+
             //Accept another socket
             if (!acceptArgs.BeginAccept(ServerSock!))
             {

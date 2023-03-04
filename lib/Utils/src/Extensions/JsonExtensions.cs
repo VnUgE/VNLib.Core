@@ -35,11 +35,29 @@ namespace VNLib.Utils.Extensions
     /// </summary>
     public enum TimeParseType
     {
+        /// <summary>
+        /// Parses the value for <see cref="TimeSpan"/> as milliseconds
+        /// </summary>
         Milliseconds,
+        /// <summary>
+        /// Parses the value for <see cref="TimeSpan"/> as seconds
+        /// </summary>
         Seconds,
+        /// <summary>
+        /// Parses the value for <see cref="TimeSpan"/> as milliseconds
+        /// </summary>
         Minutes,
+        /// <summary>
+        /// Parses the value for <see cref="TimeSpan"/> as milliseconds
+        /// </summary>
         Hours,
+        /// <summary>
+        /// Parses the value for <see cref="TimeSpan"/> as milliseconds
+        /// </summary>
         Days,
+        /// <summary>
+        /// Parses the value for <see cref="TimeSpan"/> as milliseconds
+        /// </summary>
         Ticks
     }
     
@@ -67,7 +85,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The new object or default if the string is null or empty</returns>
         /// <exception cref="JsonException"></exception>
         /// <exception cref="NotSupportedException"></exception>
-        public static T? AsJsonObject<T>(this in ReadOnlySpan<byte> utf8bin, JsonSerializerOptions? options = null)
+        public static T? AsJsonObject<T>(this ReadOnlySpan<byte> utf8bin, JsonSerializerOptions? options = null)
         {
             return utf8bin.IsEmpty ? default : JsonSerializer.Deserialize<T>(utf8bin, options);
         }
@@ -80,7 +98,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The new object or default if the string is null or empty</returns>
         /// <exception cref="JsonException"></exception>
         /// <exception cref="NotSupportedException"></exception>
-        public static T? AsJsonObject<T>(this in ReadOnlyMemory<byte> utf8bin, JsonSerializerOptions? options = null)
+        public static T? AsJsonObject<T>(this ReadOnlyMemory<byte> utf8bin, JsonSerializerOptions? options = null)
         {
             return utf8bin.IsEmpty ? default : JsonSerializer.Deserialize<T>(utf8bin.Span, options);
         }
@@ -114,7 +132,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="element"></param>
         /// <param name="propertyName">The name of the property to get the string value of</param>
         /// <returns>If the property exists, returns the string stored at that property</returns>
-        public static string? GetPropString(this in JsonElement element, string propertyName)
+        public static string? GetPropString(this JsonElement element, string propertyName)
         {
             return element.TryGetProperty(propertyName, out JsonElement el) ? el.GetString() : null;
         }
@@ -198,7 +216,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public static TimeSpan GetTimeSpan(this in JsonElement el, TimeParseType type)
+        public static TimeSpan GetTimeSpan(this JsonElement el, TimeParseType type)
         {
             return type switch
             {

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -29,6 +29,7 @@ using System.Threading;
 using System.Net.Sockets;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Memory.Caching;
@@ -188,7 +189,8 @@ namespace VNLib.Net.Transport.Tcp
                 while (true)
                 {
                     //wait for data from the write pipe and write it to the socket
-                    ReadResult result = await SendPipe.Reader.ReadAsync();
+                    ReadResult result = await SendPipe.Reader.ReadAsync(CancellationToken.None);
+
                     //Catch error/cancel conditions and break the loop
                     if (result.IsCanceled || !sock.Connected || result.Buffer.IsEmpty)
                     {
@@ -296,7 +298,7 @@ namespace VNLib.Net.Transport.Tcp
                     //Advance/notify the pipe
                     RecvPipe.Writer.Advance(count);
 
-                    //Flush data at top of loop, since data is available from initial accept
+                    //Publish read data
                     FlushResult res = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
 
                     //Writing has completed, time to exit
@@ -359,7 +361,7 @@ namespace VNLib.Net.Transport.Tcp
 
                 if (result.IsCanceled)
                 {
-                    throw new OperationCanceledException("The operation was canceled by the underlying PipeWriter");
+                    ThrowHelpers.ThrowWriterCanceled();
                 }
             }
             finally
@@ -378,13 +380,14 @@ namespace VNLib.Net.Transport.Tcp
                 ValueTask<FlushResult> result = SendPipe.Writer.WriteAsync(data, cancellation);
 
                 //Task completed successfully, so 
-                if (result.IsCompletedSuccessfully)
+                if (result.IsCompleted)
                 {
                     //Stop timer
                     SendTimer.Stop();
 
-                    //Safe to get the rseult
-                    FlushResult fr = result.Result;
+                    //safe to get the flush result sync, may throw, so preserve the call stack
+                    FlushResult fr = result.GetAwaiter().GetResult();
+                    
                     //Check for canceled and throw
                     return fr.IsCanceled
                         ? throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter")
@@ -410,10 +413,14 @@ namespace VNLib.Net.Transport.Tcp
             ValueTask<FlushResult> result = SendPipe.Writer.WriteAsync(data, cancellation);
 
             //Task completed successfully, so 
-            if (result.IsCompletedSuccessfully)
+            if (result.IsCompleted)
             {
-                //Safe to get the rseult
-                FlushResult fr = result.Result;
+                /*
+                 * We can get the flush result synchronously, it may throw
+                 * so preserve the call stack
+                 */
+                FlushResult fr = result.GetAwaiter().GetResult();
+                
                 //Check for canceled and throw
                 return fr.IsCanceled
                     ? throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter")
@@ -431,7 +438,6 @@ namespace VNLib.Net.Transport.Tcp
             //Use timer if timeout is set, dont otherwise
             return SendTimeoutMs < 1 ? SendWithoutTimerInternalAsync(data, cancellation) : SendWithTimerInternalAsync(data, cancellation);
         }
-
       
         void ITransportInterface.Send(ReadOnlySpan<byte> data)
         {
@@ -449,27 +455,12 @@ namespace VNLib.Net.Transport.Tcp
                 //Send the segment
                 ValueTask<FlushResult> result = SendPipe.Writer.FlushAsync(CancellationToken.None);
 
-                //Task completed successfully, so 
-                if (result.IsCompletedSuccessfully)
+                //Await the result synchronously
+                FlushResult fr = result.ConfigureAwait(false).GetAwaiter().GetResult();
+
+                if (fr.IsCanceled)
                 {
-                    //Safe to get the rseult
-                    FlushResult fr = result.Result;
-
-                    //Check for canceled and throw
-                    if (fr.IsCanceled)
-                    {
-                        throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter");
-                    }
-                }
-                else
-                {                    
-                    //Await the result
-                    FlushResult fr = result.ConfigureAwait(false).GetAwaiter().GetResult();
-
-                    if (fr.IsCanceled)
-                    {
-                        throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter");
-                    }
+                    ThrowHelpers.ThrowWriterCanceled();
                 }
             }
             finally
@@ -479,17 +470,48 @@ namespace VNLib.Net.Transport.Tcp
             }
         }
 
-        async ValueTask<int> ITransportInterface.RecvAsync(Memory<byte> buffer, CancellationToken cancellation)
+
+        ValueTask<int> ITransportInterface.RecvAsync(Memory<byte> buffer, CancellationToken cancellation)
         {
-            //Restart timer
+            static async Task<int> AwaitAsyncRead(ValueTask<int> task, Timer recvTimer)
+            {
+                try
+                {
+                    return await task.ConfigureAwait(false);
+                }
+                finally
+                {
+                    recvTimer.Stop();
+                }
+            }
+
+            //Restart recv timer
             RecvTimer.Restart(RecvTimeoutMs);
             try
             {
-                return await RecvStream.ReadAsync(buffer, cancellation);
+                //Read async and get the value task
+                ValueTask<int> result = RecvStream.ReadAsync(buffer, cancellation);
+
+                if (result.IsCompleted)
+                {
+                    //Completed sync, may throw, if not return the results
+                    int read = result.GetAwaiter().GetResult();
+
+                    //Stop the timer
+                    RecvTimer.Stop();
+
+                    return ValueTask.FromResult(read);
+                }
+                else
+                {
+                    //return async as value task
+                    return new(AwaitAsyncRead(result, RecvTimer));
+                }
             }
-            finally
+            catch
             {
                 RecvTimer.Stop();
+                throw;
             }
         }
 
@@ -517,5 +539,14 @@ namespace VNLib.Net.Transport.Tcp
             return Task.WhenAll(vt.AsTask(), rv.AsTask(), _recvTask!, _sendTask!);
         }
       
+
+        private static class ThrowHelpers
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void ThrowWriterCanceled() 
+            {
+                throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter");
+            }
+        }
     }
 }

@@ -27,6 +27,7 @@ using System.Text.Json;
 
 namespace VNLib.Plugins.Attributes
 {
+
     /// <summary>
     /// Set this attribute on an <see cref="IPlugin"/> instance method to define the configuration initializer.
     /// This attribute can only be defined on a single instance method and cannot be overloaded.
