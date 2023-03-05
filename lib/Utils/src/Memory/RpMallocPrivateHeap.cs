@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -251,7 +251,7 @@ namespace VNLib.Utils.Memory
             //Destroy the heap
             rpmalloc_heap_release(handle);
             //Release base
-            return base.ReleaseHandle();
+            return true;
         }
 
         ///<inheritdoc/>

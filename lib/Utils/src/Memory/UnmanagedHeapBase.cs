@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Threading;
 using System.Runtime.InteropServices;
 
 using Microsoft.Win32.SafeHandles;
@@ -41,7 +40,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// The heap synchronization handle
         /// </summary>
-        protected readonly SemaphoreSlim HeapLock;
+        protected readonly object HeapLock;
         
         /// <summary>
         /// The global heap zero flag
@@ -55,7 +54,7 @@ namespace VNLib.Utils.Memory
         /// <param name="ownsHandle">A flag that indicates if the handle is owned by the instance</param>
         protected UnmanagedHeapBase(bool globalZero, bool ownsHandle) : base(ownsHandle)
         {
-            HeapLock = new(1, 1);
+            HeapLock = new();
             GlobalZero = globalZero;
         }
 
@@ -68,21 +67,25 @@ namespace VNLib.Utils.Memory
             //Force zero if global flag is set
             zero |= GlobalZero;
             bool handleCountIncremented = false;
+
             //Increment handle count to prevent premature release
             DangerousAddRef(ref handleCountIncremented);
+
             //Failed to increment ref count, class has been disposed
             if (!handleCountIncremented)
             {
                 throw new ObjectDisposedException("The handle has been released");
             }
+
             try
             {
-                //wait for lock
-                HeapLock.Wait();
-                //Alloc block
-                LPVOID block = AllocBlock(elements, size, zero);
-                //release lock
-                HeapLock.Release();
+                LPVOID block;
+                //Enter lock
+                lock(HeapLock)
+                {
+                    //Alloc block
+                    block = AllocBlock(elements, size, zero);
+                }
                 //Check if block was allocated
                 return block != IntPtr.Zero ? block : throw new NativeMemoryOutOfMemoryException("Failed to allocate the requested block");
             }
@@ -99,18 +102,22 @@ namespace VNLib.Utils.Memory
         public bool Free(ref LPVOID block)
         {           
             bool result;
+
             //If disposed, set the block handle to zero and exit to avoid raising exceptions during finalization
             if (IsClosed || IsInvalid)
             {
                 block = IntPtr.Zero;
                 return true;
             }
+
             //wait for lock
-            HeapLock.Wait();
-            //Free block
-            result = FreeBlock(block);
-            //Release lock before releasing handle
-            HeapLock.Release();
+            lock (HeapLock)
+            {
+                //Free block
+                result = FreeBlock(block);
+                //Release lock before releasing handle
+            }
+
             //Decrement handle count
             DangerousRelease();
             //set block to invalid
@@ -123,31 +130,27 @@ namespace VNLib.Utils.Memory
         ///<exception cref="ObjectDisposedException"></exception>
         public void Resize(ref LPVOID block, nuint elements, nuint size, bool zero)
         {
-            //wait for lock
-            HeapLock.Wait();
-            /*
-             * Realloc may return a null pointer if allocation fails
-             * so check the results and only assign the block pointer
-             * if the result is valid. Otherwise pointer block should 
-             * be left untouched
-             */
-            LPVOID newBlock = ReAllocBlock(block, elements, size, zero);
-            //release lock
-            HeapLock.Release();
+            LPVOID newBlock;
+
+            lock (HeapLock)
+            {
+                /*
+                 * Realloc may return a null pointer if allocation fails
+                 * so check the results and only assign the block pointer
+                 * if the result is valid. Otherwise pointer block should 
+                 * be left untouched
+                 */
+                newBlock = ReAllocBlock(block, elements, size, zero);
+            }
+            
             //Check block 
             if (newBlock == IntPtr.Zero)
             {
                 throw new NativeMemoryOutOfMemoryException("The memory block could not be resized");
             }
+
             //Set the new block
             block = newBlock;
-        }
-
-        ///<inheritdoc/>
-        protected override bool ReleaseHandle()
-        {
-            HeapLock.Dispose();
-            return true;
         }
 
         /// <summary>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -26,9 +26,11 @@ using System;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 using DWORD = System.Int64;
 using LPVOID = System.IntPtr;
+
 
 namespace VNLib.Utils.Memory
 {
@@ -136,11 +138,11 @@ namespace VNLib.Utils.Memory
         {
             bool result;
             //Lock the heap before validating
-            HeapLock.Wait();
-            //validate the block on the current heap
-            result = HeapValidate(handle, HEAP_NO_FLAGS, block);
-            //Unlock the heap
-            HeapLock.Release();
+            lock (HeapLock)
+            {
+                //validate the block on the current heap
+                result = HeapValidate(handle, HEAP_NO_FLAGS, block);
+            }
             return result;
            
         }
@@ -153,12 +155,13 @@ namespace VNLib.Utils.Memory
         public bool Validate()
         {
             bool result;
+            
             //Lock the heap before validating
-            HeapLock.Wait();
-            //validate the entire heap
-            result = HeapValidate(handle, HEAP_NO_FLAGS, IntPtr.Zero);
-            //Unlock the heap
-            HeapLock.Release();
+            lock (HeapLock)
+            {
+                //validate the entire heap
+                result = HeapValidate(handle, HEAP_NO_FLAGS, IntPtr.Zero);
+            }
             return result;
         }
 
@@ -168,9 +171,10 @@ namespace VNLib.Utils.Memory
 #if TRACE
             Trace.WriteLine($"Win32 private heap {handle:x} destroyed");
 #endif
-            return HeapDestroy(handle) && base.ReleaseHandle();
+            return HeapDestroy(handle);
         }
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override sealed LPVOID AllocBlock(nuint elements, nuint size, bool zero)
         {
             nuint bytes = checked(elements * size);
@@ -178,9 +182,11 @@ namespace VNLib.Utils.Memory
             return HeapAlloc(handle, zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, bytes);
         }
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override sealed bool FreeBlock(LPVOID block) => HeapFree(handle, HEAP_NO_FLAGS, block);
-        
+
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override sealed LPVOID ReAllocBlock(LPVOID block, nuint elements, nuint size, bool zero)
         {
             nuint bytes = checked(elements * size);
