@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -37,9 +37,9 @@ using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
 
+
 namespace VNLib.Net.Messaging.FBM.Client
 {
-
     /// <summary>
     /// <para>
     /// A reusable Fixed Buffer Message request container. This class is not thread-safe
@@ -55,7 +55,15 @@ namespace VNLib.Net.Messaging.FBM.Client
 #pragma warning restore CA2213 // Disposable fields should be disposed
         private readonly Encoding HeaderEncoding;
 
+        /*
+         * Local list stores processed headers for response messages
+         * which are structures and will be allocted in the list.
+         * FBMMessagesHeader's are essentially pointers to locations
+         * in the reused buffer (in response "mode") cast to a 
+         * character buffer.
+         */
         private readonly List<FBMMessageHeader> ResponseHeaderList = new();
+
 
         /// <summary>
         /// The size (in bytes) of the request message
@@ -66,12 +74,12 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// The id of the current request message
         /// </summary>
         public int MessageId { get; }
-
+    
         /// <summary>
-        /// An <see cref="ManualResetEvent"/> to signal request/response
-        /// event completion
+        /// Gets the request message waiter
         /// </summary>
-        internal ManualResetEvent ResponseWaitEvent { get; }
+        internal IFBMMessageWaiter Waiter { get; }
+
 
         internal VnMemoryStream? Response { get; private set; }
 
@@ -92,7 +100,6 @@ namespace VNLib.Net.Messaging.FBM.Client
         :this(messageId, config.BufferHeap, config.MessageBufferSize, config.HeaderEncoding)
         { }
 
-
         /// <summary>
         /// Initializes a new <see cref="FBMRequest"/> with the sepcified message buffer size and a custom MessageId
         /// </summary>
@@ -105,12 +112,12 @@ namespace VNLib.Net.Messaging.FBM.Client
             MessageId = messageId;
             HeaderEncoding = headerEncoding;
 
+            //Configure waiter
+            Waiter = new FBMMessageWaiter(this);
+
             //Alloc the buffer as a memory owner so a memory buffer can be used
             IMemoryOwner<byte> HeapBuffer = heap.DirectAlloc<byte>(bufferSize);
             Buffer = new(HeapBuffer);
-
-            //Setup response wait handle but make sure the contuation runs async
-            ResponseWaitEvent = new(true);
 
             //Prepare the message incase the request is fresh
             Reset();
@@ -139,7 +146,6 @@ namespace VNLib.Net.Messaging.FBM.Client
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IBufferWriter<byte> GetBodyWriter() => Buffer.GetBodyWriter();
 
-
         /// <summary>
         /// The request message packet, this may cause side effects
         /// </summary>
@@ -158,25 +164,17 @@ namespace VNLib.Net.Messaging.FBM.Client
             Buffer.Reset(MessageId);
         }
 
-        internal void SetResponse(VnMemoryStream? vms)
-        {
-            Response = vms;
-            ResponseWaitEvent.Set();
-        }
-
-        internal Task WaitForResponseAsync(CancellationToken token)
-        {
-            return ResponseWaitEvent.WaitAsync().WaitAsync(token);
-        }
-
         ///<inheritdoc/>
         protected override void Free()
         {
             Buffer.Dispose();
-            ResponseWaitEvent.Dispose();
             Response?.Dispose();
+            //Dispose waiter
+            (Waiter as FBMMessageWaiter)!.Dispose();
         }
+
         void IReusable.Prepare() => Reset();
+
         bool IReusable.Release()
         {
             //Make sure response header list is clear
@@ -268,6 +266,110 @@ namespace VNLib.Net.Messaging.FBM.Client
         }
         ///<inheritdoc/>
         public override string ToString() => Compile();
+
+        #endregion
+
+        #region waiter
+        private sealed class FBMMessageWaiter : IFBMMessageWaiter, IDisposable
+        {
+            private readonly Timer _timer;
+            private readonly FBMRequest _request;
+
+            private TaskCompletionSource? _tcs;
+
+            public FBMMessageWaiter(FBMRequest request)
+            {
+                _request = request;
+
+                //Configure timer
+                _timer = new(OnCancelled, this, Timeout.Infinite, Timeout.Infinite);
+            }
+
+            ///<inheritdoc/>
+            public void OnBeginRequest()
+            {
+                //Configure new tcs
+                _tcs = new(TaskCreationOptions.None);
+            }
+
+            ///<inheritdoc/>
+            public void OnEndRequest()
+            {
+                //Cleanup tcs ref
+                _ = Interlocked.Exchange(ref _tcs, null);
+
+                //Stop timer if set
+                _timer.Stop();
+            }
+
+            ///<inheritdoc/>
+            public void Complete(VnMemoryStream ms)
+            {
+                //Read the current state of the tcs
+                TaskCompletionSource? tcs = _tcs;
+
+                if (tcs == null)
+                {
+                    //Work is done/cancelled, dispose the ms and leave
+                    ms.Dispose();
+                }
+
+                //Store response
+                _request.Response = ms;
+
+                //Transition to completed state in background thread
+                static void OnTpCallback(object? state)
+                {
+                    _ = (state as TaskCompletionSource)!.TrySetResult();
+                }
+
+                /*
+                 * The calling thread may be a TP thread proccessing an async event loop.
+                 * We do not want to block this worker thread.
+                 */
+                ThreadPool.UnsafeQueueUserWorkItem(OnTpCallback, tcs);
+            }
+
+            ///<inheritdoc/>
+            public async Task WaitAsync(TimeSpan timeout, CancellationToken cancellation)
+            {
+                if (timeout.Ticks > 0)
+                {
+                    //Restart timer if timeout is configured
+                    _timer.Restart(timeout);
+                }
+
+                //Confim the token may be cancelled
+                if (cancellation.CanBeCanceled)
+                {
+                    //Register cancellation
+                    using CancellationTokenRegistration reg = cancellation.Register(OnCancelled, this, false);
+
+                    //await task that may be canclled
+                    await _tcs.Task.ConfigureAwait(false);
+                }
+                else
+                {
+                    //await the task directly
+                    await _tcs.Task.ConfigureAwait(false);
+                }
+            }
+
+            ///<inheritdoc/>
+            public void ManualCancellation() => OnCancelled(this);
+
+            private void OnCancelled(object? state)
+            {
+                //Set cancelled state if exists
+                _ = _tcs?.TrySetCanceled();
+            }
+
+            ///<inheritdoc/>
+            public void Dispose()
+            {
+                _timer.Dispose();
+            }
+        }
 
         #endregion
     }

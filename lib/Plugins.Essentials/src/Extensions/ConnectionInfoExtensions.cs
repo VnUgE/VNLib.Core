@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,8 +23,8 @@
 */
 
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
@@ -33,6 +33,7 @@ using VNLib.Net.Http;
 
 namespace VNLib.Plugins.Essentials.Extensions
 {
+
     /// <summary>
     /// Provides <see cref="ConnectionInfo"/> extension methods
     /// for common use cases
@@ -232,6 +233,33 @@ namespace VNLib.Plugins.Essentials.Extensions
             bool secure = false)
         {
             server.SetCookie(name, value, domain, path, expires, sameSite, httpOnly, secure);
+        }
+
+
+        /// <summary>
+        /// Sets a cookie with an infinite (session life-span)
+        /// </summary>
+        /// <param name="server"></param>
+        /// <param name="cookie">The cookie to set for the server</param>
+        /// <exception cref="ArgumentException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void SetCookie(this IConnectionInfo server, in HttpCookie cookie)
+        {
+            //Cookie name is required
+            if(string.IsNullOrWhiteSpace(cookie.Name))
+            {
+                throw new ArgumentException("A nonn-null cookie name is required");
+            }
+
+            //Set the cookie
+            server.SetCookie(cookie.Name,
+                             cookie.Value,
+                             cookie.Domain,
+                             cookie.Path,
+                             cookie.ValidFor,
+                             cookie.SameSite,
+                             cookie.HttpOnly,
+                             cookie.Secure);
         }
 
         /// <summary>

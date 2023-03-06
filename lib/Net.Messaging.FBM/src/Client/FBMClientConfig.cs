@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -64,6 +64,11 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// The websocket keepalive interval to use (leaving this property default disables keepalives)
         /// </summary>
         public readonly TimeSpan KeepAliveInterval { get; init; }
+
+        /// <summary>
+        /// If configured, configures a maximum request timout
+        /// </summary>
+        public readonly TimeSpan RequestTimeout { get; init; }
         /// <summary>
         /// The websocket sub-protocol to use
         /// </summary>
