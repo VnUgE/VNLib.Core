@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -23,13 +23,11 @@
 */
 
 using System.Net;
+using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Extensions;
-using VNLib.Plugins.Runtime;
-using VNLib.Plugins.Essentials.Content;
-using VNLib.Plugins.Essentials.Sessions;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -42,7 +40,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     public sealed class ServiceGroup 
     {
         private readonly LinkedList<IServiceHost> _vHosts;
-        private readonly ConditionalWeakTable<RuntimePluginLoader, IEndpoint[]> _endpointsForPlugins;
+        private readonly ConditionalWeakTable<IManagedPlugin, IEndpoint[]> _endpointsForPlugins;
 
         /// <summary>
         /// The <see cref="IPEndPoint"/> transport endpoint for all loaded service hosts
@@ -68,61 +66,43 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         }
 
         /// <summary>
-        /// Sets the specified page rotuer for all virtual hosts
-        /// </summary>
-        /// <param name="router">The page router to user</param>
-        internal void UpdatePageRouter(IPageRouter router) => _vHosts.TryForeach(v => v.Processor.SetPageRouter(router));
-        /// <summary>
-        /// Sets the specified session provider for all virtual hosts
-        /// </summary>
-        /// <param name="current">The session provider to use</param>
-        internal void UpdateSessionProvider(ISessionProvider current) => _vHosts.TryForeach(v => v.Processor.SetSessionProvider(current));
-
-        /// <summary>
-        /// Adds or updates all endpoints exported by all plugins
-        /// within the specified loader. All endpoints exposed
-        /// by a previously loaded instance are removed and all
-        /// currently exposed endpoints are added to all virtual 
-        /// hosts
-        /// </summary>
-        /// <param name="loader">The plugin loader to get add/update endpoints from</param>
-        internal void AddOrUpdateEndpointsForPlugin(RuntimePluginLoader loader)
-        {
-            //Get all new endpoints for plugin
-            IEndpoint[] newEndpoints = loader.LivePlugins.SelectMany(static pl => pl.Plugin!.GetEndpoints()).ToArray();
-
-            //See if 
-            if(_endpointsForPlugins.TryGetValue(loader, out IEndpoint[]? oldEps))
-            {
-                //Remove old endpoints
-                _vHosts.TryForeach(v => v.Processor.RemoveEndpoint(oldEps));
-            }
-
-            //Add endpoints to dict
-            _endpointsForPlugins.AddOrUpdate(loader, newEndpoints);
-
-            //Add endpoints to hosts
-            _vHosts.TryForeach(v => v.Processor.AddEndpoint(newEndpoints));
-        }
-
-        /// <summary>
-        /// Unloads all previously stored endpoints, router, session provider, and 
-        /// clears all internal data structures
+        /// Manually detatches runtime services and their loaded endpoints from all
+        /// endpoints.
         /// </summary>
         internal void UnloadAll()
         {
             //Remove all loaded endpoints
-            _vHosts.TryForeach(v => _endpointsForPlugins.TryForeach(eps => v.Processor.RemoveEndpoint(eps.Value)));
-
-            //Remove all routers
-            _vHosts.TryForeach(static v => v.Processor.SetPageRouter(null));
-            //Remove all session providers
-            _vHosts.TryForeach(static v => v.Processor.SetSessionProvider(null));
+            _vHosts.TryForeach(v => _endpointsForPlugins.TryForeach(eps => v.OnRuntimeServiceDetach(eps.Key, eps.Value)));
 
             //Clear all hosts
             _vHosts.Clear();
             //Clear all endpoints
             _endpointsForPlugins.Clear();
+        }
+
+        internal void OnPluginLoaded(IManagedPlugin controller)
+        {
+            //Get all new endpoints for plugin
+            IEndpoint[] newEndpoints = controller.Controller.Plugins.SelectMany(static pl => pl.Plugin!.GetEndpoints()).ToArray();
+
+            //Add endpoints to dict
+            _endpointsForPlugins.AddOrUpdate(controller, newEndpoints);
+
+            //Add endpoints to hosts
+            _vHosts.TryForeach(v => v.OnRuntimeServiceAttach(controller, newEndpoints));
+        }
+
+        internal void OnPluginUnloaded(IManagedPlugin controller)
+        {
+            //Get the old endpoints from the controller referrence and remove them
+            if (_endpointsForPlugins.TryGetValue(controller, out IEndpoint[]? oldEps))
+            {
+                //Remove the old endpoints
+                _vHosts.TryForeach(v => v.OnRuntimeServiceDetach(controller, oldEps));
+
+                //remove controller ref
+                _ = _endpointsForPlugins.Remove(controller);
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -22,13 +22,12 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
 using System.Net;
-using System.Text;
 
 using VNLib.Net.Http;
-using VNLib.Utils;
-using VNLib.Utils.IO;
-using VNLib.Utils.Memory.Caching;
+using VNLib.Utils.Memory;
+using VNLib.Utils.Extensions;
 using VNLib.Plugins.Essentials.Extensions;
 
 namespace VNLib.Plugins.Essentials.Oauth
@@ -74,11 +73,6 @@ namespace VNLib.Plugins.Essentials.Oauth
 
     public static class OauthHttpExtensions
     {
-        private static ThreadLocalObjectStorage<StringBuilder> SbRental { get; } = ObjectRental.CreateThreadLocal(Constructor, null, ReturnFunc);
-        
-        private static StringBuilder Constructor() => new(64);
-        private static void ReturnFunc(StringBuilder sb) => sb.Clear();
-
         /// <summary>
         /// Closes the current response with a json error message with the message details
         /// </summary>
@@ -86,134 +80,53 @@ namespace VNLib.Plugins.Essentials.Oauth
         /// <param name="code">The http status code</param>
         /// <param name="error">The short error</param>
         /// <param name="description">The error description message</param>
-        public static void CloseResponseError(this HttpEntity ev, HttpStatusCode code, ErrorType error, string description)
+        public static void CloseResponseError(this IHttpEvent ev, HttpStatusCode code, ErrorType error, ReadOnlySpan<char> description)
         {
             //See if the response accepts json
             if (ev.Server.Accepts(ContentType.Json))
             {
-                //Use a stringbuilder to create json result for the error description
-                StringBuilder sb = SbRental.Rent();
-                sb.Append("{\"error\":\"");
+                //Alloc char buffer to write output to, nearest page should give us enough room
+                using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAllocNearestPage<char>(description.Length + 64);
+                ForwardOnlyWriter<char> writer = new(buffer.Span);
+
+                //Build the error message string
+                writer.Append("{\"error\":\"");
                 switch (error)
                 {
                     case ErrorType.InvalidRequest:
-                        sb.Append("invalid_request");
+                        writer.Append("invalid_request");
                         break;
                     case ErrorType.InvalidClient:
-                        sb.Append("invalid_client");
+                        writer.Append("invalid_client");
                         break;
                     case ErrorType.UnauthorizedClient:
-                        sb.Append("unauthorized_client");
+                        writer.Append("unauthorized_client");
                         break;
                     case ErrorType.InvalidToken:
-                        sb.Append("invalid_token");
+                        writer.Append("invalid_token");
                         break;
                     case ErrorType.UnsupportedResponseType:
-                        sb.Append("unsupported_response_type");
+                        writer.Append("unsupported_response_type");
                         break;
                     case ErrorType.InvalidScope:
-                        sb.Append("invalid_scope");
+                        writer.Append("invalid_scope");
                         break;
                     case ErrorType.ServerError:
-                        sb.Append("server_error");
+                        writer.Append("server_error");
                         break;
                     case ErrorType.TemporarilyUnabavailable:
-                        sb.Append("temporarily_unavailable");
+                        writer.Append("temporarily_unavailable");
                         break;
                     default:
-                        sb.Append("error");
+                        writer.Append("error");
                         break;
                 }
-                sb.Append("\",\"error_description\":\"");
-                sb.Append(description);
-                sb.Append("\"}");
+                writer.Append("\",\"error_description\":\"");
+                writer.Append(description);
+                writer.Append("\"}");
+
                 //Close the response with the json data
-                ev.CloseResponse(code, ContentType.Json, sb.ToString());
-                //Return the builder
-                SbRental.Return(sb);
-            }
-            //Otherwise set the error code in the wwwauth header
-            else
-            {
-                //Set the error result in the header
-                ev.Server.Headers[HttpResponseHeader.WwwAuthenticate] = error switch
-                {
-                    ErrorType.InvalidRequest => $"Bearer error=\"invalid_request\"",
-                    ErrorType.UnauthorizedClient => $"Bearer error=\"unauthorized_client\"",
-                    ErrorType.UnsupportedResponseType => $"Bearer error=\"unsupported_response_type\"",
-                    ErrorType.InvalidScope => $"Bearer error=\"invalid_scope\"",
-                    ErrorType.ServerError => $"Bearer error=\"server_error\"",
-                    ErrorType.TemporarilyUnabavailable => $"Bearer error=\"temporarily_unavailable\"",
-                    ErrorType.InvalidClient => $"Bearer error=\"invalid_client\"",
-                    ErrorType.InvalidToken => $"Bearer error=\"invalid_token\"",
-                    _ => $"Bearer error=\"error\"",
-                };
-                //Close the response with the status code
-                ev.CloseResponse(code);
-            }
-        }
-        /// <summary>
-        /// Closes the current response with a json error message with the message details
-        /// </summary>
-        /// <param name="ev"></param>
-        /// <param name="code">The http status code</param>
-        /// <param name="error">The short error</param>
-        /// <param name="description">The error description message</param>
-        public static void CloseResponseError(this IHttpEvent ev, HttpStatusCode code, ErrorType error, string description)
-        {
-            //See if the response accepts json
-            if (ev.Server.Accepts(ContentType.Json))
-            {
-                //Use a stringbuilder to create json result for the error description
-                StringBuilder sb = SbRental.Rent();
-                sb.Append("{\"error\":\"");
-                switch (error)
-                {
-                    case ErrorType.InvalidRequest:
-                        sb.Append("invalid_request");
-                        break;
-                    case ErrorType.InvalidClient:
-                        sb.Append("invalid_client");
-                        break;
-                    case ErrorType.UnauthorizedClient:
-                        sb.Append("unauthorized_client");
-                        break;
-                    case ErrorType.InvalidToken:
-                        sb.Append("invalid_token");
-                        break;
-                    case ErrorType.UnsupportedResponseType:
-                        sb.Append("unsupported_response_type");
-                        break;
-                    case ErrorType.InvalidScope:
-                        sb.Append("invalid_scope");
-                        break;
-                    case ErrorType.ServerError:
-                        sb.Append("server_error");
-                        break;
-                    case ErrorType.TemporarilyUnabavailable:
-                        sb.Append("temporarily_unavailable");
-                        break;
-                    default:
-                        sb.Append("error");
-                        break;
-                }
-                sb.Append("\",\"error_description\":\"");
-                sb.Append(description);
-                sb.Append("\"}");
-
-                VnMemoryStream vms = VnEncoding.GetMemoryStream(sb.ToString(), ev.Server.Encoding);
-                try
-                {
-                    //Close the response with the json data
-                    ev.CloseResponse(code, ContentType.Json, vms);
-                }
-                catch
-                {
-                    vms.Dispose();
-                    throw;
-                }
-                //Return the builder
-                SbRental.Return(sb);
+                ev.CloseResponse(code, ContentType.Json, writer.AsSpan());
             }
             //Otherwise set the error code in the wwwauth header
             else

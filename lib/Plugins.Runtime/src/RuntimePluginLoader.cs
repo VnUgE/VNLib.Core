@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: DynamicPluginLoader.cs 
+* File: RuntimePluginLoader.cs 
 *
-* DynamicPluginLoader.cs is part of VNLib.Plugins.Runtime which is part of the larger 
+* RuntimePluginLoader.cs is part of VNLib.Plugins.Runtime which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
@@ -24,20 +24,16 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 using McMaster.NETCore.Plugins;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
 using VNLib.Utils.Logging;
-using VNLib.Utils.Extensions;
-
 
 namespace VNLib.Plugins.Runtime
 {
@@ -45,50 +41,23 @@ namespace VNLib.Plugins.Runtime
     /// A runtime .NET assembly loader specialized to load
     /// assemblies that export <see cref="IPlugin"/> types.
     /// </summary>
-    public class RuntimePluginLoader : VnDisposeable
+    public sealed class RuntimePluginLoader : VnDisposeable
     {
-        protected readonly PluginLoader Loader;
-        protected readonly string PluginPath;
-        protected readonly JsonDocument HostConfig;
-        protected readonly ILogProvider? Log;
-        protected readonly LinkedList<LivePlugin> LoadedPlugins;
+        private readonly PluginLoader Loader;
+        private readonly string PluginPath;
+        private readonly JsonDocument HostConfig;
+        private readonly ILogProvider? Log;
 
         /// <summary>
-        /// A readonly collection of all loaded plugin wrappers
+        /// Gets the plugin lifetime manager.
         /// </summary>
-        public IReadOnlyCollection<LivePlugin> LivePlugins => LoadedPlugins;
-
-        /// <summary>
-        /// An event that is raised before the loader 
-        /// unloads all plugin instances
-        /// </summary>
-        protected event EventHandler<PluginReloadedEventArgs>? OnBeforeReloaded;
-        /// <summary>
-        /// An event that is raised after a successfull reload of all new
-        /// plugins for the instance
-        /// </summary>
-        protected event EventHandler? OnAfterReloaded;
-
-        /// <summary>
-        /// Raised when the current loader has reloaded the assembly and 
-        /// all plugins were successfully loaded.
-        /// </summary>
-        public event EventHandler? Reloaded;
-
-        /// <summary>
-        /// The current plugin's JSON configuration DOM loaded from the plugin's directory
-        /// if it exists. Only valid after first initalization
-        /// </summary>
-        public JsonDocument? PluginConfigDOM { get; private set; }
-        /// <summary>
-        /// Optional loader arguments object for the plugin
-        /// </summary>
-        protected JsonElement? LoaderArgs { get; private set; }
+        public PluginController Controller { get; }
         
         /// <summary>
         /// The path of the plugin's configuration file. (Default = pluginPath.json)
         /// </summary>
-        public string PluginConfigPath { get; init; }
+        public string PluginConfigPath { get; }
+        
         /// <summary>
         /// Creates a new <see cref="RuntimePluginLoader"/> with the specified 
         /// assembly location and host config.
@@ -98,18 +67,16 @@ namespace VNLib.Plugins.Runtime
         /// <param name="hostConfig">The configuration DOM to merge with plugin config DOM and pass to enabled plugins</param>
         /// <param name="unloadable">A value that specifies if the assembly can be unloaded</param>
         /// <param name="hotReload">A value that spcifies if the loader will listen for changes to the assembly file and reload the plugins</param>
-        /// <param name="lazy">A value that specifies if assembly dependencies are loaded on-demand</param>
         /// <remarks>
         /// The <paramref name="log"/> argument may be null if <paramref name="unloadable"/> is false
         /// </remarks>
         /// <exception cref="ArgumentNullException"></exception>
-        public RuntimePluginLoader(string pluginPath, JsonDocument? hostConfig = null, ILogProvider? log = null, bool unloadable = false, bool hotReload = false, bool lazy = false)
+        public RuntimePluginLoader(string pluginPath, JsonDocument? hostConfig = null, ILogProvider? log = null, bool unloadable = false, bool hotReload = false)
             :this(
             new PluginConfig(pluginPath)
             {
                 IsUnloadable = unloadable || hotReload,
                 EnableHotReload = hotReload,
-                IsLazyLoaded = lazy,
                 ReloadDelay = TimeSpan.FromSeconds(1),
                 PreferSharedTypes = true,
                 DefaultContext = AssemblyLoadContext.Default
@@ -117,6 +84,7 @@ namespace VNLib.Plugins.Runtime
             hostConfig, log)
         {
         }
+        
         /// <summary>
         /// Creates a new <see cref="RuntimePluginLoader"/> with the specified config and host config dom.
         /// </summary>
@@ -126,124 +94,119 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public RuntimePluginLoader(PluginConfig config, JsonDocument? hostConfig, ILogProvider? log)
         {
-            //Add the assembly from which the IPlugin library was loaded from
-            config.SharedAssemblies.Add(typeof(IPlugin).Assembly.GetName());
-            
+            //Shared types is required so the default load context shares types
+            config.PreferSharedTypes = true;
+
             //Default to empty config if null
             HostConfig = hostConfig ?? JsonDocument.Parse("{}");
+
             Loader = new(config);
             PluginPath = config.MainAssemblyPath;
             Log = log;
-            Loader.Reloaded += Loader_Reloaded;
+
+            //Only regiser reload handler if the load context is unloadable
+            if (config.IsUnloadable)
+            {
+                //Init reloaded event handler
+                Loader.Reloaded += Loader_Reloaded;
+            }
+
             //Set the config path default 
             PluginConfigPath = Path.ChangeExtension(PluginPath, ".json");
-            LoadedPlugins = new();
+
+            //Init container
+            Controller = new();
         }
 
         private async void Loader_Reloaded(object sender, PluginReloadedEventArgs eventArgs)
         {
             try
             {
-                //Invoke reloaded events
-                OnBeforeReloaded?.Invoke(this, eventArgs);
-                //Unload all endpoints
-                LoadedPlugins.TryForeach(lp => lp.UnloadPlugin(Log));
-                //Clear list of loaded plugins
-                LoadedPlugins.Clear();
-                //Unload the plugin config
-                PluginConfigDOM?.Dispose();
+                //All plugins must be unloaded forst
+                UnloadAll();
+
                 //Reload the assembly and 
-                await InitLoaderAsync();
-                //fire after loaded
-                OnAfterReloaded?.Invoke(this, eventArgs);
-                //Raise the external reloaded event
-                Reloaded?.Invoke(this, EventArgs.Empty);
+                await InitializeController();
+
+                //Load plugins
+                LoadPlugins();
             }
             catch (Exception ex)
             {
-                Log?.Error(ex);
+                Log?.Error("Failed reload plugins for {loader}\n{ex}", PluginPath, ex);
             }
         }
 
         /// <summary>
-        /// Initializes the plugin loader, the assembly, and all public <see cref="IPlugin"/> 
-        /// types
+        /// Initializes the plugin loader, and populates the <see cref="Controller"/>
+        /// with initialized plugins.
         /// </summary>
         /// <returns>A task that represents the initialization</returns>
-        public async Task InitLoaderAsync()
+        /// <exception cref="IOException"></exception>
+        /// <exception cref="FileNotFoundException"></exception>
+        public async Task InitializeController()
         {
-            //Load the main assembly
-            Assembly PluginAsm = Loader.LoadDefaultAssembly();
-            //Get the plugin's configuration file
-            if (FileOperations.FileExists(PluginConfigPath))
+            JsonDocument? pluginConfig = null;
+
+            try
             {
-                //Open and read the config file
-                await using FileStream confStream = File.OpenRead(PluginConfigPath);
-                JsonDocumentOptions jdo = new()
+                //Get the plugin's configuration file
+                if (FileOperations.FileExists(PluginConfigPath))
                 {
-                    AllowTrailingCommas = true,
-                    CommentHandling = JsonCommentHandling.Skip,
-                };
-                //parse the plugin config file
-                PluginConfigDOM = await JsonDocument.ParseAsync(confStream, jdo);
-                //Store the config loader args
-                if (PluginConfigDOM.RootElement.TryGetProperty("loader_args", out JsonElement loaderEl))
-                {
-                    LoaderArgs = loaderEl;
+                    pluginConfig = await this.GetPluginConfigAsync();
                 }
+                else
+                {
+                    //Set plugin config dom to an empty object if the file does not exist
+                    pluginConfig = JsonDocument.Parse("{}");
+                }
+
+                //Load the main assembly
+                Assembly PluginAsm = Loader.LoadDefaultAssembly();
+
+                //Init container from the assembly
+                Controller.InitializePlugins(PluginAsm);
+
+                string[] cliArgs = Environment.GetCommandLineArgs();
+
+                //Configure log/doms
+                Controller.ConfigurePlugins(HostConfig, pluginConfig, cliArgs);
             }
-            else
+            finally
             {
-                //Set plugin config dom to an empty object if the file does not exist
-                PluginConfigDOM = JsonDocument.Parse("{}");
-                LoaderArgs = null;
-            }
-            
-            string[] cliArgs = Environment.GetCommandLineArgs();
-            
-            //Get all types that implement the IPlugin interface
-            IEnumerable<IPlugin> plugins = PluginAsm.GetTypes().Where(static type => !type.IsAbstract && typeof(IPlugin).IsAssignableFrom(type))
-                                            //Create the plugin instances
-                                           .Select(static type => (Activator.CreateInstance(type) as IPlugin)!);
-            //Load all plugins that implement the Iplugin interface
-            foreach (IPlugin plugin in plugins)
-            {
-                //Load wrapper
-                LivePlugin lp = new(plugin);
-                try
-                {
-                    //Init config
-                    lp.InitConfig(HostConfig, PluginConfigDOM);
-                    //Init log handler
-                    lp.InitLog(cliArgs);
-                    //Load the plugin
-                    lp.LoadPlugin();
-                    //Create new plugin loader for the plugin
-                    LoadedPlugins.AddLast(lp);
-                }
-                catch (TargetInvocationException te) when (te.InnerException is not null)
-                {
-                    throw te.InnerException;
-                }
+                pluginConfig?.Dispose();
             }
         }
+
+        /// <summary>
+        /// Loads all configured plugins by calling <see cref="IPlugin.Load"/>
+        /// event hook on the current thread. Loading exceptions are aggregated so not
+        /// to block individual loading.
+        /// </summary>
+        /// <exception cref="AggregateException"></exception>
+        public void LoadPlugins()
+        {
+            //Load all plugins
+            Controller.LoadPlugins();
+        }
+
         /// <summary>
         /// Manually reload the internal <see cref="PluginLoader"/>
-        /// which will reload the assembly and its plugins and endpoints
+        /// which will reload the assembly and its plugins
         /// </summary>
-        public void ReloadPlugin() => Loader.Reload();
+        public void ReloadPlugins() => Loader.Reload();
 
         /// <summary>
         /// Attempts to unload all plugins. 
         /// </summary>
         /// <exception cref="AggregateException"></exception>
-        public void UnloadAll() => LoadedPlugins.TryForeach(lp => lp.UnloadPlugin(Log));
+        public void UnloadAll() => Controller.UnloadPlugins();
 
         ///<inheritdoc/>
         protected override void Free()
         {
+            Controller.Dispose();
             Loader.Dispose();
-            PluginConfigDOM?.Dispose();
         }
 
     }

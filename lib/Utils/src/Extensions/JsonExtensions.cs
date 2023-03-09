@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -63,19 +63,6 @@ namespace VNLib.Utils.Extensions
     
     public static class JsonExtensions
     {
-        /// <summary>
-        /// Converts a JSON encoded string to an object of the specified type
-        /// </summary>
-        /// <typeparam name="T">Output type of the object</typeparam>
-        /// <param name="value"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> to use during de-serialization</param>
-        /// <returns>The new object or default if the string is null or empty</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        public static T? AsJsonObject<T>(this string value, JsonSerializerOptions? options = null)
-        {
-            return !string.IsNullOrWhiteSpace(value) ? JsonSerializer.Deserialize<T>(value, options) : default;
-        }
         /// <summary>
         /// Converts a JSON encoded binary data to an object of the specified type
         /// </summary>
@@ -156,18 +143,6 @@ namespace VNLib.Utils.Extensions
         public static string? GetPropString(this IDictionary<string, JsonElement> conf, string propertyName)
         {
             return conf.TryGetValue(propertyName, out JsonElement el) ? el.GetString() : null;
-        }
-
-        /// <summary>
-        /// Attemts to serialze an object to a JSON encoded string
-        /// </summary>
-        /// <param name="obj"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> to use during serialization</param>
-        /// <returns>A JSON encoded string of the serialized object, or null if the object is null</returns>
-        /// <exception cref="NotSupportedException"></exception>
-        public static string? ToJsonString<T>(this T obj, JsonSerializerOptions? options = null)
-        {
-            return obj == null ? null : JsonSerializer.Serialize(obj, options);
         }
 
         /// <summary>

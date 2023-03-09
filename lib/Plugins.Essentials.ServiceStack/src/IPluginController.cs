@@ -1,12 +1,12 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IPluginController.cs 
+* File: IPluginManager.cs 
 *
-* IPluginController.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
-* VNLib collection of libraries and utilities.
+* IPluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
+* is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,7 +22,9 @@
 * along with this program. If not, see https://www.gnu.org/licenses/.
 */
 
-using System.Text.Json;
+using System;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 using VNLib.Utils.Logging;
 
@@ -32,8 +34,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// Represents a live plugin controller that manages all
     /// plugins loaded in a <see cref="ServiceDomain"/>
     /// </summary>
-    public interface IPluginController
+    public interface IPluginManager
     {
+        /// <summary>
+        /// The the plugins managed by this <see cref="IPluginManager"/>
+        /// </summary>
+        public IEnumerable<IManagedPlugin> Plugins { get; }
+
         /// <summary>
         /// Loads all plugins specified by the host config to the service manager,
         /// or attempts to load plugins by the default
@@ -41,7 +48,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// <param name="config">The configuration instance to pass to plugins</param>
         /// <param name="appLog">A log provider to write message and errors to</param>
         /// <returns>A task that resolves when all plugins are loaded</returns>
-        Task LoadPlugins(JsonDocument config, ILogProvider appLog);
+        Task LoadPluginsAsync(PluginLoadConfiguration config, ILogProvider appLog);
 
         /// <summary>
         /// Sends a message to a plugin identified by it's name.
@@ -61,11 +68,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         void ForceReloadAllPlugins();
 
         /// <summary>
-        /// Unloads all service groups, removes them, and unloads all
-        /// loaded plugins
+        /// Unloads all loaded plugins and calls thier event handlers
         /// </summary>
-        /// <exception cref="AggregateException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        void UnloadAll();
+        void UnloadPlugins();
     }
 }

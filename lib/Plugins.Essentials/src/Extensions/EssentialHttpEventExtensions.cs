@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -322,10 +322,10 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, in ReadOnlySpan<char> data)
+        public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, ReadOnlySpan<char> data)
         {
             //Get a memory stream using UTF8 encoding
-            CloseResponse(ev, code, type, in data, ev.Server.Encoding);
+            CloseResponse(ev, code, type, data, ev.Server.Encoding);
         }
         
         /// <summary>
@@ -338,7 +338,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="encoding">The encoding type to use when converting the buffer</param>
         /// <remarks>This method will store an encoded copy as a memory stream, so be careful with large buffers</remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, in ReadOnlySpan<char> data, Encoding encoding)
+        public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, ReadOnlySpan<char> data, Encoding encoding)
         {
             if (data.IsEmpty)
             {
@@ -479,7 +479,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                 try
                 {
                     //Deserialize and return the object
-                    obj = value.AsJsonObject<T>(options);
+                    obj = JsonSerializer.Deserialize<T>(value, options);
                     return true;
                 }
                 catch(JsonException je)
@@ -543,7 +543,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             try
             {
                 //Beware this will buffer the entire file object before it attmepts to de-serialize it
-                return VnEncoding.JSONDeserializeFromBinary<T>(file.FileData, options);
+                return JsonSerializer.Deserialize<T>(file.FileData, options);
             }
             catch (JsonException je)
             {

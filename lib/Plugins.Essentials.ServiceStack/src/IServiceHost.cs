@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -22,21 +22,43 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using VNLib.Net.Http;
+
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
-    /// Represents a host that exposes a processor for host events
+    /// Represents an HTTP service host which provides information required 
+    /// for HttpServer routing and the <see cref="IWebRoot"/> for proccessing
+    /// incomming connections
     /// </summary>
     public interface IServiceHost
     {
         /// <summary>
-        /// The <see cref="EventProcessor"/> to process 
-        /// incoming HTTP connections
+        /// The <see cref="IWebRoot"/> that handles HTTP connection 
+        /// processing.
         /// </summary>
-        EventProcessor Processor { get; }
+        IWebRoot Processor { get; }
+
         /// <summary>
         /// The host's transport infomration
         /// </summary>
         IHostTransportInfo TransportInfo { get; }
+      
+        /// <summary>
+        /// Called when a plugin is loaded and is endpoints are extracted
+        /// to be placed into service.
+        /// </summary>
+        /// <param name="plugin">The loaded plugin ready to be attached</param>
+        /// <param name="endpoints">The dynamic endpoints of a loading plugin</param>
+        void OnRuntimeServiceAttach(IManagedPlugin plugin, IEndpoint[] endpoints);
+
+        /// <summary>
+        /// Called when a <see cref="ServiceDomain"/>'s <see cref="IPluginManager"/> 
+        /// unloads a given plugin, and its originally discovered endpoints
+        /// </summary>
+        /// <param name="plugin">The unloading plugin to detach</param>
+        /// <param name="endpoints">The endpoints of the unloading plugin to remove from service</param>
+        void OnRuntimeServiceDetach(IManagedPlugin plugin, IEndpoint[] endpoints);
+
     }
 }

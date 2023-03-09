@@ -37,11 +37,33 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// <param name="Value">The cookie value</param>
     public readonly record struct HttpCookie (string Name, string Value)
     {
+        /// <summary>
+        /// The length of time the cookie is valid for
+        /// </summary>
         public readonly TimeSpan ValidFor { get; init; } = TimeSpan.MaxValue;
-        public readonly string Domain { get; init; } = "";
-        public readonly string Path { get; init; } = "/";
+        /// <summary>
+        /// The cookie's domain parameter. If null, is not set in the
+        /// Set-Cookie header.
+        /// </summary>
+        public readonly string? Domain { get; init; } = null;
+        /// <summary>
+        /// The cookies path parameter. If null, is not 
+        /// set in the Set-Cookie header.
+        /// </summary>
+        public readonly string? Path { get; init; } = "/";
+        /// <summary>
+        /// The cookie's same-site parameter. Default is <see cref="CookieSameSite.None"/>
+        /// </summary>
         public readonly CookieSameSite SameSite { get; init; } = CookieSameSite.None;
+        /// <summary>
+        /// Sets the cookie's HttpOnly parameter. Default is false. When false, does not 
+        /// set the HttpOnly paramter in the Set-Cookie header.
+        /// </summary>
         public readonly bool HttpOnly { get; init; } = false;
+        /// <summary>
+        /// Sets the cookie's Secure parameter. Default is false. When false, does not
+        /// set the Secure parameter in the Set-Cookie header.
+        /// </summary>
         public readonly bool Secure { get; init; } = false;
 
         /// <summary>

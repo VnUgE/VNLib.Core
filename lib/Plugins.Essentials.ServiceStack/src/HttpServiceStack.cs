@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -22,15 +22,20 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+
 using VNLib.Utils;
 using VNLib.Net.Http;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
-    /// The service domain controller that manages all 
-    /// servers for an application based on a 
-    /// <see cref="ServiceDomain"/>
+    /// An HTTP servicing stack that manages a collection of HTTP servers
+    /// their service domain
     /// </summary>
     public sealed class HttpServiceStack : VnDisposeable
     {
@@ -48,7 +53,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// <summary>
         /// The service domain's plugin controller
         /// </summary>
-        public IPluginController PluginController => _serviceDomain;
+        public IPluginManager PluginManager => _serviceDomain.PluginManager;
 
         /// <summary>
         /// Initializes a new <see cref="HttpServiceStack"/> that will 
@@ -74,14 +79,14 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             //Init new linked cts to stop all servers if cancelled
             _cts = CancellationTokenSource.CreateLinkedTokenSource(parentToken);
 
-            LinkedList<Task> runners = new();
+            //Start all servers
+            Task[] runners = _servers.Select(s => s.Start(_cts.Token)).ToArray();
 
-            foreach(HttpServer server in _servers)
-            {
-                //Start servers and add run task to list
-                Task run = server.Start(_cts.Token);
-                runners.AddLast(run);
-            }
+            //Check for failed startups
+            Task? firstFault = runners.Where(static t => t.IsFaulted).FirstOrDefault();
+           
+            //Raise first exception
+            firstFault?.GetAwaiter().GetResult();
 
             //Task that waits for all to exit then cleans up
             WaitForAllTask = Task.WhenAll(runners)
@@ -96,6 +101,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// <returns>The task that completes when</returns>
         public Task StopAndWaitAsync()
         {
+            Check();
+
             _cts?.Cancel();
             return WaitForAllTask;
         }
@@ -103,7 +110,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         private void OnAllServerExit(Task allExit)
         {
             //Unload the hosts
-            _serviceDomain.UnloadAll();
+            _serviceDomain.TearDown();
         }
 
         ///<inheritdoc/>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -38,18 +38,20 @@ using VNLib.Utils.Resources;
 using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
+using VNLib.Plugins.Essentials.Accounts;
 
 #nullable enable
 
 namespace VNLib.Plugins.Essentials
 {
+  
 
     /// <summary>
     /// Provides an abstract base implementation of <see cref="IWebRoot"/>
     /// that breaks down simple processing procedures, routing, and session 
     /// loading.
     /// </summary>
-    public abstract class EventProcessor : IWebRoot
+    public abstract class EventProcessor : IWebRoot, IWebProcessor
     {
         private static readonly AsyncLocal<EventProcessor?> _currentProcessor = new();
 
@@ -69,6 +71,9 @@ namespace VNLib.Plugins.Essentials
         /// Gets the EP processing options
         /// </summary>
         public abstract IEpProcessingOptions Options { get; }
+
+        ///<inheritdoc/>
+        public abstract IReadOnlyDictionary<string, Redirect> Redirects { get; }
 
         /// <summary>
         /// Event log provider
@@ -112,23 +117,10 @@ namespace VNLib.Plugins.Essentials
         /// <param name="chosenRoutine">The selected file processing routine for the given request</param>
         public abstract void PostProcessFile(HttpEntity entity, in FileProcessArgs chosenRoutine);
 
-        #region redirects
-        ///<inheritdoc/>
-        public IReadOnlyDictionary<string, Redirect> Redirects => _redirects;        
-        
-        private Dictionary<string, Redirect> _redirects = new();
+        #region security
 
-        /// <summary>
-        /// Initializes 301 redirects table from a collection of redirects
-        /// </summary>
-        /// <param name="redirs">A collection of redirects</param>
-        public void SetRedirects(IEnumerable<Redirect> redirs)
-        {
-            //To dictionary
-            Dictionary<string, Redirect> r = redirs.ToDictionary(r => r.Url, r => r, StringComparer.OrdinalIgnoreCase);
-            //Swap
-            _ = Interlocked.Exchange(ref _redirects, r);
-        }
+        ///<inheritdoc/>
+        public abstract IAccountSecurityProvider AccountSecurity { get; }
 
         #endregion
 
@@ -204,7 +196,7 @@ namespace VNLib.Plugins.Essentials
         /// A "lookup table" that represents virtual endpoints to be processed when an
         /// incomming connection matches its path parameter
         /// </summary>
-        private Dictionary<string, IVirtualEndpoint<HttpEntity>> VirtualEndpoints = new();
+        private IReadOnlyDictionary<string, IVirtualEndpoint<HttpEntity>> VirtualEndpoints = new Dictionary<string, IVirtualEndpoint<HttpEntity>>();
 
 
         /*
@@ -271,7 +263,7 @@ namespace VNLib.Plugins.Essentials
         {
             _ = eps ?? throw new ArgumentNullException(nameof(eps));
             //Call remove on path
-            RemoveVirtualEndpoint(eps.Select(static s => s.Path).ToArray());
+            RemoveEndpoint(eps.Select(static s => s.Path).ToArray());
         }
 
         /// <summary>
@@ -281,9 +273,10 @@ namespace VNLib.Plugins.Essentials
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public void RemoveVirtualEndpoint(params string[] paths)
+        public void RemoveEndpoint(params string[] paths)
         {
             _ = paths ?? throw new ArgumentNullException(nameof(paths));
+
             //Make sure all endpoints specify a path
             if (paths.Any(static e => string.IsNullOrWhiteSpace(e)))
             {

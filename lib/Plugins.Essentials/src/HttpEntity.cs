@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -121,7 +121,7 @@ namespace VNLib.Plugins.Essentials
         /// <summary>
         /// The requested web root. Provides additional site information
         /// </summary>
-        public readonly EventProcessor RequestedRoot;
+        public readonly IWebProcessor RequestedRoot;
         /// <summary>
         /// If the request has query arguments they are stored in key value format
         /// </summary>

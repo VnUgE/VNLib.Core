@@ -74,67 +74,7 @@ namespace VNLib.Utils
                 throw;
             }
         }
-
-        /// <summary>
-        /// Attempts to deserialze a json object from a stream of UTF8 data
-        /// </summary>
-        /// <typeparam name="T">The type of the object to deserialize</typeparam>
-        /// <param name="data">Binary data to read from</param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> object to pass to deserializer</param>
-        /// <returns>The object decoded from the stream</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        public static T? JSONDeserializeFromBinary<T>(Stream? data, JsonSerializerOptions? options = null)
-        {
-            //Return default if null
-            if (data == null)
-            {
-                return default;
-            }
-            //Create a memory stream as a buffer
-            using VnMemoryStream ms = new();
-            //Copy stream data to memory
-            data.CopyTo(ms, null);
-            if (ms.Length > 0)
-            {
-                //Rewind 
-                ms.Position = 0;
-                //Recover data from stream
-                return ms.AsSpan().AsJsonObject<T>(options);
-            }
-            //Stream is empty
-            return default;
-        }
-        /// <summary>
-        /// Attempts to deserialze a json object from a stream of UTF8 data
-        /// </summary>
-        /// <param name="data">Binary data to read from</param>
-        /// <param name="type"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> object to pass to deserializer</param>
-        /// <returns>The object decoded from the stream</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        public static object? JSONDeserializeFromBinary(Stream? data, Type type, JsonSerializerOptions? options = null)
-        {
-            //Return default if null
-            if (data == null)
-            {
-                return default;
-            }
-            //Create a memory stream as a buffer
-            using VnMemoryStream ms = new();
-            //Copy stream data to memory
-            data.CopyTo(ms, null);
-            if (ms.Length > 0)
-            {
-                //Rewind 
-                ms.Position = 0;
-                //Recover data from stream
-                return JsonSerializer.Deserialize(ms.AsSpan(), type, options);
-            }
-            //Stream is empty
-            return default;
-        }
+       
         /// <summary>
         /// Attempts to deserialze a json object from a stream of UTF8 data
         /// </summary>
@@ -315,7 +255,7 @@ namespace VNLib.Utils
             //Fill remaining bytes with padding chars
             for(; rounds < 8; rounds++)
             {
-                //Append trailing '='
+                //Append trailing '=' padding character
                 writer.Append('=');
             }
         }

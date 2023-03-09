@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -36,7 +36,7 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// NOTE: This class derrives from <see cref="PrivateStringManager"/>
     /// and should be disposed properly
     /// </remarks>
-    public class LoginMessage : PrivateStringManager
+    public class LoginMessage : PrivateStringManager, IClientSecInfo
     {
         /// <summary>
         /// A property 
@@ -80,7 +80,8 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// The clients browser id if shared
         /// </summary>
         [JsonPropertyName("clientid")]
-        public string ClientID { get; set; }
+        public string ClientId { get; set; }
+
         /// <summary>
         /// Initailzies a new <see cref="LoginMessage"/> and its parent <see cref="PrivateStringManager"/> 
         /// base
@@ -98,5 +99,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// or access to <see cref="Password"/> will throw
         /// </remarks>
         protected LoginMessage(int protectedElementSize = 1) : base(protectedElementSize) { }
+
+        /*
+         * Support client security info
+         */
+        string IClientSecInfo.PublicKey => ClientPublicKey;
     }
 }

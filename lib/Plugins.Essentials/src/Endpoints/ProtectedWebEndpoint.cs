@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -36,6 +36,12 @@ namespace VNLib.Plugins.Essentials.Endpoints
     /// </summary>
     public abstract class ProtectedWebEndpoint : UnprotectedWebEndpoint
     {
+        /// <summary>
+        /// Gets the minium <see cref="AuthorzationCheckLevel"/> required by a client to
+        /// access this endpoint
+        /// </summary>
+        protected virtual AuthorzationCheckLevel AuthLevel { get; } = AuthorzationCheckLevel.Critical;
+
         ///<inheritdoc/>
         protected override ERRNO PreProccess(HttpEntity entity)
         {
@@ -43,14 +49,16 @@ namespace VNLib.Plugins.Essentials.Endpoints
             {
                 return false;
             }
-            //The loggged in flag must be set, and the token must also match
-            if (!entity.LoginCookieMatches() || !entity.TokenMatches())
+
+            //Require full authorization to the resource
+            if (!entity.IsClientAuthorized(AuthLevel))
             {
                 //Return unauthorized status
                 entity.CloseResponse(HttpStatusCode.Unauthorized);
                 //A return value less than 0 signals a virtual skip event
                 return -1;
             }
+
             //Continue
             return true;
         }

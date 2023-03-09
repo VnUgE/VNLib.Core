@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -24,13 +24,14 @@
 
 using System;
 using System.Net;
+using System.Text.Json;
 using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
-using VNLib.Utils.Extensions;
 using static VNLib.Plugins.Essentials.Statics;
+
 
 /*
  * SessionInfo is a structure since it is only meant used in 
@@ -42,6 +43,8 @@ using static VNLib.Plugins.Essentials.Statics;
  */
 
 #pragma warning disable CA1051 // Do not declare visible instance fields
+
+#nullable enable
 
 namespace VNLib.Plugins.Essentials.Sessions
 {   
@@ -55,13 +58,46 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// </remarks>
     public readonly struct SessionInfo : IObjectStorage, IEquatable<SessionInfo>
     {
+        /*
+         * Store status flags as a 1 byte enum
+         */
+        [Flags]
+        private enum SessionFlags : byte
+        {
+            None = 0x00,
+            IsSet = 0x01,
+            IpMatch = 0x02,
+            IsCrossOrigin = 0x04,
+            CrossOriginMatch = 0x08,
+        }
+
+        private readonly ISession UserSession;
+        private readonly SessionFlags _flags;
+
         /// <summary>
         /// A value indicating if the current instance has been initiailzed 
         /// with a session. Otherwise properties are undefied
         /// </summary>
-        public readonly bool IsSet;
+        public readonly bool IsSet
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _flags.HasFlag(SessionFlags.IsSet);
+        }
 
-        private readonly ISession UserSession;
+        /// <summary>
+        /// The origin header specified during session creation
+        /// </summary>
+        public readonly Uri? SpecifiedOrigin;
+
+        /// <summary>
+        /// Was the session Initialy established on a secure connection?
+        /// </summary>
+        public readonly SslProtocols SecurityProcol;
+
+        /// <summary>
+        /// Session stored User-Agent
+        /// </summary>
+        public readonly string? UserAgent;
 
         /// <summary>
         /// Key that identifies the current session. (Identical to cookie::sessionid)
@@ -71,51 +107,52 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.SessionID;
         }
-        /// <summary>
-        /// Session stored User-Agent
-        /// </summary>
-        public readonly string UserAgent;
+        
         /// <summary>
         /// If the stored IP and current user's IP matches
         /// </summary>
-        public readonly bool IPMatch;
+        public readonly bool IPMatch
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _flags.HasFlag(SessionFlags.IpMatch);
+        }
+
         /// <summary>
         /// If the current connection and stored session have matching cross origin domains
         /// </summary>
-        public readonly bool CrossOriginMatch;
-        /// <summary>
-        /// Flags the session as invalid. IMPORTANT: the user's session data is no longer valid and will throw an exception when accessed
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Invalidate(bool all = false) => UserSession.Invalidate(all);
-        /// <summary>
-        /// Marks the session ID to be regenerated during closing event
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RegenID() => UserSession.RegenID();
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T GetObject<T>(string key) => this[key].AsJsonObject<T>(SR_OPTIONS);
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetObject<T>(string key, T obj) => this[key] = obj?.ToJsonString(SR_OPTIONS);
+        public readonly bool CrossOriginMatch
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _flags.HasFlag(SessionFlags.CrossOriginMatch);
+        }      
 
         /// <summary>
         /// Was the original session cross origin?
         /// </summary>
-        public readonly bool CrossOrigin;
-        /// <summary>
-        /// The origin header specified during session creation
-        /// </summary>
-        public readonly Uri SpecifiedOrigin;
-        /// <summary>
-        /// The time the session was created
-        /// </summary>
-        public readonly DateTimeOffset Created;
+        public readonly bool CrossOrigin
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _flags.HasFlag(SessionFlags.IsCrossOrigin);
+        }
+
         /// <summary>
         /// Was this session just created on this connection?
         /// </summary>
-        public readonly bool IsNew;
+        public readonly bool IsNew
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UserSession.IsNew;
+        }
+
+        /// <summary>
+        /// The time the session was created
+        /// </summary>
+        public readonly DateTimeOffset Created
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => UserSession.Created;
+        }   
+        
         /// <summary>
         /// Gets or sets the session's login hash, if set to a non-empty/null value, will trigger an upgrade on close
         /// </summary>
@@ -126,6 +163,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession.SetLoginToken(value);
         }
+
         /// <summary>
         /// Gets or sets the session's login token, if set to a non-empty/null value, will trigger an upgrade on close
         /// </summary>
@@ -136,6 +174,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession.Token = value;
         }
+
         /// <summary>
         /// <para>
         /// Gets or sets the user-id for the current session.
@@ -151,6 +190,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession.UserID = value;
         }
+
         /// <summary>
         /// Privilages associated with user specified during login
         /// </summary>
@@ -161,6 +201,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession.Privilages = value;
         }
+
         /// <summary>
         /// The IP address belonging to the client
         /// </summary>
@@ -168,11 +209,8 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.UserIP;
-        }
-        /// <summary>
-        /// Was the session Initialy established on a secure connection?
-        /// </summary>
-        public readonly SslProtocols SecurityProcol;
+        }      
+
         /// <summary>
         /// A value specifying the type of the backing session
         /// </summary>
@@ -181,6 +219,27 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.SessionType;
         }
+
+        /// <summary>
+        /// Flags the session as invalid. IMPORTANT: the user's session data is no longer valid, no data 
+        /// will be saved to the session store when the session closes
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Invalidate(bool all = false) => UserSession.Invalidate(all);
+        /// <summary>
+        /// Marks the session ID to be regenerated during closing event
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RegenID() => UserSession.RegenID();
+
+#nullable disable
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T GetObject<T>(string key) => JsonSerializer.Deserialize<T>(this[key], SR_OPTIONS);
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetObject<T>(string key, T obj) => this[key] = obj == null ? null: JsonSerializer.Serialize(obj, SR_OPTIONS);
+#nullable enable
 
         /// <summary>
         /// Accesses the session's general storage
@@ -198,37 +257,45 @@ namespace VNLib.Plugins.Essentials.Sessions
         internal SessionInfo(ISession session, IConnectionInfo ci, IPAddress trueIp)
         {
             UserSession = session;
-            //Calculate and store 
-            IsNew = session.IsNew;
-            Created = session.Created;
-            //Ip match
-            IPMatch = trueIp.Equals(session.UserIP);
+
+            SessionFlags flags = SessionFlags.IsSet;
+
+            //Set ip match flag if current ip and stored ip match
+            flags |= trueIp.Equals(session.UserIP) ? SessionFlags.IpMatch : SessionFlags.None;
+          
             //If the session is new, we can store intial security variables
             if (session.IsNew)
             {
                 session.InitNewSession(ci);
+
                 //Since all values will be the same as the connection, cache the connection values
                 UserAgent = ci.UserAgent;
                 SpecifiedOrigin = ci.Origin;
-                CrossOrigin = ci.CrossOrigin;
                 SecurityProcol = ci.SecurityProtocol;
+
+                flags |= ci.CrossOrigin ? SessionFlags.IsCrossOrigin : SessionFlags.None;
             }
             else
             {
                 //Load/decode stored variables
                 UserAgent = session.GetUserAgent();
                 SpecifiedOrigin = session.GetOriginUri();
-                CrossOrigin = session.IsCrossOrigin();
                 SecurityProcol = session.GetSecurityProtocol();
+
+                flags |= session.IsCrossOrigin() ? SessionFlags.IsCrossOrigin : SessionFlags.None;
             }
-            CrossOriginMatch = ci.Origin != null && ci.Origin.Equals(SpecifiedOrigin);
-            IsSet = true;
+
+            //Set cross origin orign match flags, if the stored origin, and connection origin
+            flags |= ci.Origin != null && ci.Origin.Equals(SpecifiedOrigin) ? SessionFlags.CrossOriginMatch : SessionFlags.None;
+
+            //store flags
+            _flags = flags;
         }
 
         ///<inheritdoc/>
         public bool Equals(SessionInfo other) => SessionID.Equals(other.SessionID, StringComparison.Ordinal);
         ///<inheritdoc/>
-        public override bool Equals(object obj) => obj is SessionInfo si && Equals(si);
+        public override bool Equals(object? obj) => obj is SessionInfo si && Equals(si);
         ///<inheritdoc/>
         public override int GetHashCode() => SessionID.GetHashCode(StringComparison.Ordinal);
         ///<inheritdoc/>

@@ -26,9 +26,7 @@ using System;
 using System.Net;
 using System.Runtime.CompilerServices;
 
-using VNLib.Net.Http;
 using VNLib.Utils;
-using VNLib.Utils.Async;
 
 namespace VNLib.Plugins.Essentials.Sessions
 {
@@ -36,7 +34,7 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// Provides a base class for the <see cref="ISession"/> interface for exclusive use within a multithreaded
     /// context
     /// </summary>
-    public abstract class SessionBase : AsyncExclusiveResource<IHttpEvent>, ISession
+    public abstract class SessionBase : ISession
     {
         protected const ulong MODIFIED_MSK =    0b0000000000000001UL;
         protected const ulong IS_NEW_MSK =      0b0000000000000010UL;
@@ -68,24 +66,16 @@ namespace VNLib.Plugins.Essentials.Sessions
         }
 
         ///<inheritdoc/>
-        public virtual string SessionID { get; protected set; }
+        public abstract string SessionID { get; }
         ///<inheritdoc/>
-        public virtual DateTimeOffset Created { get; protected set; }
+        public abstract DateTimeOffset Created { get; set; }
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
         public string this[string index]
         {
-            get
-            {
-                Check();
-                return IndexerGet(index);
-            }
-            set
-            {
-                Check();
-                IndexerSet(index, value);
-            }
+            get => IndexerGet(index);
+            set => IndexerSet(index, value);
         }
         ///<inheritdoc/>
         public virtual IPAddress UserIP

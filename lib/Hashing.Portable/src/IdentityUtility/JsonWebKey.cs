@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -57,9 +57,32 @@ namespace VNLib.Hashing.IdentityUtility
         {}
     }
 
+    /// <summary>
+    /// The JWK key usage flags
+    /// </summary>
+    public enum JwkKeyUsage
+    {
+        /// <summary>
+        /// Default/not supported operation
+        /// </summary>
+        None,
+        /// <summary>
+        /// The key supports cryptographic signatures
+        /// </summary>
+        Signature,
+        /// <summary>
+        /// The key supports encryption operations
+        /// </summary>
+        Encryption
+    }
+
+    /// <summary>
+    /// Contains extension methods for verifying and signing <see cref="JsonWebToken"/> 
+    /// using <see cref="IJsonWebKey"/>s.
+    /// </summary>
     public static class JsonWebKey
-    {       
-        
+    {
+
         /// <summary>
         /// Verifies the <see cref="JsonWebToken"/> against the supplied
         /// Json Web Key in <see cref="JsonDocument"/> format
@@ -70,81 +93,73 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="FormatException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="EncryptionTypeNotSupportedException"></exception>
-        public static bool VerifyFromJwk(this JsonWebToken token, in JsonElement jwk)
-        {           
-            //Get key use and algorithm
-            string? use = jwk.GetPropString("use");
-            string? alg = jwk.GetPropString("alg");
-
+        public static bool VerifyFromJwk<TKey>(this JsonWebToken token, in TKey jwk) where TKey: notnull, IJsonWebKey
+        {            
             //Use and alg are required here
-            if(use == null || alg == null)
-            {
-                return false;
-            }
-            
-            //Make sure the key is used for signing/verification
-            if (!"sig".Equals(use, StringComparison.OrdinalIgnoreCase))
+            if(jwk.KeyUse != JwkKeyUsage.Signature || jwk.Algorithm == null)
             {
                 return false;
             }
 
+            //Get the jwt header to confirm its the same algorithm as the jwk
             using (JsonDocument jwtHeader = token.GetHeader())
             {
                 string? jwtAlg = jwtHeader.RootElement.GetPropString("alg");
+                
                 //Make sure the jwt was signed with the same algorithm type
-                if (!alg.Equals(jwtAlg, StringComparison.OrdinalIgnoreCase))
+                if (!jwk.Algorithm.Equals(jwtAlg, StringComparison.OrdinalIgnoreCase))
                 {
                     return false;
                 }
             }
 
-            switch (alg.ToUpper(null))
+            switch (jwk.Algorithm.ToUpper(null))
             {
                 //Rsa witj pkcs and pss
                 case JWKAlgorithms.RS256:
                     {
-                        using RSA? rsa = GetRSAPublicKey(in jwk);
+                        using RSA? rsa = GetRSAPublicKey(jwk);
                         return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
                     }
                 case JWKAlgorithms.RS384:
                     {
-                        using RSA? rsa = GetRSAPublicKey(in jwk);
+                        using RSA? rsa = GetRSAPublicKey(jwk);
                         return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pkcs1);
                     }
                 case JWKAlgorithms.RS512:
                     {
-                        using RSA? rsa = GetRSAPublicKey(in jwk);
+                        using RSA? rsa = GetRSAPublicKey(jwk);
                         return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
                     }
                 case JWKAlgorithms.PS256:
                     {
-                        using RSA? rsa = GetRSAPublicKey(in jwk);
+                        using RSA? rsa = GetRSAPublicKey(jwk);
                         return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
                     }
                 case JWKAlgorithms.PS384:
                     {
-                        using RSA? rsa = GetRSAPublicKey(in jwk);
+                        using RSA? rsa = GetRSAPublicKey(jwk);
                         return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pss);
                     }
                 case JWKAlgorithms.PS512:
                     {
-                        using RSA? rsa = GetRSAPublicKey(in jwk);
+                        using RSA? rsa = GetRSAPublicKey(jwk);
                         return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pss);
                     }
                 //Eccurves
                 case JWKAlgorithms.ES256:
                     {
-                        using ECDsa? eCDsa = GetECDsaPublicKey(in jwk);
+                        using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
                         return eCDsa != null && token.Verify(eCDsa, HashAlgorithmName.SHA256);
                     }
                 case JWKAlgorithms.ES384:
                     {
-                        using ECDsa? eCDsa = GetECDsaPublicKey(in jwk);
+                        using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
                         return eCDsa != null && token.Verify(eCDsa, HashAlgorithmName.SHA384);
                     }
                 case JWKAlgorithms.ES512:
                     {
-                        using ECDsa? eCDsa = GetECDsaPublicKey(in jwk);
+                        using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
                         return eCDsa != null && token.Verify(eCDsa, HashAlgorithmName.SHA512);
                     }
                 default:
@@ -152,18 +167,6 @@ namespace VNLib.Hashing.IdentityUtility
             }
 
         }
-
-        /// <summary>
-        /// Verifies the <see cref="JsonWebToken"/> against the supplied
-        /// <see cref="ReadOnlyJsonWebKey"/>
-        /// </summary>
-        /// <param name="token"></param>
-        /// <param name="jwk">The supplied single Json Web Key</param>
-        /// <returns>True if required JWK data exists, ciphers were created, and data is verified, false otherwise</returns>
-        /// <exception cref="FormatException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="EncryptionTypeNotSupportedException"></exception>
-        public static bool VerifyFromJwk(this JsonWebToken token, ReadOnlyJsonWebKey jwk) => token.VerifyFromJwk(jwk.KeyElement);
         
         /// <summary>
         /// Signs the <see cref="JsonWebToken"/> with the supplied JWK json element
@@ -173,66 +176,63 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="EncryptionTypeNotSupportedException"></exception>
-        public static void SignFromJwk(this JsonWebToken token, in JsonElement jwk)
+        public static void SignFromJwk<T>(this JsonWebToken token, in T jwk) where T: notnull, IJsonWebKey
         {
             _ = token ?? throw new ArgumentNullException(nameof(token));
-            //Get key use and algorithm
-            string? use = jwk.GetPropString("use");
-            string? alg = jwk.GetPropString("alg");
-
-            //Use and alg are required here
-            if (use == null || alg == null)
-            {
-                throw new InvalidOperationException("Algorithm or JWK use is null");
-            }
 
             //Make sure the key is used for signing/verification
-            if (!"sig".Equals(use, StringComparison.OrdinalIgnoreCase))
+            if (jwk.KeyUse != JwkKeyUsage.Signature)
             {
                 throw new InvalidOperationException("The JWK cannot be used for signing");
             }
 
-            switch (alg.ToUpper(null))
+            //Alg is a required property
+            if (jwk.Algorithm == null)
+            {
+                throw new InvalidOperationException("Algorithm or JWK use is null");
+            }
+
+            switch (jwk.Algorithm.ToUpper(null))
             {
                 //Rsa witj pkcs and pss
                 case JWKAlgorithms.RS256:
                     {
-                        using RSA? rsa = GetRSAPrivateKey(in jwk);
+                        using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
                         token.Sign(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1, 128);
                         return;
                     }
                 case JWKAlgorithms.RS384:
                     {
-                        using RSA? rsa = GetRSAPrivateKey(in jwk);
+                        using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
                         token.Sign(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pkcs1, 128);
                         return;
                     }
                 case JWKAlgorithms.RS512:
                     {
-                        using RSA? rsa = GetRSAPrivateKey(in jwk);
+                        using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
                         token.Sign(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1, 256);
                         return;
                     }
                 case JWKAlgorithms.PS256:
                     {
-                        using RSA? rsa = GetRSAPrivateKey(in jwk);
+                        using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
                         token.Sign(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss, 128);
                         return;
                     }
                 case JWKAlgorithms.PS384:
                     {
-                        using RSA? rsa = GetRSAPrivateKey(in jwk);
+                        using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
                         token.Sign(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pss, 128);
                         return;
                     }
                 case JWKAlgorithms.PS512:
                     {
-                        using RSA? rsa = GetRSAPrivateKey(in jwk);
+                        using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
                         token.Sign(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pss, 256);
                         return;
@@ -240,21 +240,21 @@ namespace VNLib.Hashing.IdentityUtility
                 //Eccurves
                 case JWKAlgorithms.ES256:
                     {
-                        using ECDsa? eCDsa = GetECDsaPrivateKey(in jwk);
+                        using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
                         _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
                         token.Sign(eCDsa, HashAlgorithmName.SHA256, 128);
                         return;
                     }
                 case JWKAlgorithms.ES384:
                     {
-                        using ECDsa? eCDsa = GetECDsaPrivateKey(in jwk);
+                        using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
                         _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
                         token.Sign(eCDsa, HashAlgorithmName.SHA384, 128);
                         return;
                     }
                 case JWKAlgorithms.ES512:
                     {
-                        using ECDsa? eCDsa = GetECDsaPrivateKey(in jwk);
+                        using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
                         _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
                         token.Sign(eCDsa, HashAlgorithmName.SHA512, 256);
                         return;
@@ -265,35 +265,11 @@ namespace VNLib.Hashing.IdentityUtility
         }
 
         /// <summary>
-        /// Signs the <see cref="JsonWebToken"/> with the supplied JWK json element
-        /// </summary>
-        /// <param name="token"></param>
-        /// <param name="jwk">The JWK in the <see cref="ReadOnlyJsonWebKey"/> </param>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="InvalidOperationException"></exception>
-        /// <exception cref="EncryptionTypeNotSupportedException"></exception>
-        public static void SignFromJwk(this JsonWebToken token, ReadOnlyJsonWebKey jwk) => token.SignFromJwk(jwk.KeyElement);
-
-        /// <summary>
-        /// Gets the <see cref="RSA"/> public key algorithm for the current <see cref="ReadOnlyJsonWebKey"/>
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns>The <see cref="RSA"/> algorithm of the public key if loaded</returns>
-        public static RSA? GetRSAPublicKey(this ReadOnlyJsonWebKey key) => key == null ? null : GetRSAPublicKey(key.KeyElement);
-
-        /// <summary>
-        /// Gets the <see cref="RSA"/> private key algorithm for the current <see cref="ReadOnlyJsonWebKey"/>
-        /// </summary>
-        /// <param name="key"></param>
-        ///<returns>The <see cref="RSA"/> algorithm of the private key key if loaded</returns>
-        public static RSA? GetRSAPrivateKey(this ReadOnlyJsonWebKey key) => key == null ? null : GetRSAPrivateKey(key.KeyElement);
-
-        /// <summary>
         /// Gets the RSA public key algorithm from the supplied Json Web Key <see cref="JsonElement"/>
         /// </summary>
         /// <param name="jwk">The element that contains the JWK data</param>
         /// <returns>The <see cref="RSA"/> algorithm if found, or null if the element does not contain public key</returns>
-        public static RSA? GetRSAPublicKey(in JsonElement jwk)
+        public static RSA? GetRSAPublicKey<TKey>(this TKey jwk) where TKey: IJsonWebKey
         {
             RSAParameters? rSAParameters = GetRsaParameters(in jwk, false);
             //Create rsa from params
@@ -305,18 +281,18 @@ namespace VNLib.Hashing.IdentityUtility
         /// </summary>
         /// <param name="jwk"></param>
         /// <returns>The <see cref="RSA"/> algorithm if found, or null if the element does not contain private key</returns>
-        public static RSA? GetRSAPrivateKey(in JsonElement jwk)
+        public static RSA? GetRSAPrivateKey<TKey>(this TKey jwk) where TKey: IJsonWebKey
         {
             RSAParameters? rSAParameters = GetRsaParameters(in jwk, true);
             //Create rsa from params
             return rSAParameters.HasValue ? RSA.Create(rSAParameters.Value) : null;
         }
 
-        private static RSAParameters? GetRsaParameters(in JsonElement jwk, bool includePrivateKey)
+        private static RSAParameters? GetRsaParameters<TKey>(in TKey jwk, bool includePrivateKey) where TKey : IJsonWebKey
         {
             //Get the RSA public key credentials
-            ReadOnlySpan<char> e = jwk.GetPropString("e");
-            ReadOnlySpan<char> n = jwk.GetPropString("n");
+            ReadOnlySpan<char> e = jwk.GetKeyProperty("e");
+            ReadOnlySpan<char> n = jwk.GetKeyProperty("n");
 
             if (e.IsEmpty || n.IsEmpty)
             {
@@ -326,11 +302,11 @@ namespace VNLib.Hashing.IdentityUtility
             if (includePrivateKey)
             {
                 //Get optional private key params
-                ReadOnlySpan<char> d = jwk.GetPropString("d");
-                ReadOnlySpan<char> dp = jwk.GetPropString("dq");
-                ReadOnlySpan<char> dq = jwk.GetPropString("dp");
-                ReadOnlySpan<char> p = jwk.GetPropString("p");
-                ReadOnlySpan<char> q = jwk.GetPropString("q");
+                ReadOnlySpan<char> d = jwk.GetKeyProperty("d");
+                ReadOnlySpan<char> dp = jwk.GetKeyProperty("dq");
+                ReadOnlySpan<char> dq = jwk.GetKeyProperty("dp");
+                ReadOnlySpan<char> p = jwk.GetKeyProperty("p");
+                ReadOnlySpan<char> q = jwk.GetKeyProperty("q");
 
                 //Create params from exponent, moduls and private key components
                 return new()
@@ -353,30 +329,15 @@ namespace VNLib.Hashing.IdentityUtility
                     Modulus = FromBase64UrlChars(n),
                 };
             }
-          
         }
-
-
-        /// <summary>
-        /// Gets the ECDsa public key algorithm for the current <see cref="ReadOnlyJsonWebKey"/>
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns>The <see cref="ECDsa"/> algorithm of the public key if loaded</returns>
-        public static ECDsa? GetECDsaPublicKey(this ReadOnlyJsonWebKey key) => key == null ? null : GetECDsaPublicKey(key.KeyElement);
-
-        /// <summary>
-        /// Gets the <see cref="ECDsa"/> private key algorithm for the current <see cref="ReadOnlyJsonWebKey"/>
-        /// </summary>
-        /// <param name="key"></param>
-        ///<returns>The <see cref="ECDsa"/> algorithm of the private key key if loaded</returns>
-        public static ECDsa? GetECDsaPrivateKey(this ReadOnlyJsonWebKey key) => key == null ? null : GetECDsaPrivateKey(key.KeyElement);
+       
 
         /// <summary>
         /// Gets the ECDsa public key algorithm from the supplied Json Web Key <see cref="JsonElement"/>
         /// </summary>
         /// <param name="jwk">The public key element</param>
         /// <returns>The <see cref="ECDsa"/> algorithm from the key if loaded, null if no key data was found</returns>
-        public static ECDsa? GetECDsaPublicKey(in JsonElement jwk)
+        public static ECDsa? GetECDsaPublicKey<TKey>(this TKey jwk) where TKey: IJsonWebKey
         {
             //Get the EC params
             ECParameters? ecParams = GetECParameters(in jwk, false);
@@ -389,7 +350,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// </summary>
         /// <param name="jwk">The element that contains the private key data</param>
         /// <returns>The <see cref="ECDsa"/> algorithm from the key if loaded, null if no key data was found</returns>
-        public static ECDsa? GetECDsaPrivateKey(in JsonElement jwk)
+        public static ECDsa? GetECDsaPrivateKey<TKey>(this TKey jwk) where TKey : IJsonWebKey
         {
             //Get the EC params
             ECParameters? ecParams = GetECParameters(in jwk, true);
@@ -398,14 +359,14 @@ namespace VNLib.Hashing.IdentityUtility
         }
         
 
-        private static ECParameters? GetECParameters(in JsonElement jwk, bool includePrivate)
+        private static ECParameters? GetECParameters<TKey>(in TKey jwk, bool includePrivate) where TKey : IJsonWebKey
         {
             //Get the RSA public key credentials
-            ReadOnlySpan<char> x = jwk.GetPropString("x");
-            ReadOnlySpan<char> y = jwk.GetPropString("y");
+            ReadOnlySpan<char> x = jwk.GetKeyProperty("x");
+            ReadOnlySpan<char> y = jwk.GetKeyProperty("y");
 
             //Optional private key
-            ReadOnlySpan<char> d = includePrivate ? jwk.GetPropString("d") : null;
+            ReadOnlySpan<char> d = includePrivate ? jwk.GetKeyProperty("d") : null;
 
             if (x.IsEmpty || y.IsEmpty)
             {
@@ -414,7 +375,7 @@ namespace VNLib.Hashing.IdentityUtility
             
             ECCurve curve;
             //Get the EC curve name from the curve ID
-            switch (jwk.GetPropString("crv")?.ToUpper(null))
+            switch (jwk.GetKeyProperty("crv")?.ToUpper(null))
             {
                 case "P-256":
                     curve = ECCurve.NamedCurves.nistP256;

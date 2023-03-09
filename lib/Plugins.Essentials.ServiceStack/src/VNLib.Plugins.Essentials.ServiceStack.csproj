@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>VNLib.Plugins.Essentials.ServiceStack</RootNamespace>
     <AssemblyName>VNLib.Plugins.Essentials.ServiceStack</AssemblyName>
     <Nullable>enable</Nullable>

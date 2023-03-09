@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -27,12 +27,12 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 
-using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Attributes;
 
 namespace VNLib.Plugins.Runtime
 {
+
     /// <summary>
     /// <para>
     /// Wrapper for a loaded <see cref="IPlugin"/> instance, used internally 
@@ -46,6 +46,8 @@ namespace VNLib.Plugins.Runtime
     /// </summary>
     public class LivePlugin : IEquatable<IPlugin>, IEquatable<LivePlugin>
     {
+        private bool _loaded;
+
         /// <summary>
         /// The plugin's <see cref="IPlugin.PluginName"/> property during load time
         /// </summary>
@@ -57,14 +59,24 @@ namespace VNLib.Plugins.Runtime
         /// by he current instance
         /// </summary>
         public IPlugin? Plugin { get; private set; }
+
+        /// <summary>
+        /// The assembly that this plugin was created from
+        /// </summary>
+        public Assembly OriginAsm { get; }
         
-        private readonly Type PluginType;
+        /// <summary>
+        /// The exposed runtime type of the plugin. Equivalent to 
+        /// calling <code>Plugin.GetType()</code>
+        /// </summary>
+        public Type PluginType { get; }
        
         private ConsoleEventHandlerSignature? PluginConsoleHandler;
 
-        internal LivePlugin(IPlugin plugin)
+        internal LivePlugin(IPlugin plugin, Assembly originAsm)
         {
             Plugin = plugin;
+            OriginAsm = originAsm;
             PluginType = plugin.GetType();
             GetConsoleHandler();
         }
@@ -153,42 +165,38 @@ namespace VNLib.Plugins.Runtime
         /// <summary>
         /// Calls the <see cref="IPlugin.Load"/> method on the plugin if its loaded
         /// </summary>
-        internal void LoadPlugin() => Plugin?.Load();
+        internal void LoadPlugin()
+        {
+            //Load and set loaded flag
+            Plugin?.Load();
+            _loaded = true;
+        }
 
         /// <summary>
-        /// Unloads all loaded endpoints from 
-        /// that they were loaded to, then unloads the plugin.
+        /// Unloads the plugin, only if the plugin was successfully loaded by 
+        /// calling the <see cref="IPlugin.Unload"/> event hook.
         /// </summary>
-        /// <param name="logSink">An optional log provider to write unload exceptions to</param>
-        /// <remarks>
-        /// If <paramref name="logSink"/> is no null unload exceptions are swallowed and written to the log
-        /// </remarks>
-        internal void UnloadPlugin(ILogProvider? logSink)
+        internal void UnloadPlugin()
         {
-            /*
-             * We need to swallow plugin unload errors to avoid 
-             * unknown state, making sure endpoints are properly 
-             * unloaded!
-             */
+            //Remove delegate handler to the plugin to remove refs
+            PluginConsoleHandler = null;
+
+            //Only call unload if the plugin successfully loaded
+            if (!_loaded)
+            {
+                return;
+            }
+
             try
             {
-                //Unload the plugin
                 Plugin?.Unload();
             }
-            catch (Exception ex)
+            finally
             {
-                //Create an unload wrapper for the exception
-                PluginUnloadException wrapper = new("Exception raised during plugin unload", ex);
-                if (logSink == null)
-                {
-                    throw wrapper;
-                }
-                //Write error to log sink
-                logSink.Error(wrapper);
+                Plugin = null;
             }
-            Plugin = null;
-            PluginConsoleHandler = null;
         }
+
         ///<inheritdoc/>
         public override bool Equals(object? obj)
         {

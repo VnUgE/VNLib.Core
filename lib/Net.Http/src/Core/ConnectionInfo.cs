@@ -113,6 +113,7 @@ namespace VNLib.Net.Http
                 }).Any();
             return accepted;
         }
+        
         /// <summary>
         /// Determines if the connection accepts any content type
         /// </summary>
@@ -122,6 +123,7 @@ namespace VNLib.Net.Http
             //Accept any if no accept header was present, or accept all value */*
             return Context.Request.Accept.Count == 0 || Accept.Where(static t => t.StartsWith("*/*", StringComparison.OrdinalIgnoreCase)).Any();
         }
+
         ///<inheritdoc/>
         public void SetCookie(string name, string value, string? domain, string? path, TimeSpan Expires, CookieSameSite sameSite, bool httpOnly, bool secure)
         {

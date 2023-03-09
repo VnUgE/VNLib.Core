@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -24,39 +24,23 @@
 
 using System;
 using System.Net;
-using System.Text.Json;
-using System.Diagnostics;
+using System.Linq;
+using System.Collections.Generic;
 
 using VNLib.Utils;
-using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
-using VNLib.Utils.Logging;
-using VNLib.Plugins.Runtime;
-using VNLib.Plugins.Essentials.Content;
-using VNLib.Plugins.Essentials.Sessions;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
+
     /// <summary>
     /// Represents a domain of services and thier dynamically loaded plugins 
     /// that will be hosted by an application service stack
     /// </summary>
-    public sealed class ServiceDomain : VnDisposeable, IPluginController
+    public sealed class ServiceDomain : VnDisposeable
     {
-        private const string PLUGIN_FILE_EXTENSION = ".dll";
-        private const string DEFUALT_PLUGIN_DIR = "/plugins";
-        private const string PLUGINS_CONFIG_ELEMENT = "plugins";
-
         private readonly LinkedList<ServiceGroup> _serviceGroups;
-        private readonly LinkedList<RuntimePluginLoader> _pluginLoaders;
-        
-        /// <summary>
-        /// Enumerates all loaded plugin instances
-        /// </summary>
-        public IEnumerable<IPlugin> Plugins => _pluginLoaders.SelectMany(static s => 
-                    s.LivePlugins.Where(static p => p.Plugin != null)
-                    .Select(static s => s.Plugin!)
-                );
+        private readonly PluginManager _plugins;       
 
         /// <summary>
         /// Gets all service groups loaded in the service manager
@@ -64,12 +48,19 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         public IReadOnlyCollection<ServiceGroup> ServiceGroups => _serviceGroups;
 
         /// <summary>
+        /// Gets the internal <see cref="IPluginManager"/> that manages plugins for the entire
+        /// <see cref="ServiceDomain"/>
+        /// </summary>
+        public IPluginManager PluginManager => _plugins;
+
+        /// <summary>
         /// Initializes a new empty <see cref="ServiceDomain"/>
         /// </summary>
         public ServiceDomain()
         {
             _serviceGroups = new();
-            _pluginLoaders = new();
+            //Init plugin manager and pass ref to service group collection
+            _plugins = new PluginManager(_serviceGroups);
         }
 
         /// <summary>
@@ -78,8 +69,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="hostBuilder">The callback method to build virtual hosts</param>
         /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
+        /// <exception cref="ObjectDisposedException"></exception>
         public bool BuildDomain(Action<ICollection<IServiceHost>> hostBuilder)
         {
+            Check();
+
             //LL to store created hosts
             LinkedList<IServiceHost> hosts = new();
 
@@ -94,8 +88,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="hosts">The enumeration of virtual hosts</param>
         /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
+        /// <exception cref="ObjectDisposedException"></exception>
         public bool FromExisting(IEnumerable<IServiceHost> hosts)
         {
+            Check();
+
             //Get service groups and pass service group list
             CreateServiceGroups(_serviceGroups, hosts);
             return _serviceGroups.Any();
@@ -111,11 +108,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             {
                 IEnumerable<IServiceHost> groupHosts = hosts.Where(host => host.TransportInfo.TransportEndpoint.Equals(iface));
 
-                IServiceHost[]? overlap = groupHosts.Where(vh => groupHosts.Select(static s => s.Processor.Hostname).Count(hostname => vh.Processor.Hostname == hostname) > 1).ToArray();
+                //Find any duplicate hostnames for the same service gorup
+                IServiceHost[] overlap = groupHosts.Where(vh => groupHosts.Select(static s => s.Processor.Hostname).Count(hostname => vh.Processor.Hostname == hostname) > 1).ToArray();
 
-                foreach (IServiceHost vh in overlap)
+                if(overlap.Length > 0)
                 {
-                    throw new ArgumentException($"The hostname '{vh.Processor.Hostname}' is already in use by another virtual host");
+                    throw new ArgumentException($"The hostname '{overlap.Last().Processor.Hostname}' is already in use by another virtual host");
                 }
 
                 //init new service group around an interface and its roots
@@ -125,235 +123,33 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             }
         }
 
-        ///<inheritdoc/>
-        public Task LoadPlugins(JsonDocument config, ILogProvider appLog)
-        {
-            if (!config.RootElement.TryGetProperty(PLUGINS_CONFIG_ELEMENT, out JsonElement pluginEl))
-            {
-                appLog.Information("Plugins element not defined in config, skipping plugin loading");
-                return Task.CompletedTask;
-            }
-
-            //Get the plugin directory, or set to default
-            string pluginDir = pluginEl.GetPropString("path") ?? Path.Combine(Directory.GetCurrentDirectory(), DEFUALT_PLUGIN_DIR);
-            //Get the hot reload flag
-            bool hotReload = pluginEl.TryGetProperty("hot_reload", out JsonElement hrel) && hrel.GetBoolean();
-
-            //Load all virtual file assemblies withing the plugin folder
-            DirectoryInfo dir = new(pluginDir);
-
-            if (!dir.Exists)
-            {
-                appLog.Warn("Plugin directory {dir} does not exist. No plugins were loaded", pluginDir);
-                return Task.CompletedTask;
-            }
-
-            appLog.Information("Loading plugins. Hot-reload: {en}", hotReload);
-
-            //Enumerate all dll files within this dir
-            IEnumerable<DirectoryInfo> dirs = dir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly);
-
-            //Select only dirs with a dll that is named after the directory name
-            IEnumerable<string> pluginPaths = dirs.Where(static pdir =>
-            {
-                string compined = Path.Combine(pdir.FullName, pdir.Name);
-                string FilePath = string.Concat(compined, PLUGIN_FILE_EXTENSION);
-                return FileOperations.FileExists(FilePath);
-            })
-            //Return the name of the dll file to import
-            .Select(static pdir =>
-            {
-                string compined = Path.Combine(pdir.FullName, pdir.Name);
-                return string.Concat(compined, PLUGIN_FILE_EXTENSION);
-            });
-
-            IEnumerable<string> pluginFileNames = pluginPaths.Select(static s => $"{Path.GetFileName(s)}\n");
-
-            appLog.Debug("Found plugin files: \n{files}", string.Concat(pluginFileNames));
-
-            LinkedList<Task> loading = new();
-
-            object listLock = new();
-
-            foreach (string pluginPath in pluginPaths)
-            {
-                async Task Load()
-                {
-                    string pluginName = Path.GetFileName(pluginPath);
-
-                    RuntimePluginLoader plugin = new(pluginPath, config, appLog, hotReload, hotReload);
-                    Stopwatch sw = new();
-                    try
-                    {
-                        sw.Start();
-
-                        await plugin.InitLoaderAsync();
-
-                        //Listen for reload events to remove and re-add endpoints
-                        plugin.Reloaded += OnPluginReloaded;
-
-                        lock (listLock)
-                        {
-                            //Add to list
-                            _pluginLoaders.AddLast(plugin);
-                        }
-
-                        sw.Stop();
-
-                        appLog.Verbose("Loaded {pl} in {tm} ms", pluginName, sw.ElapsedMilliseconds);
-                    }
-                    catch (Exception ex)
-                    {
-                        appLog.Error(ex, $"Exception raised during loading {pluginName}. Failed to load plugin \n{ex}");
-                        plugin.Dispose();
-                    }
-                    finally
-                    {
-                        sw.Stop();
-                    }
-                }
-
-                loading.AddLast(Load());
-            }
-
-            //Continuation to add all initial plugins to the service manager
-            void Continuation(Task t)
-            {
-                appLog.Verbose("Plugins loaded");
-
-                //Add inital endpoints for all plugins
-                _pluginLoaders.TryForeach(ldr => _serviceGroups.TryForeach(sg => sg.AddOrUpdateEndpointsForPlugin(ldr)));
-
-                //Init session provider
-                InitSessionProvider();
-
-                //Init page router
-                InitPageRouter();
-            }
-
-            //wait for loading to completed
-            return Task.WhenAll(loading.ToArray()).ContinueWith(Continuation, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-        }
-
-        ///<inheritdoc/>
-        public bool SendCommandToPlugin(string pluginName, string message, StringComparison nameComparison = StringComparison.Ordinal)
-        {
-            Check();
-            //Find the single plugin by its name
-            LivePlugin? pl = _pluginLoaders.Select(p =>
-                                    p.LivePlugins.Where(lp => pluginName.Equals(lp.PluginName, nameComparison))
-                                )
-                            .SelectMany(static lp => lp)
-                            .SingleOrDefault();
-            //Send the command
-            return pl?.SendConsoleMessage(message) ?? false;
-        }
-
-        ///<inheritdoc/>
-        public void ForceReloadAllPlugins()
-        {
-            Check();
-            _pluginLoaders.TryForeach(static pl => pl.ReloadPlugin());
-        }
-
-        ///<inheritdoc/>
-        public void UnloadAll()
+        /// <summary>
+        /// Tears down the service domain by unloading all plugins (calling their event handlers)
+        /// and destroying all <see cref="ServiceGroup"/>s. This instance may be rebuilt if this 
+        /// method returns successfully.
+        /// </summary>
+        internal void TearDown()
         {
             Check();
 
-            //Unload service groups before unloading plugins
+            /*
+             * Unloading plugins should trigger the OnPluginUnloading 
+             * hook which should cause all dependencies to unload linked
+             * types.
+             */
+            _plugins.UnloadPlugins();
+            
+            //Manually cleanup if unload missed data
             _serviceGroups.TryForeach(static sg => sg.UnloadAll());
             //empty service groups
             _serviceGroups.Clear();
-
-            //Unload all plugins
-            _pluginLoaders.TryForeach(static pl => pl.UnloadAll());
         }
 
-        private void OnPluginReloaded(object? plugin, EventArgs empty)
-        {
-            //Update endpoints for the loader
-            RuntimePluginLoader reloaded = (plugin as RuntimePluginLoader)!;
-
-            //Update all endpoints for the plugin
-            _serviceGroups.TryForeach(sg => sg.AddOrUpdateEndpointsForPlugin(reloaded));
-        }
-
-        private void InitSessionProvider()
-        {
-            //Callback to reload provider
-            void onSessionProviderReloaded(ISessionProvider old, ISessionProvider current)
-            {
-                _serviceGroups.TryForeach(sg => sg.UpdateSessionProvider(current));
-            }
-
-            try
-            {
-                //get the loader that contains the single session provider
-                RuntimePluginLoader? sessionLoader = _pluginLoaders
-                    .Where(static s => s.ExposesType<ISessionProvider>())
-                    .SingleOrDefault();
-
-                //If session provider has been supplied, load it
-                if (sessionLoader != null)
-                {
-                    //Get the session provider from the plugin loader
-                    ISessionProvider sp = sessionLoader.GetExposedTypeFromPlugin<ISessionProvider>()!;
-
-                    //Init inital provider
-                    onSessionProviderReloaded(null!, sp);
-
-                    //Register reload event
-                    sessionLoader.RegisterListenerForSingle<ISessionProvider>(onSessionProviderReloaded);
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                throw new TypeLoadException("More than one session provider plugin was defined in the plugin directory, cannot continue");
-            }
-        }
-
-        private void InitPageRouter()
-        {
-            //Callback to reload provider
-            void onRouterReloaded(IPageRouter old, IPageRouter current)
-            {
-                _serviceGroups.TryForeach(sg => sg.UpdatePageRouter(current));
-            }
-
-            try
-            {
-
-                //get the loader that contains the single page router
-                RuntimePluginLoader? routerLoader = _pluginLoaders
-                    .Where(static s => s.ExposesType<IPageRouter>())
-                    .SingleOrDefault();
-
-                //If router has been supplied, load it
-                if (routerLoader != null)
-                {
-                    //Get initial value
-                    IPageRouter sp = routerLoader.GetExposedTypeFromPlugin<IPageRouter>()!;
-
-                    //Init inital provider
-                    onRouterReloaded(null!, sp);
-
-                    //Register reload event
-                    routerLoader.RegisterListenerForSingle<IPageRouter>(onRouterReloaded);
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                throw new TypeLoadException("More than one page router plugin was defined in the plugin directory, cannot continue");
-            }
-        }
-
+       
         ///<inheritdoc/>
         protected override void Free()
         {
-            //Dispose loaders
-            _pluginLoaders.TryForeach(static pl => pl.Dispose());
-            _pluginLoaders.Clear();
+            _plugins.Dispose();
             _serviceGroups.Clear();
         }
     }

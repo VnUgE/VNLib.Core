@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -26,6 +26,8 @@ using System;
 using System.IO;
 using System.Net;
 using System.Collections.Generic;
+
+using VNLib.Net.Http;
 
 #nullable enable
 
@@ -62,5 +64,9 @@ namespace VNLib.Plugins.Essentials
         /// A <see cref="TimeSpan"/> for how long a connection may remain open before all operations are cancelled
         /// </summary>
         TimeSpan ExecutionTimeout { get; }
+        /// <summary>
+        /// HTTP level "hard" 301 redirects
+        /// </summary>
+        IReadOnlyDictionary<string, Redirect> HardRedirects { get; }
     }
 }

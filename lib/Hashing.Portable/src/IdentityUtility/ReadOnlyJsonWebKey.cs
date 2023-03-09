@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -24,10 +24,10 @@
 
 using System;
 using System.Text.Json;
+using System.Collections.Generic;
 
 using VNLib.Utils;
 using VNLib.Utils.Extensions;
-using System.Collections.Generic;
 
 namespace VNLib.Hashing.IdentityUtility
 {
@@ -35,10 +35,10 @@ namespace VNLib.Hashing.IdentityUtility
     /// A readonly Json Web Key (JWK) data structure that may be used for signing 
     /// or verifying messages.
     /// </summary>
-    public sealed class ReadOnlyJsonWebKey : VnDisposeable
+    public sealed class ReadOnlyJsonWebKey : VnDisposeable, IJsonWebKey
     {
         private readonly JsonElement _jwk;
-        private readonly JsonDocument? doc;
+        private readonly JsonDocument? _doc;
 
         /// <summary>
         /// Creates a new instance of <see cref="ReadOnlyJsonWebKey"/> from a <see cref="JsonElement"/>.
@@ -60,6 +60,14 @@ namespace VNLib.Hashing.IdentityUtility
                 { "alg" , Algorithm },
                 { "typ" , "JWT" },
             };
+
+            //Configure key usage
+            KeyUse = (Use?.ToLower(null)) switch
+            {
+                "sig" => JwkKeyUsage.Signature,
+                "enc" => JwkKeyUsage.Encryption,
+                _ => JwkKeyUsage.None,
+            };
         }
 
         /// <summary>
@@ -73,9 +81,9 @@ namespace VNLib.Hashing.IdentityUtility
         {
             //Pare the raw value
             Utf8JsonReader reader = new (rawValue);
-            doc = JsonDocument.ParseValue(ref reader);
+            _doc = JsonDocument.ParseValue(ref reader);
             //store element
-            _jwk = doc.RootElement;
+            _jwk = _doc.RootElement;
 
             //Set initial values
             KeyId = _jwk.GetPropString("kid");
@@ -88,6 +96,14 @@ namespace VNLib.Hashing.IdentityUtility
             {
                 { "alg" , Algorithm },
                 { "typ" , "JWT" },
+            };
+
+            //Configure key usage
+            KeyUse = (Use?.ToLower(null)) switch
+            {
+                "sig" => JwkKeyUsage.Signature,
+                "enc" => JwkKeyUsage.Encryption,
+                _ => JwkKeyUsage.None,
             };
         }
 
@@ -112,16 +128,17 @@ namespace VNLib.Hashing.IdentityUtility
         /// Returns the JWT header that matches this key
         /// </summary>
         public IReadOnlyDictionary<string, string?> JwtHeader { get; }
+       
+        ///<inheritdoc/>
+        public JwkKeyUsage KeyUse { get; }
 
-        /// <summary>
-        /// The key element
-        /// </summary>
-        internal JsonElement KeyElement => _jwk;
+        ///<inheritdoc/>
+        public string? GetKeyProperty(string propertyName) => _jwk.GetPropString(propertyName);
 
         ///<inheritdoc/>
         protected override void Free()
         {
-            doc?.Dispose();
+            _doc?.Dispose();
         }
 
     }
