@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -46,15 +46,19 @@ namespace VNLib.Net.Http.Core
         private Stream? InputStream;
         private long _position;
 
-        private ISlindingWindowBuffer<byte>? _initalData;     
+        private InitDataBuffer? _initalData;     
 
         public HttpInputStream(Func<Stream> getTransport) => GetTransport = getTransport;
 
         internal void OnComplete()
         {
-            //Dispose the inigial data buffer
-            _initalData?.Close();
-            _initalData = null;
+            //Dispose the initial data buffer if set
+            if (_initalData.HasValue)
+            {
+                _initalData.Value.Release();
+                _initalData = null;
+            }
+
             //Remove stream cache copy
             InputStream = null;
             //Reset position
@@ -69,7 +73,7 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         /// <param name="contentLength">The number of bytes to allow being read from the transport or initial buffer</param>
         /// <param name="initial">Entity body data captured on initial read</param>
-        internal void Prepare(long contentLength, ISlindingWindowBuffer<byte>? initial)
+        internal void Prepare(long contentLength, in InitDataBuffer? initial)
         {
             ContentLength = contentLength;
             _initalData = initial;
@@ -102,10 +106,10 @@ namespace VNLib.Net.Http.Core
             ForwardOnlyWriter<byte> writer = new(buffer[..bytesToRead]);
 
             //See if all data is internally buffered
-            if (_initalData != null && _initalData.AccumulatedSize > 0)
+            if (_initalData.HasValue && _initalData.Value.Remaining > 0)
             {
                 //Read as much as possible from internal buffer
-                ERRNO read = _initalData.Read(writer.Remaining);
+                ERRNO read = _initalData.Value.Read(writer.Remaining);
 
                 //Advance writer 
                 writer.Advance(read);
@@ -134,6 +138,7 @@ namespace VNLib.Net.Http.Core
         {
             return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
         }
+
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             //Calculate the amount of data that can be read into the buffer
@@ -147,10 +152,10 @@ namespace VNLib.Net.Http.Core
             ForwardOnlyMemoryWriter<byte> writer = new(buffer[..bytesToRead]);
 
             //See if all data is internally buffered
-            if (_initalData != null && _initalData.AccumulatedSize > 0)
+            if (_initalData.HasValue && _initalData.Value.Remaining > 0)
             {
                 //Read as much as possible from internal buffer
-                ERRNO read = _initalData.Read(writer.Remaining.Span);
+                ERRNO read = _initalData.Value.Read(writer.Remaining.Span);
 
                 //Advance writer 
                 writer.Advance(read);
@@ -183,12 +188,14 @@ namespace VNLib.Net.Http.Core
         public async ValueTask DiscardRemainingAsync(int maxBufferSize)
         {
             long remaining = Remaining;
+
             if(remaining == 0)
             {
                 return;
             }
+
             //See if all data has already been buffered
-            if(_initalData != null && remaining <= _initalData.AccumulatedSize)
+            if(_initalData.HasValue && remaining <= _initalData.Value.Remaining)
             {
                 //All data has been buffred, so just clear the buffer
                 _position = Length;

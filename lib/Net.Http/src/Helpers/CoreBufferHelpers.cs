@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -31,10 +31,7 @@
  * allocations and help provide memory optimization.
  */
 
-
-
 using System;
-using System.IO;
 using System.Buffers;
 using System.Security;
 using System.Threading;
@@ -51,54 +48,11 @@ namespace VNLib.Net.Http.Core
     /// </summary>
     internal static class CoreBufferHelpers
     {
-        private sealed class InitDataBuffer : ISlindingWindowBuffer<byte>
-        {
-            private readonly ArrayPool<byte> pool;
-            private readonly int size;
-            
-            private byte[]? buffer;
-
-            public InitDataBuffer(ArrayPool<byte> pool, int size)
-            {
-                this.buffer = pool.Rent(size, true);
-                this.pool = pool;
-                this.size = size;
-                WindowStartPos = 0;
-                WindowEndPos = 0;
-            }
-            
-            public int WindowStartPos { get; set; }
-            public int WindowEndPos { get; set; }
-            Memory<byte> ISlindingWindowBuffer<byte>.Buffer => buffer.AsMemory(0, size);
-
-            public void Advance(int count)
-            {
-                WindowEndPos += count;
-            }
-
-            public void AdvanceStart(int count)
-            {
-                WindowStartPos += count;
-            }
-
-            public void Reset()
-            {
-                WindowStartPos = 0;
-                WindowEndPos = 0;
-            }
-
-            //Release the buffer back to the pool
-            void ISlindingWindowBuffer<byte>.Close()
-            {
-                pool.Return(buffer!);
-                buffer = null;
-            }
-        }
-       
         /// <summary>
         /// An internal HTTP character binary pool for HTTP specific internal buffers
         /// </summary>
         public static ArrayPool<byte> HttpBinBufferPool { get; } = ArrayPool<byte>.Create();
+
         /// <summary>
         /// An <see cref="IUnmangedHeap"/> used for internal HTTP buffers
         /// </summary>
@@ -117,7 +71,7 @@ namespace VNLib.Net.Http.Core
         public static UnsafeMemoryHandle<byte> GetBinBuffer(int size, bool zero)
         {
             //Calc buffer size to the nearest page size
-            size = (size / 4096 + 1) * 4096;
+            size = (int)MemoryUtil.NearestPage(size);
 
             //If rpmalloc lib is loaded, use it
             if (MemoryUtil.IsRpMallocLoaded)
@@ -137,7 +91,7 @@ namespace VNLib.Net.Http.Core
         public static IMemoryOwner<byte> GetMemory(int size, bool zero)
         {
             //Calc buffer size to the nearest page size
-            size = (size / 4096 + 1) * 4096;
+            size = (int)MemoryUtil.NearestPage(size);
 
             //If rpmalloc lib is loaded, use it
             if (MemoryUtil.IsRpMallocLoaded)
@@ -167,7 +121,7 @@ namespace VNLib.Net.Http.Core
         /// <param name="reader"></param>
         /// <param name="maxContentLength">Maximum content size to clamp the remaining buffer window to</param>
         /// <returns></returns>
-        public static ISlindingWindowBuffer<byte>? GetReminaingData<T>(this ref T reader, long maxContentLength) where T: struct, IVnTextReader
+        public static InitDataBuffer? GetReminaingData<T>(this ref T reader, long maxContentLength) where T: struct, IVnTextReader
         {
             //clamp max available to max content length
             int available = Math.Clamp(reader.Available, 0, (int)maxContentLength);
@@ -175,13 +129,14 @@ namespace VNLib.Net.Http.Core
             {
                 return null;
             }
-            //Alloc sliding window buffer
-            ISlindingWindowBuffer<byte> buffer = new InitDataBuffer(HttpBinBufferPool, available);
-            //Read remaining data 
-            reader.ReadRemaining(buffer.RemainingBuffer.Span);
-            //Advance the buffer to the end of available data
-            buffer.Advance(available);
-            return buffer;
+
+            //Creates the new initial data buffer
+            InitDataBuffer buf = InitDataBuffer.AllocBuffer(HttpBinBufferPool, available);
+
+            //Read remaining data into the buffer's data segment
+            _ = reader.ReadRemaining(buf.DataSegment);
+           
+            return buf;
         }
         
     }

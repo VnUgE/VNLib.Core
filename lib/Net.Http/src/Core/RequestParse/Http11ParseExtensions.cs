@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -521,9 +521,9 @@ namespace VNLib.Net.Http.Core
             else if (parseState.ContentLength > 0)
             {
                 //Open a temp buffer to store initial data in
-                ISlindingWindowBuffer<byte>? initData = reader.GetReminaingData(parseState.ContentLength);
+                InitDataBuffer? initData = reader.GetReminaingData(parseState.ContentLength);
                 //Setup the input stream and capture the initial data from the reader, and wrap the transport stream to read data directly
-                Request.InputStream.Prepare(parseState.ContentLength, initData);
+                Request.InputStream.Prepare(parseState.ContentLength, in initData);
                 Request.HasEntityBody = true;
             }
             //Success!

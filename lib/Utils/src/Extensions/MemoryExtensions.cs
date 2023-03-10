@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -28,10 +28,11 @@ using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils.Memory;
+using VNLib.Utils.Resources;
+
 namespace VNLib.Utils.Extensions
 {
-    using Utils.Memory;
-    using VNLib.Utils.Resources;
 
     /// <summary>
     /// Provides memory based extensions to .NET and VNLib memory abstractions
@@ -52,7 +53,7 @@ namespace VNLib.Utils.Extensions
             //Pool buffer handles are considered "safe" so im reusing code for now
             return new(pool, size, zero);
         }
-      
+
         /// <summary>
         /// Retreives a buffer that is at least the reqested length, and clears the array from 0-size. 
         /// <br></br>
@@ -70,7 +71,7 @@ namespace VNLib.Utils.Extensions
             //If zero flag is set, zero only the used section
             if (zero)
             {
-                Array.Fill(arr, default);
+                arr.AsSpan().Clear();
             }
             return arr;
         }
