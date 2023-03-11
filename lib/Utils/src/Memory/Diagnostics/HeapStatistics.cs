@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -22,15 +22,13 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
-using System;
-
 namespace VNLib.Utils.Memory.Diagnostics
 {
     /// <summary>
     /// A structures that represents the current/last captures 
     /// statistics of the monitored heap
     /// </summary>
-    public readonly struct HeapStatistics : IEquatable<HeapStatistics>
+    public readonly record struct HeapStatistics 
     {
         /// <summary>
         /// The current size (in bytes) of the heap
@@ -52,25 +50,5 @@ namespace VNLib.Utils.Memory.Diagnostics
         /// The number of allocated handles/blocks
         /// </summary>
         public readonly ulong AllocatedBlocks { get; init; }
-
-        ///<inheritdoc/>
-        public override bool Equals(object? obj) => obj is HeapStatistics s && Equals(s);
-
-        ///<inheritdoc/>
-        public override int GetHashCode() => (int)((AllocatedBytes ^ MaxBlockSize) & int.MaxValue);
-
-        ///<inheritdoc/>
-        public static bool operator ==(HeapStatistics left, HeapStatistics right) => left.Equals(right);
-        ///<inheritdoc/>
-        public static bool operator !=(HeapStatistics left, HeapStatistics right) => !(left == right);
-
-        ///<inheritdoc/>
-        public bool Equals(HeapStatistics other)
-        {
-            return MinBlockSize == other.MinBlockSize
-                && MaxBlockSize == other.MaxBlockSize
-                && MaxHeapSize == other.MaxHeapSize
-                && AllocatedBytes == other.AllocatedBytes;
-        }
     }
 }

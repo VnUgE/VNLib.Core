@@ -60,7 +60,7 @@ namespace VNLib.Net.Http.Core
         /// <returns>The newly allocated data buffer</returns>
         internal static InitDataBuffer AllocBuffer(ArrayPool<byte> pool, int dataSize)
         {
-            //Alloc buffer
+            //Alloc buffer, must be zeroed
             byte[] buffer = pool.Rent(dataSize + POSITION_SEG_SIZE, true);
 
             return new(pool, buffer, dataSize);
@@ -111,7 +111,7 @@ namespace VNLib.Net.Http.Core
             //Calc how many bytes can be read into the output buffer
             int bytesToRead = Math.Min(Remaining, buffer.Length);
 
-            Span<byte> btr = DataSegment[Position..bytesToRead];
+            Span<byte> btr = DataSegment.Slice(Position, bytesToRead);
 
             //Write data to output buffer
             btr.CopyTo(buffer);
