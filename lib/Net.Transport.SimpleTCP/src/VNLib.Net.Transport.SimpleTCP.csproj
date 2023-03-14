@@ -5,7 +5,6 @@
     <RootNamespace>VNLib.Net.Transport</RootNamespace>
     <AssemblyName>VNLib.Net.Transport.SimpleTCP</AssemblyName>
     <Nullable>enable</Nullable>
-    <Version>1.0.1.4</Version>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>

@@ -3,8 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Utils</RootNamespace>
-    <AssemblyName>VNLib.Utils</AssemblyName>
-    <Version>1.0.1.10</Version>    
+    <AssemblyName>VNLib.Utils</AssemblyName>  
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>

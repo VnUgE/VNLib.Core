@@ -4,7 +4,6 @@
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Plugins</RootNamespace>
     <AssemblyName>VNLib.Plugins.PluginBase</AssemblyName>
-    <Version>1.0.1.2</Version>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>

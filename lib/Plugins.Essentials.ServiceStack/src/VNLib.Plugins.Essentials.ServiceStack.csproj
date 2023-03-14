@@ -6,9 +6,6 @@
     <AssemblyName>VNLib.Plugins.Essentials.ServiceStack</AssemblyName>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    
-    <Version>1.0.1.2</Version>
-    
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>

@@ -4,7 +4,6 @@
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>VNLib.Net.Http</RootNamespace>
     <AssemblyName>VNLib.Net.Http</AssemblyName>
-    <Version>1.0.1.5</Version>
     <NeutralLanguage>en-US</NeutralLanguage>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
