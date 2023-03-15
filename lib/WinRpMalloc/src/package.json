@@ -1,5 +1,5 @@
 {
-  "Description": "A project to maintain an x64 Windows dll for RpMalloc by Mattias Jansson with some basic defaults for .NET loading",
+  "Description": "A project to maintain an x64 Windows dll for RpMalloc by Mattias Jansson with some basic defaults for .NET loading. The debug output contains the debug MVCR libs and debug symbols.",
   "Authors": "Vaughn Nugent",
   "Copyright": "Copyright &copy; 2023 Vaughn Nugent",
   "Version": "0.1.1",
