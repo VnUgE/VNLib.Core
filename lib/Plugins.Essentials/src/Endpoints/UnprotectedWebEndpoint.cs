@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -35,8 +35,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
         ///<inheritdoc/>
         protected override ERRNO PreProccess(HttpEntity entity)
         {
-            return base.PreProccess(entity)
-                && (!entity.Session.IsSet || entity.Session.SessionType == Sessions.SessionType.Web);
+            return base.PreProccess(entity) && entity.Session.IsSet && entity.Session.SessionType == Sessions.SessionType.Web;
         }
     }
 }
