@@ -301,7 +301,7 @@ namespace VNLib.Hashing.IdentityUtility
             Span<byte> signatureBuffer = stackalloc byte[bufferSize];
 
             //Compute the hash of the current payload
-            if(!signatureAlgorithm.TryComputeHash(DataBuffer, signatureBuffer, out int bytesWritten))
+            if(!signatureAlgorithm.TryComputeHash(HeaderAndPayload, signatureBuffer, out int bytesWritten))
             {
                 throw new InternalBufferTooSmallException();
             }
@@ -326,7 +326,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        public virtual void Sign(RSA rsa, in HashAlgorithmName hashAlg, RSASignaturePadding padding, int hashSize)
+        public virtual void Sign(RSA rsa, HashAlgorithmName hashAlg, RSASignaturePadding padding, int hashSize)
         {
             Check();
             
@@ -359,7 +359,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        public virtual void Sign(ECDsa alg, in HashAlgorithmName hashAlg, int hashSize)
+        public virtual void Sign(ECDsa alg, HashAlgorithmName hashAlg, int hashSize)
         {
             Check();
             
@@ -381,6 +381,30 @@ namespace VNLib.Hashing.IdentityUtility
 
             //Write the signature data to the buffer
             WriteValue(sigBuffer.Span[..hashBytesWritten]);
+        }
+
+        /// <summary>
+        /// Signs the JWT data using HMAC without allocating a <see cref="HashAlgorithm"/>
+        /// instance.
+        /// </summary>
+        /// <param name="alg">The algorithm used to sign</param>
+        /// <param name="key">The key data</param>
+        /// <exception cref="InternalBufferTooSmallException"></exception>
+        public virtual void Sign(ReadOnlySpan<byte> key, HashAlg alg)
+        {
+            //Stack hash output buffer, will be the size of the alg
+            Span<byte> sigOut = stackalloc byte[(int)alg];
+
+            //Compute
+            ERRNO count = ManagedHash.ComputeHmac(key, HeaderAndPayload, sigOut, alg);
+
+            if (!count)
+            {
+                throw new InternalBufferTooSmallException("Failed to compute the hmac signature because the internal buffer was mis-sized");
+            }
+
+            //write
+            WriteValue(sigOut[..(int)count]);
         }
 
         #endregion

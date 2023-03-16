@@ -25,6 +25,7 @@
 using System;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Reflection;
 using System.Collections.Generic;
 
@@ -38,6 +39,18 @@ namespace VNLib.Plugins.Runtime
     /// </summary>
     public sealed class PluginController : IPluginEventRegistrar
     {
+        /*
+         * Lock must be held any time the internals lists are read/written
+         * to avoid read/write enumeration issues.
+         * 
+         * This can happen when a manual unload is called duiring an automatic 
+         * reload, or a runtime is tearing down the plugin environment 
+         * when an automatic reload is happening.
+         * 
+         * This also allows thread safe register/unregister event listeners
+         */
+        private readonly object _stateLock = new();
+
         private readonly List<LivePlugin> _plugins;
         private readonly List<KeyValuePair<IPluginEventListener, object?>> _listeners;
 
@@ -58,61 +71,80 @@ namespace VNLib.Plugins.Runtime
         {
             _ = listener ?? throw new ArgumentNullException(nameof(listener));
 
-            _listeners.Add(new(listener, state));
+            lock (_stateLock)
+            {
+                _listeners.Add(new(listener, state));
+            }
         }
 
         ///<inheritdoc/>
         public bool Unregister(IPluginEventListener listener)
         {
-            //Remove listener
-            return _listeners.RemoveAll(p => p.Key == listener) > 0;
+            lock(_stateLock)
+            {
+                //Remove listener
+                return _listeners.RemoveAll(p => p.Key == listener) > 0;
+            }
         }
 
 
         internal void InitializePlugins(Assembly asm)
         {
-            //get all Iplugin types
-            Type[] types = asm.GetTypes().Where(static type => !type.IsAbstract && typeof(IPlugin).IsAssignableFrom(type)).ToArray();
+            lock (_stateLock)
+            {
+                //get all Iplugin types
+                Type[] types = asm.GetTypes().Where(static type => !type.IsAbstract && typeof(IPlugin).IsAssignableFrom(type)).ToArray();
 
-            //Initialize the new plugin instances
-            IPlugin[] plugins = types.Select(static t => (IPlugin)Activator.CreateInstance(t)!).ToArray();
+                //Initialize the new plugin instances
+                IPlugin[] plugins = types.Select(static t => (IPlugin)Activator.CreateInstance(t)!).ToArray();
 
-            //Crate new containers
-            LivePlugin[] lps = plugins.Select(p => new LivePlugin(p, asm)).ToArray();
+                //Crate new containers
+                LivePlugin[] lps = plugins.Select(p => new LivePlugin(p, asm)).ToArray();
 
-            //Store containers
-            _plugins.AddRange(lps);
+                //Store containers
+                _plugins.AddRange(lps);
+            }
         }
 
         internal void ConfigurePlugins(JsonDocument hostDom, JsonDocument pluginDom, string[] cliArgs)
         {
-            _plugins.TryForeach(lp => lp.InitConfig(hostDom, pluginDom));
-            _plugins.TryForeach(lp => lp.InitLog(cliArgs));
+            lock (_stateLock)
+            {
+                _plugins.TryForeach(lp => lp.InitConfig(hostDom, pluginDom));
+                _plugins.TryForeach(lp => lp.InitLog(cliArgs));
+            }
         }
 
         internal void LoadPlugins()
         {
-            //Load all plugins
-            _plugins.TryForeach(static p => p.LoadPlugin());
+            lock( _stateLock)
+            {
+                //Load all plugins
+                _plugins.TryForeach(static p => p.LoadPlugin());
 
-            //Notify event handlers
-            _listeners.TryForeach(l => l.Key.OnPluginLoaded(this, l.Value));
+                //Notify event handlers
+                _listeners.TryForeach(l => l.Key.OnPluginLoaded(this, l.Value));
+            }
         }
 
         internal void UnloadPlugins()
         {
-            try
+            lock (_stateLock)
             {
-                //Notify event handlers
-                _listeners.TryForeach(l => l.Key.OnPluginUnloaded(this, l.Value));
+                try
+                {
+                    //Notify event handlers
+                    _listeners.TryForeach(l => l.Key.OnPluginUnloaded(this, l.Value));
 
-                //Unload plugin instances
-                _plugins.TryForeach(static p => p.UnloadPlugin());
-            }
-            finally
-            {
-                //Always 
-                _plugins.Clear();
+                    //Unload plugin instances
+                    _plugins.TryForeach(static p => p.UnloadPlugin());
+                }
+                finally
+                {
+                    //Always 
+                    _plugins.Clear();
+
+                }
             }
         }
 
@@ -121,7 +153,6 @@ namespace VNLib.Plugins.Runtime
             _plugins.Clear();
             _listeners.Clear();
         }
-
      
     }
 }

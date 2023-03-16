@@ -204,6 +204,55 @@ namespace VNLib.Hashing.IdentityUtility
             //Verify the signatures and return results
             return CryptographicOperations.FixedTimeEquals(jwt.SignatureData, base64);
         }
+
+        /// <summary>
+        /// Verifies the current JWT body-segements against the parsed signature segment.
+        /// </summary>
+        /// <param name="jwt"></param>
+        /// <param name="alg">
+        /// The HMAC algorithm to use when calculating the hash of the JWT
+        /// </param>
+        /// <param name="key">The HMAC shared symetric key</param>
+        /// <returns>
+        /// True if the signature field of the current JWT matches the re-computed signature of the header and data-fields
+        /// signature
+        /// </returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="InternalBufferTooSmallException"></exception>
+        public static bool Verify(this JsonWebToken jwt, ReadOnlySpan<byte> key, HashAlg alg)
+        {
+            _ = jwt ?? throw new ArgumentNullException(nameof(jwt));
+
+            //Get base64 buffer size for in-place conversion
+            int bufferSize = Base64.GetMaxEncodedToUtf8Length((int)alg);
+
+            //Alloc buffer for signature output
+            Span<byte> signatureBuffer = stackalloc byte[bufferSize];
+
+            //Compute the hash of the current payload
+            ERRNO count = ManagedHash.ComputeHmac(key, jwt.HeaderAndPayload, signatureBuffer, alg);
+            if (!count)
+            {
+                throw new InternalBufferTooSmallException("Failed to compute the hash of the JWT data");
+            }
+
+            //Do an in-place base64 conversion of the signature to base64
+            if (Base64.EncodeToUtf8InPlace(signatureBuffer, count, out int base64BytesWritten) != OperationStatus.Done)
+            {
+                throw new InternalBufferTooSmallException("Failed to convert the signature buffer to its base64 because the buffer was too small");
+            }
+
+            //Trim padding
+            Span<byte> base64 = signatureBuffer[..base64BytesWritten].Trim(JsonWebToken.PADDING_BYTES);
+
+            //Urlencode
+            VnEncoding.Base64ToUrlSafeInPlace(base64);
+
+            //Verify the signatures and return results
+            return CryptographicOperations.FixedTimeEquals(jwt.SignatureData, base64);
+        }
+
         /// <summary>
         /// Verifies the signature of the data using the specified <see cref="RSA"/> and hash parameters
         /// </summary>
@@ -217,7 +266,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static bool Verify(this JsonWebToken jwt, RSA alg, in HashAlgorithmName hashAlg, RSASignaturePadding padding)
+        public static bool Verify(this JsonWebToken jwt, RSA alg, HashAlgorithmName hashAlg, RSASignaturePadding padding)
         {
             _ = jwt ?? throw new ArgumentNullException(nameof(jwt));
             _ = alg ?? throw new ArgumentNullException(nameof(alg));
@@ -243,7 +292,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static bool Verify(this JsonWebToken jwt, ECDsa alg, in HashAlgorithmName hashAlg)
+        public static bool Verify(this JsonWebToken jwt, ECDsa alg, HashAlgorithmName hashAlg)
         {
             _ = alg ?? throw new ArgumentNullException(nameof(alg));
             //Decode the signature

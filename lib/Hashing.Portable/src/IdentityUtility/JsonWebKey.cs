@@ -410,15 +410,30 @@ namespace VNLib.Hashing.IdentityUtility
             {
                 return null;
             }
-            
-            //bin buffer for temp decoding
-            using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAlloc<byte>(base64.Length + 16, false);
 
-            //base64url decode
-            ERRNO count = VnEncoding.Base64UrlDecode(base64, binBuffer.Span);
-            
-            //Return buffer or null if failed
-            return count ? binBuffer.AsSpan(0, count).ToArray() : null;
+            //Use stack buffer
+            if(base64.Length <= 64)
+            {
+                //Use stack buffer
+                Span<byte> buffer = stackalloc byte[84];
+
+                //base64url decode
+                ERRNO count = VnEncoding.Base64UrlDecode(base64, buffer);
+
+                //Return buffer or null if failed
+                return count ? buffer[0.. (int)count].ToArray() : null;
+            }
+            else
+            {
+                //bin buffer for temp decoding
+                using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAlloc<byte>(base64.Length + 16, false);
+
+                //base64url decode
+                ERRNO count = VnEncoding.Base64UrlDecode(base64, binBuffer.Span);
+
+                //Return buffer or null if failed
+                return count ? binBuffer.AsSpan(0, count).ToArray() : null;
+            }
         }
     }
 }

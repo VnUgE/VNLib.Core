@@ -184,11 +184,7 @@ namespace VNLib.Plugins.Runtime
         /// to block individual loading.
         /// </summary>
         /// <exception cref="AggregateException"></exception>
-        public void LoadPlugins()
-        {
-            //Load all plugins
-            Controller.LoadPlugins();
-        }
+        public void LoadPlugins() => Controller.LoadPlugins();
 
         /// <summary>
         /// Manually reload the internal <see cref="PluginLoader"/>
