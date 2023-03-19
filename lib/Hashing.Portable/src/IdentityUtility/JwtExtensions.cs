@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -34,6 +34,7 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Hashing.IdentityUtility
 {
+
     /// <summary>
     /// Provides extension methods for manipulating 
     /// and verifying <see cref="JsonWebToken"/>s
@@ -52,6 +53,7 @@ namespace VNLib.Hashing.IdentityUtility
             byte[] data = JsonSerializer.SerializeToUtf8Bytes(header, jso);
             jwt.WriteHeader(data);
         }
+
         /// <summary>
         /// Writes the message payload as the specified object
         /// </summary>
@@ -81,14 +83,19 @@ namespace VNLib.Hashing.IdentityUtility
             {
                 return JsonDocument.Parse("{}");
             }
+
             //calc padding bytes to add
             int paddingToAdd = CalcPadding(payload.Length);
+
             //Alloc buffer to copy jwt payload data to
             using UnsafeMemoryHandle<byte> buffer = jwt.Heap.UnsafeAlloc<byte>(payload.Length + paddingToAdd);
+
             //Decode from urlsafe base64
             int decoded = DecodeUnpadded(payload, buffer.Span);
+
             //Get json reader to read the first token (payload object) and return a document around it
             Utf8JsonReader reader = new(buffer.Span[..decoded]);
+
             return JsonDocument.ParseValue(ref reader);
         }
 
@@ -110,12 +117,16 @@ namespace VNLib.Hashing.IdentityUtility
             }
             //calc padding bytes to add
             int paddingToAdd = CalcPadding(header.Length);
+
             //Alloc buffer to copy jwt header data to
             using UnsafeMemoryHandle<byte> buffer = jwt.Heap.UnsafeAlloc<byte>(header.Length + paddingToAdd);
+
             //Decode from urlsafe base64
             int decoded = DecodeUnpadded(header, buffer.Span);
+
             //Get json reader to read the first token (payload object) and return a document around it
             Utf8JsonReader reader = new(buffer.Span[..decoded]);
+
             return JsonDocument.ParseValue(ref reader);
         }
 
@@ -150,14 +161,163 @@ namespace VNLib.Hashing.IdentityUtility
             }
             //calc padding bytes to add
             int paddingToAdd = CalcPadding(payload.Length);
+
             //Alloc buffer to copy jwt payload data to
             using UnsafeMemoryHandle<byte> buffer = jwt.Heap.UnsafeAlloc<byte>(payload.Length + paddingToAdd);
+
             //Decode from urlsafe base64
             int decoded = DecodeUnpadded(payload, buffer.Span);
+
             //Deserialze as an object
             return JsonSerializer.Deserialize<T>(buffer.Span[..decoded], jso);
         }
-        
+
+        /// <summary>
+        /// Initializes a new <see cref="JwtPayload"/> object for writing claims to the 
+        /// current tokens payload segment
+        /// </summary>
+        /// <param name="jwt"></param>
+        /// <param name="initCapacity">The inital cliam capacity</param>
+        /// <returns>The fluent chainable stucture</returns>
+        public static JwtPayload InitPayloadClaim(this JsonWebToken jwt, int initCapacity = 0) => new(jwt, initCapacity);
+
+        /// <summary>
+        /// Signs the current JWT (header + payload) data
+        /// and writes the signature the end of the current buffer,
+        /// using the specified <see cref="HashAlgorithm"/>.
+        /// </summary>
+        /// <param name="jwt"></param>
+        /// <param name="signatureAlgorithm">An alternate <see cref="HashAlgorithm"/> instance to sign the JWT with</param>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public static void Sign(this JsonWebToken jwt, HashAlgorithm signatureAlgorithm)
+        {
+            _ = signatureAlgorithm ?? throw new ArgumentNullException(nameof(signatureAlgorithm));
+
+            //Calculate the size of the buffer to use for the current algorithm
+            int bufferSize = signatureAlgorithm.HashSize / 8;
+
+            //Alloc buffer for signature output
+            Span<byte> signatureBuffer = stackalloc byte[bufferSize];
+
+            //Compute the hash of the current payload
+            if (!signatureAlgorithm.TryComputeHash(jwt.HeaderAndPayload, signatureBuffer, out int bytesWritten))
+            {
+                throw new InternalBufferTooSmallException();
+            }
+
+            jwt.WriteSignature(signatureBuffer[..bytesWritten]);
+        }
+
+        /// <summary>
+        /// Use an RSA algorithm to sign the JWT message
+        /// </summary>
+        /// <param name="jwt"></param>
+        /// <param name="rsa">The algorithm used to sign the token</param>
+        /// <param name="alg">The <see cref="HashAlg"/> use to compute the message digest</param>
+        /// <param name="padding">The signature padding to use</param>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public static void Sign(this JsonWebToken jwt, RSA rsa, HashAlg alg, RSASignaturePadding padding)
+        {
+            _ = rsa ?? throw new ArgumentNullException(nameof(rsa));
+
+            //Init new rsa provider
+            RSASignatureProvider sig = new(rsa, alg, padding);
+
+            //Compute signature
+            jwt.Sign(in sig, alg);
+        }
+
+        /// <summary>
+        /// Use an RSA algorithm to sign the JWT message
+        /// </summary>
+        /// <param name="jwt"></param>
+        /// <param name="alg">The algorithm used to sign the token</param>
+        /// <param name="hashAlg">The hash algorithm to use</param>
+        /// <param name="sigFormat">The DSA signature format</param>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public static void Sign(this JsonWebToken jwt, ECDsa alg, HashAlg hashAlg, DSASignatureFormat sigFormat = DSASignatureFormat.IeeeP1363FixedFieldConcatenation)
+        {
+            _ = alg ?? throw new ArgumentNullException(nameof(alg));
+
+            //Init new ec provider
+            ECDSASignatureProvider sig = new(alg, sigFormat);
+
+            jwt.Sign(in sig, hashAlg);
+        }
+
+        /// <summary>
+        /// Signs the JWT data using HMAC without allocating a <see cref="HashAlgorithm"/>
+        /// instance.
+        /// </summary>
+        /// <param name="jwt"></param>
+        /// <param name="alg">The algorithm used to sign</param>
+        /// <param name="key">The key data</param>
+        /// <exception cref="InternalBufferTooSmallException"></exception>
+        public static void Sign(this JsonWebToken jwt, ReadOnlySpan<byte> key, HashAlg alg)
+        {
+            //Stack hash output buffer, will be the size of the alg
+            Span<byte> sigOut = stackalloc byte[(int)alg];
+
+            //Compute
+            ERRNO count = ManagedHash.ComputeHmac(key, jwt.HeaderAndPayload, sigOut, alg);
+
+            if (!count)
+            {
+                throw new InternalBufferTooSmallException("Failed to compute the hmac signature because the internal buffer was mis-sized");
+            }
+
+            //write
+            jwt.WriteSignature(sigOut[..(int)count]);
+        }
+      
+        /// <summary>
+        /// Computes the signature of the current <see cref="JsonWebToken"/>
+        /// using the generic <see cref="IJwtSignatureProvider"/> implementation.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="jwt"></param>
+        /// <param name="provider">The <see cref="IJwtSignatureProvider"/> that will compute the signature of the message digest</param>
+        /// <param name="hashAlg">The <see cref="HashAlg"/> algorithm used to compute the message digest</param>
+        /// <exception cref="InternalBufferTooSmallException"></exception>
+        /// <exception cref="CryptographicException"></exception>
+        public static void Sign<T>(this JsonWebToken jwt, in T provider, HashAlg hashAlg) where T : IJwtSignatureProvider
+        {
+            //Alloc heap buffer to store hash data (helps with memory locality)
+            nint nearestPage = MemoryUtil.NearestPage(provider.RequiredBufferSize + (int)hashAlg);
+
+            //Alloc buffer
+            using UnsafeMemoryHandle<byte> handle = jwt.Heap.UnsafeAlloc<byte>((int)nearestPage, true);
+
+            //Split buffers
+            Span<byte> hashBuffer = handle.Span[..(int)hashAlg];
+            Span<byte> output = handle.Span[(int)hashAlg..];
+          
+            //Compute hash
+            ERRNO hashLen = ManagedHash.ComputeHash(jwt.HeaderAndPayload, hashBuffer, hashAlg);
+
+            if (!hashLen)
+            {
+                throw new InternalBufferTooSmallException("Hash buffer was not properly computed");
+            }
+
+            //Compute signature
+            ERRNO sigLen = provider.ComputeSignatureFromHash(hashBuffer[..(int)hashLen], output);
+
+            if (!sigLen)
+            {
+                throw new CryptographicException("Failed to compute the JWT hash signature");
+            }
+
+            //Write signature to the jwt
+            jwt.WriteSignature(output[..(int)sigLen]);
+        }
+
         /// <summary>
         /// Verifies the current JWT body-segements against the parsed signature segment.
         /// </summary>
@@ -203,6 +363,53 @@ namespace VNLib.Hashing.IdentityUtility
             
             //Verify the signatures and return results
             return CryptographicOperations.FixedTimeEquals(jwt.SignatureData, base64);
+        }
+
+        /// <summary>
+        /// Verifies the signature of the current <see cref="JsonWebToken"/> against the 
+        /// generic <see cref="IJwtSignatureVerifier"/> verification method.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="jwt"></param>
+        /// <param name="provider">The <see cref="IJwtSignatureVerifier"/> used to verify the message digest</param>
+        /// <param name="alg">The <see cref="HashAlg"/> used to compute the message digest</param>
+        /// <returns>True if the siganture matches the computed on, false otherwise</returns>
+        /// <exception cref="InternalBufferTooSmallException"></exception>
+        public static bool Verify<T>(this JsonWebToken jwt, in T provider, HashAlg alg) where T : IJwtSignatureVerifier
+        {
+            ReadOnlySpan<byte> signature = jwt.SignatureData;
+
+            int sigBufSize = CalcPadding(signature.Length) + signature.Length;
+
+            //Calc full buffer size
+            nint bufferSize = MemoryUtil.NearestPage(sigBufSize + (int)alg);
+
+            //Alloc buffer to decode data, as a full page, all buffers will be used from the block for better cache
+            using UnsafeMemoryHandle<byte> buffer = jwt.Heap.UnsafeAlloc<byte>((int)bufferSize);
+
+            //Split buffers for locality
+            Span<byte> sigBuffer = buffer.Span[..sigBufSize];
+            Span<byte> hashBuffer = buffer.Span[sigBufSize..];
+
+            //Decode from urlsafe base64
+            int decoded = DecodeUnpadded(signature, sigBuffer);
+
+            //Shift sig buffer to end of signature bytes
+            sigBuffer = sigBuffer[..decoded];
+
+            //Compute digest of message
+            ERRNO hashLen = ManagedHash.ComputeHash(jwt.HeaderAndPayload, hashBuffer, alg);
+
+            if (!hashLen)
+            {
+                throw new InternalBufferTooSmallException("Hash output buffer was not properly sized");
+            }
+
+            //Shift hash buffer
+            hashBuffer = hashBuffer[..(int)hashLen];
+
+            //Verify signature
+            return provider.Verify(hashBuffer, sigBuffer);
         }
 
         /// <summary>
@@ -258,7 +465,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// </summary>
         /// <param name="jwt"></param>
         /// <param name="alg">The RSA algorithim to use while verifying the signature of the payload</param>
-        /// <param name="hashAlg">The <see cref="HashAlgorithmName"/> used to hash the signature</param>
+        /// <param name="hashAlg">The <see cref="HashAlg"/> used to compute the digest of the message data</param>
         /// <param name="padding">The RSA signature padding method</param>
         /// <returns>True if the singature has been verified, false otherwise</returns>
         /// <exception cref="FormatException"></exception>
@@ -266,53 +473,84 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static bool Verify(this JsonWebToken jwt, RSA alg, HashAlgorithmName hashAlg, RSASignaturePadding padding)
+        public static bool Verify(this JsonWebToken jwt, RSA alg, HashAlg hashAlg, RSASignaturePadding padding)
         {
             _ = jwt ?? throw new ArgumentNullException(nameof(jwt));
             _ = alg ?? throw new ArgumentNullException(nameof(alg));
-            //Decode the signature
-            ReadOnlySpan<byte> signature = jwt.SignatureData;
-            int paddBytes = CalcPadding(signature.Length);
-            //Alloc buffer to decode data
-            using UnsafeMemoryHandle<byte> buffer = jwt.Heap.UnsafeAlloc<byte>(signature.Length + paddBytes);
-            //Decode from urlsafe base64
-            int decoded = DecodeUnpadded(signature, buffer.Span);
-            //Verify signature
-            return alg.VerifyData(jwt.HeaderAndPayload, buffer.Span[..decoded], hashAlg, padding);
+
+            //Inint verifier
+            RSASignatureVerifier verifier = new(alg, hashAlg, padding);
+
+            return jwt.Verify(in verifier, hashAlg);
         }
+
         /// <summary>
         /// Verifies the signature of the data using the specified <see cref="RSA"/> and hash parameters
         /// </summary>
         /// <param name="jwt"></param>
         /// <param name="alg">The RSA algorithim to use while verifying the signature of the payload</param>
         /// <param name="hashAlg">The <see cref="HashAlgorithmName"/> used to hash the signature</param>
+        /// <param name="signatureFormat">The signatured format used to verify the token, defaults to field concatination</param>
         /// <returns>True if the singature has been verified, false otherwise</returns>
         /// <exception cref="FormatException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static bool Verify(this JsonWebToken jwt, ECDsa alg, HashAlgorithmName hashAlg)
+        public static bool Verify(this JsonWebToken jwt, ECDsa alg, HashAlg hashAlg, DSASignatureFormat signatureFormat = DSASignatureFormat.IeeeP1363FixedFieldConcatenation)
         {
             _ = alg ?? throw new ArgumentNullException(nameof(alg));
-            //Decode the signature
-            ReadOnlySpan<byte> signature = jwt.SignatureData;
-            int paddBytes = CalcPadding(signature.Length);
-            //Alloc buffer to decode data
-            using UnsafeMemoryHandle<byte> buffer = jwt.Heap.UnsafeAlloc<byte>(signature.Length + paddBytes);
-            //Decode from urlsafe base64
-            int decoded = DecodeUnpadded(signature, buffer.Span);
-            //Verify signature
-            return alg.VerifyData(jwt.HeaderAndPayload, buffer.Span[..decoded], hashAlg);
+
+            //Inint verifier
+            ECDSASignatureVerifier verifier = new(alg, signatureFormat);
+
+            return jwt.Verify(in verifier, hashAlg);
         }
 
-        /// <summary>
-        /// Initializes a new <see cref="JwtPayload"/> object for writing claims to the 
-        /// current tokens payload segment
-        /// </summary>
-        /// <param name="jwt"></param>
-        /// <param name="initCapacity">The inital cliam capacity</param>
-        /// <returns>The fluent chainable stucture</returns>
-        public static JwtPayload InitPayloadClaim(this JsonWebToken jwt, int initCapacity = 0) => new (jwt, initCapacity);
+        /*
+         * Simple ecdsa and rsa providers
+         */
+        private record struct ECDSASignatureProvider(ECDsa SigAlg, DSASignatureFormat Format) : IJwtSignatureProvider
+        {
+            ///<inheritdoc/>
+            public readonly int RequiredBufferSize { get; } = 512;
+
+            ///<inheritdoc/>
+            public readonly ERRNO ComputeSignatureFromHash(ReadOnlySpan<byte> hash, Span<byte> outputBuffer)
+            {
+                return SigAlg.TrySignHash(hash, outputBuffer, Format, out int written) ? written : ERRNO.E_FAIL;
+            }
+        }
+
+        internal record struct RSASignatureProvider(RSA SigAlg, HashAlg Slg, RSASignaturePadding Padding) : IJwtSignatureProvider
+        {
+            ///<inheritdoc/>
+            public readonly int RequiredBufferSize { get; } = 1024;
+
+            ///<inheritdoc/>
+            public readonly ERRNO ComputeSignatureFromHash(ReadOnlySpan<byte> hash, Span<byte> outputBuffer)
+            {
+                return !SigAlg.TrySignHash(hash, outputBuffer, Slg.GetAlgName(), Padding, out int written) ? written : ERRNO.E_FAIL;
+            }
+        }
+
+        /*
+         * ECDSA and rsa verifiers
+         */
+        internal record struct ECDSASignatureVerifier(ECDsa Alg, DSASignatureFormat Format) : IJwtSignatureVerifier
+        {
+            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature)
+            {
+                return Alg.VerifyHash(messageHash, signature);
+            }
+        }
+
+        internal record struct RSASignatureVerifier(RSA Alg, HashAlg hashAlg, RSASignaturePadding Padding) : IJwtSignatureVerifier
+        {
+            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature)
+            {
+                return Alg.VerifyHash(messageHash, signature, hashAlg.GetAlgName(), Padding);
+            }
+        }
     }
 }

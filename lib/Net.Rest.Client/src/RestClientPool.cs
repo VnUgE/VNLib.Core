@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Rest.Client
-* File: ClientPool.cs 
+* File: RestClientPool.cs 
 *
-* ClientPool.cs is part of VNLib.Net.Rest.Client which is part of the larger 
+* RestClientPool.cs is part of VNLib.Net.Rest.Client which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Rest.Client is free software: you can redistribute it and/or modify 
@@ -49,12 +49,12 @@ namespace VNLib.Net.Rest.Client
         public RestClientPool(int maxClients, RestClientOptions options, Action<RestClient>? initCb = null, IAuthenticator? authenticator = null)
             : base(() =>
             {
-                RestClient client = new(options);
                 //Add optional authenticator
-                if (authenticator != null)
-                {
-                    client.UseAuthenticator(authenticator);
-                }
+                options.Authenticator = authenticator;
+
+                //load client
+                RestClient client = new(options);
+
                 //Invoke init callback
                 initCb?.Invoke(client);
                 return client;

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -31,7 +31,7 @@ namespace VNLib.Hashing.IdentityUtility
     /// <summary>
     /// A fluent api structure for adding and committing claims to a <see cref="JsonWebToken"/>
     /// </summary>
-    public readonly struct JwtPayload : IIndexable<string, object>
+    public readonly record struct JwtPayload : IIndexable<string, object>
     {
         private readonly Dictionary<string, object> Claims;
         private readonly JsonWebToken Jwt;
@@ -43,7 +43,7 @@ namespace VNLib.Hashing.IdentityUtility
         }
 
         ///<inheritdoc/>
-        public object this[string key]
+        public readonly object this[string key]
         {
             get => Claims[key];
             set => Claims[key] = value;
@@ -55,15 +55,16 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="claim">The clame name</param>
         /// <param name="value">The value of the claim</param>
         /// <returns>The chained response object</returns>
-        public JwtPayload AddClaim(string claim, object value)
+        public readonly JwtPayload AddClaim(string claim, object value)
         {
             Claims.Add(claim, value);
             return this;
         }
+
         /// <summary>
         /// Writes all claims to the <see cref="JsonWebToken"/> payload segment
         /// </summary>
-        public void CommitClaims()
+        public readonly void CommitClaims()
         {
             Jwt.WritePayload(Claims);
             Claims.Clear();

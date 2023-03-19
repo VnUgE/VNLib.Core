@@ -119,48 +119,48 @@ namespace VNLib.Hashing.IdentityUtility
                 case JWKAlgorithms.RS256:
                     {
                         using RSA? rsa = GetRSAPublicKey(jwk);
-                        return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                        return rsa != null && token.Verify(rsa, HashAlg.SHA256, RSASignaturePadding.Pkcs1);
                     }
                 case JWKAlgorithms.RS384:
                     {
                         using RSA? rsa = GetRSAPublicKey(jwk);
-                        return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pkcs1);
+                        return rsa != null && token.Verify(rsa, HashAlg.SHA384, RSASignaturePadding.Pkcs1);
                     }
                 case JWKAlgorithms.RS512:
                     {
                         using RSA? rsa = GetRSAPublicKey(jwk);
-                        return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+                        return rsa != null && token.Verify(rsa, HashAlg.SHA512, RSASignaturePadding.Pkcs1);
                     }
                 case JWKAlgorithms.PS256:
                     {
                         using RSA? rsa = GetRSAPublicKey(jwk);
-                        return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+                        return rsa != null && token.Verify(rsa, HashAlg.SHA256, RSASignaturePadding.Pss);
                     }
                 case JWKAlgorithms.PS384:
                     {
                         using RSA? rsa = GetRSAPublicKey(jwk);
-                        return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pss);
+                        return rsa != null && token.Verify(rsa, HashAlg.SHA384, RSASignaturePadding.Pss);
                     }
                 case JWKAlgorithms.PS512:
                     {
                         using RSA? rsa = GetRSAPublicKey(jwk);
-                        return rsa != null && token.Verify(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pss);
+                        return rsa != null && token.Verify(rsa, HashAlg.SHA512, RSASignaturePadding.Pss);
                     }
                 //Eccurves
                 case JWKAlgorithms.ES256:
                     {
                         using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
-                        return eCDsa != null && token.Verify(eCDsa, HashAlgorithmName.SHA256);
+                        return eCDsa != null && token.Verify(eCDsa, HashAlg.SHA256);
                     }
                 case JWKAlgorithms.ES384:
                     {
                         using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
-                        return eCDsa != null && token.Verify(eCDsa, HashAlgorithmName.SHA384);
+                        return eCDsa != null && token.Verify(eCDsa, HashAlg.SHA384);
                     }
                 case JWKAlgorithms.ES512:
                     {
                         using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
-                        return eCDsa != null && token.Verify(eCDsa, HashAlgorithmName.SHA512);
+                        return eCDsa != null && token.Verify(eCDsa, HashAlg.SHA512);
                     }
                 default:
                     throw new EncryptionTypeNotSupportedException();
@@ -199,42 +199,42 @@ namespace VNLib.Hashing.IdentityUtility
                     {
                         using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
-                        token.Sign(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1, 128);
+                        token.Sign(rsa, HashAlg.SHA256, RSASignaturePadding.Pkcs1);
                         return;
                     }
                 case JWKAlgorithms.RS384:
                     {
                         using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
-                        token.Sign(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pkcs1, 128);
+                        token.Sign(rsa, HashAlg.SHA384, RSASignaturePadding.Pkcs1);
                         return;
                     }
                 case JWKAlgorithms.RS512:
                     {
                         using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
-                        token.Sign(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1, 256);
+                        token.Sign(rsa, HashAlg.SHA512, RSASignaturePadding.Pkcs1);
                         return;
                     }
                 case JWKAlgorithms.PS256:
                     {
                         using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
-                        token.Sign(rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pss, 128);
+                        token.Sign(rsa, HashAlg.SHA256, RSASignaturePadding.Pss);
                         return;
                     }
                 case JWKAlgorithms.PS384:
                     {
                         using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
-                        token.Sign(rsa, HashAlgorithmName.SHA384, RSASignaturePadding.Pss, 128);
+                        token.Sign(rsa, HashAlg.SHA384, RSASignaturePadding.Pss);
                         return;
                     }
                 case JWKAlgorithms.PS512:
                     {
                         using RSA? rsa = GetRSAPrivateKey(jwk);
                         _ = rsa ?? throw new InvalidOperationException("JWK Does not contain an RSA private key");
-                        token.Sign(rsa, HashAlgorithmName.SHA512, RSASignaturePadding.Pss, 256);
+                        token.Sign(rsa, HashAlg.SHA512, RSASignaturePadding.Pss);
                         return;
                     }
                 //Eccurves
@@ -242,21 +242,21 @@ namespace VNLib.Hashing.IdentityUtility
                     {
                         using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
                         _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
-                        token.Sign(eCDsa, HashAlgorithmName.SHA256, 128);
+                        token.Sign(eCDsa, HashAlg.SHA256);
                         return;
                     }
                 case JWKAlgorithms.ES384:
                     {
                         using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
                         _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
-                        token.Sign(eCDsa, HashAlgorithmName.SHA384, 128);
+                        token.Sign(eCDsa, HashAlg.SHA384);
                         return;
                     }
                 case JWKAlgorithms.ES512:
                     {
                         using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
                         _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
-                        token.Sign(eCDsa, HashAlgorithmName.SHA512, 256);
+                        token.Sign(eCDsa, HashAlg.SHA512);
                         return;
                     }
                 default:

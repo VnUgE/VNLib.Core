@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -185,7 +185,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="CryptographicException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        public static ERRNO TryEncrypt(this RSA alg, ReadOnlySpan<char> data, in Span<byte> output, RSAEncryptionPadding padding, Encoding? enc = null)
+        public static ERRNO TryEncrypt(this RSA alg, ReadOnlySpan<char> data, Span<byte> output, RSAEncryptionPadding padding, Encoding? enc = null)
         {
             _ = alg ?? throw new ArgumentNullException(nameof(alg));
             
@@ -203,6 +203,25 @@ namespace VNLib.Hashing.IdentityUtility
             
             //Try encrypt
             return !alg.TryEncrypt(buffer.Span, output, padding, out int bytesWritten) ? ERRNO.E_FAIL : (ERRNO)bytesWritten;
+        }
+
+        /// <summary>
+        /// Gets the <see cref="HashAlgorithmName"/> for the current <see cref="HashAlg"/>
+        /// value.
+        /// </summary>
+        /// <param name="alg"></param>
+        /// <returns>The <see cref="HashAlgorithmName"/> of the current <see cref="HashAlg"/></returns>
+        public static HashAlgorithmName GetAlgName(this HashAlg alg)
+        {
+            return alg switch
+            {
+                HashAlg.SHA512 => HashAlgorithmName.SHA512,
+                HashAlg.SHA384 => HashAlgorithmName.SHA384,
+                HashAlg.SHA256 => HashAlgorithmName.SHA256,
+                HashAlg.SHA1 => HashAlgorithmName.SHA1,
+                HashAlg.MD5 => HashAlgorithmName.MD5,
+                _ => new(alg.ToString()),
+            };
         }
     }
 }

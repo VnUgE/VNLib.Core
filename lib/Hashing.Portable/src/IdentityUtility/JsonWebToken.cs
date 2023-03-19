@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -26,7 +26,6 @@ using System;
 using System.Text;
 using System.Buffers;
 using System.Buffers.Text;
-using System.Security.Cryptography;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
@@ -278,133 +277,24 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public ReadOnlySpan<byte> SignatureData => DataBuffer[SignatureStart..SignatureEnd];
-      
-        /// <summary>
-        /// Signs the current JWT (header + payload) data
-        /// and writes the signature the end of the current buffer,
-        /// using the specified <see cref="HashAlgorithm"/>.
-        /// </summary>
-        /// <param name="signatureAlgorithm">An alternate <see cref="HashAlgorithm"/> instance to sign the JWT with</param>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public virtual void Sign(HashAlgorithm signatureAlgorithm)
-        {
-            Check();
-            
-            _ = signatureAlgorithm ?? throw new ArgumentNullException(nameof(signatureAlgorithm));
-            
-            //Calculate the size of the buffer to use for the current algorithm
-            int bufferSize = signatureAlgorithm.HashSize / 8;
-            
-            //Alloc buffer for signature output
-            Span<byte> signatureBuffer = stackalloc byte[bufferSize];
 
-            //Compute the hash of the current payload
-            if(!signatureAlgorithm.TryComputeHash(HeaderAndPayload, signatureBuffer, out int bytesWritten))
-            {
-                throw new InternalBufferTooSmallException();
-            }
-            
-            //Reset the stream position to the end of the payload
-            DataStream.SetLength(PayloadEnd);
-            
-            //Write leading period
-            DataStream.WriteByte(SAEF_PERIOD);
-            
-            //Write the signature data to the buffer
-            WriteValue(signatureBuffer[..bytesWritten]);
-        }
-        
         /// <summary>
-        /// Use an RSA algorithm to sign the JWT message
+        /// Resets the internal buffer to the end of the payload, overwriting any previous 
+        /// signature, and writes the sepcified signature to the internal buffer.
         /// </summary>
-        /// <param name="rsa">The algorithm used to sign the token</param>
-        /// <param name="hashAlg">The hash algorithm to use</param>
-        /// <param name="padding">The signature padding to use</param>
-        /// <param name="hashSize">The size (in bytes) of the hash output</param>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public virtual void Sign(RSA rsa, HashAlgorithmName hashAlg, RSASignaturePadding padding, int hashSize)
+        /// <param name="signature">The message signature.</param>
+        public virtual void WriteSignature(ReadOnlySpan<byte> signature)
         {
             Check();
-            
-            _ = rsa ?? throw new ArgumentNullException(nameof(rsa));
-            
-            //Calculate the size of the buffer to use for the current algorithm
-            using UnsafeMemoryHandle<byte> sigBuffer = Heap.UnsafeAlloc<byte>(hashSize);
-            
-            if(!rsa.TrySignData(HeaderAndPayload, sigBuffer.Span, hashAlg, padding, out int hashBytesWritten))
-            {
-                throw new InternalBufferTooSmallException("Signature buffer is not large enough to store the hash");
-            }
-            
+
             //Reset the stream position to the end of the payload
             DataStream.SetLength(PayloadEnd);
-            
-            //Write leading period
-            DataStream.WriteByte(SAEF_PERIOD);
-            
-            //Write the signature data to the buffer
-            WriteValue(sigBuffer.Span[..hashBytesWritten]);
-        }
-        
-        /// <summary>
-        /// Use an RSA algorithm to sign the JWT message
-        /// </summary>
-        /// <param name="alg">The algorithm used to sign the token</param>
-        /// <param name="hashAlg">The hash algorithm to use</param>
-        /// <param name="hashSize">The size (in bytes) of the hash output</param>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public virtual void Sign(ECDsa alg, HashAlgorithmName hashAlg, int hashSize)
-        {
-            Check();
-            
-            _ = alg ?? throw new ArgumentNullException(nameof(alg));
-            
-            //Calculate the size of the buffer to use for the current algorithm
-            using UnsafeMemoryHandle<byte> sigBuffer = Heap.UnsafeAlloc<byte>(hashSize);
-            
-            if (!alg.TrySignData(HeaderAndPayload, sigBuffer.Span, hashAlg, out int hashBytesWritten))
-            {
-                throw new InternalBufferTooSmallException("Signature buffer is not large enough to store the hash");
-            }
-            
-            //Reset the stream position to the end of the payload
-            DataStream.SetLength(PayloadEnd);
-            
+
             //Write leading period
             DataStream.WriteByte(SAEF_PERIOD);
 
             //Write the signature data to the buffer
-            WriteValue(sigBuffer.Span[..hashBytesWritten]);
-        }
-
-        /// <summary>
-        /// Signs the JWT data using HMAC without allocating a <see cref="HashAlgorithm"/>
-        /// instance.
-        /// </summary>
-        /// <param name="alg">The algorithm used to sign</param>
-        /// <param name="key">The key data</param>
-        /// <exception cref="InternalBufferTooSmallException"></exception>
-        public virtual void Sign(ReadOnlySpan<byte> key, HashAlg alg)
-        {
-            //Stack hash output buffer, will be the size of the alg
-            Span<byte> sigOut = stackalloc byte[(int)alg];
-
-            //Compute
-            ERRNO count = ManagedHash.ComputeHmac(key, HeaderAndPayload, sigOut, alg);
-
-            if (!count)
-            {
-                throw new InternalBufferTooSmallException("Failed to compute the hmac signature because the internal buffer was mis-sized");
-            }
-
-            //write
-            WriteValue(sigOut[..(int)count]);
+            WriteValue(signature);
         }
 
         #endregion
