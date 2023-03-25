@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -24,6 +24,8 @@
 
 using System;
 using System.Net;
+
+#nullable enable
 
 namespace VNLib.Plugins.Essentials
 {
@@ -69,7 +71,13 @@ namespace VNLib.Plugins.Essentials
     /// <summary>
     /// Specifies operations the file processor will follow during request handling
     /// </summary>
-    public readonly struct FileProcessArgs : IEquatable<FileProcessArgs>
+    /// <param name="Alternate">
+    /// The routine the file processor should execute
+    /// </param>
+    /// <param name="Routine">
+    /// An optional alternate path for the given routine
+    /// </param>
+    public readonly record struct FileProcessArgs(FpRoutine Routine, string Alternate)
     {
         /// <summary>
         /// Signals the file processor should complete with a <see cref="FpRoutine.Deny"/> routine
@@ -91,79 +99,15 @@ namespace VNLib.Plugins.Essentials
         /// Signals the file processor should not process the connection
         /// </summary>
         public static readonly FileProcessArgs VirtualSkip = new (FpRoutine.VirtualSkip);
-        /// <summary>
-        /// The routine the file processor should execute
-        /// </summary>
-        public readonly FpRoutine Routine { get; init; }
-        /// <summary>
-        /// An optional alternate path for the given routine
-        /// </summary>
-        public readonly string Alternate { get; init; }
+      
 
         /// <summary>
         /// Initializes a new <see cref="FileProcessArgs"/> with the specified routine
         /// and empty <see cref="Alternate"/> path
         /// </summary>
         /// <param name="routine">The file processing routine to execute</param>
-        public FileProcessArgs(FpRoutine routine)
+        public FileProcessArgs(FpRoutine routine):this(routine, string.Empty)
         {
-            this.Routine = routine;
-            this.Alternate = string.Empty;
-        }
-        /// <summary>
-        /// Initializes a new <see cref="FileProcessArgs"/> with the specified routine
-        /// and alternate path
-        /// </summary>
-        /// <param name="routine"></param>
-        /// <param name="alternatePath"></param>
-        public FileProcessArgs(FpRoutine routine, string alternatePath)
-        {
-            this.Routine = routine;
-            this.Alternate = alternatePath;
-        }
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="arg1"></param>
-        /// <param name="arg2"></param>
-        /// <returns></returns>
-        public static bool operator == (FileProcessArgs arg1, FileProcessArgs arg2)
-        {
-            return arg1.Equals(arg2);
-        }
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="arg1"></param>
-        /// <param name="arg2"></param>
-        /// <returns></returns>
-        public static bool operator != (FileProcessArgs arg1, FileProcessArgs arg2)
-        {
-            return !arg1.Equals(arg2);
-        }
-        ///<inheritdoc/>
-        public bool Equals(FileProcessArgs other)
-        {
-            //make sure the routine types match
-            if (Routine != other.Routine)
-            {
-                return false;
-            }
-            //Next make sure the hashcodes of the alternate paths match
-            return (Alternate?.GetHashCode(StringComparison.OrdinalIgnoreCase)) == (other.Alternate?.GetHashCode(StringComparison.OrdinalIgnoreCase));
-        }
-        ///<inheritdoc/>
-        public override bool Equals(object obj)
-        {
-            return obj is FileProcessArgs args && Equals(args);
-        }
-        /// <summary>
-        /// <inheritdoc/>
-        /// </summary>
-        /// <returns></returns>
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -24,77 +24,35 @@
 
 using System;
 
-
-#nullable enable
-
 namespace VNLib.Plugins.Essentials
 {
+
     /// <summary>
     /// Stucture that allows for convient storage of a counter value
     /// and a second precision timestamp into a 64-bit unsigned integer
     /// </summary>
-    public readonly struct TimestampedCounter : IEquatable<TimestampedCounter>
+    public readonly record struct TimestampedCounter(uint Count, uint UnixMs)
     {
         /// <summary>
         /// The time the count was last modifed
         /// </summary>
-        public readonly DateTimeOffset LastModified;
-        /// <summary>
-        /// The last failed login attempt count value
-        /// </summary>
-        public readonly uint Count;
-
-        /// <summary>
-        /// Initalizes a new flc structure with the current UTC date
-        /// and the specified count value
-        /// </summary>
-        /// <param name="count">FLC current count</param>
-        public TimestampedCounter(uint count) : this(DateTimeOffset.UtcNow, count)
-        { }
-
-        private TimestampedCounter(DateTimeOffset dto, uint count)
-        {
-            Count = count;
-            LastModified = dto;
-        }
-
-        /// <summary>
-        /// Compacts and converts the counter value and timestamp into
-        /// a 64bit unsigned integer
-        /// </summary>
-        /// <param name="count">The counter to convert</param>
-        public static explicit operator ulong(TimestampedCounter count) => count.ToUInt64();
+        public readonly DateTimeOffset LastModified => DateTimeOffset.FromUnixTimeSeconds(UnixMs);
 
         /// <summary>
         /// Compacts and converts the counter value and timestamp into
         /// a 64bit unsigned integer
         /// </summary>
         /// <returns>The uint64 compacted value</returns>
-        public ulong ToUInt64()
+        public readonly ulong ToUInt64()
         {
             //Upper 32 bits time, lower 32 bits count
-            ulong value = (ulong)LastModified.ToUnixTimeSeconds() << 32;
+            ulong value = UnixMs;
+            //Lshift to upper32
+            value <<= 32;
+            //Set count as lower32
             value |= Count;
             return value;
         }
-
-        /// <summary>
-        /// The previously compacted <see cref="TimestampedCounter"/> 
-        /// value to cast back to a counter
-        /// </summary>
-        /// <param name="value"></param>
-        public static explicit operator TimestampedCounter(ulong value) => FromUInt64(value);
-      
-        ///<inheritdoc/>
-        public override bool Equals(object? obj) => obj is TimestampedCounter counter && Equals(counter);
-        ///<inheritdoc/>
-        public override int GetHashCode() => this.ToUInt64().GetHashCode();
-        ///<inheritdoc/>
-        public static bool operator ==(TimestampedCounter left, TimestampedCounter right) => left.Equals(right);
-        ///<inheritdoc/>
-        public static bool operator !=(TimestampedCounter left, TimestampedCounter right) => !(left == right);
-        ///<inheritdoc/>
-        public bool Equals(TimestampedCounter other) => ToUInt64() == other.ToUInt64();
 
         /// <summary>
         /// The previously compacted <see cref="TimestampedCounter"/> 
@@ -108,10 +66,39 @@ namespace VNLib.Plugins.Essentials
         public static TimestampedCounter FromUInt64(ulong value)
         {
             //Upper 32 bits time, lower 32 bits count
-            long time = (long)(value >> 32);
+            uint time = (uint)(value >> 32);
             uint count = (uint)(value & uint.MaxValue);
-            //Init dto struct
-            return new(DateTimeOffset.FromUnixTimeSeconds(time), count);
+
+            return new TimestampedCounter(count, time);
         }
+
+        /// <summary>
+        /// Creates a new <see cref="TimestampedCounter"/> from the given counter 
+        /// value and the <see cref="DateTimeOffset"/> unix ms value
+        /// </summary>
+        /// <param name="count"></param>
+        /// <param name="time">The internal time to store in the counter</param>
+        /// <returns>An initialized <see cref="TimestampedCounter"/></returns>
+        /// <exception cref="StackOverflowException"></exception>
+        public static TimestampedCounter FromValues(uint count, DateTimeOffset time)
+        {
+            //The time in seconds truncated to a uint32
+            uint sec = Convert.ToUInt32(time.ToUnixTimeSeconds());
+            return new TimestampedCounter(count, sec);
+        }
+
+        /// <summary>
+        /// The previously compacted <see cref="TimestampedCounter"/> 
+        /// value to cast back to a counter
+        /// </summary>
+        /// <param name="value"></param>
+        public static explicit operator TimestampedCounter(ulong value) => FromUInt64(value);
+
+        /// <summary>
+        /// Compacts and converts the counter value and timestamp into
+        /// a 64bit unsigned integer
+        /// </summary>
+        /// <param name="count">The counter to convert</param>
+        public static explicit operator ulong(TimestampedCounter count) => count.ToUInt64();
     }
 }

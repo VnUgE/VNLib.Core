@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -71,7 +71,6 @@ namespace VNLib.Utils.Memory
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                this.ThrowIfClosed();
                 int len = Convert.ToInt32(_length);
                 return _length == 0 ? Span<T>.Empty : new Span<T>(Base, len);
             }
@@ -116,6 +115,22 @@ namespace VNLib.Utils.Memory
             handle = initial;
         }
 
+        /*
+         * Empty handle will disable release, and because the 
+         * handle pointer is 0, its considered invalid and will now 
+         * allow 
+         */
+        /// <summary>
+        /// Initialzies an empty memory handle. Properties will raise exceptions
+        /// when accessed, however <see cref="IMemoryHandle{T}"/> operations are 
+        /// considered "safe" meaning they should never raise excpetions
+        /// </summary>
+        public MemoryHandle():base(false)
+        {
+            _length = 0;
+            Heap = null!;
+        }
+
         /// <summary>
         /// Resizes the current handle on the heap
         /// </summary>
@@ -131,6 +146,12 @@ namespace VNLib.Utils.Memory
             //Re-alloc (Zero if required)
             try
             {
+                /*
+                 * If resize raises an exception the current block pointer
+                 * should still be valid, if its not, the pointer should 
+                 * be set to 0/-1, which will be considered invalid anyway
+                 */
+
                 Heap.Resize(ref handle, Length, (nuint)sizeof(T), ZeroMemory);
             }
             //Catch the disposed exception so we can invalidate the current ptr
@@ -143,6 +164,7 @@ namespace VNLib.Utils.Memory
                 throw;
             }
         }
+        
         /// <summary>
         /// Gets an offset pointer from the base postion to the number of bytes specified. Performs bounds checks
         /// </summary>
@@ -195,7 +217,7 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
         {
-            //Return result of free
+            //Return result of free, only if the handle is valid
             return Heap.Free(ref handle);
         }      
 
@@ -206,14 +228,14 @@ namespace VNLib.Utils.Memory
         /// <returns>true if the block of memory is the same, false if the handle's size does not 
         /// match or the base addresses do not match even if they point to an overlapping address space</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public bool Equals(MemoryHandle<T> other)
+        public bool Equals(MemoryHandle<T>? other)
         {
-            this.ThrowIfClosed();
-            other.ThrowIfClosed();
-            return _length == other._length && handle == other.handle;
+            return other != null && IsClosed == other.IsClosed && _length == other._length && handle == other.handle;
         }
+        
         ///<inheritdoc/>
-        public override bool Equals(object obj) => obj is MemoryHandle<T> oHandle && Equals(oHandle);
+        public override bool Equals(object? obj) => obj is MemoryHandle<T> oHandle && Equals(oHandle);
+        
         ///<inheritdoc/>
         public override int GetHashCode() => base.GetHashCode();
 

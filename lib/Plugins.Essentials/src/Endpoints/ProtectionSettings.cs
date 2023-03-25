@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -31,7 +31,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
     /// for connection pre-checks. Settings are the most 
     /// strict by default
     /// </summary>
-    public readonly struct ProtectionSettings : IEquatable<ProtectionSettings>
+    public readonly record struct ProtectionSettings
     {
         /// <summary>
         /// Requires TLS be enabled for all incomming requets (or loopback adapter)
@@ -43,12 +43,6 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// and that they are not new sessions.
         /// </summary>
         public readonly bool DisableSessionsRequired { get; init; }
-
-        /// <summary>
-        /// Allows connections that define cross-site sec headers
-        /// to be processed or denied (denied by default)
-        /// </summary>
-        public readonly bool DisableCrossSiteDenied { get; init; }
 
         /// <summary>
         /// Enables referr match protection. Requires that if a referer header is
@@ -64,40 +58,9 @@ namespace VNLib.Plugins.Essentials.Endpoints
         public readonly bool DisableBrowsersOnly { get; init; } 
 
         /// <summary>
-        /// If the connection has a valid session, verifies that the 
-        /// stored session origin matches the client's origin header. 
-        /// (confirms the session is coming from the same origin it 
-        /// was created on)
-        /// </summary>
-        public readonly bool DisableVerifySessionCors { get; init; }
-
-        /// <summary>
         /// Disables response caching, by setting the cache control headers appropriatly.
         /// Default is disabled
         /// </summary>
-        public readonly bool EnableCaching { get; init; } 
-
-      
-        ///<inheritdoc/>
-        public override bool Equals(object obj) => obj is ProtectionSettings settings && Equals(settings);
-        ///<inheritdoc/>
-        public override int GetHashCode() => base.GetHashCode();
-
-        ///<inheritdoc/>
-        public static bool operator ==(ProtectionSettings left, ProtectionSettings right) => left.Equals(right);
-        ///<inheritdoc/>
-        public static bool operator !=(ProtectionSettings left, ProtectionSettings right) => !(left == right);
-
-        ///<inheritdoc/>
-        public bool Equals(ProtectionSettings other)
-        {
-            return DisabledTlsRequired == other.DisabledTlsRequired &&
-                    DisableSessionsRequired == other.DisableSessionsRequired &&
-                    DisableCrossSiteDenied == other.DisableCrossSiteDenied &&
-                    DisableRefererMatch == other.DisableRefererMatch &&
-                    DisableBrowsersOnly == other.DisableBrowsersOnly &&
-                    DisableVerifySessionCors == other.DisableVerifySessionCors &&
-                    EnableCaching == other.EnableCaching;
-        }
+        public readonly bool EnableCaching { get; init; }      
     }
 }

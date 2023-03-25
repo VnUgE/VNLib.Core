@@ -308,7 +308,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             IClientAuthorization auth = provider.AuthorizeClient(entity, secInfo, user);
 
             //Clear flags
-            user.FailedLoginCount(0);
+            user.ClearFailedLoginCount();
 
             //Store variables
             entity.Session.UserID = user.UserID;
@@ -526,20 +526,42 @@ namespace VNLib.Plugins.Essentials.Accounts
         public static TimestampedCounter FailedLoginCount(this IUser user)
         {
             ulong value = user.GetValueType<string, ulong>(FAILED_LOGIN_ENTRY);
-            return (TimestampedCounter)value;
+            return TimestampedCounter.FromUInt64(value);
         }
+
+        /// <summary>
+        /// Clears any pending flc count.
+        /// </summary>
+        /// <param name="user"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ClearFailedLoginCount(this IUser user)
+        {
+            //Cast the counter to a ulong and store as a ulong
+            user.SetValueType(FAILED_LOGIN_ENTRY, (ulong)0);
+        }
+
+        /// <summary>
+        /// Sets the number of failed login attempts for the current session
+        /// </summary>
+        /// <param name="user"></param>
+        /// <param name="time">Explicitly sets the time of the internal counter</param>
+        /// <param name="value">The value to set the failed login attempt count</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void FailedLoginCount(this IUser user, uint value, DateTimeOffset time)
+        {
+            TimestampedCounter counter = TimestampedCounter.FromValues(value, time);
+            //Cast the counter to a ulong and store as a ulong
+            user.SetValueType(FAILED_LOGIN_ENTRY, counter.ToUInt64());
+        }
+
         /// <summary>
         /// Sets the number of failed login attempts for the current session
         /// </summary>
         /// <param name="user"></param>
         /// <param name="value">The value to set the failed login attempt count</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FailedLoginCount(this IUser user, uint value)
-        {
-            TimestampedCounter counter = new(value);
-            //Cast the counter to a ulong and store as a ulong
-            user.SetValueType(FAILED_LOGIN_ENTRY, (ulong)counter);
-        }
+        public static void FailedLoginCount(this IUser user, uint value) => FailedLoginCount(user, value, DateTimeOffset.UtcNow);
+
         /// <summary>
         /// Sets the number of failed login attempts for the current session
         /// </summary>
@@ -549,17 +571,26 @@ namespace VNLib.Plugins.Essentials.Accounts
         public static void FailedLoginCount(this IUser user, TimestampedCounter value)
         {
             //Cast the counter to a ulong and store as a ulong
-            user.SetValueType(FAILED_LOGIN_ENTRY, (ulong)value);
+            user.SetValueType(FAILED_LOGIN_ENTRY, value.ToUInt64());
         }
+
         /// <summary>
         /// Increments the failed login attempt count
         /// </summary>
         /// <param name="user"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FailedLoginIncrement(this IUser user)
+        public static void FailedLoginIncrement(this IUser user) => FailedLoginIncrement(user, DateTimeOffset.UtcNow);
+
+        /// <summary>
+        /// Increments the failed login attempt count
+        /// </summary>
+        /// <param name="user"></param>
+        /// <param name="time">Explicitly set the time of the counter</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void FailedLoginIncrement(this IUser user, DateTimeOffset time)
         {
             TimestampedCounter current = user.FailedLoginCount();
-            user.FailedLoginCount(current.Count + 1);
+            user.FailedLoginCount(current.Count + 1, time);
         }
 
         #endregion

@@ -513,7 +513,7 @@ namespace VNLib.Plugins.Essentials
                 //See if the last modifed header was set
                 DateTimeOffset? ifModifedSince = entity.Server.LastModified();
                 //If the header was set, check the date, if the file has been modified since, continue sending the file
-                if (ifModifedSince != null && ifModifedSince.Value > fileLastModified)
+                if (ifModifedSince.HasValue && ifModifedSince.Value > fileLastModified)
                 {
                     //File has not been modified 
                     entity.CloseResponse(HttpStatusCode.NotModified);

@@ -174,21 +174,6 @@ namespace VNLib.Plugins.Essentials.Endpoints
                 return false;
             }
 
-            /*
-             * If sessions are required, verify cors is set, and the client supplied an origin header,
-             * verify that it matches the origin that was specified during session initialization
-             */
-            if ((!EndpointProtectionSettings.DisableSessionsRequired & !EndpointProtectionSettings.DisableVerifySessionCors) && entity.Server.Origin != null && !entity.Session.CrossOriginMatch)
-            {
-                return false;
-            }
-
-            //Enforce cross-site
-            if (!EndpointProtectionSettings.DisableCrossSiteDenied && entity.Server.IsCrossSite())
-            {
-                return false;
-            }
-
             return true;
         }
 

@@ -176,5 +176,43 @@ namespace VNLib.Utils.Memory.Tests
             handle.ResizeIfSmaller(4096);
             Assert.IsTrue(handle.Length == 4096);
         }
+
+        [TestMethod]
+        public unsafe void EmptyHandleTest()
+        {
+            //Confirm that an empty handle does not raise exceptions when in IMemoryHandle
+            using (IMemoryHandle<byte> thandle = new MemoryHandle<byte>())
+            {
+                Assert.IsTrue(thandle.Length == 0);
+
+                Assert.IsTrue(thandle.Span == Span<byte>.Empty);
+
+                //Empty span should not throw
+                _ = thandle.AsSpan(0);
+
+                //Pin should throw
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = thandle.Pin(0));
+            }
+
+            //Full ref to mhandle check status
+            using (MemoryHandle<byte> mHandle = new())
+            {
+
+                //Some members should not throw
+                _ = mHandle.ByteLength;
+
+                //Handle should be invalid
+                Assert.IsTrue(mHandle.IsInvalid);
+
+                Assert.IsFalse(mHandle.IsClosed);
+             
+                //Confirm empty handle protected values throw
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = mHandle.GetOffset(0));
+
+                Assert.ThrowsException<ObjectDisposedException>(() => mHandle.Resize(10));
+
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => mHandle.BasePtr);
+            }
+        }
     }
 }
