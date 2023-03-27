@@ -27,6 +27,18 @@
 /*
 * Method calling convention for export
 */
+#ifndef HEAP_METHOD_CC 
+ #ifdef WIN32
+  #define HEAP_METHOD_CC __stdcall
+ #else
+  #define HEAP_METHOD_CC
+ #endif // WIN32
+#endif // !HEAP_METHOD_CC
+
+
+/*
+* Decorator for exporting methods for dll usage
+*/
 #ifndef HEAP_METHOD_EXPORT
  #ifdef WIN32
   #define HEAP_METHOD_EXPORT __declspec(dllexport)
@@ -81,13 +93,13 @@ typedef struct UnmanagedHeapFlags
 /// </summary>
 /// <param name="flags">Creation flags passed by the caller to create the heap. This structure will be initialized, and may be modified</param>
 /// <returns>A boolean value that indicates the result of the operation</returns>
-HEAP_METHOD_EXPORT ERRNO heapCreate(UnmanagedHeapFlags* flags);
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapFlags* flags);
 
 /// <summary>
 /// Destroys a previously created heap
 /// </summary>
 /// <param name="heap">The pointer to your custom heap structure from heap creation</param>
-HEAP_METHOD_EXPORT ERRNO heapDestroy(LPVOID heap);
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(LPVOID heap);
 
 /// <summary>
 /// Allocates a block from the desired heap and returns a pointer 
@@ -98,7 +110,7 @@ HEAP_METHOD_EXPORT ERRNO heapDestroy(LPVOID heap);
 /// <param name="alignment">The alignment (or size) of each element in bytes</param>
 /// <param name="zero">A flag to zero the block before returning the block</param>
 /// <returns>A pointer to the allocated block</returns>
-HEAP_METHOD_EXPORT LPVOID heapAlloc(LPVOID heap, size_t elements, size_t alignment, BOOL zero);
+HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapAlloc(LPVOID heap, size_t elements, size_t alignment, BOOL zero);
 
 /// <summary>
 /// Reallocates a block on the desired heap and returns a pointer to the new block. If reallocation
@@ -111,7 +123,7 @@ HEAP_METHOD_EXPORT LPVOID heapAlloc(LPVOID heap, size_t elements, size_t alignme
 /// <param name="alignment">The element size or block alignment</param>
 /// <param name="zero">A flag to zero the block (or the new size) before returning.</param>
 /// <returns>A pointer to the reallocated block, or zero if the operation failed or is not supported</returns>
-HEAP_METHOD_EXPORT LPVOID heapRealloc(LPVOID heap, LPVOID block, size_t elements, size_t alignment, BOOL zero);
+HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapRealloc(LPVOID heap, LPVOID block, size_t elements, size_t alignment, BOOL zero);
 
 /// <summary>
 /// Frees a previously allocated block on the desired heap.
@@ -119,6 +131,6 @@ HEAP_METHOD_EXPORT LPVOID heapRealloc(LPVOID heap, LPVOID block, size_t elements
 /// <param name="heap">A pointer to your heap structure</param>
 /// <param name="block">A pointer to the block to free</param>
 /// <returns>A value that indicates the result of the operation, nonzero if success, 0 if a failure occurred </returns>
-HEAP_METHOD_EXPORT ERRNO heapFree(LPVOID heap, LPVOID block);
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(LPVOID heap, LPVOID block);
 
 #endif // !NATIVE_HEAP_API

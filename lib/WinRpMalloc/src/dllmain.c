@@ -52,7 +52,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 //Define the heap methods
 
-HEAP_METHOD_EXPORT ERRNO heapCreate(UnmanagedHeapFlags* flags)
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapFlags* flags)
 {
     //Check flags
     if (flags->CreationFlags & HEAP_CREATION_IS_SHARED)
@@ -77,7 +77,7 @@ HEAP_METHOD_EXPORT ERRNO heapCreate(UnmanagedHeapFlags* flags)
 }
 
 
-HEAP_METHOD_EXPORT ERRNO heapDestroy(LPVOID heap)
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(LPVOID heap)
 {
     //Destroy the heap
     if ((int)heap == GLOBAL_HEAP_HANDLE_VALUE) 
@@ -96,7 +96,7 @@ HEAP_METHOD_EXPORT ERRNO heapDestroy(LPVOID heap)
 }
 
 
-HEAP_METHOD_EXPORT LPVOID heapAlloc(LPVOID heap, size_t elements, size_t alignment, BOOL zero)
+HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapAlloc(LPVOID heap, size_t elements, size_t alignment, BOOL zero)
 {
     //Multiply for element size
     size_t size = elements * alignment;
@@ -138,7 +138,7 @@ HEAP_METHOD_EXPORT LPVOID heapAlloc(LPVOID heap, size_t elements, size_t alignme
 }
 
 
-HEAP_METHOD_EXPORT LPVOID heapRealloc(LPVOID heap, LPVOID block, size_t elements, size_t alignment, BOOL zero)
+HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapRealloc(LPVOID heap, LPVOID block, size_t elements, size_t alignment, BOOL zero)
 {
     //Multiply for element size
     size_t size = elements * alignment;
@@ -164,7 +164,7 @@ HEAP_METHOD_EXPORT LPVOID heapRealloc(LPVOID heap, LPVOID block, size_t elements
 }
 
 
-HEAP_METHOD_EXPORT ERRNO heapFree(LPVOID heap, LPVOID block)
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(LPVOID heap, LPVOID block)
 {
     //Check for global heap
     if ((int)heap == GLOBAL_HEAP_HANDLE_VALUE)
