@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -35,6 +35,20 @@ namespace VNLib.Utils.Memory
     [ComVisible(false)]
     public unsafe class ProcessHeap : VnDisposeable, IUnmangedHeap
     {
+        /// <summary>
+        /// Gets the shared process heap instance
+        /// </summary>
+        public static ProcessHeap Shared { get; } = new();
+
+        /// <summary>
+        /// <inheritdoc/>
+        /// <para>
+        /// Is always <see cref="HeapCreation.IsSharedHeap"/> as this heap is the default 
+        /// process heap. Meaining memory will be shared across the process
+        /// </para>
+        /// </summary>
+        public HeapCreation CreationFlags { get; } = HeapCreation.IsSharedHeap;
+
         /// <summary>
         /// Initalizes a new global (cross platform) process heap
         /// </summary>

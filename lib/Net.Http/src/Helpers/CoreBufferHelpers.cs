@@ -73,18 +73,20 @@ namespace VNLib.Net.Http.Core
             //Calc buffer size to the nearest page size
             size = (int)MemoryUtil.NearestPage(size);
 
-            //If rpmalloc lib is loaded, use it
-            if (MemoryUtil.IsRpMallocLoaded)
+            /*
+             * Heap synchronziation may be enabled for our private heap, so we may want
+             * to avoid it in favor of performance over private heap segmentation.
+             * 
+             * If synchronization is enabled, use the system heap
+             */
+            
+            if ((HttpPrivateHeap.CreationFlags & HeapCreation.UseSynchronization) > 0)
             {
-                return MemoryUtil.Shared.UnsafeAlloc<byte>(size, zero);
-            }
-            else if (size > MemoryUtil.MAX_UNSAFE_POOL_SIZE)
-            {
-                return HttpPrivateHeap.UnsafeAlloc<byte>(size, zero);
+                return MemoryUtil.UnsafeAlloc(size, zero);
             }
             else
             {
-                return new(HttpBinBufferPool, size, zero);
+                return HttpPrivateHeap.UnsafeAlloc<byte>(size, zero);
             }
         }
 
@@ -93,23 +95,26 @@ namespace VNLib.Net.Http.Core
             //Calc buffer size to the nearest page size
             size = (int)MemoryUtil.NearestPage(size);
 
-            //If rpmalloc lib is loaded, use it
-            if (MemoryUtil.IsRpMallocLoaded)
+            /*
+             * Heap synchronziation may be enabled for our private heap, so we may want
+             * to avoid it in favor of performance over private heap segmentation.
+             * 
+             * If synchronization is enabled, use the system heap
+             */
+
+            if ((HttpPrivateHeap.CreationFlags & HeapCreation.UseSynchronization) > 0)
             {
                 return MemoryUtil.Shared.DirectAlloc<byte>(size, zero);
             }
-            //Avoid locking in heap unless the buffer is too large to alloc array
-            else if (size > MemoryUtil.MAX_UNSAFE_POOL_SIZE)
+            //If the block is larger than an safe array size, avoid LOH pressure
+            else if(size > MemoryUtil.MAX_UNSAFE_POOL_SIZE)
             {
                 return HttpPrivateHeap.DirectAlloc<byte>(size, zero);
             }
+            //Use the array pool to get a memory handle
             else
             {
-                //Convert temp buffer to memory owner
-
-#pragma warning disable CA2000 // Dispose objects before losing scope
-                return new VnTempBuffer<byte>(HttpBinBufferPool, size, zero).ToMemoryManager();
-#pragma warning restore CA2000 // Dispose objects before losing scope
+                return new VnTempBuffer<byte>(HttpBinBufferPool, size, zero);
             }
         }
 

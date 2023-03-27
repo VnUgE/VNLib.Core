@@ -44,7 +44,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         public static string ComputeNonce<T>(this T nonce, int size) where T: INonce
         {
             //Alloc bin buffer
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(size);
 
             //Compute nonce
             nonce.ComputeNonce(buffer.Span);
@@ -63,7 +63,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         public static bool VerifyNonce<T>(this T nonce, ReadOnlySpan<char> base32Nonce) where T : INonce
         {
             //Alloc bin buffer
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(base32Nonce.Length);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(base32Nonce.Length);
             
             //Decode base32 nonce
             ERRNO count = VnEncoding.TryFromBase32Chars(base32Nonce, buffer.Span);

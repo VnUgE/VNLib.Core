@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Extensions;
 
@@ -84,13 +85,11 @@ namespace VNLib.Utils.Memory
                 this.Rows = rows;
                 this.Cols = cols;
 
-                ulong tableSize = checked((ulong) rows * (ulong) cols);
+                ulong tableSize = checked((ulong)rows * (ulong)cols);
 
-                if (tableSize > nuint.MaxValue)
+                if ((tableSize * (uint)Unsafe.SizeOf<T>()) > nuint.MaxValue)
                 {
-#pragma warning disable CA2201 // Do not raise reserved exception types
-                    throw new OutOfMemoryException("Table size is too large");
-#pragma warning restore CA2201 // Do not raise reserved exception types
+                    throw new ArgumentOutOfRangeException("Rows and cols","Table size is too large");
                 }
 
                 //Alloc a buffer with zero memory enabled, with Rows * Cols number of elements

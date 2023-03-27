@@ -60,7 +60,7 @@ namespace VNLib.Hashing.IdentityUtility
             int encBufSize = encoding.GetByteCount(data);
 
             //Alloc buffer for encoding data
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(encBufSize + hashBufSize);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(encBufSize + hashBufSize);
             
             Span<byte> encBuffer = buffer.Span[0..encBufSize];
             Span<byte> hashBuffer = buffer.Span[encBufSize..];
@@ -113,7 +113,7 @@ namespace VNLib.Hashing.IdentityUtility
             int base64BufSize = base64Hmac.Length;
             
             //Alloc buffer for encoding and raw data
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(rawDataBufSize + base64BufSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(rawDataBufSize + base64BufSize, true);
             
             Span<byte> rawDataBuf =  buffer.Span[0..rawDataBufSize];
             Span<byte> base64Buf = buffer.Span[rawDataBufSize..];
@@ -160,7 +160,7 @@ namespace VNLib.Hashing.IdentityUtility
             int hashBufSize = hmac.HashSize / 8;
             
             //Alloc buffer for hash
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(hashBufSize);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(hashBufSize);
             
             //compute hash
             if (!hmac.TryComputeHash(raw, buffer, out int hashBytesWritten))
@@ -196,7 +196,7 @@ namespace VNLib.Hashing.IdentityUtility
             int buffSize = enc.GetByteCount(data);
 
             //Alloc buffer
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(buffSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(buffSize, true);
             
             //Encode data
             int converted = enc.GetBytes(data, buffer);

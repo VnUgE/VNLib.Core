@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -31,6 +31,11 @@ namespace VNLib.Utils.Memory
     /// </summary>
     public interface IUnmangedHeap : IDisposable
     {
+        /// <summary>
+        /// The creation flags the heap was initialized with
+        /// </summary>
+        HeapCreation CreationFlags { get; }
+
         /// <summary>
         /// Allocates a block of memory from the heap and returns a pointer to the new memory block
         /// </summary>

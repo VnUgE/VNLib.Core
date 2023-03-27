@@ -68,7 +68,7 @@
 #elif defined(__GNUC__)
 #define rpmalloc_assume(cond) 												\
 	do {														\
-		if (!__builtin_expect(cond, false))												\
+		if (!__builtin_expect(cond, 0))										\
 			__builtin_unreachable();									\
 	} while (0)
 #elif defined(_MSC_VER)
@@ -268,7 +268,7 @@ extern int madvise(caddr_t, size_t, int);
 
 typedef volatile long      atomic32_t;
 typedef volatile long long atomic64_t;
-typedef volatile void*     atomicptr_t;
+typedef volatile void* atomicptr_t;
 
 static FORCEINLINE int32_t atomic_load32(atomic32_t* src) { return *src; }
 static FORCEINLINE void    atomic_store32(atomic32_t* dst, int32_t val) { *dst = val; }
@@ -279,10 +279,10 @@ static FORCEINLINE int     atomic_cas32_acquire(atomic32_t* dst, int32_t val, in
 static FORCEINLINE void    atomic_store32_release(atomic32_t* dst, int32_t val) { *dst = val; }
 static FORCEINLINE int64_t atomic_load64(atomic64_t* src) { return *src; }
 static FORCEINLINE int64_t atomic_add64(atomic64_t* val, int64_t add) { return (int64_t)InterlockedExchangeAdd64(val, add) + add; }
-static FORCEINLINE void*   atomic_load_ptr(atomicptr_t* src) { return (void*)*src; }
+static FORCEINLINE void* atomic_load_ptr(atomicptr_t* src) { return (void*)*src; }
 static FORCEINLINE void    atomic_store_ptr(atomicptr_t* dst, void* val) { *dst = val; }
 static FORCEINLINE void    atomic_store_ptr_release(atomicptr_t* dst, void* val) { *dst = val; }
-static FORCEINLINE void*   atomic_exchange_ptr_acquire(atomicptr_t* dst, void* val) { return (void*)InterlockedExchangePointer((void* volatile*)dst, val); }
+static FORCEINLINE void* atomic_exchange_ptr_acquire(atomicptr_t* dst, void* val) { return (void*)InterlockedExchangePointer((void* volatile*)dst, val); }
 static FORCEINLINE int     atomic_cas_ptr(atomicptr_t* dst, void* val, void* ref) { return (InterlockedCompareExchangePointer((void* volatile*)dst, val, ref) == ref) ? 1 : 0; }
 
 #define EXPECTED(x) (x)
@@ -292,9 +292,9 @@ static FORCEINLINE int     atomic_cas_ptr(atomicptr_t* dst, void* val, void* ref
 
 #include <stdatomic.h>
 
-typedef volatile _Atomic(int32_t) atomic32_t;
-typedef volatile _Atomic(int64_t) atomic64_t;
-typedef volatile _Atomic(void*) atomicptr_t;
+typedef volatile _Atomic(int32_t)atomic32_t;
+typedef volatile _Atomic(int64_t)atomic64_t;
+typedef volatile _Atomic(void*)atomicptr_t;
 
 static FORCEINLINE int32_t atomic_load32(atomic32_t* src) { return atomic_load_explicit(src, memory_order_relaxed); }
 static FORCEINLINE void    atomic_store32(atomic32_t* dst, int32_t val) { atomic_store_explicit(dst, val, memory_order_relaxed); }
@@ -305,10 +305,10 @@ static FORCEINLINE int     atomic_cas32_acquire(atomic32_t* dst, int32_t val, in
 static FORCEINLINE void    atomic_store32_release(atomic32_t* dst, int32_t val) { atomic_store_explicit(dst, val, memory_order_release); }
 static FORCEINLINE int64_t atomic_load64(atomic64_t* val) { return atomic_load_explicit(val, memory_order_relaxed); }
 static FORCEINLINE int64_t atomic_add64(atomic64_t* val, int64_t add) { return atomic_fetch_add_explicit(val, add, memory_order_relaxed) + add; }
-static FORCEINLINE void*   atomic_load_ptr(atomicptr_t* src) { return atomic_load_explicit(src, memory_order_relaxed); }
+static FORCEINLINE void* atomic_load_ptr(atomicptr_t* src) { return atomic_load_explicit(src, memory_order_relaxed); }
 static FORCEINLINE void    atomic_store_ptr(atomicptr_t* dst, void* val) { atomic_store_explicit(dst, val, memory_order_relaxed); }
 static FORCEINLINE void    atomic_store_ptr_release(atomicptr_t* dst, void* val) { atomic_store_explicit(dst, val, memory_order_release); }
-static FORCEINLINE void*   atomic_exchange_ptr_acquire(atomicptr_t* dst, void* val) { return atomic_exchange_explicit(dst, val, memory_order_acquire); }
+static FORCEINLINE void* atomic_exchange_ptr_acquire(atomicptr_t* dst, void* val) { return atomic_exchange_explicit(dst, val, memory_order_acquire); }
 static FORCEINLINE int     atomic_cas_ptr(atomicptr_t* dst, void* val, void* ref) { return atomic_compare_exchange_weak_explicit(dst, &ref, val, memory_order_relaxed, memory_order_relaxed); }
 
 #define EXPECTED(x) __builtin_expect((x), 1)
@@ -388,8 +388,8 @@ static FORCEINLINE int     atomic_cas_ptr(atomicptr_t* dst, void* val, void* ref
 //! Number of spans to transfer between thread and global cache for large spans
 #define THREAD_SPAN_LARGE_CACHE_TRANSFER 6
 
-_Static_assert((SMALL_GRANULARITY & (SMALL_GRANULARITY - 1)) == 0, "Small granularity must be power of two");
-_Static_assert((SPAN_HEADER_SIZE & (SPAN_HEADER_SIZE - 1)) == 0, "Span header size must be power of two");
+_Static_assert((SMALL_GRANULARITY& (SMALL_GRANULARITY - 1)) == 0, "Small granularity must be power of two");
+_Static_assert((SPAN_HEADER_SIZE& (SPAN_HEADER_SIZE - 1)) == 0, "Span header size must be power of two");
 
 #if ENABLE_VALIDATE_ARGS
 //! Maximum allocation size to avoid integer overflow
@@ -498,7 +498,7 @@ typedef struct size_class_use_t size_class_use_t;
 // to reduce physical memory use).
 struct span_t {
 	//! Free list
-	void*       free_list;
+	void* free_list;
 	//! Total block count of size class
 	uint32_t    block_count;
 	//! Size class
@@ -526,34 +526,34 @@ struct span_t {
 	//! Alignment offset
 	uint32_t    align_offset;
 	//! Owning heap
-	heap_t*     heap;
+	heap_t* heap;
 	//! Next span
-	span_t*     next;
+	span_t* next;
 	//! Previous span
-	span_t*     prev;
+	span_t* prev;
 };
 _Static_assert(sizeof(span_t) <= SPAN_HEADER_SIZE, "span size mismatch");
 
 struct span_cache_t {
 	size_t       count;
-	span_t*      span[MAX_THREAD_SPAN_CACHE];
+	span_t* span[MAX_THREAD_SPAN_CACHE];
 };
 typedef struct span_cache_t span_cache_t;
 
 struct span_large_cache_t {
 	size_t       count;
-	span_t*      span[MAX_THREAD_SPAN_LARGE_CACHE];
+	span_t* span[MAX_THREAD_SPAN_LARGE_CACHE];
 };
 typedef struct span_large_cache_t span_large_cache_t;
 
 struct heap_size_class_t {
 	//! Free list of active span
-	void*        free_list;
+	void* free_list;
 	//! Double linked list of partially used spans with free blocks.
 	//  Previous span pointer in head points to tail span of list.
-	span_t*      partial_span;
+	span_t* partial_span;
 	//! Early level cache of fully free spans
-	span_t*      cache;
+	span_t* cache;
 };
 typedef struct heap_size_class_t heap_size_class_t;
 
@@ -572,23 +572,23 @@ struct heap_t {
 	//! Number of full spans
 	size_t       full_span_count;
 	//! Mapped but unused spans
-	span_t*      span_reserve;
+	span_t* span_reserve;
 	//! Master span for mapped but unused spans
-	span_t*      span_reserve_master;
+	span_t* span_reserve_master;
 	//! Number of mapped but unused spans
 	uint32_t     spans_reserved;
 	//! Child count
 	atomic32_t   child_count;
 	//! Next heap in id list
-	heap_t*      next_heap;
+	heap_t* next_heap;
 	//! Next heap in orphan list
-	heap_t*      next_orphan;
+	heap_t* next_orphan;
 	//! Heap ID
 	int32_t      id;
 	//! Finalization state flag
 	int          finalize;
 	//! Master heap owning the memory pages
-	heap_t*      master_heap;
+	heap_t* master_heap;
 #if ENABLE_THREAD_CACHE
 	//! Arrays of fully freed spans, large spans with > 1 span count
 	span_large_cache_t span_large_cache[LARGE_CLASS_COUNT - 1];
@@ -596,9 +596,9 @@ struct heap_t {
 #if RPMALLOC_FIRST_CLASS_HEAPS
 	//! Double linked list of fully utilized spans with free blocks for each size class.
 	//  Previous span pointer in head points to tail span of list.
-	span_t*      full_span[SIZE_CLASS_COUNT];
+	span_t* full_span[SIZE_CLASS_COUNT];
 	//! Double linked list of large and huge spans allocated by this heap
-	span_t*      large_huge_span;
+	span_t* large_huge_span;
 #endif
 #if ENABLE_ADAPTIVE_THREAD_CACHE || ENABLE_STATISTICS
 	//! Current and high water mark of spans used per span count
@@ -1053,7 +1053,7 @@ _rpmalloc_unmap_os(void* address, size_t size, size_t offset, size_t release) {
 		}
 
 static void
-_rpmalloc_span_mark_as_subspan_unless_master(span_t* master, span_t* subspan, size_t span_count);
+_rpmalloc_span_mark_as_subspan_unless_master(span_t * master, span_t * subspan, size_t span_count);
 
 //! Use global reserved spans to fulfill a memory map request (reserve size must be checked by caller)
 static span_t*
@@ -1070,7 +1070,7 @@ _rpmalloc_global_get_reserved_spans(size_t span_count) {
 
 //! Store the given spans as global reserve (must only be called from within new heap allocation, not thread safe)
 static void
-_rpmalloc_global_set_reserved_spans(span_t* master, span_t* reserve, size_t reserve_span_count) {
+_rpmalloc_global_set_reserved_spans(span_t * master, span_t * reserve, size_t reserve_span_count) {
 	_memory_global_reserve_master = master;
 	_memory_global_reserve_count = reserve_span_count;
 	_memory_global_reserve = reserve;
@@ -1085,7 +1085,7 @@ _rpmalloc_global_set_reserved_spans(span_t* master, span_t* reserve, size_t rese
 
 //! Add a span to double linked list at the head
 static void
-_rpmalloc_span_double_link_list_add(span_t** head, span_t* span) {
+_rpmalloc_span_double_link_list_add(span_t * *head, span_t * span) {
 	if (*head)
 		(*head)->prev = span;
 	span->next = *head;
@@ -1094,7 +1094,7 @@ _rpmalloc_span_double_link_list_add(span_t** head, span_t* span) {
 
 //! Pop head span from double linked list
 static void
-_rpmalloc_span_double_link_list_pop_head(span_t** head, span_t* span) {
+_rpmalloc_span_double_link_list_pop_head(span_t * *head, span_t * span) {
 	rpmalloc_assert(*head == span, "Linked list corrupted");
 	span = *head;
 	*head = span->next;
@@ -1102,11 +1102,12 @@ _rpmalloc_span_double_link_list_pop_head(span_t** head, span_t* span) {
 
 //! Remove a span from double linked list
 static void
-_rpmalloc_span_double_link_list_remove(span_t** head, span_t* span) {
+_rpmalloc_span_double_link_list_remove(span_t * *head, span_t * span) {
 	rpmalloc_assert(*head, "Linked list corrupted");
 	if (*head == span) {
 		*head = span->next;
-	} else {
+	}
+	else {
 		span_t* next_span = span->next;
 		span_t* prev_span = span->prev;
 		prev_span->next = next_span;
@@ -1123,17 +1124,17 @@ _rpmalloc_span_double_link_list_remove(span_t** head, span_t* span) {
 //////
 
 static void
-_rpmalloc_heap_cache_insert(heap_t* heap, span_t* span);
+_rpmalloc_heap_cache_insert(heap_t * heap, span_t * span);
 
 static void
-_rpmalloc_heap_finalize(heap_t* heap);
+_rpmalloc_heap_finalize(heap_t * heap);
 
 static void
-_rpmalloc_heap_set_reserved_spans(heap_t* heap, span_t* master, span_t* reserve, size_t reserve_span_count);
+_rpmalloc_heap_set_reserved_spans(heap_t * heap, span_t * master, span_t * reserve, size_t reserve_span_count);
 
 //! Declare the span to be a subspan and store distance from master span and span count
 static void
-_rpmalloc_span_mark_as_subspan_unless_master(span_t* master, span_t* subspan, size_t span_count) {
+_rpmalloc_span_mark_as_subspan_unless_master(span_t * master, span_t * subspan, size_t span_count) {
 	rpmalloc_assert((subspan != master) || (subspan->flags & SPAN_FLAG_MASTER), "Span master pointer and/or flag mismatch");
 	if (subspan != master) {
 		subspan->flags = SPAN_FLAG_SUBSPAN;
@@ -1145,7 +1146,7 @@ _rpmalloc_span_mark_as_subspan_unless_master(span_t* master, span_t* subspan, si
 
 //! Use reserved spans to fulfill a memory map request (reserve size must be checked by caller)
 static span_t*
-_rpmalloc_span_map_from_reserve(heap_t* heap, size_t span_count) {
+_rpmalloc_span_map_from_reserve(heap_t * heap, size_t span_count) {
 	//Update the heap span reserve
 	span_t* span = heap->span_reserve;
 	heap->span_reserve = (span_t*)pointer_offset(span, span_count * _memory_span_size);
@@ -1169,7 +1170,7 @@ _rpmalloc_span_align_count(size_t span_count) {
 
 //! Setup a newly mapped span
 static void
-_rpmalloc_span_initialize(span_t* span, size_t total_span_count, size_t span_count, size_t align_offset) {
+_rpmalloc_span_initialize(span_t * span, size_t total_span_count, size_t span_count, size_t align_offset) {
 	span->total_spans = (uint32_t)total_span_count;
 	span->span_count = (uint32_t)span_count;
 	span->align_offset = (uint32_t)align_offset;
@@ -1178,11 +1179,11 @@ _rpmalloc_span_initialize(span_t* span, size_t total_span_count, size_t span_cou
 }
 
 static void
-_rpmalloc_span_unmap(span_t* span);
+_rpmalloc_span_unmap(span_t * span);
 
 //! Map an aligned set of spans, taking configured mapping granularity and the page size into account
 static span_t*
-_rpmalloc_span_map_aligned_count(heap_t* heap, size_t span_count) {
+_rpmalloc_span_map_aligned_count(heap_t * heap, size_t span_count) {
 	//If we already have some, but not enough, reserved spans, release those to heap cache and map a new
 	//full set of spans. Otherwise we would waste memory if page size > span size (huge pages)
 	size_t aligned_span_count = _rpmalloc_span_align_count(span_count);
@@ -1220,7 +1221,7 @@ _rpmalloc_span_map_aligned_count(heap_t* heap, size_t span_count) {
 
 //! Map in memory pages for the given number of spans (or use previously reserved pages)
 static span_t*
-_rpmalloc_span_map(heap_t* heap, size_t span_count) {
+_rpmalloc_span_map(heap_t * heap, size_t span_count) {
 	if (span_count <= heap->spans_reserved)
 		return _rpmalloc_span_map_from_reserve(heap, span_count);
 	span_t* span = 0;
@@ -1253,7 +1254,7 @@ _rpmalloc_span_map(heap_t* heap, size_t span_count) {
 
 //! Unmap memory pages for the given number of spans (or mark as unused if no partial unmappings)
 static void
-_rpmalloc_span_unmap(span_t* span) {
+_rpmalloc_span_unmap(span_t * span) {
 	rpmalloc_assert((span->flags & SPAN_FLAG_MASTER) || (span->flags & SPAN_FLAG_SUBSPAN), "Span flag corrupted");
 	rpmalloc_assert(!(span->flags & SPAN_FLAG_MASTER) || !(span->flags & SPAN_FLAG_SUBSPAN), "Span flag corrupted");
 
@@ -1268,7 +1269,8 @@ _rpmalloc_span_unmap(span_t* span) {
 		rpmalloc_assert(span->align_offset == 0, "Span align offset corrupted");
 		if (_memory_span_size >= _memory_page_size)
 			_rpmalloc_unmap(span, span_count * _memory_span_size, 0, 0);
-	} else {
+	}
+	else {
 		//Special double flag to denote an unmapped master
 		//It must be kept in memory since span header must be used
 		span->flags |= SPAN_FLAG_MASTER | SPAN_FLAG_SUBSPAN | SPAN_FLAG_UNMAPPED_MASTER;
@@ -1289,7 +1291,7 @@ _rpmalloc_span_unmap(span_t* span) {
 
 //! Move the span (used for small or medium allocations) to the heap thread cache
 static void
-_rpmalloc_span_release_to_cache(heap_t* heap, span_t* span) {
+_rpmalloc_span_release_to_cache(heap_t * heap, span_t * span) {
 	rpmalloc_assert(heap == span->heap, "Span heap pointer corrupted");
 	rpmalloc_assert(span->size_class < SIZE_CLASS_COUNT, "Invalid span size class");
 	rpmalloc_assert(span->span_count == 1, "Invalid span count");
@@ -1303,7 +1305,8 @@ _rpmalloc_span_release_to_cache(heap_t* heap, span_t* span) {
 		if (heap->size_class[span->size_class].cache)
 			_rpmalloc_heap_cache_insert(heap, heap->size_class[span->size_class].cache);
 		heap->size_class[span->size_class].cache = span;
-	} else {
+	}
+	else {
 		_rpmalloc_span_unmap(span);
 	}
 }
@@ -1374,7 +1377,7 @@ _rpmalloc_span_initialize_new(heap_t * heap, heap_size_class_t * heap_size_class
 }
 
 static void
-_rpmalloc_span_extract_free_list_deferred(span_t* span) {
+_rpmalloc_span_extract_free_list_deferred(span_t * span) {
 	// We need acquire semantics on the CAS operation since we are interested in the list size
 	// Refer to _rpmalloc_deallocate_defer_small_or_medium for further comments on this dependency
 	do {
@@ -1386,13 +1389,13 @@ _rpmalloc_span_extract_free_list_deferred(span_t* span) {
 }
 
 static int
-_rpmalloc_span_is_fully_utilized(span_t* span) {
+_rpmalloc_span_is_fully_utilized(span_t * span) {
 	rpmalloc_assert(span->free_list_limit <= span->block_count, "Span free list corrupted");
 	return !span->free_list && (span->free_list_limit >= span->block_count);
 }
 
 static int
-_rpmalloc_span_finalize(heap_t* heap, size_t iclass, span_t* span, span_t** list_head) {
+_rpmalloc_span_finalize(heap_t * heap, size_t iclass, span_t * span, span_t * *list_head) {
 	void* free_list = heap->size_class[iclass].free_list;
 	span_t* class_span = (span_t*)((uintptr_t)free_list & _memory_span_mask);
 	if (span == class_span) {
@@ -1443,7 +1446,7 @@ _rpmalloc_span_finalize(heap_t* heap, size_t iclass, span_t* span, span_t** list
 
 //! Finalize a global cache
 static void
-_rpmalloc_global_cache_finalize(global_cache_t* cache) {
+_rpmalloc_global_cache_finalize(global_cache_t * cache) {
 	while (!atomic_cas32_acquire(&cache->lock, 1, 0))
 		_rpmalloc_spin();
 
@@ -1461,7 +1464,7 @@ _rpmalloc_global_cache_finalize(global_cache_t* cache) {
 }
 
 static void
-_rpmalloc_global_cache_insert_spans(span_t** span, size_t span_count, size_t count) {
+_rpmalloc_global_cache_insert_spans(span_t * *span, size_t span_count, size_t count) {
 	const size_t cache_limit = (span_count == 1) ?
 		GLOBAL_CACHE_MULTIPLIER * MAX_THREAD_SPAN_CACHE :
 		GLOBAL_CACHE_MULTIPLIER * (MAX_THREAD_SPAN_LARGE_CACHE - (span_count >> 1));
@@ -1541,7 +1544,7 @@ _rpmalloc_global_cache_insert_spans(span_t** span, size_t span_count, size_t cou
 	}
 
 static size_t
-_rpmalloc_global_cache_extract_spans(span_t** span, size_t span_count, size_t count) {
+_rpmalloc_global_cache_extract_spans(span_t * *span, size_t span_count, size_t count) {
 	global_cache_t* cache = &_memory_span_cache[span_count - 1];
 
 	size_t extract_count = 0;
@@ -1588,7 +1591,7 @@ static void _rpmalloc_deallocate_huge(span_t*);
 
 //! Store the given spans as reserve in the given heap
 static void
-_rpmalloc_heap_set_reserved_spans(heap_t* heap, span_t* master, span_t* reserve, size_t reserve_span_count) {
+_rpmalloc_heap_set_reserved_spans(heap_t * heap, span_t * master, span_t * reserve, size_t reserve_span_count) {
 	heap->span_reserve_master = master;
 	heap->span_reserve = reserve;
 	heap->spans_reserved = (uint32_t)reserve_span_count;
@@ -1640,7 +1643,7 @@ _rpmalloc_heap_cache_adopt_deferred(heap_t * heap, span_t * *single_span) {
 }
 
 static void
-_rpmalloc_heap_unmap(heap_t* heap) {
+_rpmalloc_heap_unmap(heap_t * heap) {
 	if (!heap->master_heap) {
 		if ((heap->finalize > 1) && !atomic_load32(&heap->child_count)) {
 			span_t* span = (span_t*)((uintptr_t)heap & _memory_span_mask);
@@ -1655,7 +1658,7 @@ _rpmalloc_heap_unmap(heap_t* heap) {
 }
 
 static void
-_rpmalloc_heap_global_finalize(heap_t* heap) {
+_rpmalloc_heap_global_finalize(heap_t * heap) {
 	if (heap->finalize++ > 1) {
 		--heap->finalize;
 		return;
@@ -1704,7 +1707,7 @@ _rpmalloc_heap_global_finalize(heap_t* heap) {
 
 //! Insert a single span into thread heap cache, releasing to global cache if overflow
 static void
-_rpmalloc_heap_cache_insert(heap_t* heap, span_t* span) {
+_rpmalloc_heap_cache_insert(heap_t * heap, span_t * span) {
 	if (UNEXPECTED(heap->finalize != 0)) {
 		_rpmalloc_span_unmap(span);
 		_rpmalloc_heap_global_finalize(heap);
@@ -1757,7 +1760,7 @@ _rpmalloc_heap_cache_insert(heap_t* heap, span_t* span) {
 
 //! Extract the given number of spans from the different cache levels
 static span_t*
-_rpmalloc_heap_thread_cache_extract(heap_t* heap, size_t span_count) {
+_rpmalloc_heap_thread_cache_extract(heap_t * heap, size_t span_count) {
 	span_t* span = 0;
 #if ENABLE_THREAD_CACHE
 	span_cache_t* span_cache;
@@ -1774,7 +1777,7 @@ _rpmalloc_heap_thread_cache_extract(heap_t* heap, size_t span_count) {
 }
 
 static span_t*
-_rpmalloc_heap_thread_cache_deferred_extract(heap_t* heap, size_t span_count) {
+_rpmalloc_heap_thread_cache_deferred_extract(heap_t * heap, size_t span_count) {
 	span_t* span = 0;
 	if (span_count == 1) {
 		_rpmalloc_heap_cache_adopt_deferred(heap, &span);
@@ -1787,7 +1790,7 @@ _rpmalloc_heap_thread_cache_deferred_extract(heap_t* heap, size_t span_count) {
 }
 
 static span_t*
-_rpmalloc_heap_reserved_extract(heap_t* heap, size_t span_count) {
+_rpmalloc_heap_reserved_extract(heap_t * heap, size_t span_count) {
 	if (heap->spans_reserved >= span_count)
 		return _rpmalloc_span_map(heap, span_count);
 	return 0;
@@ -1795,7 +1798,7 @@ _rpmalloc_heap_reserved_extract(heap_t* heap, size_t span_count) {
 
 //! Extract a span from the global cache
 static span_t*
-_rpmalloc_heap_global_cache_extract(heap_t* heap, size_t span_count) {
+_rpmalloc_heap_global_cache_extract(heap_t * heap, size_t span_count) {
 #if ENABLE_GLOBAL_CACHE
 #if ENABLE_THREAD_CACHE
 	span_cache_t* span_cache;
@@ -1830,7 +1833,7 @@ _rpmalloc_heap_global_cache_extract(heap_t* heap, size_t span_count) {
 }
 
 static void
-_rpmalloc_inc_span_statistics(heap_t* heap, size_t span_count, uint32_t class_idx) {
+_rpmalloc_inc_span_statistics(heap_t * heap, size_t span_count, uint32_t class_idx) {
 	(void)sizeof(heap);
 	(void)sizeof(span_count);
 	(void)sizeof(class_idx);
@@ -1845,7 +1848,7 @@ _rpmalloc_inc_span_statistics(heap_t* heap, size_t span_count, uint32_t class_id
 
 //! Get a span from one of the cache levels (thread cache, reserved, global cache) or fallback to mapping more memory
 static span_t*
-_rpmalloc_heap_extract_new_span(heap_t* heap, heap_size_class_t* heap_size_class, size_t span_count, uint32_t class_idx) {
+_rpmalloc_heap_extract_new_span(heap_t * heap, heap_size_class_t * heap_size_class, size_t span_count, uint32_t class_idx) {
 	span_t* span;
 #if ENABLE_THREAD_CACHE
 	if (heap_size_class && heap_size_class->cache) {
@@ -1896,7 +1899,7 @@ _rpmalloc_heap_extract_new_span(heap_t* heap, heap_size_class_t* heap_size_class
 }
 
 static void
-_rpmalloc_heap_initialize(heap_t* heap) {
+_rpmalloc_heap_initialize(heap_t * heap) {
 	_rpmalloc_memset_const(heap, 0, sizeof(heap_t));
 	//Get a new heap ID
 	heap->id = 1 + atomic_incr32(&_memory_heap_id);
@@ -1908,7 +1911,7 @@ _rpmalloc_heap_initialize(heap_t* heap) {
 }
 
 static void
-_rpmalloc_heap_orphan(heap_t* heap, int first_class) {
+_rpmalloc_heap_orphan(heap_t * heap, int first_class) {
 	heap->owner_thread = (uintptr_t)-1;
 #if RPMALLOC_FIRST_CLASS_HEAPS
 	heap_t** heap_list = (first_class ? &_memory_first_class_orphan_heaps : &_memory_orphan_heaps);
@@ -1997,7 +2000,7 @@ _rpmalloc_heap_allocate_new(void) {
 }
 
 static heap_t*
-_rpmalloc_heap_extract_orphan(heap_t** heap_list) {
+_rpmalloc_heap_extract_orphan(heap_t * *heap_list) {
 	heap_t* heap = *heap_list;
 	*heap_list = (heap ? heap->next_orphan : 0);
 	return heap;
@@ -2088,7 +2091,7 @@ _rpmalloc_heap_release_raw_fc(void* heapptr) {
 }
 
 static void
-_rpmalloc_heap_finalize(heap_t* heap) {
+_rpmalloc_heap_finalize(heap_t * heap) {
 	if (heap->spans_reserved) {
 		span_t* span = _rpmalloc_span_map(heap, heap->spans_reserved);
 		_rpmalloc_span_unmap(span);
@@ -2207,7 +2210,7 @@ _rpmalloc_allocate_from_heap_fallback(heap_t * heap, heap_size_class_t * heap_si
 
 //! Allocate a small sized memory block from the given heap
 static void*
-_rpmalloc_allocate_small(heap_t* heap, size_t size) {
+_rpmalloc_allocate_small(heap_t * heap, size_t size) {
 	rpmalloc_assert(heap, "No thread heap");
 	//Small sizes have unique size classes
 	const uint32_t class_idx = (uint32_t)((size + (SMALL_GRANULARITY - 1)) >> SMALL_GRANULARITY_SHIFT);
@@ -2220,7 +2223,7 @@ _rpmalloc_allocate_small(heap_t* heap, size_t size) {
 
 //! Allocate a medium sized memory block from the given heap
 static void*
-_rpmalloc_allocate_medium(heap_t* heap, size_t size) {
+_rpmalloc_allocate_medium(heap_t * heap, size_t size) {
 	rpmalloc_assert(heap, "No thread heap");
 	//Calculate the size class index and do a dependent lookup of the final class index (in case of merged classes)
 	const uint32_t base_idx = (uint32_t)(SMALL_CLASS_COUNT + ((size - (SMALL_SIZE_LIMIT + 1)) >> MEDIUM_GRANULARITY_SHIFT));
@@ -2234,7 +2237,7 @@ _rpmalloc_allocate_medium(heap_t* heap, size_t size) {
 
 //! Allocate a large sized memory block from the given heap
 static void*
-_rpmalloc_allocate_large(heap_t* heap, size_t size) {
+_rpmalloc_allocate_large(heap_t * heap, size_t size) {
 	rpmalloc_assert(heap, "No thread heap");
 	//Calculate number of needed max sized spans (including header)
 	//Since this function is never called if size > LARGE_SIZE_LIMIT
@@ -2264,7 +2267,7 @@ _rpmalloc_allocate_large(heap_t* heap, size_t size) {
 
 //! Allocate a huge block by mapping memory pages directly
 static void*
-_rpmalloc_allocate_huge(heap_t* heap, size_t size) {
+_rpmalloc_allocate_huge(heap_t * heap, size_t size) {
 	rpmalloc_assert(heap, "No thread heap");
 	_rpmalloc_heap_cache_adopt_deferred(heap, 0);
 	size += SPAN_HEADER_SIZE;
@@ -2293,7 +2296,7 @@ _rpmalloc_allocate_huge(heap_t* heap, size_t size) {
 
 //! Allocate a block of the given size
 static void*
-_rpmalloc_allocate(heap_t* heap, size_t size) {
+_rpmalloc_allocate(heap_t * heap, size_t size) {
 	_rpmalloc_stat_add64(&_allocation_counter, 1);
 	if (EXPECTED(size <= SMALL_SIZE_LIMIT))
 		return _rpmalloc_allocate_small(heap, size);
@@ -2305,7 +2308,7 @@ _rpmalloc_allocate(heap_t* heap, size_t size) {
 }
 
 static void*
-_rpmalloc_aligned_allocate(heap_t* heap, size_t alignment, size_t size) {
+_rpmalloc_aligned_allocate(heap_t * heap, size_t alignment, size_t size) {
 	if (alignment <= SMALL_GRANULARITY)
 		return _rpmalloc_allocate(heap, size);
 
@@ -2431,7 +2434,7 @@ retry:
 
 //! Deallocate the given small/medium memory block in the current thread local heap
 static void
-_rpmalloc_deallocate_direct_small_or_medium(span_t* span, void* block) {
+_rpmalloc_deallocate_direct_small_or_medium(span_t * span, void* block) {
 	heap_t* heap = span->heap;
 	rpmalloc_assert(heap->owner_thread == get_thread_id() || !heap->owner_thread || heap->finalize, "Internal failure");
 	//Add block to free list
@@ -2463,7 +2466,7 @@ _rpmalloc_deallocate_direct_small_or_medium(span_t* span, void* block) {
 }
 
 static void
-_rpmalloc_deallocate_defer_free_span(heap_t* heap, span_t* span) {
+_rpmalloc_deallocate_defer_free_span(heap_t * heap, span_t * span) {
 	if (span->size_class != SIZE_CLASS_HUGE)
 		_rpmalloc_stat_inc(&heap->span_use[span->span_count - 1].spans_deferred);
 	//This list does not need ABA protection, no mutable side state
@@ -2474,7 +2477,7 @@ _rpmalloc_deallocate_defer_free_span(heap_t* heap, span_t* span) {
 
 //! Put the block in the deferred free list of the owning span
 static void
-_rpmalloc_deallocate_defer_small_or_medium(span_t* span, void* block) {
+_rpmalloc_deallocate_defer_small_or_medium(span_t * span, void* block) {
 	// The memory ordering here is a bit tricky, to avoid having to ABA protect
 	// the deferred free list to avoid desynchronization of list and list size
 	// we need to have acquire semantics on successful CAS of the pointer to
@@ -2496,7 +2499,7 @@ _rpmalloc_deallocate_defer_small_or_medium(span_t* span, void* block) {
 }
 
 static void
-_rpmalloc_deallocate_small_or_medium(span_t* span, void* p) {
+_rpmalloc_deallocate_small_or_medium(span_t * span, void* p) {
 	_rpmalloc_stat_inc_free(span->heap, span->size_class);
 	if (span->flags & SPAN_FLAG_ALIGNED_BLOCKS) {
 		//Realign pointer to block start
@@ -2518,7 +2521,7 @@ _rpmalloc_deallocate_small_or_medium(span_t* span, void* p) {
 
 //! Deallocate the given large memory block to the current heap
 static void
-_rpmalloc_deallocate_large(span_t* span) {
+_rpmalloc_deallocate_large(span_t * span) {
 	rpmalloc_assert(span->size_class == SIZE_CLASS_LARGE, "Bad span size class");
 	rpmalloc_assert(!(span->flags & SPAN_FLAG_MASTER) || !(span->flags & SPAN_FLAG_SUBSPAN), "Span flag corrupted");
 	rpmalloc_assert((span->flags & SPAN_FLAG_MASTER) || (span->flags & SPAN_FLAG_SUBSPAN), "Span flag corrupted");
@@ -2571,7 +2574,7 @@ _rpmalloc_deallocate_large(span_t* span) {
 
 //! Deallocate the given huge span
 static void
-_rpmalloc_deallocate_huge(span_t* span) {
+_rpmalloc_deallocate_huge(span_t * span) {
 	rpmalloc_assert(span->heap, "No span heap");
 #if RPMALLOC_FIRST_CLASS_HEAPS
 	int defer = (span->heap->owner_thread && (span->heap->owner_thread != get_thread_id()) && !span->heap->finalize);
@@ -2621,7 +2624,7 @@ _rpmalloc_usable_size(void* p);
 
 //! Reallocate the given block to the given size
 static void*
-_rpmalloc_reallocate(heap_t* heap, void* p, size_t size, size_t oldsize, unsigned int flags) {
+_rpmalloc_reallocate(heap_t * heap, void* p, size_t size, size_t oldsize, unsigned int flags) {
 	if (p) {
 		//Grab the span using guaranteed span alignment
 		span_t* span = (span_t*)((uintptr_t)p & _memory_span_mask);
@@ -2699,7 +2702,7 @@ _rpmalloc_reallocate(heap_t* heap, void* p, size_t size, size_t oldsize, unsigne
 }
 
 static void*
-_rpmalloc_aligned_reallocate(heap_t* heap, void* ptr, size_t alignment, size_t size, size_t oldsize,
+_rpmalloc_aligned_reallocate(heap_t * heap, void* ptr, size_t alignment, size_t size, size_t oldsize,
 	unsigned int flags) {
 	if (alignment <= SMALL_GRANULARITY)
 		return _rpmalloc_reallocate(heap, ptr, size, oldsize, flags);
@@ -2784,7 +2787,7 @@ rpmalloc_initialize(void) {
 }
 
 int
-rpmalloc_initialize_config(const rpmalloc_config_t* config) {
+rpmalloc_initialize_config(const rpmalloc_config_t * config) {
 	if (_rpmalloc_initialized) {
 		rpmalloc_thread_initialize();
 		return 0;
@@ -3209,7 +3212,7 @@ rpmalloc_thread_collect(void) {
 }
 
 void
-rpmalloc_thread_statistics(rpmalloc_thread_statistics_t* stats) {
+rpmalloc_thread_statistics(rpmalloc_thread_statistics_t * stats) {
 	memset(stats, 0, sizeof(rpmalloc_thread_statistics_t));
 	heap_t* heap = get_thread_heap_raw();
 	if (!heap)
@@ -3276,7 +3279,7 @@ rpmalloc_thread_statistics(rpmalloc_thread_statistics_t* stats) {
 }
 
 void
-rpmalloc_global_statistics(rpmalloc_global_statistics_t* stats) {
+rpmalloc_global_statistics(rpmalloc_global_statistics_t * stats) {
 	memset(stats, 0, sizeof(rpmalloc_global_statistics_t));
 #if ENABLE_STATISTICS
 	stats->mapped = (size_t)atomic_load32(&_mapped_pages) * _memory_page_size;
@@ -3295,7 +3298,7 @@ rpmalloc_global_statistics(rpmalloc_global_statistics_t* stats) {
 #if ENABLE_STATISTICS
 
 static void
-_memory_heap_dump_statistics(heap_t* heap, void* file) {
+_memory_heap_dump_statistics(heap_t * heap, void* file) {
 	fprintf(file, "Heap %d stats:\n", heap->id);
 	fprintf(file, "Class   CurAlloc  PeakAlloc   TotAlloc    TotFree  BlkSize BlkCount SpansCur SpansPeak  PeakAllocMiB  ToCacheMiB FromCacheMiB FromReserveMiB MmapCalls\n");
 	for (size_t iclass = 0; iclass < SIZE_CLASS_COUNT; ++iclass) {
@@ -3434,13 +3437,13 @@ rpmalloc_heap_acquire(void) {
 }
 
 extern inline void
-rpmalloc_heap_release(rpmalloc_heap_t* heap) {
+rpmalloc_heap_release(rpmalloc_heap_t * heap) {
 	if (heap)
 		_rpmalloc_heap_release(heap, 1, 1);
 }
 
 extern inline RPMALLOC_ALLOCATOR void*
-rpmalloc_heap_alloc(rpmalloc_heap_t* heap, size_t size) {
+rpmalloc_heap_alloc(rpmalloc_heap_t * heap, size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
 		errno = EINVAL;
@@ -3451,7 +3454,7 @@ rpmalloc_heap_alloc(rpmalloc_heap_t* heap, size_t size) {
 }
 
 extern inline RPMALLOC_ALLOCATOR void*
-rpmalloc_heap_aligned_alloc(rpmalloc_heap_t* heap, size_t alignment, size_t size) {
+rpmalloc_heap_aligned_alloc(rpmalloc_heap_t * heap, size_t alignment, size_t size) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
 		errno = EINVAL;
@@ -3462,12 +3465,12 @@ rpmalloc_heap_aligned_alloc(rpmalloc_heap_t* heap, size_t alignment, size_t size
 }
 
 extern inline RPMALLOC_ALLOCATOR void*
-rpmalloc_heap_calloc(rpmalloc_heap_t* heap, size_t num, size_t size) {
+rpmalloc_heap_calloc(rpmalloc_heap_t * heap, size_t num, size_t size) {
 	return rpmalloc_heap_aligned_calloc(heap, 0, num, size);
 }
 
 extern inline RPMALLOC_ALLOCATOR void*
-rpmalloc_heap_aligned_calloc(rpmalloc_heap_t* heap, size_t alignment, size_t num, size_t size) {
+rpmalloc_heap_aligned_calloc(rpmalloc_heap_t * heap, size_t alignment, size_t num, size_t size) {
 	size_t total;
 #if ENABLE_VALIDATE_ARGS
 #if PLATFORM_WINDOWS
@@ -3493,7 +3496,7 @@ rpmalloc_heap_aligned_calloc(rpmalloc_heap_t* heap, size_t alignment, size_t num
 }
 
 extern inline RPMALLOC_ALLOCATOR void*
-rpmalloc_heap_realloc(rpmalloc_heap_t* heap, void* ptr, size_t size, unsigned int flags) {
+rpmalloc_heap_realloc(rpmalloc_heap_t * heap, void* ptr, size_t size, unsigned int flags) {
 #if ENABLE_VALIDATE_ARGS
 	if (size >= MAX_ALLOC_SIZE) {
 		errno = EINVAL;
@@ -3504,7 +3507,7 @@ rpmalloc_heap_realloc(rpmalloc_heap_t* heap, void* ptr, size_t size, unsigned in
 }
 
 extern inline RPMALLOC_ALLOCATOR void*
-rpmalloc_heap_aligned_realloc(rpmalloc_heap_t* heap, void* ptr, size_t alignment, size_t size, unsigned int flags) {
+rpmalloc_heap_aligned_realloc(rpmalloc_heap_t * heap, void* ptr, size_t alignment, size_t size, unsigned int flags) {
 #if ENABLE_VALIDATE_ARGS
 	if ((size + alignment < size) || (alignment > _memory_page_size)) {
 		errno = EINVAL;
@@ -3515,13 +3518,13 @@ rpmalloc_heap_aligned_realloc(rpmalloc_heap_t* heap, void* ptr, size_t alignment
 }
 
 extern inline void
-rpmalloc_heap_free(rpmalloc_heap_t* heap, void* ptr) {
+rpmalloc_heap_free(rpmalloc_heap_t * heap, void* ptr) {
 	(void)sizeof(heap);
 	_rpmalloc_deallocate(ptr);
 }
 
 extern inline void
-rpmalloc_heap_free_all(rpmalloc_heap_t* heap) {
+rpmalloc_heap_free_all(rpmalloc_heap_t * heap) {
 	span_t* span;
 	span_t* next_span;
 
@@ -3590,7 +3593,7 @@ rpmalloc_heap_free_all(rpmalloc_heap_t* heap) {
 }
 
 extern inline void
-rpmalloc_heap_thread_set_current(rpmalloc_heap_t* heap) {
+rpmalloc_heap_thread_set_current(rpmalloc_heap_t * heap) {
 	heap_t* prev_heap = get_thread_heap_raw();
 	if (prev_heap != heap) {
 		set_thread_heap(heap);

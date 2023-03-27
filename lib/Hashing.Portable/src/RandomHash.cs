@@ -51,7 +51,7 @@ namespace VNLib.Hashing
             if(size > MAX_STACK_ALLOC)
             {
                 //Get temporary buffer for storing random keys
-                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(size);
 
                 //Fill with random non-zero bytes
                 GetRandomBytes(buffer.Span);
@@ -114,7 +114,7 @@ namespace VNLib.Hashing
             if (size > MAX_STACK_ALLOC)
             {
                 //Get temp buffer
-                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(size);
 
                 //Generate non zero bytes
                 GetRandomBytes(buffer.Span);
@@ -145,7 +145,7 @@ namespace VNLib.Hashing
             if (size > MAX_STACK_ALLOC)
             {
                 //Get temp buffer
-                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(size);
 
                 //Generate non zero bytes
                 GetRandomBytes(buffer.Span);
@@ -176,7 +176,7 @@ namespace VNLib.Hashing
             if (size > MAX_STACK_ALLOC)
             {
                 //Get temp buffer
-                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(size);
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(size);
 
                 //Generate non zero bytes
                 GetRandomBytes(buffer.Span);

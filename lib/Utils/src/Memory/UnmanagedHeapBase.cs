@@ -48,22 +48,37 @@ namespace VNLib.Utils.Memory
         protected readonly bool GlobalZero;
 
         /// <summary>
+        /// A value that inidicates that locking will 
+        /// be used when invoking heap operations
+        /// </summary>
+        protected readonly bool UseSynchronization;
+
+        /// <summary>
         /// Initalizes the unmanaged heap base class (init synchronization handle)
         /// </summary>
-        /// <param name="globalZero">A global flag to zero all blocks of memory during allocation</param>
+        /// <param name="flags">Creation flags to obey</param>
         /// <param name="ownsHandle">A flag that indicates if the handle is owned by the instance</param>
-        protected UnmanagedHeapBase(bool globalZero, bool ownsHandle) : base(ownsHandle)
+        protected UnmanagedHeapBase(HeapCreation flags, bool ownsHandle) : base(ownsHandle)
         {
             HeapLock = new();
-            GlobalZero = globalZero;
+            GlobalZero = flags.HasFlag(HeapCreation.GlobalZero);
+            UseSynchronization = flags.HasFlag(HeapCreation.UseSynchronization);
+            CreationFlags = flags;
         }
 
         ///<inheritdoc/>
-        ///<remarks>Increments the handle count</remarks>
+        public HeapCreation CreationFlags { get; }
+
+        ///<inheritdoc/>
+        ///<remarks>Increments the handle count, free must be called to decrement the handle count</remarks>
+        ///<exception cref="OverflowException"></exception>
         ///<exception cref="OutOfMemoryException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
         public LPVOID Alloc(nuint elements, nuint size, bool zero)
         {
+            //Check for overflow for size
+            _ = checked(elements *  size);
+
             //Force zero if global flag is set
             zero |= GlobalZero;
             bool handleCountIncremented = false;
@@ -80,10 +95,20 @@ namespace VNLib.Utils.Memory
             try
             {
                 LPVOID block;
-                //Enter lock
-                lock(HeapLock)
+
+                //Check if lock should be used
+                if (UseSynchronization)
                 {
-                    //Alloc block
+                    //Enter lock
+                    lock(HeapLock)
+                    {
+                        //Alloc block
+                        block = AllocBlock(elements, size, zero);
+                    }
+                }
+                else
+                {
+                    //Alloc block without lock
                     block = AllocBlock(elements, size, zero);
                 }
                 //Check if block was allocated
@@ -96,8 +121,9 @@ namespace VNLib.Utils.Memory
                 throw;
             }
         }
-        
+
         ///<inheritdoc/>
+        ///<exception cref="OverflowException"></exception>
         ///<remarks>Decrements the handle count</remarks>
         public bool Free(ref LPVOID block)
         {           
@@ -110,12 +136,20 @@ namespace VNLib.Utils.Memory
                 return true;
             }
 
-            //wait for lock
-            lock (HeapLock)
+            if (UseSynchronization)
             {
-                //Free block
+                //wait for lock
+                lock (HeapLock)
+                {
+                    //Free block
+                    result = FreeBlock(block);
+                    //Release lock before releasing handle
+                }
+            }
+            else
+            {
+                //No lock
                 result = FreeBlock(block);
-                //Release lock before releasing handle
             }
 
             //Decrement handle count
@@ -126,20 +160,35 @@ namespace VNLib.Utils.Memory
         }
         
         ///<inheritdoc/>
+        ///<exception cref="OverflowException"></exception>
         ///<exception cref="OutOfMemoryException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
         public void Resize(ref LPVOID block, nuint elements, nuint size, bool zero)
         {
+            //Check for overflow for size
+            _ = checked(elements * size);
+
             LPVOID newBlock;
 
-            lock (HeapLock)
+            //Global zero flag will cause a zero
+            zero |= GlobalZero;
+
+            /*
+             * Realloc may return a null pointer if allocation fails
+             * so check the results and only assign the block pointer
+             * if the result is valid. Otherwise pointer block should 
+             * be left untouched
+             */
+
+            if (UseSynchronization)
             {
-                /*
-                 * Realloc may return a null pointer if allocation fails
-                 * so check the results and only assign the block pointer
-                 * if the result is valid. Otherwise pointer block should 
-                 * be left untouched
-                 */
+                lock (HeapLock)
+                {
+                    newBlock = ReAllocBlock(block, elements, size, zero);
+                }
+            }
+            else
+            {
                 newBlock = ReAllocBlock(block, elements, size, zero);
             }
             
@@ -167,7 +216,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="block">The block to free</param>
         protected abstract bool FreeBlock(LPVOID block);
-        
+
         /// <summary>
         /// Resizes the previously allocated block of memory on the current heap
         /// </summary>

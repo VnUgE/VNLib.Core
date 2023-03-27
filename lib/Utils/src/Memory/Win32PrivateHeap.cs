@@ -31,7 +31,6 @@ using System.Runtime.CompilerServices;
 using DWORD = System.Int64;
 using LPVOID = System.IntPtr;
 
-
 namespace VNLib.Utils.Memory
 {
     ///<summary>
@@ -57,6 +56,11 @@ namespace VNLib.Utils.Memory
         public const DWORD HEAP_NO_SERIALIZE = 0x01;
         public const DWORD HEAP_REALLOC_IN_PLACE_ONLY = 0x10;
         public const DWORD HEAP_ZERO_MEMORY = 0x08;
+
+
+        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        private static extern LPVOID GetProcessHeap();
 
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
@@ -88,7 +92,7 @@ namespace VNLib.Utils.Memory
         [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         private static extern nuint HeapSize(IntPtr hHeap, DWORD flags, LPVOID lpMem);
-        
+
         #endregion
 
         /// <summary>
@@ -97,12 +101,39 @@ namespace VNLib.Utils.Memory
         /// <param name="initialSize">Intial size of the heap</param>
         /// <param name="maxHeapSize">Maximum size allowed for the heap (disabled = 0, default)</param>
         /// <param name="flags">Defalt heap flags to set globally for all blocks allocated by the heap (default = 0)</param>
-        public static Win32PrivateHeap Create(nuint initialSize, nuint maxHeapSize = 0, DWORD flags = HEAP_NO_FLAGS)
+        /// <param name="cFlags">Flags to configure heap creation</param>
+        /// <remarks>
+        /// Win32 heaps are not thread safe, so synchronization is required, you may disabled internal locking if you use 
+        /// your own synchronization.
+        /// </remarks>
+        public static Win32PrivateHeap Create(nuint initialSize, HeapCreation cFlags, nuint maxHeapSize = 0, DWORD flags = HEAP_NO_FLAGS)
         {
-            //Call create, throw exception if the heap falled to allocate
-            IntPtr heapHandle = HeapCreate(flags, initialSize, maxHeapSize);
+            if (cFlags.HasFlag(HeapCreation.IsSharedHeap))
+            {
+                //Clear the synchronization flag because we don't need it for a process heap
+                cFlags &= ~HeapCreation.UseSynchronization;
+
+                //Get the process heap
+                LPVOID handle = GetProcessHeap();
+
+                //The heap does not own the handle 
+                return new Win32PrivateHeap(handle, cFlags, false);
+            }
             
-            if (heapHandle == IntPtr.Zero)
+            if (cFlags.HasFlag(HeapCreation.UseSynchronization))
+            {    
+                /*
+                 * When the synchronization flag is set, we dont need to use 
+                 * the win32 serialization method
+                 */
+
+                flags |= HEAP_NO_SERIALIZE;
+            }
+
+            //Call create, throw exception if the heap falled to allocate
+            ERRNO heapHandle = HeapCreate(flags, initialSize, maxHeapSize);
+            
+            if (!heapHandle)
             {
                 throw new NativeMemoryException("Heap could not be created");
             }
@@ -110,17 +141,19 @@ namespace VNLib.Utils.Memory
             Trace.WriteLine($"Win32 private heap {heapHandle:x} created");
 #endif
             //Heap has been created so we can wrap it
-            return new(heapHandle);
+            return new(heapHandle, cFlags, true);
         }
+
         /// <summary>
         /// LIFETIME WARNING. Consumes a valid win32 handle and will manage it's lifetime once constructed.
         /// Locking and memory blocks will attempt to be allocated from this heap handle.
         /// </summary>
         /// <param name="win32HeapHandle">An open and valid handle to a win32 private heap</param>
+        /// <param name="flags">The heap creation flags to obey</param>
         /// <returns>A wrapper around the specified heap</returns>
-        public static Win32PrivateHeap ConsumeExisting(IntPtr win32HeapHandle) => new (win32HeapHandle);
+        public static Win32PrivateHeap ConsumeExisting(IntPtr win32HeapHandle, HeapCreation flags) => new (win32HeapHandle, flags, true);
 
-        private Win32PrivateHeap(IntPtr heapPtr) : base(false, true) => handle = heapPtr;
+        private Win32PrivateHeap(IntPtr heapPtr, HeapCreation flags, bool ownsHeandle) : base(flags, ownsHeandle) => handle = heapPtr;
 
         /// <summary>
         /// Retrieves the size of a memory block allocated from the current heap.
@@ -146,6 +179,7 @@ namespace VNLib.Utils.Memory
             return result;
            
         }
+
         /// <summary>
         /// Validates the current heap instance. The function scans all the memory blocks in the heap and verifies that the heap control structures maintained by 
         /// the heap manager are in a consistent state.
@@ -173,6 +207,7 @@ namespace VNLib.Utils.Memory
 #endif
             return HeapDestroy(handle);
         }
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override sealed LPVOID AllocBlock(nuint elements, nuint size, bool zero)
@@ -181,6 +216,7 @@ namespace VNLib.Utils.Memory
             
             return HeapAlloc(handle, zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, bytes);
         }
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override sealed bool FreeBlock(LPVOID block) => HeapFree(handle, HEAP_NO_FLAGS, block);

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -24,8 +24,6 @@
 
 using System;
 using System.Buffers;
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Extensions;
 
@@ -35,7 +33,7 @@ namespace VNLib.Utils.Memory
     /// A disposable temporary buffer from shared ArrayPool
     /// </summary>
     /// <typeparam name="T">Type of buffer to create</typeparam>
-    public sealed class VnTempBuffer<T> : VnDisposeable, IIndexable<int, T>, IMemoryHandle<T>
+    public sealed class VnTempBuffer<T> : VnDisposeable, IIndexable<int, T>, IMemoryHandle<T>, IMemoryOwner<T>
     {
         private readonly ArrayPool<T> Pool;
 
@@ -43,6 +41,7 @@ namespace VNLib.Utils.Memory
         /// Referrence to internal buffer
         /// </summary>
         public T[] Buffer { get; private set; }
+
         /// <summary>
         /// Inital/desired size of internal buffer
         /// </summary>
@@ -63,6 +62,9 @@ namespace VNLib.Utils.Memory
                 return new Span<T>(Buffer, 0, InitSize);
             }
         }
+
+        ///<inheritdoc/>
+        Memory<T> IMemoryOwner<T>.Memory => AsMemory();
 
         /// <summary>
         /// Allocates a new <see cref="VnTempBuffer{BufType}"/> with a new buffer from shared array-pool
@@ -177,33 +179,16 @@ namespace VNLib.Utils.Memory
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
 
-        unsafe MemoryHandle IPinnable.Pin(int elementIndex)
-        {
-            //Guard
-            if (elementIndex < 0 || elementIndex >= Buffer.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(elementIndex));
-            }
-
-            //Pin the array
-            GCHandle arrHandle = GCHandle.Alloc(Buffer, GCHandleType.Pinned);
-            
-            //Get array base address
-            void* basePtr = (void*)arrHandle.AddrOfPinnedObject();
-            
-            //Get element offset
-            void* indexOffet = Unsafe.Add<T>(basePtr, elementIndex);
-
-            return new(indexOffet, arrHandle, this);
-        }
+        //Pin, will also check bounds
+        ///<inheritdoc/>
+        public MemoryHandle Pin(int elementIndex) => MemoryUtil.PinArrayAndGetHandle(Buffer, elementIndex);
 
         void IPinnable.Unpin()
         {
             //Gchandle will manage the unpin
         }
 
-        ~VnTempBuffer() => Free();
-
-     
+        ///<inheritdoc/>
+        ~VnTempBuffer() => Free();     
     }
 }

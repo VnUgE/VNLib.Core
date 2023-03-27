@@ -1,27 +1,3 @@
-/*
-* Copyright (c) 2023 Vaughn Nugent
-* 
-* Library: VNLib
-* Package: WinRpMalloc
-* File: rpmalloc.h 
-*
-* rpmalloc.h is part of WinRpMalloc which is part of the larger 
-* VNLib collection of libraries and utilities.
-*
-* WinRpMalloc is free software: you can redistribute it and/or modify 
-* it under the terms of the GNU General Public License as published
-* by the Free Software Foundation, either version 2 of the License,
-* or (at your option) any later version.
-*
-* WinRpMalloc is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
-* General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License 
-* along with WinRpMalloc. If not, see http://www.gnu.org/licenses/.
-*/
-
 /* rpmalloc.h  -  Memory allocator  -  Public Domain  -  2016 Mattias Jansson
  *
  * This library provides a cross-platform lock free thread caching malloc implementation in C11.
@@ -55,7 +31,7 @@ extern "C" {
 # endif
 # define RPMALLOC_CDECL
 #elif defined(_MSC_VER)
-# define RPMALLOC_EXPORT __declspec(dllexport)
+# define RPMALLOC_EXPORT
 # define RPMALLOC_ALLOCATOR __declspec(allocator) __declspec(restrict)
 # define RPMALLOC_ATTRIB_MALLOC
 # define RPMALLOC_ATTRIB_ALLOC_SIZE(size)

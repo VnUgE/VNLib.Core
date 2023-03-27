@@ -36,7 +36,7 @@ namespace VNLib.Net.Http.Core
     /// A structure that buffers data remaining from an initial transport read. Stored 
     /// data will be read by copying.
     /// </summary>
-    internal readonly struct InitDataBuffer
+    internal readonly record struct InitDataBuffer
     {
         const int POSITION_SEG_SIZE = sizeof(int);
 

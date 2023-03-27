@@ -36,13 +36,15 @@ namespace VNLib.Utils.Memory.Tests
     {
 
         [TestMethod]
-        public void MemoryHandleAllocLongExtensionTest()
+        public unsafe void MemoryHandleAllocLongExtensionTest()
         {
+            Assert.IsTrue(sizeof(nuint) == 8);
+
             //Check for negatives
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => Shared.Alloc<byte>(-1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => Shared.Alloc<byte>(-1).Dispose());
 
             //Make sure over-alloc throws
-            Assert.ThrowsException<OutOfMemoryException>(() => Shared.Alloc<byte>(nuint.MaxValue, false));
+            Assert.ThrowsException<OverflowException>(() => Shared.Alloc<short>(nuint.MaxValue, false).Dispose());
         }
 #if TARGET_64_BIT
         [TestMethod]

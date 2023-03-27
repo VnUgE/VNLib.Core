@@ -52,12 +52,18 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsTrue(10000 == table.Cols);
             }
 
-            
-            //Test oom, should be native
-            Assert.ThrowsException<OutOfMemoryException>(() =>
+            try
             {
                 using VnTable<int> table = new(uint.MaxValue, 20);
-            });
+
+                Assert.Fail("The table allocation did not fail as expected");
+            }
+            catch (OutOfMemoryException)
+            {}
+            catch(Exception ex) 
+            {
+                Assert.Fail("Table overflow creation test failed because another exception type was raised, {0}", ex.GetType().Name);
+            }
         }
 
         [TestMethod()]

@@ -179,7 +179,9 @@ namespace VNLib.Utils.Memory
             {
                 throw new ArgumentOutOfRangeException(nameof(elements), "Element offset cannot be larger than allocated size");
             }
+
             this.ThrowIfClosed();
+
             //Get ptr and offset it
             T* bs = ((T*)handle) + elements;
             return bs;
@@ -194,6 +196,11 @@ namespace VNLib.Utils.Memory
         ///</remarks>
         public unsafe MemoryHandle Pin(int elementIndex)
         {
+            if(elementIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(elementIndex));
+            }
+
             //Get ptr and guard checks before adding the referrence
             T* ptr = GetOffset((nuint)elementIndex);
             

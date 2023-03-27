@@ -96,7 +96,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             else
             {
                 //Alloc heap buffer
-                using UnsafeMemoryHandle<byte> secretBuffer = MemoryUtil.UnsafeAlloc<byte>(_secret.BufferSize, true);
+                using UnsafeMemoryHandle<byte> secretBuffer = MemoryUtil.UnsafeAlloc(_secret.BufferSize, true);
 
                 return VerifyInternal(passHash, password, secretBuffer);
             }
@@ -130,7 +130,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         public bool Verify(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> password)
         {
             //Alloc a buffer with the same size as the hash
-            using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc<byte>(hash.Length, true);
+            using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc(hash.Length, true);
             //Hash the password with the current config
             Hash(password, salt, hashBuf.Span);
             //Compare the hashed password to the specified hash and return results
@@ -143,7 +143,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         public PrivateString Hash(ReadOnlySpan<char> password)
         {
             //Alloc shared buffer for the salt and secret buffer
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(SaltLen + _secret.BufferSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(SaltLen + _secret.BufferSize, true);
             try
             {
                 //Split buffers
@@ -170,7 +170,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>A <see cref="PrivateString"/> of the hashed and encoded password</returns>
         public PrivateString Hash(ReadOnlySpan<byte> password)
         {
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(SaltLen + _secret.BufferSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(SaltLen + _secret.BufferSize, true);
             try
             {
                 //Split buffers
@@ -203,7 +203,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         public void Hash(ReadOnlySpan<byte> password, ReadOnlySpan<byte> salt, Span<byte> hashOutput)
         {
             //alloc secret buffer
-            using UnsafeMemoryHandle<byte> secretBuffer = MemoryUtil.UnsafeAlloc<byte>(_secret.BufferSize, true);
+            using UnsafeMemoryHandle<byte> secretBuffer = MemoryUtil.UnsafeAlloc(_secret.BufferSize, true);
             try
             {
                 //Get the secret from the callback

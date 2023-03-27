@@ -20,20 +20,17 @@ namespace VNLib.Utils.Memory.Tests
         [TestMethod()]
         public void InitializeNewHeapForProcessTest()
         {
-            //Check if rpmalloc is loaded
-            if (MemoryUtil.IsRpMallocLoaded)
-            {
-                //Initialize the heap
-                using IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess();
 
-                //Confirm that the heap is actually a rpmalloc heap
-                Assert.IsInstanceOfType(heap, typeof(RpMallocPrivateHeap));
-            }
-            else
-            {
-                //Confirm that Rpmalloc will throw DLLNotFound if the lib is not loaded
-                Assert.ThrowsException<DllNotFoundException>(() => _ = RpMallocPrivateHeap.GlobalHeap.Alloc(1, 1, false));
-            }
+            //Initialize the heap
+            using IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess();
+
+            //Test alloc
+            IntPtr block = heap.Alloc(1, 1, false);
+
+            //Free block
+            heap.Free(ref block);
+
+            //TODO verify the heap type by loading a dynamic heap dll
         }
 
         [TestMethod()]
@@ -337,7 +334,7 @@ namespace VNLib.Utils.Memory.Tests
         public void GetSharedHeapStatsTest()
         {
             //Confirm heap diagnostics are enabled
-            Assert.AreEqual<string?>(Environment.GetEnvironmentVariable(MemoryUtil.SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), "1");
+            Assert.AreEqual<string?>("1", Environment.GetEnvironmentVariable(MemoryUtil.SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV));
 
             //Get current stats
             HeapStatistics preTest = MemoryUtil.GetSharedHeapStats();
@@ -441,6 +438,29 @@ namespace VNLib.Utils.Memory.Tests
             const int TEST_1 = 1;
 
             //Unsafe byte test
+            using (UnsafeMemoryHandle<byte> byteBuffer = MemoryUtil.UnsafeAllocNearestPage(TEST_1, false))
+            {
+                nuint byteSize = MemoryUtil.ByteSize(byteBuffer);
+
+                //Confirm byte size is working also
+                Assert.IsTrue(byteSize == byteBuffer.Length);
+
+                //Should be the same as the page size
+                Assert.IsTrue(byteSize == (nuint)Environment.SystemPageSize);
+            }
+
+            using(IMemoryHandle<byte> safeByteBuffer = MemoryUtil.SafeAllocNearestPage(TEST_1, false))
+            {
+                nuint byteSize = MemoryUtil.ByteSize(safeByteBuffer);
+
+                //Confirm byte size is working also
+                Assert.IsTrue(byteSize == safeByteBuffer.Length);
+
+                //Should be the same as the page size
+                Assert.IsTrue(byteSize == (nuint)Environment.SystemPageSize);
+            }
+
+            //Unsafe byte test with generics
             using (UnsafeMemoryHandle<byte> byteBuffer = MemoryUtil.UnsafeAllocNearestPage<byte>(TEST_1, false))
             {
                 nuint byteSize = MemoryUtil.ByteSize(byteBuffer);
@@ -452,7 +472,7 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsTrue(byteSize == (nuint)Environment.SystemPageSize);
             }
 
-            using(IMemoryHandle<byte> safeByteBuffer = MemoryUtil.SafeAllocNearestPage<byte>(TEST_1, false))
+            using (IMemoryHandle<byte> safeByteBuffer = MemoryUtil.SafeAllocNearestPage<byte>(TEST_1, false))
             {
                 nuint byteSize = MemoryUtil.ByteSize(safeByteBuffer);
 

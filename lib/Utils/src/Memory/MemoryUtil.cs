@@ -35,23 +35,26 @@ using VNLib.Utils.Memory.Diagnostics;
 
 namespace VNLib.Utils.Memory
 {
+
     /// <summary>
     /// Provides optimized cross-platform maanged/umanaged safe/unsafe memory operations
     /// </summary>
     [SecurityCritical]
     [ComVisible(false)]
-    public unsafe static class MemoryUtil
+    public static unsafe partial class MemoryUtil
     {
         /// <summary>
         /// The environment variable name used to specify the shared heap type
         /// to create
         /// </summary>
-        public const string SHARED_HEAP_TYPE_ENV= "VNLIB_SHARED_HEAP_TYPE";
+        public const string SHARED_HEAP_FILE_PATH = "VNLIB_SHARED_HEAP_FILE_PATH";       
+
         /// <summary>
         /// When creating a heap that accepts an initial size, this value is passed
         /// to it, otherwise no initial heap size is set.
         /// </summary>
         public const string SHARED_HEAP_INTIAL_SIZE_ENV = "VNLIB_SHARED_HEAP_SIZE";
+
         /// <summary>
         /// The environment variable name used to enable share heap diagnostics
         /// </summary>
@@ -70,7 +73,7 @@ namespace VNLib.Utils.Memory
         /// that will use the array pool before falling back to the <see cref="Shared"/>.
         /// heap.
         /// </summary>
-        public const int MAX_UNSAFE_POOL_SIZE = 500 * 1024;
+        public const int MAX_UNSAFE_POOL_SIZE = 80 * 1024;
       
         /// <summary>
         /// Provides a shared heap instance for the process to allocate memory from.
@@ -140,38 +143,59 @@ namespace VNLib.Utils.Memory
             bool IsWindows = OperatingSystem.IsWindows();
             
             //Get environment varable
-            string? heapType = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV);
-            
-            //Get inital size
-            string? sharedSize = Environment.GetEnvironmentVariable(SHARED_HEAP_INTIAL_SIZE_ENV);
-            
-            //Try to parse the shared size from the env
-            if (!nuint.TryParse(sharedSize, out nuint defaultSize))
+            string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
+
+            //Default flags
+            HeapCreation cFlags = HeapCreation.UseSynchronization;
+
+            /*
+                * We need to set the shared flag and the synchronziation flag.
+                * 
+                * The heap impl may reset the synchronziation flag if it does not 
+                * need serialziation
+                */
+            cFlags |= isShared ? HeapCreation.IsSharedHeap : HeapCreation.None;
+
+            IUnmangedHeap heap;
+
+            //Check for heap api dll
+            if (!string.IsNullOrWhiteSpace(heapDllPath))
             {
-                defaultSize = SHARED_HEAP_INIT_SIZE;
+                //Attempt to load the heap
+                heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, 0);
+            }
+            //No user heap was specified, use fallback
+            else if (IsWindows)
+            {
+                //We can use win32 heaps
+              
+                //Get inital size
+                string? sharedSize = Environment.GetEnvironmentVariable(SHARED_HEAP_INTIAL_SIZE_ENV);
+
+                //Try to parse the shared size from the env
+                if (!nuint.TryParse(sharedSize, out nuint defaultSize))
+                {
+                    defaultSize = SHARED_HEAP_INIT_SIZE;
+                }                
+
+                //Create win32 private heap
+                heap = Win32PrivateHeap.Create(defaultSize, cFlags);
+            }
+            else
+            {
+                //Finally fallback to .NET native mem impl 
+                heap = new ProcessHeap();
             }
 
-            //convert to upper
-            heapType = heapType?.ToUpperInvariant();
-            
-            //Create the heap
-            IUnmangedHeap heap = heapType switch
-            {
-                "WIN32" => IsWindows ? Win32PrivateHeap.Create(defaultSize) : throw new PlatformNotSupportedException("Win32 private heaps are not supported on non-windows platforms"),
-                //If the shared heap is being allocated, then return a lock free global heap
-                "RPMALLOC" => isShared ? RpMallocPrivateHeap.GlobalHeap : new RpMallocPrivateHeap(false),
-                //Get the process heap if the heap is shared, otherwise create a new win32 private heap
-                _ => IsWindows && !isShared ? Win32PrivateHeap.Create(defaultSize) : new ProcessHeap(),
-            };
-
-            //If diagnosticts is enabled, wrap the heap in a stats heap
+            //Enable heap statistics
             return enableStats ? new TrackedHeapWrapper(heap) : heap;
         }
 
         /// <summary>
-        /// Gets a value that indicates if the Rpmalloc native library is loaded
+        /// Gets a value that indicates if the use defined a custom heap
+        /// implementation
         /// </summary>
-        public static bool IsRpMallocLoaded { get; } = Environment.GetEnvironmentVariable(SHARED_HEAP_TYPE_ENV)?.ToUpperInvariant() == "RPMALLOC";
+        public static bool IsUserDefinedHeap { get; } = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH));
 
         #region Zero
 
@@ -579,7 +603,7 @@ namespace VNLib.Utils.Memory
         {
             if (((nuint)block.LongLength - offset) <= count)
             {
-                throw new ArgumentException("The offset or count is outside of the range of the block of memory");
+                throw new ArgumentOutOfRangeException("The offset or count is outside of the range of the block of memory");
             }
         }
 
@@ -596,8 +620,13 @@ namespace VNLib.Utils.Memory
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, int elementOffset)
         {
-            //Quick verify index exists
-            _ = array[elementOffset];
+            if(elementOffset < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(elementOffset));
+            }
+
+            //Quick verify index exists, may be the very last index
+            CheckBounds(array, (nuint)elementOffset, 1);
 
             //Pin the array
             GCHandle arrHandle = GCHandle.Alloc(array, GCHandleType.Pinned);
@@ -608,8 +637,6 @@ namespace VNLib.Utils.Memory
 
             return new(indexOffet, arrHandle);
         }
-
-        #region alloc
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> from the supplied address
@@ -652,121 +679,5 @@ namespace VNLib.Utils.Memory
             //Multiply back to page sizes
             return pages * Environment.SystemPageSize;
         }
-
-        /// <summary>
-        /// Allocates a block of unmanaged, or pooled manaaged memory depending on
-        /// compilation flags and runtime unamanged allocators.
-        /// </summary>
-        /// <typeparam name="T">The unamanged type to allocate</typeparam>
-        /// <param name="elements">The number of elements of the type within the block</param>
-        /// <param name="zero">Flag to zero elements during allocation before the method returns</param>
-        /// <returns>A handle to the block of memory</returns>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(int elements, bool zero = false) where T : unmanaged
-        {
-            if (elements < 0)
-            {
-                throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
-            }
-
-            if(elements > MAX_UNSAFE_POOL_SIZE || IsRpMallocLoaded)
-            {
-                // Alloc from heap
-                IntPtr block = Shared.Alloc((uint)elements, (uint)sizeof(T), zero);
-                //Init new handle
-                return new(Shared, block, elements);
-            }
-            else
-            {
-                return new(ArrayPool<T>.Shared, elements, zero);
-            }
-        }
-
-        /// <summary>
-        /// Allocates a block of unmanaged, or pooled manaaged memory depending on
-        /// compilation flags and runtime unamanged allocators, rounded up to the 
-        /// neareset memory page.
-        /// </summary>
-        /// <typeparam name="T">The unamanged type to allocate</typeparam>
-        /// <param name="elements">The number of elements of the type within the block</param>
-        /// <param name="zero">Flag to zero elements during allocation before the method returns</param>
-        /// <returns>A handle to the block of memory</returns>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static UnsafeMemoryHandle<T> UnsafeAllocNearestPage<T>(int elements, bool zero = false) where T : unmanaged
-        {
-            if (elements < 0)
-            {
-                throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
-            }
-            //Round to nearest page (in bytes)
-            nint np = NearestPage(elements * sizeof(T));
-
-            //Resize to element size
-            np /= sizeof(T);
-
-            return UnsafeAlloc<T>((int)np, zero);
-        }
-
-        /// <summary>
-        /// Allocates a block of unmanaged, or pooled manaaged memory depending on
-        /// compilation flags and runtime unamanged allocators.
-        /// </summary>
-        /// <typeparam name="T">The unamanged type to allocate</typeparam>
-        /// <param name="elements">The number of elements of the type within the block</param>
-        /// <param name="zero">Flag to zero elements during allocation before the method returns</param>
-        /// <returns>A handle to the block of memory</returns>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        public static IMemoryHandle<T> SafeAlloc<T>(int elements, bool zero = false) where T: unmanaged
-        {
-            if (elements < 0)
-            {
-                throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
-            }
-
-            //If the element count is larger than max pool size, alloc from shared heap
-            if (elements > MAX_UNSAFE_POOL_SIZE)
-            {
-                //Alloc from shared heap
-                return Shared.Alloc<T>(elements, zero);
-            }
-            else
-            {
-                //Get temp buffer from shared buffer pool
-                return new VnTempBuffer<T>(elements, zero);
-            }
-        }
-
-        /// <summary>
-        /// Allocates a block of unmanaged, or pooled manaaged memory depending on
-        /// compilation flags and runtime unamanged allocators, rounded up to the 
-        /// neareset memory page.
-        /// </summary>
-        /// <typeparam name="T">The unamanged type to allocate</typeparam>
-        /// <param name="elements">The number of elements of the type within the block</param>
-        /// <param name="zero">Flag to zero elements during allocation before the method returns</param>
-        /// <returns>A handle to the block of memory</returns>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        public static IMemoryHandle<T> SafeAllocNearestPage<T>(int elements, bool zero = false) where T : unmanaged
-        {
-            if (elements < 0)
-            {
-                throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
-            }
-
-            //Round to nearest page (in bytes)
-            nint np = NearestPage(elements * sizeof(T));
-
-            //Resize to element size
-            np /= sizeof(T);
-
-            return SafeAlloc<T>((int)np, zero);
-        }
-
-        #endregion
     }
 }

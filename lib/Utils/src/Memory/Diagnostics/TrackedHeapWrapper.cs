@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,9 +23,7 @@
 */
 
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
-
 
 namespace VNLib.Utils.Memory.Diagnostics
 {
@@ -38,6 +36,9 @@ namespace VNLib.Utils.Memory.Diagnostics
         private readonly IUnmangedHeap _heap;
         private readonly object _statsLock;
         private readonly ConcurrentDictionary<IntPtr, ulong> _table;
+
+        ///<inheritdoc/>
+        public HeapCreation CreationFlags => _heap.CreationFlags;
 
         /// <summary>
         /// Gets the underlying heap
