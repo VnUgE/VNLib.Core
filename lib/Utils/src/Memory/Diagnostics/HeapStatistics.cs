@@ -25,7 +25,7 @@
 namespace VNLib.Utils.Memory.Diagnostics
 {
     /// <summary>
-    /// A structures that represents the current/last captures 
+    /// A structure that represents the current/last captured 
     /// statistics of the monitored heap
     /// </summary>
     public readonly record struct HeapStatistics 

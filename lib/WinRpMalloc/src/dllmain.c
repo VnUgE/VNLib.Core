@@ -52,7 +52,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 //Define the heap methods
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapFlags* flags)
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flags)
 {
     //Check flags
     if (flags->CreationFlags & HEAP_CREATION_IS_SHARED)

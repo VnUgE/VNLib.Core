@@ -80,12 +80,12 @@ typedef void* ERRNO;
 /// <summary>
 /// A structure for heap initialization
 /// </summary>
-typedef struct UnmanagedHeapFlags
+typedef struct UnmanagedHeapDescriptor
 {
     LPVOID HeapPointer;
     HeapCreationFlags CreationFlags;
     ERRNO Flags;
-} UnmanagedHeapFlags;
+} UnmanagedHeapDescriptor;
 
 /// <summary>
 /// The heap creation method. You must set the flags->HeapPointer = your heap
@@ -93,7 +93,7 @@ typedef struct UnmanagedHeapFlags
 /// </summary>
 /// <param name="flags">Creation flags passed by the caller to create the heap. This structure will be initialized, and may be modified</param>
 /// <returns>A boolean value that indicates the result of the operation</returns>
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapFlags* flags);
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flags);
 
 /// <summary>
 /// Destroys a previously created heap

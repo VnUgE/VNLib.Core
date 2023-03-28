@@ -58,8 +58,8 @@ namespace VNLib.Utils.Memory
         public unsafe static NativeHeap LoadHeap(string dllPath, DllImportSearchPath searchPath, HeapCreation creationFlags, ERRNO flags)
         {
             //Create a flags structure
-            UnmanagedHeapFlags hf;
-            UnmanagedHeapFlags* hFlags = &hf;
+            UnmanagedHeapDescriptor hf;
+            UnmanagedHeapDescriptor* hFlags = &hf;
 
             //Set defaults
             hFlags->Flags = flags;
@@ -70,7 +70,7 @@ namespace VNLib.Utils.Memory
             return LoadHeapCore(dllPath, searchPath, hFlags);
         }
 
-        private unsafe static NativeHeap LoadHeapCore(string path, DllImportSearchPath searchPath, UnmanagedHeapFlags* flags)
+        private unsafe static NativeHeap LoadHeapCore(string path, DllImportSearchPath searchPath, UnmanagedHeapDescriptor* flags)
         {
             //Try to load the library
             SafeLibraryHandle library = SafeLibraryHandle.LoadLibrary(path, searchPath);
@@ -120,7 +120,7 @@ namespace VNLib.Utils.Memory
         private FreeDelegate FreeMethod;
         private DestroyHeapDelegate Destroy;
 
-        private unsafe NativeHeap(UnmanagedHeapFlags* flags, HeapMethods methodTable) :base(flags->InternalFlags, true)
+        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) :base(flags->InternalFlags, true)
         {
             //Store heap pointer
             handle = flags->HeapPointer;
@@ -176,7 +176,7 @@ namespace VNLib.Utils.Memory
          * Delegate methods match the native header impl for unmanaged heaps
          */
 
-        unsafe delegate ERRNO CreateHeapDelegate(UnmanagedHeapFlags* createFlags);
+        unsafe delegate ERRNO CreateHeapDelegate(UnmanagedHeapDescriptor* createFlags);
 
         delegate IntPtr AllocDelegate(IntPtr handle, nuint elements, nuint alignment, [MarshalAs(UnmanagedType.Bool)] bool zero);
 
@@ -187,7 +187,7 @@ namespace VNLib.Utils.Memory
         delegate ERRNO DestroyHeapDelegate(IntPtr heap);
 
         [StructLayout(LayoutKind.Sequential)]
-        record struct UnmanagedHeapFlags
+        record struct UnmanagedHeapDescriptor
         {
             public IntPtr HeapPointer;
 
