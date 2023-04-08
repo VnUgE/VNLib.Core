@@ -503,15 +503,19 @@ namespace VNLib.Plugins.Essentials
                     default:
                         break;
                 }
+
                 //If the file was not set or the request method is not a GET (or HEAD), return not-found
                 if (filename == null || (entity.Server.Method & (HttpMethod.GET | HttpMethod.HEAD)) == 0)
                 {
                     CloseWithError(HttpStatusCode.NotFound, entity);
                     return;
                 }
+
                 DateTime fileLastModified = File.GetLastWriteTimeUtc(filename);
+
                 //See if the last modifed header was set
                 DateTimeOffset? ifModifedSince = entity.Server.LastModified();
+                
                 //If the header was set, check the date, if the file has been modified since, continue sending the file
                 if (ifModifedSince.HasValue && ifModifedSince.Value > fileLastModified)
                 {
@@ -519,20 +523,24 @@ namespace VNLib.Plugins.Essentials
                     entity.CloseResponse(HttpStatusCode.NotModified);
                     return;
                 }
+
                 //Get the content type of he file
                 ContentType fileType = HttpHelpers.GetContentTypeFromFile(filename);
+                
                 //Make sure the client accepts the content type
                 if (entity.Server.Accepts(fileType))
                 {
                     //set last modified time as the files last write time
                     entity.Server.LastModified(fileLastModified);
+
                     //try to open the selected file for reading and allow sharing
                     FileStream fs = new (filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    
                     //Check for range 
                     if (entity.Server.Range != null && entity.Server.Range.Item1 > 0)
                     {
                         //Seek the stream to the specified position
-                        fs.Position = entity.Server.Range.Item1;
+                        fs.Seek(entity.Server.Range.Item1, SeekOrigin.Begin);
                         entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs);
                     }
                     else
@@ -540,13 +548,11 @@ namespace VNLib.Plugins.Essentials
                         //send the whole file
                         entity.CloseResponse(HttpStatusCode.OK, fileType, fs);
                     }
-                    return;
                 }
                 else
                 {
                     //Unacceptable
                     CloseWithError(HttpStatusCode.NotAcceptable, entity);
-                    return;
                 }
             }
             catch (IOException ioe)
@@ -557,7 +563,7 @@ namespace VNLib.Plugins.Essentials
             }
             catch (Exception ex)
             {
-                Log.Information(ex, "Unhandled exception during file opening.");
+                Log.Error(ex, "Unhandled exception during file opening.");
                 //Invoke the root error handler
                 CloseWithError(HttpStatusCode.InternalServerError, entity);
                 return;

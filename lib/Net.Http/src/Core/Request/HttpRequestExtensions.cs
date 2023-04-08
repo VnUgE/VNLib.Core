@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -114,7 +114,7 @@ namespace VNLib.Net.Http.Core
         /// Initializes the <see cref="HttpRequest"/> for an incomming connection
         /// </summary>
         /// <param name="server"></param>
-        /// <param name="ctx">The <see cref="TransportEventContext"/> to attach the request to</param>
+        /// <param name="ctx">The <see cref="ITransportContext"/> to attach the request to</param>
         /// <param name="defaultHttpVersion">The default http version</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Initialize(this HttpRequest server, ITransportContext ctx, HttpVersion defaultHttpVersion)

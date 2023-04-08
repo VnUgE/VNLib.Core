@@ -51,7 +51,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// The optional host configuration file to merge with plugin config 
         /// to pass to the loading plugin.
         /// </summary>
-        public readonly JsonDocument? HostConfig { get; init; }
+        public readonly JsonElement? HostConfig { get; init; }
 
         /// <summary>
         /// Passed to the underlying <see cref="RuntimePluginLoader"/>

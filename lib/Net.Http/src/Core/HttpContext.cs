@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -71,6 +71,11 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Gets or sets the alternate application protocol to swtich to
         /// </summary>
+        /// <remarks>
+        /// This property is only cleared when the context is released for reuse
+        /// so when this property contains a value, the context must be released
+        /// or this property must be exlicitly cleared
+        /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
 
         private readonly ResponseWriter responseWriter;
@@ -138,8 +143,6 @@ namespace VNLib.Net.Http.Core
         ///<inheritdoc/>
         public void EndRequest()
         {
-            AlternateProtocol = null;
-
             Request.OnComplete();
             Response.OnComplete();
             RequestBuffer.OnComplete();
@@ -156,6 +159,8 @@ namespace VNLib.Net.Http.Core
         bool IReusable.Release()
         {
             _ctx = null;
+
+            AlternateProtocol = null;
 
             //Release response/requqests
             Request.OnRelease();

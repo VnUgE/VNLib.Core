@@ -56,7 +56,7 @@ namespace VNLib.Net.Http
     /// with extensable processors and transport providers.
     /// This class cannot be inherited
     /// </summary>
-    public sealed partial class HttpServer : ICacheHolder
+    public sealed partial class HttpServer : ICacheHolder, IHttpServer
     {
         /// <summary>
         /// The host key that determines a "wildcard" host, meaning the 
@@ -206,19 +206,19 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Begins listening for connections on configured interfaces for configured hostnames.
         /// </summary>
-        /// <param name="token">A token used to stop listening for incomming connections and close all open websockets</param>
+        /// <param name="cancellationToken">A token used to stop listening for incomming connections and close all open websockets</param>
         /// <returns>A task that resolves when the server has exited</returns>
         /// <exception cref="SocketException"></exception>
         /// <exception cref="ThreadStateException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public Task Start(CancellationToken token)
+        public Task Start(CancellationToken cancellationToken)
         {
-            StopToken = CancellationTokenSource.CreateLinkedTokenSource(token);
+            StopToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             //Start servers with the new token source
             Transport.Start(StopToken.Token);
             //Start the listen task
-            return Task.Run(ListenWorkerDoWork, token);
+            return Task.Run(ListenWorkerDoWork, cancellationToken);
         }
 
         /*
@@ -244,6 +244,7 @@ namespace VNLib.Net.Http
             Running = true;
             
             Config.ServerLog.Information("HTTP server {hc} listening for connections", GetHashCode());
+
             //Listen for connections until canceled
             while (true)
             {
@@ -251,6 +252,7 @@ namespace VNLib.Net.Http
                 {
                     //Listen for new connection 
                     ITransportContext ctx = await Transport.AcceptAsync(StopToken!.Token);
+
                     //Try to dispatch the recieved event
                     _ = DataReceivedAsync(ctx).ConfigureAwait(false);
                 }
@@ -268,8 +270,10 @@ namespace VNLib.Net.Http
                     Config.ServerLog.Error(ex);
                 }
             }
+
             //Clear all caches
             CacheHardClear();
+
             //Clear running flag
             Running = false;
             Config.ServerLog.Information("HTTP server {hc} exiting", GetHashCode());

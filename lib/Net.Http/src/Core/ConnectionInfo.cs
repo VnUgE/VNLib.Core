@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -87,6 +87,7 @@ namespace VNLib.Net.Http
             string contentType = HttpHelpers.GetContentTypeString(type);
             return Accepts(contentType);
         }
+
         ///<inheritdoc/>
         public bool Accepts(string contentType)
         {
@@ -96,22 +97,29 @@ namespace VNLib.Net.Http
             }
 
             //If client accepts exact requested encoding 
-            if (Accept.Contains(contentType))
+            if (Accept.Contains(contentType, StringComparer.OrdinalIgnoreCase))
             {
                 return true;
             }
-            
-            //Search accept types to determine if the content type is acceptable
-            bool accepted = Accept
-                .Where(ctype =>
+
+            //Search for the content-sub-type 
+
+            //Get prinary side of mime type
+            ReadOnlySpan<char> primary = contentType.AsSpan().SliceBeforeParam('/');
+
+            for (int i = 0; i < Context.Request.Accept.Count; i++)
+            {
+                //The the accept subtype
+                ReadOnlySpan<char> ctSubType = Context.Request.Accept[i].AsSpan().SliceBeforeParam('/');
+                
+                //See if accepts any subtype, or the primary sub-type matches
+                if(ctSubType[0] == '*' || ctSubType.Equals(primary, StringComparison.OrdinalIgnoreCase))
                 {
-                    //Get prinary side of mime type
-                    ReadOnlySpan<char> primary = contentType.AsSpan().SliceBeforeParam('/');
-                    ReadOnlySpan<char> ctSubType = ctype.AsSpan().SliceBeforeParam('/');
-                    //See if accepts any subtype, or the primary sub-type matches
-                    return ctSubType[0] == '*' || ctSubType.Equals(primary, StringComparison.OrdinalIgnoreCase);
-                }).Any();
-            return accepted;
+                    return true;
+                }
+            }
+
+            return false;
         }
         
         /// <summary>

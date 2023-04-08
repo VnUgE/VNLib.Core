@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -54,32 +54,26 @@ namespace VNLib.Plugins.Essentials.Endpoints
             try
             {
                 ERRNO preProc = PreProccess(entity);
+
                 if (preProc == ERRNO.E_FAIL)
                 {
                     return VfReturnType.Forbidden;
                 }
+
                 //Entity was responded to by the pre-processor
                 if (preProc < 0)
                 {
                     return VfReturnType.VirtualSkip;
                 }
+
                 //If websockets are quested allow them to be processed in a logged-in/secure context
                 if (entity.Server.IsWebSocketRequest)
                 {
                     return await WebsocketRequestedAsync(entity);
                 }
-                ValueTask<VfReturnType> op = entity.Server.Method switch
-                {
-                    //Get request to get account
-                    HttpMethod.GET => GetAsync(entity),
-                    HttpMethod.POST => PostAsync(entity),
-                    HttpMethod.DELETE => DeleteAsync(entity),
-                    HttpMethod.PUT => PutAsync(entity),
-                    HttpMethod.PATCH => PatchAsync(entity),
-                    HttpMethod.OPTIONS => OptionsAsync(entity),
-                    _ => AlternateMethodAsync(entity, entity.Server.Method),
-                };
-                return await op;
+               
+                //Call process method
+                return await OnProcessAsync(entity);
             }
             catch (InvalidJsonRequestException ije)
             {
@@ -175,6 +169,29 @@ namespace VNLib.Plugins.Essentials.Endpoints
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Called by the process method to process a connection after it has been pre-processed.
+        /// By default, this method simply selects the request method type and invokes the desired 
+        /// handler
+        /// </summary>
+        /// <param name="entity">The entity to process</param>
+        /// <returns>A value task that completes when the processing has completed</returns>
+        protected virtual ValueTask<VfReturnType> OnProcessAsync(HttpEntity entity)
+        {
+            ValueTask<VfReturnType> op = entity.Server.Method switch
+            {
+                //Get request to get account
+                HttpMethod.GET => GetAsync(entity),
+                HttpMethod.POST => PostAsync(entity),
+                HttpMethod.DELETE => DeleteAsync(entity),
+                HttpMethod.PUT => PutAsync(entity),
+                HttpMethod.PATCH => PatchAsync(entity),
+                HttpMethod.OPTIONS => OptionsAsync(entity),
+                _ => AlternateMethodAsync(entity, entity.Server.Method),
+            };
+            return op;
         }
 
         /// <summary>

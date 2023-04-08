@@ -71,7 +71,7 @@ namespace VNLib.Plugins.Runtime
         /// The <paramref name="log"/> argument may be null if <paramref name="unloadable"/> is false
         /// </remarks>
         /// <exception cref="ArgumentNullException"></exception>
-        public RuntimePluginLoader(string pluginPath, JsonDocument? hostConfig = null, ILogProvider? log = null, bool unloadable = false, bool hotReload = false)
+        public RuntimePluginLoader(string pluginPath, JsonElement? hostConfig = null, ILogProvider? log = null, bool unloadable = false, bool hotReload = false)
             :this(
             new PluginConfig(pluginPath)
             {
@@ -92,13 +92,13 @@ namespace VNLib.Plugins.Runtime
         /// <param name="hostConfig">The host/process configuration DOM</param>
         /// <param name="log">A log provider to write plugin unload log events to</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public RuntimePluginLoader(PluginConfig config, JsonDocument? hostConfig, ILogProvider? log)
+        public RuntimePluginLoader(PluginConfig config, JsonElement? hostConfig, ILogProvider? log)
         {
             //Shared types is required so the default load context shares types
             config.PreferSharedTypes = true;
 
-            //Default to empty config if null
-            HostConfig = hostConfig ?? JsonDocument.Parse("{}");
+            //Default to empty config if null, otherwise clone a copy of the host config element
+            HostConfig = hostConfig.HasValue ? Clone(hostConfig.Value) : JsonDocument.Parse("{}");
 
             Loader = new(config);
             PluginPath = config.MainAssemblyPath;
@@ -203,7 +203,24 @@ namespace VNLib.Plugins.Runtime
         {
             Controller.Dispose();
             Loader.Dispose();
+            HostConfig.Dispose();
         }
 
+
+        private static JsonDocument Clone(JsonElement hostConfig)
+        {
+            //Crate ms to write the current doc data to
+            using VnMemoryStream ms = new();
+
+            using (Utf8JsonWriter writer = new(ms))
+            {
+                hostConfig.WriteTo(writer);
+            }
+
+            //Reset ms
+            ms.Seek(0, SeekOrigin.Begin);
+            
+            return JsonDocument.Parse(ms);
+        }
     }
 }

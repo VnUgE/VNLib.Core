@@ -39,7 +39,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// </summary>
     public sealed class HttpServiceStack : VnDisposeable
     {
-        private readonly LinkedList<HttpServer> _servers;
+        private readonly LinkedList<IHttpServer> _servers;
         private readonly ServiceDomain _serviceDomain;
 
         private CancellationTokenSource? _cts;
@@ -48,7 +48,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// <summary>
         /// A collection of all loaded servers
         /// </summary>
-        public IReadOnlyCollection<HttpServer> Servers => _servers;
+        public IReadOnlyCollection<IHttpServer> Servers => _servers;
 
         /// <summary>
         /// The service domain's plugin controller
@@ -60,7 +60,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// generate servers to listen for services exposed by the 
         /// specified host context
         /// </summary>
-        internal HttpServiceStack(LinkedList<HttpServer> servers, ServiceDomain serviceDomain)
+        internal HttpServiceStack(LinkedList<IHttpServer> servers, ServiceDomain serviceDomain)
         {
             _servers = servers;
             _serviceDomain = serviceDomain;

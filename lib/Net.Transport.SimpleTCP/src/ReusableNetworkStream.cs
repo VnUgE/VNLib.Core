@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -137,7 +137,7 @@ namespace VNLib.Net.Transport.Tcp
         {
             //Call sync
             Task closing = Transport.CloseAsync();
-            closing.Wait();
+            closing.GetAwaiter().GetResult();
         }
 
         public override ValueTask DisposeAsync() 

@@ -23,10 +23,11 @@
 */
 
 using System;
-using System.Linq;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
+using VNLib.Utils.Logging;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -36,58 +37,123 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// </summary>
     public sealed class HttpServiceStackBuilder
     {
-        private readonly LinkedList<HttpServer> _servers;
-
-        /// <summary>
-        /// The built <see cref="HttpServiceStack"/>
-        /// </summary>
-        public HttpServiceStack ServiceStack { get; }
-
-        /// <summary>
-        /// Gets the underlying <see cref="ServiceDomain"/>
-        /// </summary>
-        public ServiceDomain ServiceDomain { get; }
-
         /// <summary>
         /// Initializes a new <see cref="HttpServiceStack"/> that will 
         /// generate servers to listen for services exposed by the 
         /// specified host context
         /// </summary>
         public HttpServiceStackBuilder()
+        {}
+
+        private Action<ICollection<IServiceHost>>? _hostBuilder;
+        private Func<ServiceGroup, IHttpServer>? _getServers;
+
+        /// <summary>
+        /// Uses the supplied callback to get a collection of virtual hosts
+        /// to build the current domain with
+        /// </summary>
+        /// <param name="hostBuilder">The callback method to build virtual hosts</param>
+        /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
+        public HttpServiceStackBuilder WithDomainBuilder(Action<ICollection<IServiceHost>> hostBuilder)
         {
-            ServiceDomain = new();
-            _servers = new();
-            ServiceStack = new(_servers, ServiceDomain);
+            _hostBuilder = hostBuilder;
+            return this;
         }
 
         /// <summary>
-        /// Builds all http servers from 
+        /// Spcifies a callback function that builds <see cref="IHttpServer"/> instances from the hosts
         /// </summary>
-        /// <param name="config">The http server configuration to user for servers</param>
-        /// <param name="getTransports">A callback method that gets the transport provider for the given host group</param>
-        public void BuildServers(in HttpConfig config, Func<ServiceGroup, ITransportProvider> getTransports)
+        /// <param name="getServers">A callback method that gets the http server implementation for the service group</param>
+        public HttpServiceStackBuilder WithHttp(Func<ServiceGroup, IHttpServer> getServers)
         {
-            //enumerate hosts groups
-            foreach (ServiceGroup hosts in ServiceDomain.ServiceGroups)
+            _getServers = getServers;
+            return this;
+        }
+
+        /// <summary>
+        /// Builds the new <see cref="HttpServiceStack"/> from the configured callbacks, WITHOUT loading plugins
+        /// </summary>
+        /// <returns>The newly constructed <see cref="HttpServiceStack"/> that may be used to manage your http services</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public HttpServiceStack Build()
+        {
+            _ = _hostBuilder ?? throw new ArgumentNullException("WithDomainBuilder", "You have not configured a service domain configuration callback");
+            _ = _getServers ?? throw new ArgumentNullException("WithHttp", "You have not configured a IHttpServer configuration callback");
+
+            //Inint the service domain
+            ServiceDomain sd = new();
+            try
             {
-                //get transport for provider
-                ITransportProvider transport = getTransports.Invoke(hosts);
+                if (!sd.BuildDomain(_hostBuilder))
+                {
+                    throw new ArgumentException("Failed to configure the service domain, you must expose at least one service host");
+                }
 
-                //Create new server
-                HttpServer server = new(config, transport, hosts.Hosts.Select(static h => h.Processor as IWebRoot));
+                LinkedList<IHttpServer> servers = new();
 
-                //Add server to internal list
-                _servers.AddLast(server);
+                //enumerate hosts groups
+                foreach (ServiceGroup hosts in sd.ServiceGroups)
+                {
+                    //Create new server
+                    IHttpServer server = _getServers.Invoke(hosts);
+
+                    //Add server to internal list
+                    servers.AddLast(server);
+                }
+
+                //Return the service stack
+                return new HttpServiceStack(servers, sd);
+            }
+            catch
+            {
+                sd.Dispose();
+                throw;
             }
         }
 
         /// <summary>
-        /// Releases any resources that may be held by the <see cref="ServiceDomain"/>
-        /// incase of an error
+        /// Builds the new <see cref="HttpServiceStack"/> from configured callbacks, AND loads your plugin environment 
+        /// asynchronously
         /// </summary>
-        public void ReleaseOnError()
+        /// <returns>The newly constructed <see cref="HttpServiceStack"/> that may be used to manage your http services</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public async Task<HttpServiceStack> BuildAsync(PluginLoadConfiguration config, ILogProvider appLog)
         {
-            ServiceStack.Dispose();
+            _ = _hostBuilder ?? throw new ArgumentNullException("WithDomainBuilder", "You have not configured a service domain configuration callback");
+            _ = _getServers ?? throw new ArgumentNullException("WithHttp", "You have not configured a IHttpServer configuration callback");
+
+            //Inint the service domain
+            ServiceDomain sd = new();
+            try
+            {
+                if (!sd.BuildDomain(_hostBuilder))
+                {
+                    throw new ArgumentException("Failed to configure the service domain, you must expose at least one service host");
+                }
+
+                //Load plugins async
+                await sd.PluginManager.LoadPluginsAsync(config, appLog);
+
+                LinkedList<IHttpServer> servers = new();
+
+                //enumerate hosts groups
+                foreach (ServiceGroup hosts in sd.ServiceGroups)
+                {
+                    //Create new server
+                    IHttpServer server = _getServers.Invoke(hosts);
+
+                    //Add server to internal list
+                    servers.AddLast(server);
+                }
+
+                //Return the service stack
+                return new HttpServiceStack(servers, sd);
+            }
+            catch
+            {
+                sd.Dispose();
+                throw;
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -29,7 +29,6 @@ using System.Text;
 using VNLib.Utils;
 using VNLib.Utils.IO;
 
-
 namespace VNLib.Net.Http.Core
 {
 
@@ -39,18 +38,14 @@ namespace VNLib.Net.Http.Core
     internal struct TransportReader : IVnTextReader
     {
         ///<inheritdoc/>
-        public readonly Encoding Encoding => _encoding;
+        public readonly Encoding Encoding { get; }
         ///<inheritdoc/>
-        public readonly ReadOnlyMemory<byte> LineTermination => _lineTermination;
+        public readonly ReadOnlyMemory<byte> LineTermination { get; }
         ///<inheritdoc/>
-        public readonly Stream BaseStream => _transport;
-
+        public readonly Stream BaseStream { get; }
 
         private readonly SharedHeaderReaderBuffer BinBuffer;
-        private readonly Encoding _encoding;
-        private readonly Stream _transport;
-        private readonly ReadOnlyMemory<byte> _lineTermination;
-
+      
         private int BufWindowStart;
         private int BufWindowEnd;
 
@@ -65,9 +60,9 @@ namespace VNLib.Net.Http.Core
         {
             BufWindowEnd = 0;
             BufWindowStart = 0;
-            _encoding = encoding;
-            _transport = transport;
-            _lineTermination = lineTermination;
+            Encoding = encoding;
+            BaseStream = transport;
+            LineTermination = lineTermination;
             BinBuffer = buffer;
         }
         
@@ -86,7 +81,7 @@ namespace VNLib.Net.Http.Core
             //Get a buffer from the end of the current window to the end of the buffer
             Span<byte> bufferWindow = BinBuffer.BinBuffer[BufWindowEnd..];
             //Read from stream
-            int read = _transport.Read(bufferWindow);
+            int read = BaseStream.Read(bufferWindow);
             //Update the end of the buffer window to the end of the read data
             BufWindowEnd += read;
         }

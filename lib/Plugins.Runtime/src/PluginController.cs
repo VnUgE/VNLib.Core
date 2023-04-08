@@ -25,7 +25,6 @@
 using System;
 using System.Linq;
 using System.Text.Json;
-using System.Threading;
 using System.Reflection;
 using System.Collections.Generic;
 
@@ -143,7 +142,6 @@ namespace VNLib.Plugins.Runtime
                 {
                     //Always 
                     _plugins.Clear();
-
                 }
             }
         }

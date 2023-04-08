@@ -28,7 +28,8 @@ Allocator selection has been updated to abstract the unmanaged heap loading to a
 
 There are two types of heap architectures that are in use within the Memory namespace. Global/Shared and Private/First Class. They generally make the following assumptions 
 
-**Shared Heap** - Prefers performance over isolation, consumers expect calls to have minimal multi-threaded performance penalties at the cost of isolation
+**Shared Heap** - Prefers performance over isolation, consumers expect calls to have minimal multi-threaded performance penalties at the cost of isolation.
+
 **Private Heap** - Prefers isolation over performance, consumers assume calls may have multi-threaded performance penalties for the benefit of isolation. 
 
 On heap creation, the `UnmanagedHeapDescriptor` structure's `HeapCreationFlags` will have the IsShared flag set if the desired heap is the global heap, or a private heap in the absence of said flag. By default **ALL** heaps are assumed **not** thread safe, and synchronization is provided by the `UnmanagedHeapBase` class, and as such, the UseSynchronization flag is always present when using the `InitializeNewHeapForProcess` method call. 
@@ -50,7 +51,7 @@ Setting the `VNLIB_SHARED_HEAP_FILE_PATH` environment variable will instruct the
 If you don't want to use a custom heap implementation, the library has safe fallbacks for all platforms. On Windows the PrivateHeap api is used by default. The shared heap, again, prefers performance and will use the process heap returned from `GetProcessHeap()`, instead of creating a private heap that requires synchronization penalties. On all other platforms the fallback will be the .NET NativeMemory allocator, which is cross platform, but does **not** actually implement a "private" heap. So that means on non-Windows platforms unless you select your own heap, isolation is not an option. 
 
 ### Heap Diagnostics
-The Memory.Diagnostics namespace was added to provide a wrapper for tracking IUnmanagedHeap memory allocations. Diagnostics can be enabled for the SharedHeap by setting the `VNLIB_SHARED_HEAP_DIAGNOSTICS` environment variable to "1". When enabled, calling MemoryUtil.GetSharedHeapStats() will return the heap's current statistics, otherwise an empty struct is returned. The Shared heap diagnostics are disabled by default.
+The Memory.Diagnostics namespace was added to provide a wrapper for tracking IUnmanagedHeap memory allocations. Diagnostics can be enabled for the SharedHeap by setting the `VNLIB_SHARED_HEAP_DIAGNOSTICS` environment variable to "1". When enabled, calling `MemoryUtil.GetSharedHeapStats()` will return the heap's current statistics, otherwise an empty struct is returned. The Shared heap diagnostics are disabled by default.
 
 ### Other notes
 Generally for internal library data structures that require memory allocation, a constructor override or a static method will consume a heap instance so you may pass your own heap instance or the Shared heap.

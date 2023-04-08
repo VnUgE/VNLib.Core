@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -42,7 +42,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <summary>
         /// An <see cref="ILogProvider"/> to write logs to
         /// </summary>
-        protected ILogProvider Log { get; private set; }
+        protected ILogProvider Log { get; set; }
 
         /// <summary>
         /// Sets the log and path and checks the values
@@ -61,6 +61,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
             //Store log
             Log = log ?? throw new ArgumentNullException(nameof(log));
         }
+
         ///<inheritdoc/>
         public abstract ValueTask<VfReturnType> Process(T entity);
     }

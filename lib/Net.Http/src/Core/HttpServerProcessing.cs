@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -30,7 +30,6 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
-using VNLib.Utils;
 using VNLib.Utils.Logging;
 using VNLib.Net.Http.Core;
 
@@ -48,8 +47,8 @@ namespace VNLib.Net.Http
             Interlocked.Increment(ref OpenConnectionCount);
             
             //Rent a new context object to reuse
-            HttpContext context = ContextStore.Rent();
-
+            HttpContext? context = ContextStore.Rent();
+            
             try
             {
                 //Set write timeout
@@ -65,14 +64,14 @@ namespace VNLib.Net.Http
                     transportContext.ConnectionStream.ReadTimeout = Config.ActiveConnectionRecvTimeout;
                     
                     //Process the request
-                    ERRNO keepalive = await ProcessHttpEventAsync(transportContext, context);
-                    
-                    //If the connection is closed, we can return 
-                    if (!keepalive)
+                    bool keepAlive = await ProcessHttpEventAsync(transportContext, context);
+
+                    //If not keepalive, exit the listening loop
+                    if (!keepAlive)
                     {
                         break;
                     }
-                    
+
                     //Set inactive keeaplive timeout
                     transportContext.ConnectionStream.ReadTimeout = (int)Config.ConnectionKeepAlive.TotalMilliseconds;
                     
@@ -80,6 +79,24 @@ namespace VNLib.Net.Http
                     await transportContext.ConnectionStream.ReadAsync(Memory<byte>.Empty, StopToken!.Token);
                     
                 } while (true);
+
+                //Check if an alternate protocol was specified
+                if (context.AlternateProtocol != null)
+                {
+                    //Save the current ap
+                    IAlternateProtocol ap = context.AlternateProtocol;
+
+                    //Release the context before listening to free it back to the pool
+                    ContextStore.Return(context);
+                    context = null;
+
+                    //Remove transport timeouts
+                    transportContext.ConnectionStream.ReadTimeout = Timeout.Infinite;
+                    transportContext.ConnectionStream.WriteTimeout = Timeout.Infinite;
+
+                    //Listen on the alternate protocol
+                    await ap.RunAsync(transportContext.ConnectionStream, StopToken!.Token).ConfigureAwait(false);
+                }
             }
             //Catch wrapped socket exceptions
             catch(IOException ioe) when(ioe.InnerException is SocketException se)
@@ -90,7 +107,7 @@ namespace VNLib.Net.Http
             {
                 WriteSocketExecption(se);
             }
-            catch (OperationCanceledException oce)
+            catch(OperationCanceledException oce)
             {
                 Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m}, connection closed", oce.Message);
             }
@@ -102,8 +119,12 @@ namespace VNLib.Net.Http
             //Dec open connection count
             Interlocked.Decrement(ref OpenConnectionCount);
             
-            //Return context to store
-            ContextStore.Return(context);
+            //Return the context for normal operation
+            if(context != null)
+            {
+                //Return context to store
+                ContextStore.Return(context);
+            }
             
             //Close the transport async
             try
@@ -123,7 +144,7 @@ namespace VNLib.Net.Http
         /// <param name="transportContext">The <see cref="ITransportContext"/> describing the incoming connection</param>
         /// <param name="context">Reusable context object</param>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<ERRNO> ProcessHttpEventAsync(ITransportContext transportContext, HttpContext context)
+        private async Task<bool> ProcessHttpEventAsync(ITransportContext transportContext, HttpContext context)
         {
             //Prepare http context to process a new message
             context.BeginRequest();
@@ -146,25 +167,16 @@ namespace VNLib.Net.Http
                 }
 #endif
                 //process the request
-                ERRNO keepalive = await ProcessRequestAsync(context, (HttpStatusCode)status);
-                //Store alternate protocol if set
-                IAlternateProtocol? alternateProtocol = context.AlternateProtocol;
+                bool keepalive = await ProcessRequestAsync(context, (HttpStatusCode)status);
+               
                 //Close the response
                 await context.WriteResponseAsync(StopToken!.Token);
-                //See if an alterate protocol was specified
-                if (alternateProtocol != null)
-                {
-                    //Disable transport timeouts 
-                    transportContext.ConnectionStream.WriteTimeout = Timeout.Infinite;
-                    transportContext.ConnectionStream.ReadTimeout = Timeout.Infinite;
-                    //Exec the protocol handler and pass the transport stream
-                    await alternateProtocol.RunAsync(transportContext.ConnectionStream, StopToken!.Token);
+                
+                /*
+                 * If an alternate protocol was specified, we need to break the keepalive loop
+                 */
 
-                    //Clear keepalive flag to close the connection
-                    keepalive = false;
-                }
-
-                return keepalive;
+                return keepalive & context.AlternateProtocol == null;
             }
             finally
             {
@@ -236,7 +248,7 @@ namespace VNLib.Net.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async ValueTask<ERRNO> ProcessRequestAsync(HttpContext context, HttpStatusCode status)
+        private async ValueTask<bool> ProcessRequestAsync(HttpContext context, HttpStatusCode status)
         {
             //Check status
             if (status != 0)

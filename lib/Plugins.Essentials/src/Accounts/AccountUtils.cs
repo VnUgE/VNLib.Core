@@ -53,7 +53,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <summary>
         /// The size in bytes of the random passwords generated when invoking the <see cref="SetRandomPasswordAsync(PasswordHashing, IUserManager, IUser, int)"/>
         /// </summary>
-        public const int RANDOM_PASS_SIZE = 128;
+        public const int RANDOM_PASS_SIZE = 240;
      
         /// <summary>
         /// The origin string of a local user account. This value will be set if an
@@ -409,8 +409,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         }
 
         /// <summary>
-        /// Attempts to encrypt the supplied data with session stored client information. The user must 
-        /// be authorized
+        /// Attempts to encrypt client data against the supplied security information instance, without a secured session.
         /// </summary>
         /// <param name="entity"></param>
         /// <param name="secInfo">Used for unauthorized connections to encrypt client data based on client security info</param>
