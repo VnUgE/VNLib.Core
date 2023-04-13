@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -32,31 +32,18 @@ namespace VNLib.Utils.Extensions
     /// that has been entered and will be released. Best if used
     /// within a using() statment
     /// </summary>
-    public readonly struct SemSlimReleaser : IDisposable, IEquatable<SemSlimReleaser>
+    public readonly record struct SemSlimReleaser(SemaphoreSlim Semaphore) : IDisposable
     {
-        private readonly SemaphoreSlim _semaphore;
-        internal SemSlimReleaser(SemaphoreSlim semaphore) => _semaphore = semaphore;
         /// <summary>
         /// Releases the System.Threading.SemaphoreSlim object once.
         /// </summary>
-        public readonly void Dispose() => _semaphore.Release();
+        public readonly void Dispose() => Semaphore.Release();
         /// <summary>
         /// Releases the System.Threading.SemaphoreSlim object once.
         /// </summary>
         /// <returns>The previous count of the <see cref="SemaphoreSlim"/></returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="SemaphoreFullException"></exception>
-        public readonly int Release() => _semaphore.Release();
-
-        ///<inheritdoc/>
-        public override bool Equals(object obj) => obj is SemSlimReleaser ssr && Equals(ssr);
-        ///<inheritdoc/>
-        public override int GetHashCode() => _semaphore.GetHashCode();
-        ///<inheritdoc/>
-        public static bool operator ==(SemSlimReleaser left, SemSlimReleaser right) => left.Equals(right);
-        ///<inheritdoc/>
-        public static bool operator !=(SemSlimReleaser left, SemSlimReleaser right) => !(left == right);
-        ///<inheritdoc/>
-        public bool Equals(SemSlimReleaser other) => _semaphore == other._semaphore;
+        public readonly int Release() => Semaphore.Release();
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -32,31 +32,16 @@ namespace VNLib.Utils.Extensions
     /// that has been entered and will be released. Best if used
     /// within a using() statment
     /// </summary>
-    public readonly struct MutexReleaser : IDisposable, IEquatable<MutexReleaser>
+    /// <param name="Handle">The Mutext referrence</param>
+    public readonly record struct MutexReleaser(Mutex Handle) : IDisposable
     {
-        private readonly Mutex _mutext;
-        internal MutexReleaser(Mutex mutex) => _mutext = mutex;
         /// <summary>
         ///  Releases the held System.Threading.Mutex once.
         /// </summary>
-        public readonly void Dispose() => _mutext.ReleaseMutex();
+        public readonly void Dispose() => Handle.ReleaseMutex();
         /// <summary>
         /// Releases the held System.Threading.Mutex once.
         /// </summary>
-        public readonly void ReleaseMutext() => _mutext.ReleaseMutex();
-
-        ///<inheritdoc/>
-        public bool Equals(MutexReleaser other) => _mutext.Equals(other._mutext);
-        
-        ///<inheritdoc/>
-        public override bool Equals(object? obj) => obj is MutexReleaser releaser && Equals(releaser);
-
-        ///<inheritdoc/>
-        public override int GetHashCode() => _mutext.GetHashCode();
-
-        ///<inheritdoc/>
-        public static bool operator ==(MutexReleaser left, MutexReleaser right) => left.Equals(right);
-        ///<inheritdoc/>
-        public static bool operator !=(MutexReleaser left, MutexReleaser right) => !(left == right);
+        public readonly void ReleaseMutext() => Handle.ReleaseMutex();
     }
 }

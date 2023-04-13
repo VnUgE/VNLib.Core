@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -31,7 +31,7 @@ namespace VNLib.Utils.Extensions
     /// A handle that represents a paused timer that may be resumed when the handle is disposed
     /// or the Resume() method is called
     /// </summary>
-    public readonly struct TimerResumeHandle: IEquatable<TimerResumeHandle>, IDisposable
+    public readonly record struct TimerResumeHandle: IDisposable
     {
         private readonly Timer _timer;
         private readonly TimeSpan _resumeTime;
@@ -46,21 +46,11 @@ namespace VNLib.Utils.Extensions
         /// Resumes the timer to the configured time from the call to Timer.Stop()
         /// </summary>
         public void Resume() => _timer.Change(_resumeTime, Timeout.InfiniteTimeSpan);
+
         /// <summary>
         /// Releases any resources held by the Handle, and resumes the timer to 
         /// the configured time from the call to Timer.Stop()
         /// </summary>
         public void Dispose() => Resume();
-
-        ///<inheritdoc/>
-        public bool Equals(TimerResumeHandle other) => _timer.Equals(other) && _resumeTime == other._resumeTime;
-        ///<inheritdoc/>
-        public override bool Equals(object? obj) => obj is TimerResumeHandle trh && Equals(trh);
-        ///<inheritdoc/>
-        public override int GetHashCode() => _timer.GetHashCode() + _resumeTime.GetHashCode();
-        ///<inheritdoc/>
-        public static bool operator ==(TimerResumeHandle left, TimerResumeHandle right) => left.Equals(right);
-        ///<inheritdoc/>
-        public static bool operator !=(TimerResumeHandle left, TimerResumeHandle right) => !(left == right);
     }
 }

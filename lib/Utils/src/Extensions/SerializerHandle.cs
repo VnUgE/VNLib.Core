@@ -24,7 +24,6 @@
 
 using System;
 
-
 using VNLib.Utils.Async;
 
 namespace VNLib.Utils.Extensions
@@ -34,43 +33,13 @@ namespace VNLib.Utils.Extensions
     /// and releases the lock when the handle is disposed
     /// </summary>
     /// <typeparam name="TMoniker">The moniker type</typeparam>
-    public readonly struct SerializerHandle<TMoniker> : IDisposable, IEquatable<SerializerHandle<TMoniker>>
+    /// <param name="Moniker">The monike that referrences the entered lock</param>
+    /// <param name="Serializer">The serialzer this handle will release the lock on when disposed</param>
+    public readonly record struct SerializerHandle<TMoniker>(TMoniker Moniker, IAsyncAccessSerializer<TMoniker> Serializer) : IDisposable
     {
-        private readonly IAsyncAccessSerializer<TMoniker> _serializer;
-        private readonly TMoniker _moniker;
-
-        /// <summary>
-        /// Inializes a new <see cref="SerializerHandle{TMoniker}"/> that is holding 
-        /// a lock to the given <see cref="IAsyncAccessSerializer{TMoniker}"/> by the 
-        /// given <paramref name="moniker"/>
-        /// </summary>
-        /// <param name="moniker">The monike that referrences the entered lock</param>
-        /// <param name="serializer">The serialzer this handle will release the lock on when disposed</param>
-        public SerializerHandle(TMoniker moniker, IAsyncAccessSerializer<TMoniker> serializer)
-        {
-            _moniker = moniker;
-            _serializer = serializer;
-        }
-
         /// <summary>
         /// Releases the exclusive lock on the moinker back to the serializer;
         /// </summary>
-        public readonly void Dispose() => _serializer.Release(_moniker);
-
-        ///<inheritdoc/>
-        public override bool Equals(object? obj) => obj is SerializerHandle<TMoniker> sh && Equals(sh);
-
-        ///<inheritdoc/>
-        public override int GetHashCode() => _moniker?.GetHashCode() ?? 0;
-
-        public static bool operator ==(SerializerHandle<TMoniker> left, SerializerHandle<TMoniker> right) => left.Equals(right);
-
-        public static bool operator !=(SerializerHandle<TMoniker> left, SerializerHandle<TMoniker> right) => !(left == right);
-
-        ///<inheritdoc/>
-        public bool Equals(SerializerHandle<TMoniker> other)
-        {
-            return (_moniker == null && other._moniker == null) || _moniker != null && _moniker.Equals(other._moniker);
-        }
+        public readonly void Dispose() => Serializer.Release(Moniker);
     }
 }
