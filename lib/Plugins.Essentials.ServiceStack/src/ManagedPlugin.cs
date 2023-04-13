@@ -27,12 +27,16 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Threading.Tasks;
 using System.ComponentModel.Design;
+
+using McMaster.NETCore.Plugins;
 
 using VNLib.Utils;
 using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Attributes;
+
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -44,18 +48,35 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         private UnloadableServiceContainer? _services;
 
-        public ManagedPlugin(string pluginPath, PluginLoadConfiguration config, IPluginEventListener listener)
+        public ManagedPlugin(string pluginPath, in PluginLoadConfiguration config, IPluginEventListener listener)
         {
             PluginPath = pluginPath;
 
+            //Get the plugin config for the assembly
+            PluginConfig pConfig = GetConfigForAssemblyPath(pluginPath, in config);
+
             //configure the loader
-            _plugin = new(pluginPath, config.HostConfig, config.PluginErrorLog, config.HotReload, config.HotReload);
+            _plugin = new(pConfig, config.HostConfig, config.PluginErrorLog);
 
             //Register listener before loading occurs
             _plugin.Controller.Register(this, this);
 
             //Store listener to raise events
             _serviceDomainListener = listener;
+        }
+
+        private static PluginConfig GetConfigForAssemblyPath(string asmPath, in PluginLoadConfiguration loadConfig)
+        {
+            PluginConfig config = new(asmPath)
+            {
+                IsUnloadable = loadConfig.HotReload,
+                EnableHotReload = loadConfig.HotReload,
+                IsLazyLoaded = false,
+                PreferSharedTypes = true,
+                DefaultContext = AssemblyLoadContext.Default,
+                ReloadDelay = loadConfig.ReloadDelay
+            };            
+            return config;
         }
 
         ///<inheritdoc/>

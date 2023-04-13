@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.PluginBase
@@ -69,22 +69,27 @@ namespace VNLib.Plugins
         /// by the host app
         /// </summary>
         public ICollection<IEndpoint> Endpoints { get; } = new List<IEndpoint>();
+
         /// <summary>
         /// The logging instance
         /// </summary>
         public ILogProvider Log { get; private set; }
+
         /// <summary>
         /// If passed by the host application, the configuration file of the host application and plugin
         /// </summary>
         protected JsonDocument Configuration { get; private set; }
+
         /// <summary>
         /// The configuration data from the host application
         /// </summary>
-        public JsonElement HostConfig { get; private set; }
+        public JsonElement HostConfig => Configuration.RootElement.GetProperty(GlobalConfigDomPropertyName);
+
         /// <summary>
         /// The configuration data from the plugin's config file passed by the host application
         /// </summary>
-        public JsonElement PluginConfig { get; private set; }
+        public JsonElement PluginConfig => Configuration.RootElement.GetProperty(GetType().Name);
+
         /// <summary>
         /// <inheritdoc/>
         /// </summary>
@@ -105,10 +110,6 @@ namespace VNLib.Plugins
             _ = config ?? throw new ArgumentNullException(nameof(config));
             //Store config ref to dispose properly
             Configuration = config;
-            //Load congfiguration elements
-            HostConfig = config.RootElement.GetProperty(GlobalConfigDomPropertyName);
-            //Plugin config propery name is the name of the current type
-            PluginConfig = config.RootElement.GetProperty(this.GetType().Name);
         }
        
         /// <summary>
@@ -154,7 +155,7 @@ namespace VNLib.Plugins
             //If silent arg is not specified, open log to console
             if (!(args.Contains("--silent") || args.Contains("-s")))
             {
-                logConfig.WriteTo.Console(outputTemplate: LogTemplate);
+                _ = logConfig.WriteTo.Console(outputTemplate: LogTemplate, formatProvider:null);
             }
         }
 
@@ -170,7 +171,7 @@ namespace VNLib.Plugins
             int fileSizeLimit = 500 * 1000 * 1024;
             RollingInterval interval = RollingInterval.Infinite;
 
-            //try to get the host's app_log config object
+            //try to get the host's app_log config object, if it does not exist, do not write logs to file
             if (HostConfig.TryGetProperty("app_log", out JsonElement logEl))
             {
                 IReadOnlyDictionary<string, JsonElement> conf = logEl.EnumerateObject().ToDictionary(static s => s.Name, static s => s.Value);
@@ -206,20 +207,21 @@ namespace VNLib.Plugins
                     //Replace the file name
                     filePath = filePath.Replace(appLogName, PluginName, StringComparison.Ordinal);
                 }
+
+                //Default to exe dir if not set
+                filePath ??= Path.Combine(Environment.CurrentDirectory, $"{PluginName}.txt");
+                template ??= LogTemplate;
+
+                //Configure the log file writer
+                logConfig.WriteTo.File(filePath,
+                    buffered: true,
+                    retainedFileCountLimit: retainedLogs,
+                    formatProvider: null,
+                    fileSizeLimitBytes: fileSizeLimit,
+                    rollingInterval: interval,
+                    outputTemplate: template,
+                    flushToDiskInterval: flushInterval);
             }
-
-            //Default if not set
-            filePath ??= Path.Combine(Environment.CurrentDirectory, $"{PluginName}.txt");
-            template ??= LogTemplate;
-
-            //Configure the log file writer
-            logConfig.WriteTo.File(filePath,
-                buffered: true,
-                retainedFileCountLimit: retainedLogs,
-                fileSizeLimitBytes: fileSizeLimit,
-                rollingInterval: interval,
-                outputTemplate: template,
-                flushToDiskInterval: flushInterval);
         }
 
         /// <summary>
@@ -356,6 +358,12 @@ namespace VNLib.Plugins
         }
 
         /// <summary>
+        /// Adds the specified endpoint to be routed when loading is complete
+        /// </summary>
+        /// <param name="endpoint">The <see cref="IEndpoint"/> to present to the application when loaded</param>
+        public void Route(IEndpoint endpoint) => Endpoints.Add(endpoint);
+
+        /// <summary>
         /// <para>
         /// Invoked when the host loads the plugin instance
         /// </para>
@@ -373,10 +381,5 @@ namespace VNLib.Plugins
         /// for the current plugin
         /// </summary>
         protected virtual void OnGetEndpoints() { }
-        /// <summary>
-        /// Adds the specified endpoint to be routed when loading is complete
-        /// </summary>
-        /// <param name="endpoint">The <see cref="IEndpoint"/> to present to the application when loaded</param>
-        public void Route(IEndpoint endpoint) => Endpoints.Add(endpoint);
     }
 }

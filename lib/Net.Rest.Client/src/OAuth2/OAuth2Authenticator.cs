@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Rest.Client
@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,8 +32,6 @@ using RestSharp.Authenticators;
 
 using VNLib.Utils;
 using VNLib.Utils.Extensions;
-
-#nullable enable
 
 namespace VNLib.Net.Rest.Client.OAuth2
 {
@@ -72,7 +69,7 @@ namespace VNLib.Net.Rest.Client.OAuth2
             _tokenLock = new(1, 1);
         }
 
-        async ValueTask IAuthenticator.Authenticate(RestClient client, RestRequest request)
+        async ValueTask IAuthenticator.Authenticate(IRestClient client, RestRequest request)
         {
             //Wait for access to the token incase another thread is updating it
             using SemSlimReleaser releaser = await _tokenLock.GetReleaserAsync(CancellationToken.None);

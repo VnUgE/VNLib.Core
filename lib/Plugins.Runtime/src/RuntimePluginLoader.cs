@@ -26,7 +26,6 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Threading.Tasks;
 
 using McMaster.NETCore.Plugins;
@@ -59,33 +58,6 @@ namespace VNLib.Plugins.Runtime
         public string PluginConfigPath { get; }
         
         /// <summary>
-        /// Creates a new <see cref="RuntimePluginLoader"/> with the specified 
-        /// assembly location and host config.
-        /// </summary>
-        /// <param name="pluginPath"></param>
-        /// <param name="log">A nullable log provider</param>
-        /// <param name="hostConfig">The configuration DOM to merge with plugin config DOM and pass to enabled plugins</param>
-        /// <param name="unloadable">A value that specifies if the assembly can be unloaded</param>
-        /// <param name="hotReload">A value that spcifies if the loader will listen for changes to the assembly file and reload the plugins</param>
-        /// <remarks>
-        /// The <paramref name="log"/> argument may be null if <paramref name="unloadable"/> is false
-        /// </remarks>
-        /// <exception cref="ArgumentNullException"></exception>
-        public RuntimePluginLoader(string pluginPath, JsonElement? hostConfig = null, ILogProvider? log = null, bool unloadable = false, bool hotReload = false)
-            :this(
-            new PluginConfig(pluginPath)
-            {
-                IsUnloadable = unloadable || hotReload,
-                EnableHotReload = hotReload,
-                ReloadDelay = TimeSpan.FromSeconds(1),
-                PreferSharedTypes = true,
-                DefaultContext = AssemblyLoadContext.Default
-            },
-            hostConfig, log)
-        {
-        }
-        
-        /// <summary>
         /// Creates a new <see cref="RuntimePluginLoader"/> with the specified config and host config dom.
         /// </summary>
         /// <param name="config">The plugin's loader configuration </param>
@@ -94,9 +66,6 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public RuntimePluginLoader(PluginConfig config, JsonElement? hostConfig, ILogProvider? log)
         {
-            //Shared types is required so the default load context shares types
-            config.PreferSharedTypes = true;
-
             //Default to empty config if null, otherwise clone a copy of the host config element
             HostConfig = hostConfig.HasValue ? Clone(hostConfig.Value) : JsonDocument.Parse("{}");
 

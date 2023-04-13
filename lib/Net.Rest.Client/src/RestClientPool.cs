@@ -29,8 +29,6 @@ using RestSharp.Authenticators;
 
 using VNLib.Utils.Memory.Caching;
 
-#nullable enable
-
 namespace VNLib.Net.Rest.Client
 {
     /// <summary>

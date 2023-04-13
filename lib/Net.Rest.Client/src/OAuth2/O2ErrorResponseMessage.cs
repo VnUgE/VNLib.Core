@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Rest.Client
@@ -56,7 +56,7 @@ namespace VNLib.Net.Rest.Client.OAuth2
         /// <param name="description">The OAuth2 error description</param>
         public O2ErrorResponseMessage(string code, string description)
         {
-            this.ErrorCode = code;
+            ErrorCode = code;
             ErrorDescription = description;
         }
 

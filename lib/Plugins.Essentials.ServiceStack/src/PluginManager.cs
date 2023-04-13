@@ -134,12 +134,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         private async Task InitializePlugin(ManagedPlugin plugin, ILogProvider debugLog)
         {
-            try
-            {
-                //Load wrapper
-                await plugin.InitializePluginsAsync().ConfigureAwait(true);
-            }
-            catch (Exception ex)
+            void LogAndRemovePlugin(Exception ex)
             {
                 debugLog.Error(ex, $"Exception raised during initialzation of {plugin.PluginFileName}. It has been removed from the collection\n{ex}");
 
@@ -151,6 +146,20 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
                 //Dispose the plugin
                 plugin.Dispose();
+            }
+
+            try
+            {
+                //Load wrapper
+                await plugin.InitializePluginsAsync().ConfigureAwait(true);
+            }
+            catch(AggregateException ae) when (ae.InnerException != null) 
+            {
+                LogAndRemovePlugin(ae.InnerException);
+            }
+            catch (Exception ex)
+            {
+                LogAndRemovePlugin(ex);
             }
         }
 
@@ -166,7 +175,19 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
                 sw.Stop();
 
-                debugLog.Verbose("Loaded {pl} in {tm} ms", plugin.PluginFileName, sw.ElapsedMilliseconds);
+                /*
+                 * If the plugin assembly does not expose any plugin types or there is an issue loading the assembly, 
+                 * its types my not unify, then we should give the user feedback insead of a silent fail.
+                 */
+                if (!plugin.Controller.Plugins.Any())
+                {
+                    debugLog.Warn("No plugin instances were exposed via {ams} assembly. This may be due to an assebmly mismatch", plugin.PluginFileName);
+                }
+                else
+                {
+                    debugLog.Verbose("Loaded {pl} in {tm} ms", plugin.PluginFileName, sw.ElapsedMilliseconds);
+                }
+
             }
             catch (Exception ex) 
             {

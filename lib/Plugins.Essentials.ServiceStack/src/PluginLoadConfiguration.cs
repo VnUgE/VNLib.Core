@@ -22,12 +22,11 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-
+using System;
 using System.Text.Json;
 
 using VNLib.Utils.Logging;
 using VNLib.Plugins.Runtime;
-
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -58,5 +57,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// holding plugins
         /// </summary>
         public readonly ILogProvider? PluginErrorLog { get; init; }
+
+        /// <summary>
+        /// If hot-reload is enabled, sets a time delay the file watcher waits when 
+        /// a plugin assembly has changed.
+        /// </summary>
+        public readonly TimeSpan ReloadDelay { get; init; }
     }
 }
