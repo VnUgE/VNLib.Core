@@ -33,7 +33,7 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// <summary>
     /// A structure that defines readonly constants for the <see cref="FBMClient"/> to use 
     /// </summary>
-    public readonly struct FBMClientConfig
+    public readonly record struct FBMClientConfig
     {
         /// <summary>
         /// The size (in bytes) of the internal buffer used to buffer incomming messages,

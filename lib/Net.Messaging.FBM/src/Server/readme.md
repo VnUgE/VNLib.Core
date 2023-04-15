@@ -1,35 +1,17 @@
 # VNLib.Net.Messaging.FBM.Server
 
-Fixed Buffer Messaging Protocol server library. High performance statful messaging 
-protocol built on top of HTTP web-sockets. Low/no allocation, completely asynchronous
-while providing a TPL API. This library provides a simple asynchronous request/response 
-architecture to web-sockets. This was initially designed to provide an alternative to 
-complete HTTP request/response overhead, but allow a simple control flow for work 
-across a network.
+Please see [FBM Protocol spec](../../#) for architecture details
 
-Messages consist of a 4 byte message id, a collection of headers, and a message body. 
-The first 4 bytes of a message is the ID (for normal messages a signed integer greater than 0), 
-0 is reserved for error conditions, and negative numbers are reserved for internal 
-messages. Headers are identified by a single byte, followed by a variable length UTF8 
-encoded character sequence, followed by a termination of 0xFF, 0xF1 (may change).
+## Usage
+This library exports a main type called `FBMListener` it is the "entry point" so to speak for your server development. It listens on an active web-socket session that has been accepted an negotiated by your http server and passed to the `FBMListener.ListenAsync()` method. This call only returns once the connection is disconnected, has an error, or the session is closed. The listener listens for FBM messages on the web-socket, buffers them, and when message has been pre-processed, calls your request handler delegate if the message is valid. If the message exceeds the maximum size, the socket is gracefully closed and the method returns. 
 
-### Message structure
-	4 byte positive (big endian signed 32-bit integer) message id
-	2 byte termination
-	1 byte header-id
-	variable length UTF8 value
-	2 byte termination
-	-- other headers --
-	2 byte termination (extra termination, ie: empty header)
-	variable length payload
-	(end of message is the end of the payload)
+Your `RequestHandler` delegate method accepts a type `FBMContext` that holds the request instance, and the `FBMResponseMessage` instance you will use to respond to the client. **Context instances are pooled, so you may not save them or any of their properties once your request handler returns.** Response objects implement the `IFBMMessage` interface, for your consumption. You may also use the "streaming" api, to reduce buffering and copying, implementing your own `IAsyncMessageBody` objects which allows reading data into a buffer asynchronously. Keep in mind a mutex is held while this streaming process occurs, and can cause performance issues, you should generally write a copy of your data to the internal response buffer.
 
+A `FBMListenerSessionParams` structure must be passed on every call `ListenAsync()` to define the buffer sizes and limits per-session. 
 
-XML Documentation is or will be provided for almost all public exports. APIs are intended to 
-be sensibly public and immutable to allow for easy extensability (via extension methods). I
-often use extension libraries to provide additional functionality. (See cache library)
+The `FBMListenerBase` is an abstract type that provides some scaffolding for implementing your own message handler, by handling some plumbing and giving you an abstract method to process incoming messages. 
 
-This library is likely a niche use case, and is probably not for everyone. Unless you care
-about reasonably efficient high frequency request/response messaging, this probably isnt 
-for you. This library provides a reasonable building block for distributed lock mechanisms
-and small data caching.
+Calls to your `RequestHandler` method are invoked on a background queuing task, to avoid blocking, or delaying the receive task. However it is still task, not a background thread, so you should try **not** to synchronously block in your request handling routine to avoid blocking a threadpool thread.
+
+## Builds
+Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my [website](https://www.vaughnnugent.com/resources/software). All tar-gzip (.tgz) files will have an associated .sha384 appended checksum of the desired download file.
