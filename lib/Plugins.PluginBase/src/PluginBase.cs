@@ -105,11 +105,18 @@ namespace VNLib.Plugins
         /// a configuration object to the instance. This method populates the configuration objects if applicable.
         /// </summary>
         [ConfigurationInitalizer]
-        public virtual void InitConfig(JsonDocument config)
+        public virtual void InitConfig(ReadOnlySpan<byte> config)
         {
-            _ = config ?? throw new ArgumentNullException(nameof(config));
-            //Store config ref to dispose properly
-            Configuration = config;
+            if (config.IsEmpty)
+            {
+                throw new ArgumentNullException(nameof(config));
+            }
+
+            //reader for the config value
+            Utf8JsonReader reader = new(config);
+            
+            //Parse the config
+            Configuration = JsonDocument.ParseValue(ref reader);
         }
        
         /// <summary>

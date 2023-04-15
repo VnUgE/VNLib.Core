@@ -66,7 +66,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
-        public Task LoadPluginsAsync(PluginLoadConfiguration config, ILogProvider appLog)
+        public void LoadPlugins(IPluginLoadConfiguration config, ILogProvider appLog)
         {
             Check();            
 
@@ -76,10 +76,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             if (!dir.Exists)
             {
                 appLog.Warn("Plugin directory {dir} does not exist. No plugins were loaded", config.PluginDir);
-                return Task.CompletedTask;
+                return;
             }
 
-            appLog.Information("Loading plugins. Hot-reload: {en}", config.HotReload);
+            appLog.Information("Loading managed plugins");
 
             //Enumerate all dll files within this dir
             IEnumerable<DirectoryInfo> dirs = dir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly);
@@ -91,14 +91,21 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
             appLog.Debug("Found plugin files: \n{files}", string.Concat(pluginFileNames));
 
-            //Initialze plugin managers
-            ManagedPlugin[] wrappers = pluginPaths.Select(pw => new ManagedPlugin(pw, config, this)).ToArray();
+            /*
+             * We need to get the assembly loader for the plugin file, then create its 
+             * RuntimePluginLoader which will be passed to the Managed plugin instance
+             */
+
+            ManagedPlugin[] wrappers = pluginPaths.Select(pw => config.AssemblyLoaderFactory.GetLoaderForPluginFile(pw))
+                                        .Select(l => new RuntimePluginLoader(l, config.HostConfig, config.PluginErrorLog))
+                                        .Select(loader => new ManagedPlugin(loader, this))
+                                        .ToArray();
 
             //Add to loaded plugins
             _plugins.AddRange(wrappers);
 
             //Load plugins
-            return InitiailzeAndLoadAsync(appLog);
+            InitiailzeAndLoad(appLog);
         }
 
         private static IEnumerable<string> GetPluginPaths(IEnumerable<DirectoryInfo> dirs)
@@ -118,13 +125,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             });
         }
 
-        private async Task InitiailzeAndLoadAsync(ILogProvider debugLog) 
+        private void InitiailzeAndLoad(ILogProvider debugLog) 
         {
             //Load all async
-            Task[] initAll = _plugins.Select(p => InitializePlugin(p, debugLog)).ToArray();
-
-            //Wait for initalization
-            await Task.WhenAll(initAll).ConfigureAwait(false);
+            _plugins.ToArray().TryForeach(p => InitializePlugin(p, debugLog));           
 
             //Load stage, load all multithreaded
             Parallel.ForEach(_plugins, p => LoadPlugin(p, debugLog));
@@ -132,7 +136,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             debugLog.Information("Plugin loading completed");
         }
 
-        private async Task InitializePlugin(ManagedPlugin plugin, ILogProvider debugLog)
+        private void InitializePlugin(ManagedPlugin plugin, ILogProvider debugLog)
         {
             void LogAndRemovePlugin(Exception ex)
             {
@@ -151,11 +155,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             try
             {
                 //Load wrapper
-                await plugin.InitializePluginsAsync().ConfigureAwait(true);
-            }
-            catch(AggregateException ae) when (ae.InnerException != null) 
-            {
-                LogAndRemovePlugin(ae.InnerException);
+                plugin.InitializePlugins();
             }
             catch (Exception ex)
             {

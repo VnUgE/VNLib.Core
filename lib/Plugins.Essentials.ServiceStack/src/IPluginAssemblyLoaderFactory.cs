@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IPluginLoadConfiguration.cs 
+* File: IPluginAssemblyLoaderFactory.cs 
 *
-* IPluginLoadConfiguration.cs is part of VNLib.Plugins.Essentials.ServiceStack 
+* IPluginAssemblyLoaderFactory.cs is part of VNLib.Plugins.Essentials.ServiceStack 
 * which is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -22,41 +22,22 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
-using System.Text.Json;
-
-using VNLib.Utils.Logging;
 using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
-
     /// <summary>
-    /// Plugin loading configuration variables
+    /// Represents a provider that creates a unique <see cref="IPluginAssemblyLoader"/> for the the 
+    /// loaded assembly file.
     /// </summary>
-    public interface IPluginLoadConfiguration
+    public interface IPluginAssemblyLoaderFactory
     {
         /// <summary>
-        /// The directory containing the dynamic plugin assemblies to load
+        /// Gets a new and unique <see cref="IPluginAssemblyLoader"/> instance for a given plugin assembly 
+        /// file path
         /// </summary>
-        string PluginDir { get; }
-
-        /// <summary>
-        /// The optional host configuration file to merge with plugin config 
-        /// to pass to the loading plugin.
-        /// </summary>
-        JsonElement? HostConfig { get; }
-
-        /// <summary>
-        /// Passed to the underlying <see cref="RuntimePluginLoader"/>
-        /// holding plugins
-        /// </summary>
-        ILogProvider? PluginErrorLog { get; }
-
-        /// <summary>
-        /// A factory instance the provides new <see cref="IPluginAssemblyLoader"/> instances
-        /// on demand from its plugin assembly path
-        /// </summary>
-        public IPluginAssemblyLoaderFactory AssemblyLoaderFactory { get; init; }
+        /// <param name="pluginFile">The file path to the requested plugin assembly file</param>
+        /// <returns>The new <see cref="IPluginAssemblyLoader"/> to recover the plugin assembly manifest</returns>
+        IPluginAssemblyLoader GetLoaderForPluginFile(string pluginFile);
     }
 }

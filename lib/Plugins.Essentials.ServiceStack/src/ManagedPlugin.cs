@@ -27,16 +27,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Reflection;
-using System.Runtime.Loader;
-using System.Threading.Tasks;
 using System.ComponentModel.Design;
-
-using McMaster.NETCore.Plugins;
 
 using VNLib.Utils;
 using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Attributes;
-
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -48,39 +43,21 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         private UnloadableServiceContainer? _services;
 
-        public ManagedPlugin(string pluginPath, in PluginLoadConfiguration config, IPluginEventListener listener)
+        public ManagedPlugin(RuntimePluginLoader loader, IPluginEventListener listener)
         {
-            PluginPath = pluginPath;
-
-            //Get the plugin config for the assembly
-            PluginConfig pConfig = GetConfigForAssemblyPath(pluginPath, in config);
-
             //configure the loader
-            _plugin = new(pConfig, config.HostConfig, config.PluginErrorLog);
+            _plugin = loader;
 
-            //Register listener before loading occurs
+            //Register loading event listener before loading occurs
             _plugin.Controller.Register(this, this);
 
             //Store listener to raise events
             _serviceDomainListener = listener;
         }
 
-        private static PluginConfig GetConfigForAssemblyPath(string asmPath, in PluginLoadConfiguration loadConfig)
-        {
-            PluginConfig config = new(asmPath)
-            {
-                IsUnloadable = loadConfig.HotReload,
-                EnableHotReload = loadConfig.HotReload,
-                IsLazyLoaded = false,
-                PreferSharedTypes = true,
-                DefaultContext = AssemblyLoadContext.Default,
-                ReloadDelay = loadConfig.ReloadDelay
-            };            
-            return config;
-        }
 
         ///<inheritdoc/>
-        public string PluginPath { get; }
+        public string PluginPath => _plugin.Config.AssemblyFile;
 
         ///<inheritdoc/>
         public IUnloadableServiceProvider Services
@@ -104,10 +81,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         internal string PluginFileName => Path.GetFileName(PluginPath);
 
-        internal Task InitializePluginsAsync()
+        internal void InitializePlugins()
         {
             Check();
-            return _plugin.InitializeController();
+            _plugin.InitializeController();
         }
 
         internal void LoadPlugins()

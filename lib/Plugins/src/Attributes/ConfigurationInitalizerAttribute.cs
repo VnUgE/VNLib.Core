@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Text.Json;
 
 namespace VNLib.Plugins.Attributes
 {
@@ -34,7 +33,7 @@ namespace VNLib.Plugins.Attributes
     /// <br></br>
     /// A plugin host should invoke this method before <see cref="IPlugin.Load"/>
     /// <br></br>
-    /// Method signature <code>public void [methodname] (<see cref="JsonDocument"/> config)</code> 
+    /// Method signature <code>public void [methodname] (<see cref="ReadOnlySpan{Byte}"/> config)</code> 
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public sealed class ConfigurationInitalizerAttribute : Attribute
@@ -44,5 +43,5 @@ namespace VNLib.Plugins.Attributes
     /// Represents a safe configuration initializer delegate method
     /// </summary>
     /// <param name="config">The configuration object that plugin will use</param>
-    public delegate void ConfigInitializer(JsonDocument config);
+    public delegate void ConfigInitializer(ReadOnlySpan<byte> config);
 }

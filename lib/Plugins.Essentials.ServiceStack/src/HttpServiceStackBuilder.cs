@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
@@ -117,7 +116,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <returns>The newly constructed <see cref="HttpServiceStack"/> that may be used to manage your http services</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public async Task<HttpServiceStack> BuildAsync(PluginLoadConfiguration config, ILogProvider appLog)
+        public HttpServiceStack Build(IPluginLoadConfiguration config, ILogProvider appLog)
         {
             _ = _hostBuilder ?? throw new ArgumentNullException("WithDomainBuilder", "You have not configured a service domain configuration callback");
             _ = _getServers ?? throw new ArgumentNullException("WithHttp", "You have not configured a IHttpServer configuration callback");
@@ -132,7 +131,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 }
 
                 //Load plugins async
-                await sd.PluginManager.LoadPluginsAsync(config, appLog);
+                sd.PluginManager.LoadPlugins(config, appLog);
 
                 LinkedList<IHttpServer> servers = new();
 

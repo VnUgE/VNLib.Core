@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using VNLib.Utils.Logging;
@@ -45,10 +44,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// Loads all plugins specified by the host config to the service manager,
         /// or attempts to load plugins by the default
         /// </summary>
-        /// <param name="config">The configuration instance to pass to plugins</param>
+        /// <param name="config">The plugin loading configuration</param>
         /// <param name="appLog">A log provider to write message and errors to</param>
         /// <returns>A task that resolves when all plugins are loaded</returns>
-        Task LoadPluginsAsync(PluginLoadConfiguration config, ILogProvider appLog);
+        void LoadPlugins(IPluginLoadConfiguration config, ILogProvider appLog);
 
         /// <summary>
         /// Sends a message to a plugin identified by it's name.

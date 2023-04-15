@@ -26,7 +26,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 
 namespace VNLib.Plugins.Runtime
@@ -121,10 +120,10 @@ namespace VNLib.Plugins.Runtime
         /// </summary>
         /// <param name="loader"></param>
         /// <returns>A new <see cref="JsonDocument"/> of the loaded configuration file</returns>
-        public static async Task<JsonDocument> GetPluginConfigAsync(this RuntimePluginLoader loader)
+        public static JsonDocument GetPluginConfigAsync(this RuntimePluginLoader loader)
         {
             //Open and read the config file
-            await using FileStream confStream = File.OpenRead(loader.PluginConfigPath);
+            using FileStream confStream = File.OpenRead(loader.PluginConfigPath);
 
             JsonDocumentOptions jdo = new()
             {
@@ -133,7 +132,7 @@ namespace VNLib.Plugins.Runtime
             };
 
             //parse the plugin config file
-            return await JsonDocument.ParseAsync(confStream, jdo);
+            return JsonDocument.Parse(confStream, jdo);
         }
 
         /// <summary>
@@ -156,7 +155,7 @@ namespace VNLib.Plugins.Runtime
         /// single plugin that derrives the specified type
         /// </summary>
         /// <typeparam name="T">The type the plugin must derrive from</typeparam>
-        /// <param name="loader"></param>
+        /// <param name="collection"></param>
         /// <returns>The instance of your custom type casted, or null if not found or could not be casted</returns>
         public static T? GetExposedTypes<T>(this PluginController collection) where T: class
         {

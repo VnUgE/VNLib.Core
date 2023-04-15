@@ -27,6 +27,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 
+using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Attributes;
 
@@ -109,18 +110,22 @@ namespace VNLib.Plugins.Runtime
             {
                 return;
             }
+
             //Merge configurations before passing to plugin
-            JsonDocument merged = hostConfig.Merge(pluginConf, "host", PluginType.Name);
-            try
+            using JsonDocument merged = hostConfig.Merge(pluginConf, "host", PluginType.Name);
+
+            //Write the config to binary to pass it to the plugin
+            using VnMemoryStream vms = new();
+            using (Utf8JsonWriter writer = new(vms))
             {
-                //Invoke
-                configInit.Invoke(merged);
+                merged.WriteTo(writer);
             }
-            catch
-            {
-                merged.Dispose();
-                throw;
-            }
+
+            //Reset memstream
+            vms.Seek(0, System.IO.SeekOrigin.Begin);
+
+            //Invoke
+            configInit.Invoke(vms.AsSpan());
         }
         
         /// <summary>
