@@ -22,9 +22,7 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
 using System.Threading.Tasks;
-using System.Diagnostics.CodeAnalysis;
 
 using VNLib.Net.Http;
 
@@ -44,7 +42,7 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// A handle that holds exclusive access to a <see cref="ISession"/>
     /// session object
     /// </summary>
-    public readonly struct SessionHandle : IEquatable<SessionHandle>
+    public readonly record struct SessionHandle
     {
         /// <summary>
         /// An empty <see cref="SessionHandle"/> instance. (A handle without a session object)
@@ -93,40 +91,5 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// </summary>
         /// <param name="event">The current connection event object</param>
         public readonly ValueTask ReleaseAsync(IHttpEvent @event) => ReleaseCb?.Invoke(SessionData!, @event) ?? ValueTask.CompletedTask;
-
-        /// <summary>
-        /// Determines if another <see cref="SessionHandle"/> is equal to the current handle.
-        /// Handles are equal if neither handle is set or if their SessionData object is equal.
-        /// </summary>
-        /// <param name="other">The other handle to</param>
-        /// <returns>true if neither handle is set or if their SessionData object is equal, false otherwise</returns>
-        public readonly bool Equals(SessionHandle other)
-        {
-            //If neither handle is set, then they are equal, otherwise they are equal if the session objects themselves are equal
-            return (!IsSet && !other.IsSet) || (SessionData?.Equals(other.SessionData) ?? false);
-        }
-        ///<inheritdoc/>
-        public readonly override bool Equals([NotNullWhen(true)] object? obj) => (obj is SessionHandle other) && Equals(other);
-        ///<inheritdoc/>
-        public readonly override int GetHashCode()
-        {
-            return IsSet ? SessionData!.GetHashCode() : base.GetHashCode();
-        }
-
-        /// <summary>
-        /// Checks if two <see cref="SessionHandle"/> instances are equal
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static bool operator ==(SessionHandle left, SessionHandle right) => left.Equals(right);
-
-        /// <summary>
-        /// Checks if two <see cref="SessionHandle"/> instances are not equal
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static bool operator !=(SessionHandle left, SessionHandle right) => !(left == right);
     }
 }

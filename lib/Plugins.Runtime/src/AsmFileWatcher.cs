@@ -52,12 +52,13 @@ namespace VNLib.Plugins.Runtime
             {
                 Filter = "*.dll",
                 EnableRaisingEvents = false,
-                IncludeSubdirectories = false,
-                NotifyFilter = NotifyFilters.LastWrite
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.LastWrite,
             };
 
             //Configure listener
             _watcher.Changed += OnFileChanged;
+            _watcher.Created += OnFileChanged;
 
             _watcher.EnableRaisingEvents = true;
 
@@ -73,15 +74,19 @@ namespace VNLib.Plugins.Runtime
                 return;
             }
 
+            //Set pause flag
+            _pause = true;
+
             //Restart the timer to trigger reload event on elapsed
             _delayTimer.Restart(_loaderSource.Config.ReloadDelay);
         }
 
         private void OnTimeout(object? state)
         {
-            //Fire event
-            Handler.OnPluginUnloaded(_loaderSource);
             _delayTimer.Stop();
+
+            //Fire event, let exception crash app
+            Handler.OnPluginUnloaded(_loaderSource);
 
             //Clear pause flag
             _pause = false;

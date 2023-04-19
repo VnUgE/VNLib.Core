@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Buffers;
 using System.Text.Json;
 using System.Buffers.Text;
 using System.Security.Cryptography;
@@ -348,21 +347,17 @@ namespace VNLib.Hashing.IdentityUtility
             {
                 throw new InternalBufferTooSmallException("Failed to compute the hash of the JWT data");
             }
-            
-            //Do an in-place base64 conversion of the signature to base64
-            if (Base64.EncodeToUtf8InPlace(signatureBuffer, bytesWritten, out int base64BytesWritten) != OperationStatus.Done)
+
+            //Do an in-place base64 conversion of the signature to base64url
+            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, bytesWritten, false);
+          
+            if (!encoded)
             {
                 throw new InternalBufferTooSmallException("Failed to convert the signature buffer to its base64 because the buffer was too small");
-            }
-            
-            //Trim padding
-            Span<byte> base64 = signatureBuffer[..base64BytesWritten].Trim(JsonWebToken.PADDING_BYTES);
-
-            //Urlencode
-            VnEncoding.Base64ToUrlSafeInPlace(base64);
+            }        
             
             //Verify the signatures and return results
-            return CryptographicOperations.FixedTimeEquals(jwt.SignatureData, base64);
+            return CryptographicOperations.FixedTimeEquals(jwt.SignatureData, signatureBuffer[..(int)encoded]);
         }
 
         /// <summary>
@@ -444,20 +439,16 @@ namespace VNLib.Hashing.IdentityUtility
                 throw new InternalBufferTooSmallException("Failed to compute the hash of the JWT data");
             }
 
-            //Do an in-place base64 conversion of the signature to base64
-            if (Base64.EncodeToUtf8InPlace(signatureBuffer, count, out int base64BytesWritten) != OperationStatus.Done)
+            //Do an in-place base64 conversion of the signature to base64url
+            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, (int)alg, false);
+          
+            if (!encoded)
             {
                 throw new InternalBufferTooSmallException("Failed to convert the signature buffer to its base64 because the buffer was too small");
-            }
-
-            //Trim padding
-            Span<byte> base64 = signatureBuffer[..base64BytesWritten].Trim(JsonWebToken.PADDING_BYTES);
-
-            //Urlencode
-            VnEncoding.Base64ToUrlSafeInPlace(base64);
-
+            }        
+            
             //Verify the signatures and return results
-            return CryptographicOperations.FixedTimeEquals(jwt.SignatureData, base64);
+            return CryptographicOperations.FixedTimeEquals(jwt.SignatureData, signatureBuffer[..(int)encoded]);
         }
 
         /// <summary>

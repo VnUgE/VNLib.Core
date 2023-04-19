@@ -40,8 +40,7 @@ namespace VNLib.Plugins.Runtime
     public sealed class RuntimePluginLoader : VnDisposeable, IPluginReloadEventHandler
     {
         private static readonly IPluginAssemblyWatcher Watcher = new AssemblyWatcher();
-
-        //private readonly IPluginAssemblyWatcher Watcher;
+       
         private readonly IPluginAssemblyLoader Loader;      
         private readonly JsonDocument HostConfig;
         private readonly ILogProvider? Log;

@@ -452,7 +452,7 @@ namespace VNLib.Utils
             //Calculate the base32 entropy to alloc an appropriate buffer (minium buffer of 2 chars)
             int entropy = Base32CalcMaxBufferSize(binBuffer.Length);
             //Alloc buffer for enough size (2*long bytes) is not an issue
-            using (UnsafeMemoryHandle<char> charBuffer = Memory.MemoryUtil.UnsafeAlloc<char>(entropy))
+            using (UnsafeMemoryHandle<char> charBuffer = MemoryUtil.UnsafeAlloc<char>(entropy))
             {
                 //Encode
                 ERRNO encoded = TryToBase32Chars(binBuffer, charBuffer.Span);
@@ -888,6 +888,95 @@ namespace VNLib.Utils
             //Get the utf8 binary data
             int count = encoding.GetBytes(chars, decodeHandle);
             return Base64UrlDecode(decodeHandle.Span[..count], output);
+        }
+
+
+        /// <summary>
+        /// Base64url encodes the binary buffer to its utf8 binary representation
+        /// </summary>
+        /// <param name="buffer">The intput binary buffer to base64url encode</param>
+        /// <param name="dataLength">The data within the buffer to encode, must be smaller than the entire buffer</param>
+        /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
+        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured.</returns>
+        public static ERRNO Base64UrlEncodeInPlace(Span<byte> buffer, int dataLength, bool includePadding)
+        {
+            //Convert to base64
+            if (Base64.EncodeToUtf8InPlace(buffer, dataLength, out int bytesWritten) != OperationStatus.Done)
+            {
+                return ERRNO.E_FAIL;
+            }
+
+            if (includePadding)
+            {
+                //Url encode in place
+                Base64ToUrlSafeInPlace(buffer[..bytesWritten]);
+                return bytesWritten;
+            }
+            else
+            {
+                //Remove padding bytes
+                Span<byte> nonPadded = buffer[..bytesWritten].TrimEnd((byte)0x3d);
+
+                Base64ToUrlSafeInPlace(nonPadded);
+                return nonPadded.Length;
+            }
+
+        }
+
+        /// <summary>
+        /// Encodes the binary input buffer to its base64url safe utf8 encoding, and writes the output 
+        /// to the supplied buffer. Be sure to call <see cref="Base64.GetMaxEncodedToUtf8Length(int)"/>
+        /// to allocate the correct size buffer for encoding
+        /// </summary>
+        /// <param name="input">The intput binary buffer to base64url encode</param>
+        /// <param name="output">The output buffer to write the base64url safe encodded date to</param>
+        /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
+        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured.</returns>
+        public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<byte> output, bool includePadding)
+        {
+            //Write the input buffer to the output buffer
+            input.CopyTo(output);
+
+            //encode in place
+            return Base64UrlEncodeInPlace(output, input.Length, includePadding);
+        }
+
+        /// <summary>
+        /// Encodes the binary intput buffer to its base64url safe encoding, then converts the internal buffer
+        /// to its character encoding using the supplied <paramref name="encoding"/>, and writes the characters
+        /// to the output buffer. Defaults to UTF8 character encoding. Base64url is a subset of ASCII,UTF7,UTF8,UTF16 etc
+        /// so most encodings should be safe.
+        /// </summary>
+        /// <param name="input">The input binary intput buffer</param>
+        /// <param name="output">The character output buffer</param>
+        /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
+        /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured</returns>
+        public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<char> output, bool includePadding, Encoding? encoding = null)
+        {
+            encoding ??= Encoding.UTF8;
+
+            //We need to alloc an intermediate buffer, get the base64 max size
+            int maxSize = Base64.GetMaxEncodedToUtf8Length(input.Length);
+
+            //Alloc buffer
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(maxSize);
+
+            //Encode to url safe binary
+            ERRNO count = Base64UrlEncode(input, buffer.Span, includePadding);
+
+            if (count <= 0)
+            {
+                return count;
+            }
+
+            //Get char count to return to caller
+            int charCount = encoding.GetCharCount(buffer.Span[..(int)count]);
+
+            //Encode to characters
+            encoding.GetChars(buffer.AsSpan(0, count), output);
+
+            return charCount;
         }
 
         #endregion

@@ -58,7 +58,7 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         private readonly IHttpEvent Entity;
 
-        public HttpEntity(IHttpEvent entity, EventProcessor root, in SessionHandle session, in CancellationToken cancellation)
+        public HttpEntity(IHttpEvent entity, IWebProcessor root, in SessionHandle session, CancellationToken cancellation)
         {
             Entity = entity;
             RequestedRoot = root;

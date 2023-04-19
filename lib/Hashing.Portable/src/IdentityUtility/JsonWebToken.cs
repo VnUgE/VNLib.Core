@@ -24,7 +24,6 @@
 
 using System;
 using System.Text;
-using System.Buffers;
 using System.Buffers.Text;
 
 using VNLib.Utils;
@@ -250,19 +249,21 @@ namespace VNLib.Hashing.IdentityUtility
         {
             //Calculate the proper base64 buffer size
             int base64BufSize = Base64.GetMaxEncodedToUtf8Length(value.Length);
-            //Alloc buffer
+
+            //Alloc buffer from out heap
             using UnsafeMemoryHandle<byte> binBuffer = Heap.UnsafeAlloc<byte>(base64BufSize);
+
+            //Urlencode without base64 padding characters
+            ERRNO written = VnEncoding.Base64UrlEncode(value, binBuffer.Span, false);
+
             //Slice off the begiing of the buffer for the base64 encoding
-            if(Base64.EncodeToUtf8(value, binBuffer.Span, out _, out int written) != OperationStatus.Done)
+            if(!written)
             {
                 throw new InternalBufferTooSmallException("Failed to encode the specified value to base64");
             }
-            //Base64 encoded
-            Span<byte> base64Data = binBuffer.Span[..written].Trim(PADDING_BYTES);
-            //Convert to rfc4648 urlsafe version
-            VnEncoding.Base64ToUrlSafeInPlace(base64Data);
+            
             //Write the endoded buffer to the stream
-            DataStream.Write(base64Data);
+            DataStream.Write(binBuffer.Span[..(int)written]);
         }
         #endregion
 
