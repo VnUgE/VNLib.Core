@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -57,5 +57,17 @@ namespace VNLib.Utils.Native
             //Decrement lib handle count
             Library.DangerousRelease();
         }
+
+        /// <summary>
+        /// Releases the library handle on finalization
+        /// </summary>
+#pragma warning disable CA1063 // Implement IDisposable Correctly
+        ~SafeMethodHandle()
+        {
+            //Make sure the library is released on finalization
+            Library.DangerousRelease();
+        }
+#pragma warning restore CA1063 // Implement IDisposable Correctly
+
     }
 }
