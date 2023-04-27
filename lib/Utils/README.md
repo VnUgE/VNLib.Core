@@ -17,7 +17,7 @@ namespaces
 Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my [website](https://www.vaughnnugent.com/resources/software). All tar-gzip (.tgz) files will have an associated .sha384 appended checksum of the desired download file.
 
 ### Recommended 3rd Party Libs
-This library does not *require* any direct dependencies, however there are some optional ones that are desired for higher performance code. This library does not, modify, contribute, or affect the functionality of any of the 3rd party libraries recommended below.
+This library does not require any direct dependencies, however there are some optional ones that are recommended for higher performance. This library does not, modify, contribute, or affect the functionality of any of the 3rd party libraries recommended below.
 
 [**RPMalloc**](https://github.com/mjansson/rpmalloc) By Mattias Jansson - VNlib.Utils.Memory (and sub-classes) may load and bind function calls to this native library determined by environment variables. To use RPMalloc as the default unmanaged allocator simply add the dynamic library to the native lib search path, such as in the executable directory, and set the allocator environment variable as instructed below. I maintain a compatible Windows x64 [dll library](../WinRpMalloc/README.md) on my website and in this repository, that conforms to the [NativeHeap](../NativeHeapApi/README.md) api required for runtime loading.
 
@@ -46,6 +46,8 @@ Most VNLib libraries use the Shared heap for performance reasons, and in some ca
 
 ### Runtime allocator selection
 Setting the `VNLIB_SHARED_HEAP_FILE_PATH` environment variable will instruct the `InitializeNewHeapForProcess` method to load the native heap library at the given path, it may be an absolute path to the DLL file or a dll file name in a "safe" directory. It must conform to the NativeHeapApi, otherwise loading will fail. Understand that loading is deferred to the first access of the `MemoryUtil.Shared` property (this is subject to change) so don't be confused when seeing deferred debugging messages instead of a type initialization failure. This is also done to avoid Loader Lock contention issues, because we can. 
+
+You may pass a hex encoded raw flags to the `heapCreate` method via the `UnmanagedHeapDescriptor.FLags` field globally, by setting the `VNLIB_SHARED_HEAP_RAW_FLAGS` environment variable. 
 
 #### MemoryUtil fallbacks
 If you don't want to use a custom heap implementation, the library has safe fallbacks for all platforms. On Windows the PrivateHeap api is used by default. The shared heap, again, prefers performance and will use the process heap returned from `GetProcessHeap()`, instead of creating a private heap that requires synchronization penalties. On all other platforms the fallback will be the .NET NativeMemory allocator, which is cross platform, but does **not** actually implement a "private" heap. So that means on non-Windows platforms unless you select your own heap, isolation is not an option. 

@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -110,6 +109,28 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(AllZero(buffer.Span));
         }
 
+        [TestMethod()]
+        public unsafe void InitializeBlockPointerTest()
+        {
+            const int blockSize = 64;
+
+            //We want to zero a block of memory by its pointer
+
+            //Heap alloc a block of memory
+            byte* ptr = (byte*)MemoryUtil.Shared.Alloc(blockSize, sizeof(byte), false);
+
+            //Fill with random data
+            RandomNumberGenerator.Fill(new Span<byte>(ptr, blockSize));
+
+            //Make sure the block is not all zero
+            Assert.IsFalse(AllZero(new ReadOnlySpan<byte>(ptr, blockSize)));
+
+            //Zero the block
+            MemoryUtil.InitializeBlock(ptr, blockSize);
+
+            //Confrim all zero
+            Assert.IsTrue(AllZero(new ReadOnlySpan<byte>(ptr, blockSize)));
+        }
 
         [TestMethod()]
         public unsafe void UnsafeAllocTest()

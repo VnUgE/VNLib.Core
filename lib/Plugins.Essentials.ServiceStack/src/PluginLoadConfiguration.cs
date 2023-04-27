@@ -57,6 +57,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// A factory instance the provides new <see cref="IPluginAssemblyLoader"/> instances
         /// on demand from its plugin assembly path
         /// </summary>
-        public IPluginAssemblyLoaderFactory AssemblyLoaderFactory { get; init; }
+        public IPluginAssemblyLoaderFactory AssemblyLoaderFactory { get; }
     }
 }

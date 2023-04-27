@@ -27,6 +27,7 @@ using System.Buffers;
 using System.Security;
 using System.Threading;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
@@ -59,6 +60,12 @@ namespace VNLib.Utils.Memory
         /// The environment variable name used to enable share heap diagnostics
         /// </summary>
         public const string SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV = "VNLIB_SHARED_HEAP_DIAGNOSTICS";
+
+        /// <summary>
+        /// The environment variable name used to specify the raw flags to pass to the shared heap
+        /// creation method
+        /// </summary>
+        public const string SHARED_HEAP_RAW_FLAGS = "VNLIB_SHARED_HEAP_RAW_FLAGS";
 
         /// <summary>
         /// Initial shared heap size (bytes)
@@ -144,16 +151,17 @@ namespace VNLib.Utils.Memory
             
             //Get environment varable
             string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
+            string? rawFlagsEnv = Environment.GetEnvironmentVariable(SHARED_HEAP_RAW_FLAGS);
 
             //Default flags
             HeapCreation cFlags = HeapCreation.UseSynchronization;
 
             /*
-                * We need to set the shared flag and the synchronziation flag.
-                * 
-                * The heap impl may reset the synchronziation flag if it does not 
-                * need serialziation
-                */
+            * We need to set the shared flag and the synchronziation flag.
+            * 
+            * The heap impl may reset the synchronziation flag if it does not 
+            * need serialziation
+            */
             cFlags |= isShared ? HeapCreation.IsSharedHeap : HeapCreation.None;
 
             IUnmangedHeap heap;
@@ -161,8 +169,16 @@ namespace VNLib.Utils.Memory
             //Check for heap api dll
             if (!string.IsNullOrWhiteSpace(heapDllPath))
             {
+                ERRNO rawFlags = 0;
+
+                //Try to parse the raw flags to pass to the heap
+                if (nint.TryParse(rawFlagsEnv, NumberStyles.HexNumber, null, out nint result))
+                {
+                    rawFlags = new(result);
+                }
+
                 //Attempt to load the heap
-                heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, 0);
+                heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, rawFlags);
             }
             //No user heap was specified, use fallback
             else if (IsWindows)
@@ -265,6 +281,27 @@ namespace VNLib.Utils.Memory
         public static void InitializeBlock<T>(Memory<T> block) where T : unmanaged => UnsafeZeroMemory<T>(block);
 
         /// <summary>
+        /// Zeroes a block of memory of the given unmanaged type
+        /// </summary>
+        /// <typeparam name="T">The unmanaged type to zero</typeparam>
+        /// <param name="block">A pointer to the block of memory to zero</param>
+        /// <param name="itemCount">The number of elements in the block to zero</param>
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        public static void InitializeBlock<T>(T* block, int itemCount) where T : unmanaged
+        {
+            if (itemCount == 0)
+            {
+                return;
+            }
+
+            //Get the size of the structure
+            int size = Unsafe.SizeOf<T>();
+
+            //Zero block
+            Unsafe.InitBlock(block, 0, (uint)(size * itemCount));
+        }
+
+        /// <summary>
         /// Zeroes a block of memory pointing to the structure
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
@@ -276,7 +313,7 @@ namespace VNLib.Utils.Memory
             //Zero block
             Unsafe.InitBlock(block.ToPointer(), 0, (uint)size);
         }
-        
+
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
         /// </summary>
@@ -289,7 +326,7 @@ namespace VNLib.Utils.Memory
             //Zero block
             Unsafe.InitBlock(structPtr, 0, (uint)size);
         }
-        
+
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
         /// </summary>
@@ -302,7 +339,7 @@ namespace VNLib.Utils.Memory
             //Zero block
             Unsafe.InitBlock(structPtr, 0, (uint)size);
         }
-
+     
         #endregion
 
         #region Copy
