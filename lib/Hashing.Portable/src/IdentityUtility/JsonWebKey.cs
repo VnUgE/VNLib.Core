@@ -43,6 +43,7 @@ namespace VNLib.Hashing.IdentityUtility
         public const string ES256 = "ES256";
         public const string ES384 = "ES384";
         public const string ES512 = "ES512";
+        public const string ES256K = "ES256K";
     }
     
     public class EncryptionTypeNotSupportedException : NotSupportedException
@@ -162,6 +163,11 @@ namespace VNLib.Hashing.IdentityUtility
                         using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
                         return eCDsa != null && token.Verify(eCDsa, HashAlg.SHA512);
                     }
+                case JWKAlgorithms.ES256K:
+                    {
+                        using ECDsa? eCDsa = GetECDsaPublicKey(jwk);
+                        return eCDsa != null && token.Verify(eCDsa, HashAlg.SHA256);
+                    }
                 default:
                     throw new EncryptionTypeNotSupportedException();
             }
@@ -259,6 +265,13 @@ namespace VNLib.Hashing.IdentityUtility
                         token.Sign(eCDsa, HashAlg.SHA512);
                         return;
                     }
+                case JWKAlgorithms.ES256K:
+                    {
+                        using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
+                        _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
+                        token.Sign(eCDsa, HashAlg.SHA512);
+                        return;
+                    }
                 default:
                     throw new EncryptionTypeNotSupportedException();
             }
@@ -337,7 +350,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// </summary>
         /// <param name="jwk">The public key element</param>
         /// <returns>The <see cref="ECDsa"/> algorithm from the key if loaded, null if no key data was found</returns>
-        public static ECDsa? GetECDsaPublicKey<TKey>(this TKey jwk) where TKey: IJsonWebKey
+        public static ECDsa? GetECDsaPublicKey<TKey>(this TKey jwk) where TKey : IJsonWebKey
         {
             //Get the EC params
             ECParameters? ecParams = GetECParameters(in jwk, false);
@@ -385,6 +398,9 @@ namespace VNLib.Hashing.IdentityUtility
                     break;
                 case "P-521":
                     curve = ECCurve.NamedCurves.nistP521;
+                    break;
+                case "SECP256K1":
+                    curve = ManagedHash.CurveSecp256k1;
                     break;
                 default:
                     return null;

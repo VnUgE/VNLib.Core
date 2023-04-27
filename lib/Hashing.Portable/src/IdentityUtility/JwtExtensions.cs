@@ -501,7 +501,7 @@ namespace VNLib.Hashing.IdentityUtility
         /*
          * Simple ecdsa and rsa providers
          */
-        private record struct ECDSASignatureProvider(ECDsa SigAlg, DSASignatureFormat Format) : IJwtSignatureProvider
+        private readonly record struct ECDSASignatureProvider(ECDsa SigAlg, DSASignatureFormat Format) : IJwtSignatureProvider
         {
             ///<inheritdoc/>
             public readonly int RequiredBufferSize { get; } = 512;
@@ -513,7 +513,7 @@ namespace VNLib.Hashing.IdentityUtility
             }
         }
 
-        internal record struct RSASignatureProvider(RSA SigAlg, HashAlg Slg, RSASignaturePadding Padding) : IJwtSignatureProvider
+        internal readonly record struct RSASignatureProvider(RSA SigAlg, HashAlg Slg, RSASignaturePadding Padding) : IJwtSignatureProvider
         {
             ///<inheritdoc/>
             public readonly int RequiredBufferSize { get; } = 1024;
@@ -528,19 +528,16 @@ namespace VNLib.Hashing.IdentityUtility
         /*
          * ECDSA and rsa verifiers
          */
-        internal record struct ECDSASignatureVerifier(ECDsa Alg, DSASignatureFormat Format) : IJwtSignatureVerifier
+        internal readonly record struct ECDSASignatureVerifier(ECDsa Alg, DSASignatureFormat Format) : IJwtSignatureVerifier
         {
-            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature)
-            {
-                return Alg.VerifyHash(messageHash, signature);
-            }
+            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature) => Alg.VerifyHash(messageHash, signature);
         }
 
-        internal record struct RSASignatureVerifier(RSA Alg, HashAlg hashAlg, RSASignaturePadding Padding) : IJwtSignatureVerifier
+        internal readonly record struct RSASignatureVerifier(RSA Alg, HashAlg HashAlg, RSASignaturePadding Padding) : IJwtSignatureVerifier
         {
             public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature)
             {
-                return Alg.VerifyHash(messageHash, signature, hashAlg.GetAlgName(), Padding);
+                return Alg.VerifyHash(messageHash, signature, HashAlg.GetAlgName(), Padding);
             }
         }
     }

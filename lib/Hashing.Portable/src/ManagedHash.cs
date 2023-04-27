@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -90,6 +90,34 @@ namespace VNLib.Hashing
     public static partial class ManagedHash
     {
         private static readonly Encoding CharEncoding = Encoding.UTF8;
+
+        /// <summary>
+        /// A .NET explicit ECCurve for the secp256k1 EC curve algorithm
+        /// </summary>
+        public static ECCurve CurveSecp256k1 { get; } = GetStaticCurve();
+
+        private static ECCurve GetStaticCurve()
+        {
+            //Curve parameters from https://www.secg.org/sec2-v2.pdf
+            return new()
+            {
+                CurveType = ECCurve.ECCurveType.PrimeShortWeierstrass,
+
+                Prime = Convert.FromHexString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F"),
+
+                A = Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000000"),
+                B = Convert.FromHexString("0000000000000000000000000000000000000000000000000000000000000007"),
+
+                G = new ECPoint()
+                {
+                    X = Convert.FromHexString("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"),
+                    Y = Convert.FromHexString("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8")
+                },
+
+                Order = Convert.FromHexString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"),
+                Cofactor = Convert.FromHexString("01")
+            };
+        }
 
         /// <summary>
         /// Uses the UTF8 character encoding to encode the string, then 
