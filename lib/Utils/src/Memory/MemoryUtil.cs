@@ -81,6 +81,8 @@ namespace VNLib.Utils.Memory
         /// heap.
         /// </summary>
         public const int MAX_UNSAFE_POOL_SIZE = 80 * 1024;
+
+        private static readonly int SystemPageSize = Environment.SystemPageSize;
       
         /// <summary>
         /// Provides a shared heap instance for the process to allocate memory from.
@@ -166,19 +168,19 @@ namespace VNLib.Utils.Memory
 
             IUnmangedHeap heap;
 
+            ERRNO userFlags = 0;
+
+            //Try to parse the raw flags to pass to the heap
+            if (nint.TryParse(rawFlagsEnv, NumberStyles.HexNumber, null, out nint result))
+            {
+                userFlags = new(result);
+            }
+
             //Check for heap api dll
             if (!string.IsNullOrWhiteSpace(heapDllPath))
             {
-                ERRNO rawFlags = 0;
-
-                //Try to parse the raw flags to pass to the heap
-                if (nint.TryParse(rawFlagsEnv, NumberStyles.HexNumber, null, out nint result))
-                {
-                    rawFlags = new(result);
-                }
-
                 //Attempt to load the heap
-                heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, rawFlags);
+                heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, userFlags);
             }
             //No user heap was specified, use fallback
             else if (IsWindows)
@@ -192,10 +194,10 @@ namespace VNLib.Utils.Memory
                 if (!nuint.TryParse(sharedSize, out nuint defaultSize))
                 {
                     defaultSize = SHARED_HEAP_INIT_SIZE;
-                }                
+                }
 
                 //Create win32 private heap
-                heap = Win32PrivateHeap.Create(defaultSize, cFlags);
+                heap = Win32PrivateHeap.Create(defaultSize, cFlags, flags:userFlags); 
             }
             else
             {
@@ -591,7 +593,7 @@ namespace VNLib.Utils.Memory
         {
             if (offset + count > handle.Length)
             {
-                throw new ArgumentException("The offset or count is outside of the range of the block of memory");
+                throw new ArgumentOutOfRangeException("The offset or count is outside of the range of the block of memory");
             }
         }
 
@@ -686,6 +688,16 @@ namespace VNLib.Utils.Memory
         public static Span<T> GetSpan<T>(IntPtr address, int size) => new(address.ToPointer(), size);
 
         /// <summary>
+        /// Gets a <see cref="Span{T}"/> over the block of memory pointed to by the supplied handle.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="size">The size of the span (the size of the block)</param>
+        /// <returns>A span over the block of memory pointed to by the handle of the specified size</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Span<T> GetSpan<T>(MemoryHandle handle, int size) => new(handle.Pointer, size);
+
+        /// <summary>
         /// Rounds the requested byte size up to the nearest page
         /// number of bytes
         /// </summary>
@@ -695,10 +707,10 @@ namespace VNLib.Utils.Memory
         public static nuint NearestPage(nuint byteSize)
         {
             //Get page count by dividing count by number of pages
-            nuint pages = (uint)Math.Ceiling(byteSize / (double)Environment.SystemPageSize);
+            nuint pages = (uint)Math.Ceiling(byteSize / (double)SystemPageSize);
 
             //Multiply back to page sizes
-            return pages * (nuint)Environment.SystemPageSize;
+            return pages * (nuint)SystemPageSize;
         }
 
         /// <summary>
@@ -711,10 +723,10 @@ namespace VNLib.Utils.Memory
         public static nint NearestPage(nint byteSize)
         {
             //Get page count by dividing count by number of pages
-            nint pages = (int)Math.Ceiling(byteSize / (double)Environment.SystemPageSize);
+            nint pages = (int)Math.Ceiling(byteSize / (double)SystemPageSize);
 
             //Multiply back to page sizes
-            return pages * Environment.SystemPageSize;
+            return pages * SystemPageSize;
         }
     }
 }

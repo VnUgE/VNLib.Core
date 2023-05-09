@@ -23,6 +23,7 @@
 */
 
 using System;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using VNLib.Utils.Extensions;
@@ -31,6 +32,8 @@ using static VNLib.Utils.Memory.MemoryUtil;
 
 namespace VNLib.Utils.Memory.Tests
 {
+
+
     [TestClass]
     public class MemoryHandleTest
     {

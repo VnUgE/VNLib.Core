@@ -32,10 +32,19 @@ namespace VNLib.Utils.Memory
     /// Represents a subset (or window) of data within a <see cref="MemoryHandle{T}"/>
     /// </summary>
     /// <typeparam name="T">The unmanaged type to wrap</typeparam>
-    public readonly struct SubSequence<T> : IEquatable<SubSequence<T>> where T: unmanaged 
+    public readonly record struct SubSequence<T> where T: unmanaged 
     {
-        private readonly MemoryHandle<T> _handle;
-        private readonly nuint _offset;
+        readonly nuint _offset;
+
+        /// <summary>
+        /// The handle that owns the memory block
+        /// </summary>
+        public readonly MemoryHandle<T> Handle { get; }
+
+        /// <summary>
+        /// The number of elements in the current sequence
+        /// </summary>
+        public readonly int Size { get; }
 
         /// <summary>
         /// Creates a new <see cref="SubSequence{T}"/> to the handle to get a window of the block
@@ -43,23 +52,25 @@ namespace VNLib.Utils.Memory
         /// <param name="block"></param>
         /// <param name="offset"></param>
         /// <param name="size"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public SubSequence(MemoryHandle<T> block, nuint offset, int size)
         {
-            _offset = offset;
+            Handle = block ?? throw new ArgumentNullException(nameof(block));
             Size = size >= 0 ? size : throw new ArgumentOutOfRangeException(nameof(size));
-            _handle = block ?? throw new ArgumentNullException(nameof(block));
-        }
+            _offset = offset;
 
-        /// <summary>
-        /// The number of elements in the current window
-        /// </summary>
-        public readonly int Size { get; }
+            //Check handle bounds 
+            MemoryUtil.CheckBounds(block, offset, (uint)size);
+        }
+      
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> that is offset from the base of the handle
+        /// and the size of the current sequence
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public readonly Span<T> Span => Size > 0 ? _handle.GetOffsetSpan(_offset, Size) : Span<T>.Empty;
+        public readonly Span<T> Span => Size > 0 ? Handle.GetOffsetSpan(_offset, Size) : Span<T>.Empty;
 
         /// <summary>
         /// Slices the current sequence into a smaller <see cref="SubSequence{T}"/>
@@ -67,34 +78,40 @@ namespace VNLib.Utils.Memory
         /// <param name="offset">The relative offset from the current window offset</param>
         /// <param name="size">The size of the block</param>
         /// <returns>A <see cref="SubSequence{T}"/> of the current sequence</returns>
-        public readonly SubSequence<T> Slice(nuint offset, int size) => new (_handle, checked(_offset + offset), size);
+        public readonly SubSequence<T> Slice(nuint offset, int size)
+        {
+            //Calc offset
+            nuint newOffset = checked(_offset + offset);
+            
+            //Cal max size after the slice
+            int newMaxSize = Size - (int)offset;
+
+            if(newMaxSize < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            }
+
+            if(size > newMaxSize)
+            {
+                throw new ArgumentOutOfRangeException(nameof(size));
+            }
+            return new SubSequence<T>(Handle, newOffset, size > newMaxSize ? newMaxSize : size);
+        }
 
         /// <summary>
-        /// Returns the signed 32-bit hashcode
+        /// Slices the current sequence into a smaller <see cref="SubSequence{T}"/>
         /// </summary>
-        /// <returns>A signed 32-bit integer that represents the hashcode for the current instance</returns>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public readonly override int GetHashCode() => _handle.GetHashCode() + _offset.GetHashCode();
-
-        ///<inheritdoc/>
-        public readonly bool Equals(SubSequence<T> other) => Span.SequenceEqual(other.Span);
-
-        ///<inheritdoc/>
-        public readonly override bool Equals(object? obj) => obj is SubSequence<T> other && Equals(other);
-
-        /// <summary>
-        /// Determines if two <see cref="SubSequence{T}"/> are equal
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns>True if the sequences are equal, false otherwise</returns>
-        public static bool operator ==(SubSequence<T> left, SubSequence<T> right) => left.Equals(right);
-        /// <summary>
-        /// Determines if two <see cref="SubSequence{T}"/> are not equal
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns>True if the sequences are not equal, false otherwise</returns>
-        public static bool operator !=(SubSequence<T> left, SubSequence<T> right) => !left.Equals(right);
+        /// <param name="offset">The relative offset from the current window offset</param>
+        /// <returns>A <see cref="SubSequence{T}"/> of the current sequence</returns>
+        public readonly SubSequence<T> Slice(nuint offset)
+        {
+            //Calc offset
+            nuint newOffset = _offset + offset;
+            
+            //Calc the new max size of the block (let constructor handle the exception if less than 0)
+            int newMaxSize = (int)((nuint)Size - offset);
+            
+            return new SubSequence<T>(Handle, newOffset, newMaxSize);
+        }
     }
 }

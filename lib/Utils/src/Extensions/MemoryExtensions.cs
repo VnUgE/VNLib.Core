@@ -308,6 +308,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="offset">An offset within the handle</param>
         /// <param name="size">The size of the window</param>
         /// <returns>The new <see cref="SubSequence{T}"/> within the block</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SubSequence<T> GetSubSequence<T>(this MemoryHandle<T> block, nuint offset, int size) where T : unmanaged => new (block, offset, size);
         
@@ -319,6 +320,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="offset">An offset within the handle</param>
         /// <param name="size">The size of the window</param>
         /// <returns>The new <see cref="SubSequence{T}"/> within the block</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SubSequence<T> GetSubSequence<T>(this MemoryHandle<T> block, nint offset, int size) where T : unmanaged
         {

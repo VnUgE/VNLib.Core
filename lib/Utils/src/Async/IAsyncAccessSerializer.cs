@@ -28,7 +28,7 @@ using System.Threading.Tasks;
 namespace VNLib.Utils.Async
 {
     /// <summary>
-    /// A mutual exclusion primitive that provides asynchronous waites for serialized 
+    /// A mutual exclusion primitive that provides asynchronous waits for serialized 
     /// access to a resource based on a moniker. Similar to the <see cref="Monitor"/> 
     /// class.
     /// </summary>
