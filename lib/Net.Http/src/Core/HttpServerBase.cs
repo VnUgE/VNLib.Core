@@ -125,6 +125,7 @@ namespace VNLib.Net.Http
         {
             _ = conf.HttpEncoding ?? throw new ArgumentException("HttpEncoding cannot be null", nameof(conf));
             _ = conf.ServerLog ?? throw new ArgumentException("ServerLog cannot be null", nameof(conf));
+            _ = conf.MemoryPool ?? throw new ArgumentNullException(nameof(conf));
 
             if (conf.ActiveConnectionRecvTimeout < -1)
             {
@@ -132,7 +133,7 @@ namespace VNLib.Net.Http
             }
 
             //Chunked data accumulator must be at least 64 bytes (arbinrary value)
-            if (conf.ChunkedResponseAccumulatorSize < 64 || conf.ChunkedResponseAccumulatorSize == int.MaxValue)
+            if (conf.BufferConfig.ChunkedResponseAccumulatorSize < 64 || conf.BufferConfig.ChunkedResponseAccumulatorSize == int.MaxValue)
             {
                 throw new ArgumentException("ChunkedResponseAccumulatorSize cannot be less than 64 bytes", nameof(conf));
             }
@@ -152,17 +153,17 @@ namespace VNLib.Net.Http
                 throw new ArgumentException("DefaultHttpVersion cannot be NotSupported", nameof(conf));
             }
 
-            if (conf.DiscardBufferSize < 64)
+            if (conf.BufferConfig.DiscardBufferSize < 64)
             {
                 throw new ArgumentException("DiscardBufferSize cannot be less than 64 bytes", nameof(conf));
             }
 
-            if (conf.FormDataBufferSize < 64)
+            if (conf.BufferConfig.FormDataBufferSize < 64)
             {
                 throw new ArgumentException("FormDataBufferSize cannot be less than 64 bytes", nameof(conf));
             }
 
-            if (conf.HeaderBufferSize < 128)
+            if (conf.BufferConfig.RequestHeaderBufferSize < 128)
             {
                 throw new ArgumentException("HeaderBufferSize cannot be less than 128 bytes", nameof(conf));
             }
@@ -187,12 +188,12 @@ namespace VNLib.Net.Http
                 throw new ArgumentException("MaxUploadSize cannot be less than 0", nameof(conf));
             }
 
-            if (conf.ResponseBufferSize < 64)
+            if (conf.BufferConfig.ResponseBufferSize < 64)
             {
                 throw new ArgumentException("ResponseBufferSize cannot be less than 64 bytes", nameof(conf));
             }
 
-            if (conf.ResponseHeaderBufferSize < 128)
+            if (conf.BufferConfig.ResponseHeaderBufferSize < 128)
             {
                 throw new ArgumentException("ResponseHeaderBufferSize cannot be less than 128 bytes", nameof(conf));
             }

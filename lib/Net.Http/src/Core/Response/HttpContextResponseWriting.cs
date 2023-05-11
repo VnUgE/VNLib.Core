@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -23,12 +23,12 @@
 */
 
 using System;
-using System.Buffers;
-using System.IO.Compression;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+
 
 namespace VNLib.Net.Http.Core
 {
@@ -43,7 +43,7 @@ namespace VNLib.Net.Http.Core
              * and the release method will be called so the context can be reused
              */
 
-            ValueTask discardTask = Request.InputStream.DiscardRemainingAsync(ParentServer.Config.DiscardBufferSize);
+            ValueTask discardTask = Request.InputStream.DiscardRemainingAsync(Buffers);
 
             //See if discard is needed
             if (ResponseBody.HasData)
@@ -99,7 +99,7 @@ namespace VNLib.Net.Http.Core
                     Response.Headers[HttpResponseHeader.ContentLength] = ResponseBody.Length.ToString();
                 }
 
-                //We must send headers here so content length doesnt get overwritten
+                //We must send headers here so content length doesnt get overwritten, close will be called after this to flush to transport
                 Response.FlushHeaders();
             }
             else
@@ -125,7 +125,7 @@ namespace VNLib.Net.Http.Core
                     Response.SetContentRange(range.Item1, endRange, length);
 
                     //Get the raw output stream and set the length to the number of bytes
-                    outputStream = Response.GetStream(length);
+                    outputStream = await Response.GetStreamAsync(length);
 
                     await WriteEntityDataAsync(outputStream, length, token);
                 }
@@ -150,8 +150,10 @@ namespace VNLib.Net.Http.Core
                             {
                                 //Specify gzip encoding (using chunked encoding)
                                 Response.Headers[HttpResponseHeader.ContentEncoding] = "gzip";
+
                                 //get the chunked output stream
-                                Stream chunked = Response.GetStream();
+                                Stream chunked = await Response.GetStreamAsync();
+
                                 //Use chunked encoding and send data as its written 
                                 outputStream = new GZipStream(chunked, ParentServer.Config.CompressionLevel, false);
                             }
@@ -161,7 +163,7 @@ namespace VNLib.Net.Http.Core
                                 //Specify gzip encoding (using chunked encoding)
                                 Response.Headers[HttpResponseHeader.ContentEncoding] = "deflate";
                                 //get the chunked output stream
-                                Stream chunked = Response.GetStream();
+                                Stream chunked = await Response.GetStreamAsync();
                                 //Use chunked encoding and send data as its written
                                 outputStream = new DeflateStream(chunked, ParentServer.Config.CompressionLevel, false);
                             }
@@ -171,7 +173,7 @@ namespace VNLib.Net.Http.Core
                                 //Specify Brotli encoding (using chunked encoding)
                                 Response.Headers[HttpResponseHeader.ContentEncoding] = "br";
                                 //get the chunked output stream
-                                Stream chunked = Response.GetStream();
+                                Stream chunked = await Response.GetStreamAsync();
                                 //Use chunked encoding and send data as its written
                                 outputStream = new BrotliStream(chunked, ParentServer.Config.CompressionLevel, false);
                             }
@@ -180,7 +182,7 @@ namespace VNLib.Net.Http.Core
                         case HttpRequestExtensions.CompressionType.None:
                         default:
                             //Since we know how long the response will be, we can submit it now (see note above for same issues)
-                            outputStream = Response.GetStream(ResponseBody.Length);
+                            outputStream = await Response.GetStreamAsync(ResponseBody.Length);
                             break;
                     }
 
@@ -197,14 +199,11 @@ namespace VNLib.Net.Http.Core
                 //Determine if buffer is required
                 if (ResponseBody.BufferRequired)
                 {
-                    //Calc a buffer size (always a safe cast since rbs is an integer)
-                    int bufferSize = (int)Math.Min((long)ParentServer.Config.ResponseBufferSize, ResponseBody.Length);
-
-                    //Alloc buffer, and dispose when completed
-                    using IMemoryOwner<byte> buffer = CoreBufferHelpers.GetMemory(bufferSize, false);
+                    //Get response data buffer, may be smaller than suggested size
+                    Memory<byte> buffer = Buffers.GetResponseDataBuffer();
 
                     //Write response
-                    await ResponseBody.WriteEntityAsync(outputStream, buffer.Memory, token);
+                    await ResponseBody.WriteEntityAsync(outputStream, buffer, token);
                 }
                 //No buffer is required, write response directly
                 else
@@ -227,14 +226,11 @@ namespace VNLib.Net.Http.Core
                 //Determine if buffer is required
                 if (ResponseBody.BufferRequired)
                 {
-                    //Calc a buffer size (always a safe cast since rbs is an integer)
-                    int bufferSize = (int)Math.Min((long)ParentServer.Config.ResponseBufferSize, ResponseBody.Length);
-
-                    //Alloc buffer, and dispose when completed
-                    using IMemoryOwner<byte> buffer = CoreBufferHelpers.GetMemory(bufferSize, false);
+                    //Get response data buffer, may be smaller than suggested size
+                    Memory<byte> buffer = Buffers.GetResponseDataBuffer();
 
                     //Write response
-                    await ResponseBody.WriteEntityAsync(outputStream, length, buffer.Memory, token);
+                    await ResponseBody.WriteEntityAsync(outputStream, length, buffer, token);
                 }
                 //No buffer is required, write response directly
                 else

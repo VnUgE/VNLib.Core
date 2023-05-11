@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -38,6 +38,7 @@ namespace VNLib.Net.Http
         /// Current connection information. (Like "$_SERVER" superglobal in PHP)
         /// </summary>
         IConnectionInfo Server { get; }
+
         /// <summary>
         /// The <see cref="HttpServer"/> that this connection originated from
         /// </summary>
@@ -48,10 +49,12 @@ namespace VNLib.Net.Http
         /// </summary>
         /// <remarks>Keys are case-insensitive</remarks>
         IReadOnlyDictionary<string, string> QueryArgs { get; }
+
         /// <summary>
         /// If the request body has form data or url encoded arguments they are stored in key value format
         /// </summary>
         IReadOnlyDictionary<string, string> RequestArgs { get; }
+
         /// <summary>
         /// Contains all files upladed with current request
         /// </summary>

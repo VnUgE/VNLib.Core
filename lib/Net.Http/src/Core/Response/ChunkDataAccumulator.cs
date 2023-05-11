@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -23,15 +23,10 @@
 */
 
 using System;
-using System.IO;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
-
-using static VNLib.Net.Http.Core.CoreBufferHelpers;
+using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
@@ -41,36 +36,53 @@ namespace VNLib.Net.Http.Core
     /// </summary>
     internal class ChunkDataAccumulator : IDataAccumulator<byte>, IHttpLifeCycle
     {
+        private const string LAST_CHUNK_STRING = "0\r\n\r\n";
         public const int RESERVED_CHUNK_SUGGESTION = 32;
-
-        private readonly int BufferSize;
+       
         private readonly int ReservedSize;
-        private readonly Encoding Encoding;
-        private readonly ReadOnlyMemory<byte> CRLFBytes;
+        private readonly IHttpContextInformation Context;
+        private readonly IChunkAccumulatorBuffer Buffer;
+        private readonly ReadOnlyMemory<byte> LastChunk;
 
-        public ChunkDataAccumulator(Encoding encoding, int bufferSize)
+        public ChunkDataAccumulator(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
         {
-            Encoding = encoding;
-            CRLFBytes = encoding.GetBytes(HttpHelpers.CRLF);
-           
             ReservedSize = RESERVED_CHUNK_SUGGESTION;
-            BufferSize = bufferSize;
-        }
 
-        private byte[]? _buffer;
+            Context = context;
+            Buffer = buffer;
+
+            //Convert and store cached versions of the last chunk bytes
+            LastChunk = context.Encoding.GetBytes(LAST_CHUNK_STRING);
+        }
+      
+        /*
+         * Reserved offset is a pointer to the first byte of the reserved chunk window
+         * that actually contains the size segment data.
+         */
+      
         private int _reservedOffset;
         
 
         ///<inheritdoc/>
-        public int RemainingSize => _buffer!.Length - AccumulatedSize;
+        public int RemainingSize => Buffer.Size - AccumulatedSize;
+
         ///<inheritdoc/>
-        public Span<byte> Remaining => _buffer!.AsSpan(AccumulatedSize);
+        public Span<byte> Remaining => Buffer.GetBinSpan()[AccumulatedSize..];
+
         ///<inheritdoc/>
-        public Span<byte> Accumulated => _buffer!.AsSpan(_reservedOffset, AccumulatedSize);
+        public Span<byte> Accumulated => Buffer.GetBinSpan()[_reservedOffset.. AccumulatedSize];
+
         ///<inheritdoc/>
         public int AccumulatedSize { get; set; }
 
-        private Memory<byte> CompleteChunk => _buffer.AsMemory(_reservedOffset, (AccumulatedSize - _reservedOffset));
+        /*
+         * Completed chunk is the segment of the buffer that contains the size segment
+         * followed by the accumulated chunk data, and the trailing crlf.
+         * 
+         * AccumulatedSize points to the end of the accumulated chunk data. The reserved
+         * offset points to the start of the size segment.
+         */
+        private Memory<byte> GetCompleteChunk() => Buffer.GetMemory()[_reservedOffset..AccumulatedSize];
 
         /// <summary>
         /// Attempts to buffer as much data as possible from the specified data
@@ -80,10 +92,11 @@ namespace VNLib.Net.Http.Core
         public ERRNO TryBufferChunk(ReadOnlySpan<byte> data)
         {
             //Calc data size and reserve space for final crlf
-            int dataToCopy = Math.Min(data.Length, RemainingSize - CRLFBytes.Length);
+            int dataToCopy = Math.Min(data.Length, RemainingSize - Context.CrlfBytes.Length);
 
             //Write as much data as possible
             data[..dataToCopy].CopyTo(Remaining);
+
             //Advance buffer
             Advance(dataToCopy);
 
@@ -96,7 +109,7 @@ namespace VNLib.Net.Http.Core
 
         private void InitReserved()
         {
-            //First reserve the chunk window by advancing the accumulator to the size
+            //First reserve the chunk window by advancing the accumulator to the reserved size
             Advance(ReservedSize);
         }
        
@@ -111,47 +124,58 @@ namespace VNLib.Net.Http.Core
         }
 
         /// <summary>
-        /// Writes the buffered data as a single chunk to the stream asynchronously. The internal
-        /// state is reset if writing compleded successfully
+        /// Complets and returns the memory segment containing the chunk data to send 
+        /// to the client. This also resets the accumulator.
         /// </summary>
-        /// <param name="output">The stream to write data to</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>A value task that resolves when the data has been written to the stream</returns>
-        public async ValueTask FlushAsync(Stream output, CancellationToken cancellation)
+        /// <returns></returns>
+        public Memory<byte> GetChunkData()
         {
             //Update the chunk size
             UpdateChunkSize();
 
             //Write trailing chunk delimiter
-            this.Append(CRLFBytes.Span);
+            this.Append(Context.CrlfBytes.Span);
 
-            //write to stream
-            await output.WriteAsync(CompleteChunk, cancellation);
-
-            //Reset for next chunk
-            Reset();
+            return GetCompleteChunk();
         }
 
         /// <summary>
-        /// Writes the buffered data as a single chunk to the stream. The internal
-        /// state is reset if writing compleded successfully
+        /// Complets and returns the memory segment containing the chunk data to send 
+        /// to the client.
         /// </summary>
-        /// <param name="output">The stream to write data to</param>
-        /// <returns>A value task that resolves when the data has been written to the stream</returns>
-        public void Flush(Stream output)
+        /// <returns></returns>
+        public Memory<byte> GetFinalChunkData()
         {
             //Update the chunk size
             UpdateChunkSize();
 
             //Write trailing chunk delimiter
-            this.Append(CRLFBytes.Span);
+            this.Append(Context.CrlfBytes.Span);
 
-            //write to stream
-            output.Write(CompleteChunk.Span);
+            //Write final chunk to the end of the accumulator
+            this.Append(LastChunk.Span);
 
-            //Reset for next chunk
-            Reset();
+            return GetCompleteChunk();
         }
+
+
+        /*
+         * UpdateChunkSize method updates the running total of the chunk size
+         * in the reserved segment of the buffer. This is because http chunking 
+         * requires hex encoded chunk sizes to be written as the first bytes of 
+         * the chunk. So when the flush methods are called, the chunk size 
+         * at the beginning of the chunk is updated to reflect the total size.
+         * 
+         * Because we need to store space at the head of the chunk for the size
+         * we need to reserve space for the size segment.
+         * 
+         * The size sigment bytes abutt the chunk data bytes, so the size segment
+         * is stored at the end of the reserved segment, which is directly before
+         * the start of the chunk data.
+         * 
+         * [reserved segment] [chunk data] [eoc]
+         * [...0a \r\n] [10 bytes of data] [eoc]
+         */
 
         private void UpdateChunkSize()
         {
@@ -173,7 +197,7 @@ namespace VNLib.Net.Http.Core
             //temp buffer to store encoded data in
             Span<byte> encBuf = stackalloc byte[ReservedSize];
             //Encode the chunk size chars
-            int initOffset = Encoding.GetBytes(s[..written], encBuf);
+            int initOffset = Context.Encoding.GetBytes(s[..written], encBuf);
 
             Span<byte> encoded = encBuf[..initOffset];
 
@@ -185,9 +209,9 @@ namespace VNLib.Net.Http.Core
              * the exact size required to store the encoded chunk size
              */
 
-            _reservedOffset = (ReservedSize - (initOffset + CRLFBytes.Length));
+            _reservedOffset = (ReservedSize - (initOffset + Context.CrlfBytes.Length));
             
-            Span<byte> upshifted = _buffer!.AsSpan(_reservedOffset, ReservedSize);
+            Span<byte> upshifted = Buffer.GetBinSpan()[_reservedOffset..ReservedSize];
 
             //First write the chunk size
             encoded.CopyTo(upshifted);
@@ -196,7 +220,7 @@ namespace VNLib.Net.Http.Core
             upshifted = upshifted[initOffset..];
 
             //Copy crlf
-            CRLFBytes.Span.CopyTo(upshifted);
+            Context.CrlfBytes.Span.CopyTo(upshifted);
         }
 
 
@@ -213,16 +237,10 @@ namespace VNLib.Net.Http.Core
         }
 
         public void OnPrepare()
-        {
-            //Alloc buffer
-            _buffer = HttpBinBufferPool.Rent(BufferSize);
-        }
+        { }
 
         public void OnRelease()
-        {
-            HttpBinBufferPool.Return(_buffer!);
-            _buffer = null;
-        }
+        { }
 
     }
 }

@@ -82,6 +82,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         public const int MAX_UNSAFE_POOL_SIZE = 80 * 1024;
 
+        //Cache the system page size
         private static readonly int SystemPageSize = Environment.SystemPageSize;
       
         /// <summary>
@@ -266,6 +267,12 @@ namespace VNLib.Utils.Memory
             }
         }
 
+        /*
+         * Initializing a non-readonly span/memory as of .NET 6.0 is a reference 
+         * reintpretation, essentially a pointer cast, so there is little/no cost 
+         * to implicitely casting to a readonly span/memory types to reduce complexity
+         */
+
         /// <summary>
         /// Initializes a block of memory with zeros 
         /// </summary>
@@ -297,7 +304,7 @@ namespace VNLib.Utils.Memory
             }
 
             //Get the size of the structure
-            int size = Unsafe.SizeOf<T>();
+            int size = sizeof(T);
 
             //Zero block
             Unsafe.InitBlock(block, 0, (uint)(size * itemCount));
@@ -310,7 +317,7 @@ namespace VNLib.Utils.Memory
         /// <param name="block">The pointer to the allocated structure</param>
         public static void ZeroStruct<T>(IntPtr block)
         {
-            //get thes size of the structure
+            //get thes size of the structure does not have to be primitive type
             int size = Unsafe.SizeOf<T>();
             //Zero block
             Unsafe.InitBlock(block.ToPointer(), 0, (uint)size);
@@ -321,7 +328,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="structPtr">The pointer to the allocated structure</param>
-        public static void ZeroStruct<T>(void* structPtr) where T: unmanaged
+        public static void ZeroStruct<T>(void* structPtr) 
         {
             //get thes size of the structure
             int size = Unsafe.SizeOf<T>();
@@ -336,10 +343,8 @@ namespace VNLib.Utils.Memory
         /// <param name="structPtr">The pointer to the allocated structure</param>
         public static void ZeroStruct<T>(T* structPtr) where T : unmanaged
         {
-            //get thes size of the structure
-            int size = Unsafe.SizeOf<T>();
             //Zero block
-            Unsafe.InitBlock(structPtr, 0, (uint)size);
+            Unsafe.InitBlock(structPtr, 0, (uint)sizeof(T));
         }
      
         #endregion
@@ -669,12 +674,27 @@ namespace VNLib.Utils.Memory
 
             //Pin the array
             GCHandle arrHandle = GCHandle.Alloc(array, GCHandleType.Pinned);
+
             //Get array base address
             void* basePtr = (void*)arrHandle.AddrOfPinnedObject();
+
             //Get element offset
             void* indexOffet = Unsafe.Add<T>(basePtr, elementOffset);
 
             return new(indexOffet, arrHandle);
+        }
+
+        /// <summary>
+        /// Gets a runtime <see cref="MemoryHandle"/> wrapper for the given pointer
+        /// </summary>
+        /// <param name="value">The pointer to get the handle for</param>
+        /// <param name="handle">The optional <see cref="GCHandle"/> to attach</param>
+        /// <param name="pinnable">An optional <see cref="IPinnable"/> instace to wrap with the handle</param>
+        /// <returns>The <see cref="MemoryHandle"/> wrapper</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static MemoryHandle GetMemoryHandleFromPointer(IntPtr value, GCHandle handle = default, IPinnable? pinnable = null)
+        {
+            return new MemoryHandle(value.ToPointer(), handle, pinnable);
         }
 
         /// <summary>

@@ -24,15 +24,15 @@
 
 using System;
 using System.IO;
-using System.Runtime.CompilerServices;
+using System.Text;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory.Caching;
-
+using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
-    internal sealed partial class HttpContext : IConnectionContext, IReusable
+    internal sealed partial class HttpContext : IConnectionContext, IReusable, IHttpContextInformation
     {
         /// <summary>
         /// When set as a response flag, disables response compression for 
@@ -52,10 +52,6 @@ namespace VNLib.Net.Http.Core
         /// The http server that this context is bound to
         /// </summary>
         public readonly HttpServer ParentServer;
-        /// <summary>
-        /// The shared transport header reader buffer
-        /// </summary>
-        public readonly SharedHeaderReaderBuffer RequestBuffer;
 
         /// <summary>
         /// The response entity body container
@@ -69,6 +65,11 @@ namespace VNLib.Net.Http.Core
         public readonly BitField ContextFlags;
 
         /// <summary>
+        /// The internal buffer manager for the context
+        /// </summary>
+        public readonly ContextLockedBufferManager Buffers;
+
+        /// <summary>
         /// Gets or sets the alternate application protocol to swtich to
         /// </summary>
         /// <remarks>
@@ -77,39 +78,26 @@ namespace VNLib.Net.Http.Core
         /// or this property must be exlicitly cleared
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
+       
 
         private readonly ResponseWriter responseWriter;
         private ITransportContext? _ctx;   
         
         public HttpContext(HttpServer server)
         {
-            /*
-             * Local method for retreiving the transport stream,
-             * this adds protection/debug from response/request
-             * containers not allowed to maintain referrences 
-             * to a transport stream after it has been released
-             */
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            Stream GetStream() => _ctx!.ConnectionStream;
-            
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            HttpVersion GetVersion() => Request.HttpVersion;
-
             ParentServer = server;
 
+            //Store CRLF bytes
+            CrlfBytes = server.Config.HttpEncoding.GetBytes(HttpHelpers.CRLF);
+
+            //Init buffer manager
+            Buffers = new(server.Config.BufferConfig);
+
             //Create new request
-            Request = new HttpRequest(GetStream);
+            Request = new HttpRequest(this);
             
             //create a new response object
-            Response = new HttpResponse(
-                server.Config.HttpEncoding, 
-                ParentServer.Config.ResponseHeaderBufferSize, 
-                ParentServer.Config.ChunkedResponseAccumulatorSize, 
-                GetStream, 
-                GetVersion);
-
-            //The shared request parsing buffer
-            RequestBuffer = new(server.Config.HeaderBufferSize);
+            Response = new HttpResponse(Buffers, this);
 
             //Init response writer
             ResponseBody = responseWriter = new ResponseWriter();
@@ -118,12 +106,31 @@ namespace VNLib.Net.Http.Core
         }
 
         public TransportSecurityInfo? GetSecurityInfo() => _ctx?.GetSecurityInfo();
-       
+
+        #region Context information
+
+        ///<inheritdoc/>
+        public ReadOnlyMemory<byte> CrlfBytes { get; }
+
+        ///<inheritdoc/>
+        Encoding IHttpContextInformation.Encoding => ParentServer.Config.HttpEncoding;
+
+        ///<inheritdoc/>
+        HttpVersion IHttpContextInformation.CurrentVersion => Request.HttpVersion;
+
+        ///<inheritdoc/>
+        HttpConfig IHttpContextInformation.Config => ParentServer.Config;
+
+        ///<inheritdoc/>
+        Stream IHttpContextInformation.GetTransport() => _ctx!.ConnectionStream;
+
+        #endregion
 
         #region LifeCycle Hooks
 
         ///<inheritdoc/>
         public void InitializeContext(ITransportContext ctx) => _ctx = ctx;
+      
 
         ///<inheritdoc/>
         public void BeginRequest()
@@ -134,7 +141,6 @@ namespace VNLib.Net.Http.Core
             //Lifecycle on new request
             Request.OnNewRequest();
             Response.OnNewRequest();
-            RequestBuffer.OnNewRequest();
 
             //Initialize the request
             Request.Initialize(_ctx!, ParentServer.Config.DefaultHttpVersion);
@@ -145,15 +151,16 @@ namespace VNLib.Net.Http.Core
         {
             Request.OnComplete();
             Response.OnComplete();
-            RequestBuffer.OnComplete();
             responseWriter.OnComplete();
         }
-        
+
         void IReusable.Prepare()
         {
             Request.OnPrepare();
             Response.OnPrepare();
-            RequestBuffer.OnPrepare();
+
+            //Alloc buffers
+            Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
         }        
         
         bool IReusable.Release()
@@ -165,11 +172,16 @@ namespace VNLib.Net.Http.Core
             //Release response/requqests
             Request.OnRelease();
             Response.OnRelease();
-            RequestBuffer.OnRelease();
+
+            //Zero before returning to pool
+            Buffers.ZeroAll();
+
+            //Free buffers
+            Buffers.FreeAll();
 
             return true;
         }
-        
+
         #endregion
     }
 }

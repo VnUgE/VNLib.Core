@@ -62,7 +62,7 @@ namespace VNLib.Net.Http.Core
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         /// <exception cref="UriFormatException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1ParseRequestLine(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, in Span<char> lineBuf)
+        public static HttpStatusCode Http1ParseRequestLine(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, Span<char> lineBuf)
         {
             //Locals
             ERRNO requestResult;
@@ -70,6 +70,7 @@ namespace VNLib.Net.Http.Core
 
             //Read the start line
             requestResult = reader.ReadLine(lineBuf);
+
             //Must be able to parse the verb and location
             if (requestResult < 1)
             {
@@ -79,6 +80,7 @@ namespace VNLib.Net.Http.Core
             
             //true up the request line to actual size
             ReadOnlySpan<char> requestLine = lineBuf[..(int)requestResult].Trim();
+
             //Find the first white space character ("GET / HTTP/1.1")
             index = requestLine.IndexOf(' ');
             if (index == -1)
@@ -88,6 +90,7 @@ namespace VNLib.Net.Http.Core
             
             //Decode the verb (function requires the string be the exact characters of the request method)
             Request.Method = HttpHelpers.GetRequestMethod(requestLine[0..index]);
+
             //Make sure the method is supported
             if (Request.Method == HttpMethod.None)
             {
@@ -96,6 +99,7 @@ namespace VNLib.Net.Http.Core
             
             //location string should be from end of verb to HTTP/ NOTE: Only supports http... this is an http server
             endloc = requestLine.LastIndexOf(" HTTP/", StringComparison.OrdinalIgnoreCase);
+
             //Client must specify an http version prepended by a single whitespace(rfc2612)
             if (endloc == -1)
             {
@@ -134,8 +138,10 @@ namespace VNLib.Net.Http.Core
                     //Set a default scheme
                     Scheme = Request.EncryptionVersion == SslProtocols.None ? Uri.UriSchemeHttp : Uri.UriSchemeHttps,
                 };
+
                 //Need to manually parse the query string
                 int q = paq.IndexOf('?');
+
                 //has query?
                 if (q == -1)
                 {
@@ -164,7 +170,7 @@ namespace VNLib.Net.Http.Core
         /// <param name="lineBuf">The buffer read data from the transport with</param>
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1ParseHeaders(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, in HttpConfig Config, in Span<char> lineBuf)
+        public static HttpStatusCode Http1ParseHeaders(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, in HttpConfig Config, Span<char> lineBuf)
         {
             try
             {
@@ -253,6 +259,7 @@ namespace VNLib.Net.Http.Core
                             {
                                 //Update keepalive, if the connection header contains "closed" and with the current value of keepalive
                                 Request.KeepAlive &= !requestHeaderValue.Contains("close", StringComparison.OrdinalIgnoreCase);
+
                                 //Also store the connecion header into the store
                                 Request.Headers.Add(HttpRequestHeader.Connection, requestHeaderValue.ToString());
                             }
@@ -264,8 +271,10 @@ namespace VNLib.Net.Http.Core
                                     //Invalid content type header value
                                     return HttpStatusCode.UnsupportedMediaType;
                                 }
+
                                 Request.Boundry = boundry;
                                 Request.Charset = charset;
+
                                 //Get the content type enum from mime type
                                 Request.ContentType = HttpHelpers.GetContentType(ct);
                             }
@@ -303,6 +312,7 @@ namespace VNLib.Net.Http.Core
 
                                 //Split the host value by the port parameter 
                                 ReadOnlySpan<char> port = requestHeaderValue.SliceAfterParam(':').Trim();
+
                                 //Slicing beofre the colon should always provide a useable hostname, so allocate a string for it
                                 string host = requestHeaderValue.SliceBeforeParam(':').Trim().ToString();
                                 
@@ -344,8 +354,8 @@ namespace VNLib.Net.Http.Core
                                 {
                                     //Get the name parameter and alloc a string
                                     string name = cookie.SliceBeforeParam('=').Trim().ToString();
-                                    //Get the value parameter and alloc a string
                                     string value = cookie.SliceAfterParam('=').Trim().ToString();
+
                                     //Add the cookie to the dictionary
                                     _ = cookieContainer.TryAdd(name, value);
                                 }
@@ -374,15 +384,19 @@ namespace VNLib.Net.Http.Core
                             {
                                 //See if range bytes value has been set
                                 ReadOnlySpan<char> rawRange = requestHeaderValue.SliceAfterParam("bytes=").TrimCRLF();
+
                                 //Make sure the bytes parameter is set
                                 if (rawRange.IsEmpty)
                                 {
                                     break;
                                 }
+
                                 //Get start range
                                 ReadOnlySpan<char> startRange = rawRange.SliceBeforeParam('-');
+
                                 //Get end range (empty if no - exists)
                                 ReadOnlySpan<char> endRange = rawRange.SliceAfterParam('-');
+
                                 //See if a range end is specified
                                 if (endRange.IsEmpty)
                                 {
@@ -413,6 +427,7 @@ namespace VNLib.Net.Http.Core
                             {
                                 //Alloc a string for origin
                                 string origin = requestHeaderValue.ToString();
+
                                 //Origin headers should always be absolute address "parsable"
                                 if (Uri.TryCreate(origin, UriKind.Absolute, out Uri? org))
                                 {
@@ -495,6 +510,7 @@ namespace VNLib.Net.Http.Core
             
             //Check for chuncked transfer encoding
             ReadOnlySpan<char> transfer = Request.Headers[HttpRequestHeader.TransferEncoding];
+
             if (!transfer.IsEmpty && transfer.Contains("chunked", StringComparison.OrdinalIgnoreCase))
             {
                 //Not a valid http version for chunked transfer encoding
@@ -502,6 +518,7 @@ namespace VNLib.Net.Http.Core
                 {
                     return HttpStatusCode.BadRequest;
                 }
+
                 /*
                  * Was a content length also specified?
                  * This is an issue and is likely an attack. I am choosing not to support 

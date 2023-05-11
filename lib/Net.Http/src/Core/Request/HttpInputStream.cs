@@ -24,14 +24,13 @@
 
 using System;
 using System.IO;
-using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 
 using VNLib.Utils;
-using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
+using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
@@ -40,7 +39,7 @@ namespace VNLib.Net.Http.Core
     /// </summary>
     internal sealed class HttpInputStream : Stream
     {
-        private readonly Func<Stream> GetTransport;
+        private readonly IHttpContextInformation ContextInfo;
 
         private long ContentLength;
         private Stream? InputStream;
@@ -48,7 +47,7 @@ namespace VNLib.Net.Http.Core
 
         private InitDataBuffer? _initalData;     
 
-        public HttpInputStream(Func<Stream> getTransport) => GetTransport = getTransport;
+        public HttpInputStream(IHttpContextInformation contextInfo) => ContextInfo = contextInfo;
 
         internal void OnComplete()
         {
@@ -79,7 +78,7 @@ namespace VNLib.Net.Http.Core
             _initalData = initial;
             
             //Cache transport
-            InputStream = GetTransport();
+            InputStream = ContextInfo.GetTransport();
         }
 
         public override void Close() => throw new NotSupportedException("The HTTP input stream should never be closed!");
@@ -90,9 +89,10 @@ namespace VNLib.Net.Http.Core
         public override long Length => ContentLength;
         public override long Position { get => _position; set { } }
 
-        public override void Flush(){}
+        public override void Flush() { }
 
         public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
         public override int Read(Span<byte> buffer)
         {
             //Calculate the amount of data that can be read into the buffer
@@ -143,6 +143,7 @@ namespace VNLib.Net.Http.Core
         {
             //Calculate the amount of data that can be read into the buffer
             int bytesToRead = (int)Math.Min(buffer.Length, Remaining);
+
             if (bytesToRead == 0)
             {
                 return 0;
@@ -168,7 +169,7 @@ namespace VNLib.Net.Http.Core
             if (writer.RemainingSize > 0)
             {
                 //Read from transport
-                ERRNO read = await InputStream!.ReadAsync(writer.Remaining, cancellationToken).ConfigureAwait(false);
+                ERRNO read = await InputStream!.ReadAsync(writer.Remaining, cancellationToken).ConfigureAwait(true);
 
                 //Update writer position
                 writer.Advance(read);
@@ -183,9 +184,9 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Asynchronously discards all remaining data in the stream 
         /// </summary>
-        /// <param name="maxBufferSize">The maxium size of the buffer to allocate</param>
+        /// <param name="bufMan">The buffer manager to request the discard buffer from</param>
         /// <returns>A task that represents the discard operations</returns>
-        public async ValueTask DiscardRemainingAsync(int maxBufferSize)
+        public async ValueTask DiscardRemainingAsync(IHttpBufferManager bufMan)
         {
             long remaining = Remaining;
 
@@ -203,15 +204,14 @@ namespace VNLib.Net.Http.Core
             //We must actaully disacrd data from the stream
             else
             {
-                //Calcuate a buffer size to allocate (will never be larger than an int)
-                int bufferSize = (int)Math.Min(remaining, maxBufferSize);
-                //Alloc a discard buffer to reset the transport 
-                using IMemoryOwner<byte> discardBuffer = CoreBufferHelpers.GetMemory(bufferSize, false);
-                int read = 0;
+                //Reqest discard buffer
+                Memory<byte> discardBuffer = bufMan.GetDiscardBuffer();
+
+                int read;
                 do
                 {
-                    //Read data to the discard buffer until reading is completed
-                    read = await ReadAsync(discardBuffer.Memory, CancellationToken.None).ConfigureAwait(true);
+                    //Read data to the discard buffer until reading is completed (read == 0)
+                    read = await ReadAsync(discardBuffer, CancellationToken.None).ConfigureAwait(true);
 
                 } while (read != 0);
             }
@@ -222,7 +222,9 @@ namespace VNLib.Net.Http.Core
             //Ignore seek control
             return _position;
         }
+
         public override void SetLength(long value) => throw new NotSupportedException();
+
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }

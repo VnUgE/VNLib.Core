@@ -25,25 +25,26 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils;
 using VNLib.Utils.IO;
+using VNLib.Utils.Memory;
+using VNLib.Utils.Extensions;
+using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
-    internal partial class HttpResponse : IHttpLifeCycle
+    internal partial class HttpResponse : IHttpLifeCycle, IStringSerializeable
     {
         private readonly HashSet<HttpCookie> Cookies;
         private readonly HeaderDataAccumulator Writer;
         
         private readonly DirectStream ReusableDirectStream;
         private readonly ChunkedStream ReusableChunkedStream;
-        private readonly Func<Stream> _getStream;
-        private readonly Encoding ResponseEncoding;
-        private readonly Func<HttpVersion> GetVersion;
+        private readonly IHttpContextInformation ContextInfo;
 
         private bool HeadersSent;
         private bool HeadersBegun;
@@ -55,23 +56,21 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         public VnWebHeaderCollection Headers { get; }
 
-        public HttpResponse(Encoding encoding, int headerBufferSize, int chunkedBufferSize, Func<Stream> getStream, Func<HttpVersion> getVersion)
+        public HttpResponse(IHttpBufferManager manager, IHttpContextInformation ctx)
         {
+            ContextInfo = ctx;
+
             //Initialize a new header collection and a cookie jar
             Headers = new();
             Cookies = new();
-            //Create a new reusable writer stream 
-            Writer = new(headerBufferSize);
 
-            _getStream = getStream;
-            ResponseEncoding = encoding;
+            //Create a new reusable writer stream 
+            Writer = new(manager.ResponseHeaderBuffer, ctx);
             
             //Create a new chunked stream
-            ReusableChunkedStream = new(encoding, chunkedBufferSize, getStream);
+            ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ctx);
             ReusableDirectStream = new();
-            GetVersion = getVersion;
         }
-
 
         /// <summary>
         /// Sets the status code of the response
@@ -101,17 +100,26 @@ namespace VNLib.Net.Http.Core
         internal async Task SendEarly100ContinueAsync()
         {
             Check();
+
             //Send a status message with the continue response status
-            Writer.WriteLine(HttpHelpers.GetResponseString(GetVersion(), HttpStatusCode.Continue));
+            Writer.WriteToken(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, HttpStatusCode.Continue));
+
             //Trailing crlf
-            Writer.WriteLine();
+            Writer.WriteTermination();
+
+            //Get the response data header block
+            Memory<byte> responseBlock = Writer.GetResponseData();
+
             //get base stream
-            Stream bs = _getStream();
-            //Flush writer to stream (will reset the buffer)
-            Writer.Flush(ResponseEncoding, bs);
+            Stream bs = ContextInfo.GetTransport();
+
+            //Write the response data to the base stream
+            await bs.WriteAsync(responseBlock);
+         
             //Flush the base stream
             await bs.FlushAsync();
         }
+
 
         /// <summary>
         /// Sends the status message and all available headers to the client. 
@@ -122,53 +130,76 @@ namespace VNLib.Net.Http.Core
         public void FlushHeaders()
         {
             Check();
-            //If headers havent been sent yet, start with status code
+
+            //Get a fresh writer to buffer character data
+            ForwardOnlyWriter<char> writer = Writer.GetWriter();
+
+            //If headers havent been sent yet, start with status line
             if (!HeadersBegun)
             {
                 //write status code first
-                Writer.WriteLine(HttpHelpers.GetResponseString(GetVersion(), _code));
+                writer.Append(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, _code));
+                writer.Append(HttpHelpers.CRLF);
 
                 //Write the date to header buffer
-                Writer.Append("Date: ");
-                Writer.Append(DateTimeOffset.UtcNow, "R");
-                Writer.WriteLine();
+                writer.Append("Date: ");
+                writer.Append(DateTimeOffset.UtcNow, "R");
+                writer.Append(HttpHelpers.CRLF);
+
                 //Set begun flag
                 HeadersBegun = true;
             }
+
             //Write headers
             for (int i = 0; i < Headers.Count; i++)
             {
-                Writer.Append(Headers.Keys[i]);     //Write header key
-                Writer.Append(": ");            //Write separator
-                Writer.WriteLine(Headers[i]);       //Write the header value
+                writer.Append(Headers.Keys[i]);     //Write header key
+                writer.Append(": ");           //Write separator
+                writer.Append(Headers[i]);          //Write the header value
+                writer.Append(HttpHelpers.CRLF);    //Crlf
             }
+
             //Remove writen headers
             Headers.Clear();
+
             //Write cookies if any are set
             if (Cookies.Count > 0)
             {
-                //Write cookies if any have been set
+                //Enumerate and write
                 foreach (HttpCookie cookie in Cookies)
                 {
-                    Writer.Append("Set-Cookie: ");
-                    Writer.Append(in cookie);
-                    Writer.WriteLine();
+                    writer.Append("Set-Cookie: ");
+                    
+                    //Write the cookie to the header buffer
+                    cookie.Compile(ref writer);
+
+                    writer.Append(HttpHelpers.CRLF);
                 }
+
                 //Clear all current cookies
                 Cookies.Clear();
             }
+
+            //Commit headers
+            Writer.CommitChars(ref writer);
         }
-        private void EndFlushHeaders(Stream transport)
+
+        private ValueTask EndFlushHeadersAsync(Stream transport)
         {
             //Sent all available headers
             FlushHeaders();
+
             //Last line to end headers
-            Writer.WriteLine();
-            
-            //Flush writer
-            Writer.Flush(ResponseEncoding, transport);
+            Writer.WriteTermination();
+
+            //Get the response data header block
+            Memory<byte> responseBlock = Writer.GetResponseData();
+
             //Update sent headers
             HeadersSent = true;
+
+            //Write the response data to the base stream
+            return responseBlock.IsEmpty ? ValueTask.CompletedTask : transport.WriteAsync(responseBlock);
         }
 
         /// <summary>
@@ -178,14 +209,17 @@ namespace VNLib.Net.Http.Core
         /// <returns>A <see cref="Stream"/> configured for writing data to client</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public Stream GetStream(long ContentLength)
+        public async ValueTask<Stream> GetStreamAsync(long ContentLength)
         {
             Check();
+
             //Add content length header
             Headers[HttpResponseHeader.ContentLength] = ContentLength.ToString();
+
             //End sending headers so the user can write to the ouput stream
-            Stream transport = _getStream();
-            EndFlushHeaders(transport);
+            Stream transport = ContextInfo.GetTransport();
+
+            await EndFlushHeadersAsync(transport);
 
             //Init direct stream
             ReusableDirectStream.Prepare(transport);
@@ -200,21 +234,24 @@ namespace VNLib.Net.Http.Core
         /// <returns><see cref="Stream"/> supporting chunked encoding</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public Stream GetStream()
+        public async ValueTask<Stream> GetStreamAsync()
         {
 #if DEBUG
-            if (GetVersion() != HttpVersion.Http11)
+            if (ContextInfo.CurrentVersion != HttpVersion.Http11)
             {
                 throw new InvalidOperationException("Chunked transfer encoding is not acceptable for this http version");
             }
 #endif
             Check();
+
             //Set encoding type to chunked with user-defined compression
             Headers[HttpResponseHeader.TransferEncoding] = "chunked";
+
             //End sending headers so the user can write to the ouput stream
-            Stream transport = _getStream();
-            EndFlushHeaders(transport);
-            
+            Stream transport = ContextInfo.GetTransport();
+
+            await EndFlushHeadersAsync(transport);
+
             //Return the reusable stream
             return ReusableChunkedStream;
         }
@@ -236,7 +273,7 @@ namespace VNLib.Net.Http.Core
         internal async ValueTask CloseAsync()
         {
             //If headers havent been sent yet, send them and there must be no content
-            if (!HeadersBegun)
+            if (!HeadersBegun || !HeadersSent)
             {
                 //RFC 7230, length only set on 200 + but not 204
                 if ((int)_code >= 200 && (int)_code != 204)
@@ -244,24 +281,13 @@ namespace VNLib.Net.Http.Core
                     //If headers havent been sent by this stage there is no content, so set length to 0
                     Headers[HttpResponseHeader.ContentLength] = "0";
                 }
+
                 //Flush transport
-                Stream transport = _getStream();
-                EndFlushHeaders(transport);
-                //Flush transport
-                await transport.FlushAsync();
-            }
-            //Headers have been started but not finished yet
-            else if (!HeadersSent)
-            {
-                //RFC 7230, length only set on 200 + but not 204
-                if ((int)_code >= 200 && (int)_code != 204)
-                {
-                    //If headers havent been sent by this stage there is no content, so set length to 0
-                    Headers[HttpResponseHeader.ContentLength] = "0";
-                }
-                //If headers arent done sending yet, conclude headers
-                Stream transport = _getStream();
-                EndFlushHeaders(transport);
+                Stream transport = ContextInfo.GetTransport();
+                
+                //Finalize headers
+                await EndFlushHeadersAsync(transport);
+
                 //Flush transport
                 await transport.FlushAsync();
             }
@@ -271,13 +297,11 @@ namespace VNLib.Net.Http.Core
         public void OnPrepare()
         {
             //Propagate all child lifecycle hooks
-            Writer.OnPrepare();
             ReusableChunkedStream.OnPrepare();
         }
 
         public void OnRelease()
         {
-            Writer.OnRelease();
             ReusableChunkedStream.OnRelease();
         }
 
@@ -286,7 +310,6 @@ namespace VNLib.Net.Http.Core
             //Default to okay status code
             _code = HttpStatusCode.OK;
             
-            Writer.OnNewRequest();
             ReusableChunkedStream.OnNewRequest();
         }
 
@@ -299,9 +322,74 @@ namespace VNLib.Net.Http.Core
             HeadersBegun = false;
             HeadersSent = false;
 
+            //Reset header writer
+            Writer.Reset();
+
             //Call child lifecycle hooks
-            Writer.OnComplete();
             ReusableChunkedStream.OnComplete();
         }
+
+#if DEBUG
+
+        public override string ToString() => Compile();
+
+        public string Compile()
+        {
+            //Alloc char buffer 
+            using IMemoryHandle<char> buffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
+
+            //Writer
+            ForwardOnlyWriter<char> writer = new (buffer.Span);
+            Compile(ref writer);
+            return writer.ToString();
+        }
+
+        public void Compile(ref ForwardOnlyWriter<char> writer)
+        {
+            /* READONLY!!! */
+
+            //Status line
+            writer.Append(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, _code));
+            writer.Append(HttpHelpers.CRLF);
+            writer.Append("Date: ");
+            writer.Append(DateTimeOffset.UtcNow, "R");
+            writer.Append(HttpHelpers.CRLF);
+
+            //Write headers
+            for (int i = 0; i < Headers.Count; i++)
+            {
+                writer.Append(Headers.Keys[i]);     //Write header key
+                writer.Append(": ");           //Write separator
+                writer.Append(Headers[i]);          //Write the header value
+                writer.Append(HttpHelpers.CRLF);    //Crlf
+            }
+
+            //Enumerate and write
+            foreach (HttpCookie cookie in Cookies)
+            {
+                writer.Append("Set-Cookie: ");
+
+                //Write the cookie to the header buffer
+                cookie.Compile(ref writer);
+
+                writer.Append(HttpHelpers.CRLF);
+            }
+
+            //Last line to end headers
+            writer.Append(HttpHelpers.CRLF);
+        }
+
+        public ERRNO Compile(in Span<char> buffer)
+        {
+            ForwardOnlyWriter<char> writer = new(buffer);
+            Compile(ref writer);
+            return writer.Written;
+        }
+#else
+
+        public override string ToString() => "HTTP Library was compiled without a DEBUG directive, response logging is not available";
+
+#endif
+
     }
 }

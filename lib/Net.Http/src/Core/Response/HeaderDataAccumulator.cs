@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -23,135 +23,102 @@
 */
 
 using System;
-using System.IO;
-using System.Text;
-using System.Runtime.InteropServices;
 
-using VNLib.Utils;
-using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-using static VNLib.Net.Http.Core.CoreBufferHelpers;
+using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
+
     internal partial class HttpResponse
     {
-
         /// <summary>
         /// Specialized data accumulator for compiling response headers
         /// </summary>
-        private sealed class HeaderDataAccumulator : IDataAccumulator<char>, IStringSerializeable, IHttpLifeCycle
+        private sealed class HeaderDataAccumulator
         {
-            private readonly int BufferSize;
+            private readonly IResponseHeaderAccBuffer _buffer;
+            private readonly IHttpContextInformation _contextInfo;
+            private int AccumulatedSize;
 
-            public HeaderDataAccumulator(int bufferSize)
+            public HeaderDataAccumulator(IResponseHeaderAccBuffer accBuffer, IHttpContextInformation ctx)
             {
-                //Calc correct char buffer size from bin buffer
-                this.BufferSize = bufferSize * sizeof(char);
+                _buffer = accBuffer;
+                _contextInfo = ctx;
             }
-
-            /*
-             * May be an issue but wanted to avoid alloc 
-             * if possible since this is a field in a ref
-             * type
-             */
-
-            private UnsafeMemoryHandle<byte>? _handle;
-
-            public void Advance(int count)
-            {
-                //Advance writer
-                AccumulatedSize += count;
-            }
-
-            public void WriteLine() => this.Append(HttpHelpers.CRLF);
-
-            public void WriteLine(ReadOnlySpan<char> data)
-            {
-                this.Append(data);
-                WriteLine();
-            }
-
-            /*Use bin buffers and cast to char buffer*/
-            private Span<char> Buffer => MemoryMarshal.Cast<byte, char>(_handle!.Value.Span);
-
-            public int RemainingSize => Buffer.Length - AccumulatedSize;
-            public Span<char> Remaining => Buffer[AccumulatedSize..];
-            public Span<char> Accumulated => Buffer[..AccumulatedSize];
-            public int AccumulatedSize { get; set; }
 
             /// <summary>
-            /// Encodes the buffered data and writes it to the stream,
-            /// attemts to avoid further allocation where possible
+            /// Initializes a new <see cref="ForwardOnlyWriter{T}"/> for buffering character header data
             /// </summary>
-            /// <param name="enc"></param>
-            /// <param name="baseStream"></param>
-            public void Flush(Encoding enc, Stream baseStream)
+            /// <returns>A <see cref="ForwardOnlyWriter{T}"/> for buffering character header data</returns>
+            public ForwardOnlyWriter<char> GetWriter()
             {
-                ReadOnlySpan<char> span = Accumulated;
-                //Calc the size of the binary buffer
-                int byteSize = enc.GetByteCount(span);
-                //See if there is enough room in the current char buffer
-                if (RemainingSize < (byteSize / sizeof(char)))
-                {
-                    //We need to alloc a binary buffer to write data to
-                    using UnsafeMemoryHandle<byte> bin = GetBinBuffer(byteSize, false);
-                    //encode data
-                    int encoded = enc.GetBytes(span, bin.Span);
-                    //Write to stream
-                    baseStream.Write(bin.Span[..encoded]);
-                }
-                else
-                {
-                    //Get bin buffer by casting remaining accumulator buffer
-                    Span<byte> bin = MemoryMarshal.Cast<char, byte>(Remaining);
-                    //encode data
-                    int encoded = enc.GetBytes(span, bin);
-                    //Write to stream
-                    baseStream.Write(bin[..encoded]);
-                }
-                Reset();
+                Span<char> chars = _buffer.GetCharSpan();
+                return new ForwardOnlyWriter<char>(chars);
             }
 
+            /// <summary>
+            /// Encodes and writes the contents of the <see cref="ForwardOnlyWriter{T}"/> to the internal accumulator
+            /// </summary>
+            /// <param name="writer">The character buffer writer to commit data from</param>
+            public void CommitChars(ref ForwardOnlyWriter<char> writer)
+            {
+                if (writer.Written == 0)
+                {
+                    return;
+                }
+
+                //Write the entire token to the buffer
+                WriteToken(writer.AsSpan());
+            }
+
+            /// <summary>
+            /// Encodes a single token and writes it directly to the internal accumulator
+            /// </summary>
+            /// <param name="chars">The character sequence to accumulate</param>
+            public void WriteToken(ReadOnlySpan<char> chars) 
+            {
+                //Get remaining buffer
+                Span<byte> remaining = _buffer.GetBinSpan()[AccumulatedSize..];
+
+                //Commit all chars to the buffer
+                AccumulatedSize += _contextInfo.Encoding.GetBytes(chars, remaining);
+            }
+           
+            /// <summary>
+            /// Writes the http termination sequence to the internal accumulator
+            /// </summary>
+            public void WriteTermination()
+            {
+                //Write the http termination sequence
+                Span<byte> remaining = _buffer.GetBinSpan()[AccumulatedSize..];
+                
+                _contextInfo.CrlfBytes.Span.CopyTo(remaining);
+                
+                //Advance the accumulated window
+                AccumulatedSize += _contextInfo.CrlfBytes.Length;
+            }
+
+            /// <summary>
+            /// Resets the internal accumulator
+            /// </summary>
             public void Reset() => AccumulatedSize = 0;
 
-           
-
-            public void OnPrepare()
+            /// <summary>
+            /// Gets the accumulated response data as its memory buffer, and resets the internal accumulator
+            /// </summary>
+            /// <returns>The buffer segment containing the accumulated response data</returns>
+            public Memory<byte> GetResponseData()
             {
-                //Alloc buffer
-                _handle = GetBinBuffer(BufferSize, false);
-            }
+                //get the current buffer as memory and return the accumulated segment
+                Memory<byte> accumulated = _buffer.GetMemory()[..AccumulatedSize];
 
-            public void OnRelease()
-            {
-                _handle!.Value.Dispose();
-                _handle = null;
-            }
-
-            public void OnNewRequest()
-            {}
-
-            public void OnComplete()
-            {
+                //Reset the buffer
                 Reset();
-            }
 
-
-            ///<inheritdoc/>
-            public string Compile() => Accumulated.ToString();
-            ///<inheritdoc/>
-            public void Compile(ref ForwardOnlyWriter<char> writer) => writer.Append(Accumulated);
-            ///<inheritdoc/>
-            public ERRNO Compile(in Span<char> buffer)
-            {
-                ForwardOnlyWriter<char> writer = new(buffer);
-                Compile(ref writer);
-                return writer.Written;
+                return accumulated;
             }
-            ///<inheritdoc/>
-            public override string ToString() => Compile();
         }
     }
 }

@@ -28,6 +28,7 @@ using System.Text;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
+using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
@@ -39,12 +40,14 @@ namespace VNLib.Net.Http.Core
     {
         ///<inheritdoc/>
         public readonly Encoding Encoding { get; }
+
         ///<inheritdoc/>
         public readonly ReadOnlyMemory<byte> LineTermination { get; }
+
         ///<inheritdoc/>
         public readonly Stream BaseStream { get; }
 
-        private readonly SharedHeaderReaderBuffer BinBuffer;
+        private readonly IHttpHeaderParseBuffer Buffer;
       
         private int BufWindowStart;
         private int BufWindowEnd;
@@ -56,35 +59,39 @@ namespace VNLib.Net.Http.Core
         /// <param name="buffer">The shared binary buffer</param>
         /// <param name="encoding">The encoding to use when reading bianry</param>
         /// <param name="lineTermination">The line delimiter to search for</param>
-        public TransportReader(Stream transport, SharedHeaderReaderBuffer buffer, Encoding encoding, ReadOnlyMemory<byte> lineTermination)
+        public TransportReader(Stream transport, IHttpHeaderParseBuffer buffer, Encoding encoding, ReadOnlyMemory<byte> lineTermination)
         {
             BufWindowEnd = 0;
             BufWindowStart = 0;
             Encoding = encoding;
             BaseStream = transport;
             LineTermination = lineTermination;
-            BinBuffer = buffer;
+            Buffer = buffer;
         }
         
         ///<inheritdoc/>
         public readonly int Available => BufWindowEnd - BufWindowStart;
 
         ///<inheritdoc/>
-        public readonly Span<byte> BufferedDataWindow => BinBuffer.BinBuffer[BufWindowStart..BufWindowEnd];
+        public readonly Span<byte> BufferedDataWindow => Buffer.GetBinSpan()[BufWindowStart..BufWindowEnd];
       
 
         ///<inheritdoc/>
         public void Advance(int count) => BufWindowStart += count;
+
         ///<inheritdoc/>
         public void FillBuffer()
         {
             //Get a buffer from the end of the current window to the end of the buffer
-            Span<byte> bufferWindow = BinBuffer.BinBuffer[BufWindowEnd..];
+            Span<byte> bufferWindow = Buffer.GetBinSpan()[BufWindowEnd..];
+
             //Read from stream
             int read = BaseStream.Read(bufferWindow);
+
             //Update the end of the buffer window to the end of the read data
             BufWindowEnd += read;
         }
+
         ///<inheritdoc/>
         public ERRNO CompactBufferWindow()
         {
@@ -92,18 +99,23 @@ namespace VNLib.Net.Http.Core
             if (BufWindowStart > 0)
             {
                 //Get span over engire buffer
-                Span<byte> buffer = BinBuffer.BinBuffer;
+                Span<byte> buffer = Buffer.GetBinSpan();
+                
                 //Get data within window
                 Span<byte> usedData = buffer[BufWindowStart..BufWindowEnd];
+                
                 //Copy remaining to the begining of the buffer
                 usedData.CopyTo(buffer);
+                
                 //Buffer window start is 0
                 BufWindowStart = 0;
+                
                 //Buffer window end is now the remaining size
                 BufWindowEnd = usedData.Length;
             }
-            //Return the number of bytes of available space
-            return BinBuffer.BinLength - BufWindowEnd;
+
+            //Return the number of bytes of available space from the end of the current window
+            return Buffer.BinSize - BufWindowEnd;
         }
     }
 }

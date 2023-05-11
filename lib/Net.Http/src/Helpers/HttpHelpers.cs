@@ -53,6 +53,7 @@ namespace VNLib.Net.Http
         /// Extended <see cref="HttpRequestHeader"/> for origin header, DO NOT USE IN <see cref="WebHeaderCollection"/>
         /// </summary>
         internal const HttpRequestHeader Origin = (HttpRequestHeader)42;
+
         /// <summary>
         /// Extended <see cref="HttpRequestHeader"/> for Content-Disposition, DO NOT USE IN <see cref="WebHeaderCollection"/>
         /// </summary>
@@ -72,7 +73,7 @@ namespace VNLib.Net.Http
          * enum value (with some extra support)
          */
 
-        private static readonly IReadOnlyDictionary<string, HttpRequestHeader> RequestHeaderLookup = new Dictionary<string, HttpRequestHeader>()
+        private static readonly IReadOnlyDictionary<string, HttpRequestHeader> RequestHeaderLookup = new Dictionary<string, HttpRequestHeader>(StringComparer.OrdinalIgnoreCase)
         {
             {"CacheControl", HttpRequestHeader.CacheControl },
             {"Connection", HttpRequestHeader.Connection },
@@ -191,6 +192,7 @@ namespace VNLib.Net.Http
                  * Pre-compute common headers 
                  */
                 Dictionary<int, HttpRequestHeader> requestHeaderHashes = new();
+
                 //Add all HTTP methods
                 foreach (string headerValue in RequestHeaderLookup.Keys)
                 {
@@ -199,6 +201,7 @@ namespace VNLib.Net.Http
                     //Store the http header enum value with the hash-code of the string of said header
                     requestHeaderHashes[hashCode] = RequestHeaderLookup[headerValue];
                 }
+
                 RequestHeaderHashLookup = requestHeaderHashes;
             }
         }        
@@ -211,12 +214,14 @@ namespace VNLib.Net.Http
         /// <returns>Http acceptable string representing a content type</returns>
         /// <exception cref="KeyNotFoundException"></exception>
         public static string GetContentTypeString(ContentType type) => CtToMime[type];
+
         /// <summary>
         /// Returns the <see cref="ContentType"/> enum value from the MIME string
         /// </summary>
         /// <param name="type">Content type from request</param>
         /// <returns><see cref="ContentType"/> of request, <see cref="ContentType.NonSupported"/> if unknown</returns>
         public static ContentType GetContentType(string type) => MimeToCt.GetValueOrDefault(type, ContentType.NonSupported);
+
         //Cache control string using mdn reference 
         //https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
         /// <summary>
@@ -260,6 +265,7 @@ namespace VNLib.Net.Http
             sb.Append(maxAge);
             return sb.ToString();
         }
+
         /// <summary>
         /// Builds a Cache-Control MIME content header from the specified flags
         /// </summary>
@@ -268,6 +274,7 @@ namespace VNLib.Net.Http
         /// <param name="immutable">Sets the immutable argument</param>
         /// <returns>The string representation of the Cache-Control header</returns>
         public static string GetCacheString(CacheType type, TimeSpan maxAge, bool immutable = false) => GetCacheString(type, (int)maxAge.TotalSeconds, immutable);
+
         /// <summary>
         /// Returns an enum value of an httpmethod of an http request method string
         /// </summary>
@@ -281,6 +288,7 @@ namespace VNLib.Net.Http
             //run the lookup and return not supported if the method was not found
             return MethodHashLookup.GetValueOrDefault(hashCode, HttpMethod.None);
         }
+
         /// <summary>
         /// Compares the first 3 bytes of IPV4 ip address or the first 6 bytes of a IPV6. Can be used to determine if the address is local to another address
         /// </summary>
@@ -324,6 +332,7 @@ namespace VNLib.Net.Http
             }
             return false;
         }
+
         /// <summary>
         /// Selects a <see cref="ContentType"/> for a given file extension
         /// </summary>
@@ -338,6 +347,7 @@ namespace VNLib.Net.Http
             //If the extension is defined, perform a lookup, otherwise return the default 
             return ExtensionToCt.GetValueOrDefault(extention.ToString(), ContentType.Binary);
         }
+
         /// <summary>
         /// Selects a runtime compiled <see cref="string"/> matching the given <see cref="HttpStatusCode"/> and <see cref="HttpVersion"/>
         /// </summary>
@@ -395,17 +405,22 @@ namespace VNLib.Net.Http
         {
             //First parameter should be the type argument
             type = header.SliceBeforeParam(';').Trim().ToString();
+
             //Set defaults for name and filename
             name = fileName = null;
+
             //get the name parameter
             ReadOnlySpan<char> nameSpan = header.SliceAfterParam("name=\"");
+
             if (!nameSpan.IsEmpty)
             {
                 //Capture the name parameter value and trim it up
                 name = nameSpan.SliceBeforeParam('"').Trim().ToString();
             }
+
             //Check for the filename parameter
             ReadOnlySpan<char> fileNameSpan = header.SliceAfterParam("filename=\"");
+
             if (!fileNameSpan.IsEmpty)
             {
                 //Capture the name parameter value and trim it up

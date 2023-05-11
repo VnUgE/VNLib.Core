@@ -22,23 +22,11 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-/*
- * This class is meant to provide memory helper methods
- * as a centralized HTTP local memory api. 
- * 
- * Pools and heaps are privatized to help avoid 
- * leaking sensitive HTTP data across other application
- * allocations and help provide memory optimization.
- */
 
 using System;
 using System.Buffers;
-using System.Security;
-using System.Threading;
 
 using VNLib.Utils.IO;
-using VNLib.Utils.Memory;
-using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Http.Core
 {
@@ -52,71 +40,6 @@ namespace VNLib.Net.Http.Core
         /// An internal HTTP character binary pool for HTTP specific internal buffers
         /// </summary>
         public static ArrayPool<byte> HttpBinBufferPool { get; } = ArrayPool<byte>.Create();
-
-        /// <summary>
-        /// An <see cref="IUnmangedHeap"/> used for internal HTTP buffers
-        /// </summary>
-        public static IUnmangedHeap HttpPrivateHeap => _lazyHeap.Value;
-
-        private static readonly Lazy<IUnmangedHeap> _lazyHeap = new(MemoryUtil.InitializeNewHeapForProcess, LazyThreadSafetyMode.PublicationOnly);
-
-        /// <summary>
-        /// Alloctes an unsafe block of memory from the internal heap, or buffer pool
-        /// </summary>
-        /// <param name="size">The number of elemnts to allocate</param>
-        /// <param name="zero">A value indicating of the block should be zeroed before returning</param>
-        /// <returns>A handle to the block of memory</returns>
-        /// <exception cref="SecurityException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        public static UnsafeMemoryHandle<byte> GetBinBuffer(int size, bool zero)
-        {
-            //Calc buffer size to the nearest page size
-            size = (int)MemoryUtil.NearestPage(size);
-
-            /*
-             * Heap synchronziation may be enabled for our private heap, so we may want
-             * to avoid it in favor of performance over private heap segmentation.
-             * 
-             * If synchronization is enabled, use the system heap
-             */
-            
-            if ((HttpPrivateHeap.CreationFlags & HeapCreation.UseSynchronization) > 0)
-            {
-                return MemoryUtil.UnsafeAlloc(size, zero);
-            }
-            else
-            {
-                return HttpPrivateHeap.UnsafeAlloc<byte>(size, zero);
-            }
-        }
-
-        public static IMemoryOwner<byte> GetMemory(int size, bool zero)
-        {
-            //Calc buffer size to the nearest page size
-            size = (int)MemoryUtil.NearestPage(size);
-
-            /*
-             * Heap synchronziation may be enabled for our private heap, so we may want
-             * to avoid it in favor of performance over private heap segmentation.
-             * 
-             * If synchronization is enabled, use the system heap
-             */
-
-            if ((HttpPrivateHeap.CreationFlags & HeapCreation.UseSynchronization) > 0)
-            {
-                return MemoryUtil.Shared.DirectAlloc<byte>(size, zero);
-            }
-            //If the block is larger than an safe array size, avoid LOH pressure
-            else if(size > MemoryUtil.MAX_UNSAFE_POOL_SIZE)
-            {
-                return HttpPrivateHeap.DirectAlloc<byte>(size, zero);
-            }
-            //Use the array pool to get a memory handle
-            else
-            {
-                return new VnTempBuffer<byte>(HttpBinBufferPool, size, zero);
-            }
-        }
 
         /// <summary>
         /// Gets the remaining data in the reader buffer and prepares a 

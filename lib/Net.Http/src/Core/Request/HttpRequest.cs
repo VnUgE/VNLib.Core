@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.IO;
 using System.Net;
 using System.Collections.Generic;
 using System.Security.Authentication;
@@ -35,7 +34,7 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Net.Http.Core
 {
 
-    internal class HttpRequest : IHttpLifeCycle
+    internal sealed class HttpRequest : IHttpLifeCycle
 #if DEBUG
         ,IStringSerializeable
 #endif
@@ -75,7 +74,7 @@ namespace VNLib.Net.Http.Core
         public bool Expect { get; set; }
 
 #nullable disable
-        public HttpRequest(Func<Stream> getTransport)
+        public HttpRequest(IHttpContextInformation contextInfo)
         {
             //Create new collection for headers
             Headers = new();
@@ -85,7 +84,7 @@ namespace VNLib.Net.Http.Core
             Accept = new();
             AcceptLanguage = new();
             //New reusable input stream
-            InputStream = new(getTransport);
+            InputStream = new(contextInfo);
             RequestBody = new();
         }
        
@@ -134,10 +133,11 @@ namespace VNLib.Net.Http.Core
 
 
 #if DEBUG
+
         public string Compile()
         {
             //Alloc char buffer for compilation
-            using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAlloc<char>(16 * 1024, true);
+            using IMemoryHandle<char> buffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
 
             ForwardOnlyWriter<char> writer = new(buffer.Span);
             
@@ -171,7 +171,9 @@ namespace VNLib.Net.Http.Core
                     writer.Append("0.9");
                     break;
             }
+
             writer.Append("\r\n");
+
             //write host
             writer.Append("Host: ");
             writer.Append(Location?.Authority);
@@ -185,6 +187,7 @@ namespace VNLib.Net.Http.Core
                 writer.Append(Headers[header]);
                 writer.Append("\r\n");
             }
+
             //Write cookies
             foreach (string cookie in Cookies.Keys)
             {
@@ -273,15 +276,12 @@ namespace VNLib.Net.Http.Core
             Compile(ref writer);
             return writer.Written;
         }
-        public override string ToString()
-        {
-            return Compile();
-        }
+
+        public override string ToString() => Compile();
 #else
-        public override string ToString()
-        {
-            return "Request debug output only available when compiled in DEBUG mode";
-        }
+
+        public override string ToString() => "HTTP Library was compiled without a DEBUG directive, request logging is not available";
+
 #endif
     }
 }

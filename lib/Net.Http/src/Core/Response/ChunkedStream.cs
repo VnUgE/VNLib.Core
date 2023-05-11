@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -36,12 +36,12 @@
 
 using System;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory;
+using VNLib.Net.Http.Core.Buffering;
 
 #pragma warning disable CA2215 // Dispose methods should call base class dispose
 
@@ -55,27 +55,19 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         private sealed class ChunkedStream : Stream, IHttpLifeCycle
         {
-            private const string LAST_CHUNK_STRING = "0\r\n\r\n";
-
-            private readonly ReadOnlyMemory<byte> LastChunk;            
+                 
             private readonly ChunkDataAccumulator ChunckAccumulator;
-            private readonly Func<Stream> GetTransport; 
+            private readonly IHttpContextInformation ContextInfo;
 
             private Stream? TransportStream;
             private bool HadError;
 
-            internal ChunkedStream(Encoding encoding, int chunkBufferSize, Func<Stream> getStream)
+            internal ChunkedStream(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
             {
-                //Convert and store cached versions of the last chunk bytes
-                LastChunk = encoding.GetBytes(LAST_CHUNK_STRING);
-
-                //get the min buffer by rounding to the nearest page
-                int actualBufSize = (int)MemoryUtil.NearestPage(chunkBufferSize);
+                ContextInfo = context;
 
                 //Init accumulator
-                ChunckAccumulator = new(encoding, actualBufSize);
-
-                GetTransport = getStream;
+                ChunckAccumulator = new(buffer, context);
             }
            
 
@@ -91,7 +83,7 @@ namespace VNLib.Net.Http.Core
             public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
            
             
-            public override void Write(byte[] buffer, int offset, int count) => Write(new ReadOnlySpan<byte>(buffer, offset, count));
+            public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
             public override void Write(ReadOnlySpan<byte> chunk)
             {
                 //Only write non-zero chunks
@@ -116,7 +108,14 @@ namespace VNLib.Net.Http.Core
                             reader.Advance(written);
 
                             //Flush accumulator
-                            ChunckAccumulator.Flush(TransportStream!);
+                            Memory<byte> accChunk = ChunckAccumulator.GetChunkData();
+
+                            //Reset the chunk accumulator
+                            ChunckAccumulator.Reset();
+
+                            //Write chunk data
+                            TransportStream!.Write(accChunk.Span);
+
                             //Continue to buffer / flush as needed
                             continue;
                         }
@@ -161,11 +160,19 @@ namespace VNLib.Net.Http.Core
                             //Advance reader
                             reader.Advance(written);
 
+                            //Flush accumulator
+                            Memory<byte> accChunk = ChunckAccumulator.GetChunkData();
+
+                            //Reset the chunk accumulator
+                            ChunckAccumulator.Reset();
+
                             //Flush accumulator async
-                            await ChunckAccumulator.FlushAsync(TransportStream!, cancellationToken);
+                            await TransportStream!.WriteAsync(accChunk, cancellationToken);
+                            
                             //Continue to buffer / flush as needed
                             continue;
                         }
+
                         break;
                     }
                     while (true);
@@ -185,12 +192,15 @@ namespace VNLib.Net.Http.Core
                 {
                     return;
                 }
+
+                //Complete the last chunk
+                Memory<byte> chunkData = ChunckAccumulator.GetFinalChunkData();
+
+                //Reset the accumulator
+                ChunckAccumulator.Reset();
                 
                 //Write remaining data to stream
-                await ChunckAccumulator.FlushAsync(TransportStream!, CancellationToken.None);
-
-                //Write final chunk
-                await TransportStream!.WriteAsync(LastChunk, CancellationToken.None);
+                await TransportStream!.WriteAsync(chunkData, CancellationToken.None);             
 
                 //Flush base stream
                 await TransportStream!.FlushAsync(CancellationToken.None);
@@ -205,12 +215,15 @@ namespace VNLib.Net.Http.Core
                 {
                     return;
                 }
-                
-                //Write remaining data to stream
-                ChunckAccumulator.Flush(TransportStream!);
 
-                //Write final chunk
-                TransportStream!.Write(LastChunk.Span);
+                //Complete the last chunk
+                Memory<byte> chunkData = ChunckAccumulator.GetFinalChunkData();
+
+                //Reset the accumulator
+                ChunckAccumulator.Reset();
+
+                //Write chunk data
+                TransportStream!.Write(chunkData.Span);
 
                 //Flush base stream
                 TransportStream!.Flush();
@@ -234,7 +247,7 @@ namespace VNLib.Net.Http.Core
                 ChunckAccumulator.OnNewRequest();
                 
                 //Get transport stream even if not used
-                TransportStream = GetTransport();
+                TransportStream = ContextInfo.GetTransport();
             }
 
             public void OnComplete()

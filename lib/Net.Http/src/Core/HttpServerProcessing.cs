@@ -5,8 +5,8 @@
 * Package: VNLib.Net.Http
 * File: HttpServerProcessing.cs 
 *
-* HttpServerProcessing.cs is part of VNLib.Net.Http which is part of the larger 
-* VNLib collection of libraries and utilities.
+* HttpServerProcessing.cs is part of VNLib.Net.Http which is part 
+* of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -30,8 +30,10 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 using VNLib.Net.Http.Core;
+using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http
 {
@@ -159,16 +161,18 @@ namespace VNLib.Net.Http
                 {
                     return false;
                 }
-#if DEBUG
-                //Write debug request log
-                if (Config.RequestDebugLog != null)
-                {
-                    Config.RequestDebugLog.Verbose(context.Request.ToString());
-                }
-#endif
+
                 //process the request
                 bool keepalive = await ProcessRequestAsync(context, (HttpStatusCode)status);
-               
+
+#if DEBUG
+                //Write debug response log
+                if(Config.RequestDebugLog != null)
+                {
+                    WriteConnectionDebugLog(context);
+                }
+#endif
+
                 //Close the response
                 await context.WriteResponseAsync(StopToken!.Token);
                 
@@ -183,6 +187,25 @@ namespace VNLib.Net.Http
                 //Clean end request
                 context.EndRequest();
             }
+        }
+
+        private void WriteConnectionDebugLog(HttpContext context)
+        {
+            //Alloc debug buffer
+            using IMemoryHandle<char> debugBuffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
+
+            ForwardOnlyWriter<char> writer = new (debugBuffer.Span);
+
+            //Request
+            context.Request.Compile(ref writer);
+
+            //newline
+            writer.Append("\r\n");
+
+            //Response
+            context.Response.Compile(ref writer);
+
+            Config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
         }
 
         /// <summary>
@@ -205,34 +228,41 @@ namespace VNLib.Net.Http
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private HttpStatusCode ParseRequest(ITransportContext transport, HttpContext ctx)
         {
+            //Get the parse buffer
+            IHttpHeaderParseBuffer parseBuffer = ctx.Buffers.RequestHeaderParseBuffer;
+
             //Init parser
-            TransportReader reader = new (transport.ConnectionStream, ctx.RequestBuffer, Config.HttpEncoding, HeaderLineTermination);
+            TransportReader reader = new (transport.ConnectionStream, parseBuffer, Config.HttpEncoding, HeaderLineTermination);
            
             try
             {
-                Span<char> lineBuf = ctx.RequestBuffer.CharBuffer;
+                //Get the char span
+                Span<char> lineBuf = parseBuffer.GetCharSpan();
                 
                 Http11ParseExtensions.Http1ParseState parseState = new();
                 
                 //Parse the request line 
-                HttpStatusCode code = ctx.Request.Http1ParseRequestLine(ref parseState, ref reader, in lineBuf);
+                HttpStatusCode code = ctx.Request.Http1ParseRequestLine(ref parseState, ref reader, lineBuf);
                 
                 if (code > 0)
                 {
                     return code;
                 }
+
                 //Parse the headers
-                code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, Config, in lineBuf);
+                code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, Config, lineBuf);
                 if (code > 0)
                 {
                     return code;
                 }
+
                 //Prepare entity body for request
                 code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, Config);
                 if (code > 0)
                 {
                     return code;
                 }
+
                 //Success!
                 return 0;
             }
@@ -266,6 +296,7 @@ namespace VNLib.Net.Http
                 //exit and close connection (default result will close the context)
                 return false;
             }
+
             //We only support version 1 and 1/1
             if ((context.Request.HttpVersion & (HttpVersion.Http11 | HttpVersion.Http1)) == 0)
             {
@@ -274,6 +305,7 @@ namespace VNLib.Net.Http
                 context.Respond(HttpStatusCode.HttpVersionNotSupported);
                 return false;
             }
+
             //Check open connection count (not super accurate, or might not be atomic)
             if (OpenConnectionCount > Config.MaxOpenConnections)
             {
@@ -297,6 +329,7 @@ namespace VNLib.Net.Http
                 //Set connection closed
                 context.Response.Headers[HttpResponseHeader.Connection] = "closed";
             }
+
             //Get the server root for the specified location
             if (!ServerRoots.TryGetValue(context.Request.Location.DnsSafeHost, out IWebRoot? root) && !ServerRoots.TryGetValue(WILDCARD_KEY, out root))
             {
@@ -304,6 +337,7 @@ namespace VNLib.Net.Http
                 //make sure control leaves
                 return keepalive;
             }
+
             //check for redirects
             if (root.Redirects.TryGetValue(context.Request.Location.LocalPath, out Redirect? r))
             {
@@ -312,12 +346,14 @@ namespace VNLib.Net.Http
                 //Return keepalive
                 return keepalive;
             }
+
             //Check the expect header and return an early status code
             if (context.Request.Expect)
             {
                 //send a 100 status code
                 await context.Response.SendEarly100ContinueAsync();
             }
+
             /*
              * Initialze the request body state, which may read/buffer the request
              * entity body. When doing so, the only exceptions that should be 
@@ -330,7 +366,9 @@ namespace VNLib.Net.Http
              * form data size so oom or overflow would be bugs, and we can let 
              * them get thrown
              */
-            await context.Request.InitRequestBodyAsync(Config.FormDataBufferSize, Config.HttpEncoding);
+
+            await context.InitRequestBodyAsync();
+
             try
             {
                 await ProcessAsync(root, context);

@@ -29,10 +29,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-
-using static VNLib.Net.Http.Core.CoreBufferHelpers;
 
 namespace VNLib.Net.Http.Core
 {
@@ -92,6 +91,7 @@ namespace VNLib.Net.Http.Core
                 && (!Request.Origin.Authority.Equals(Request.Location.Authority, StringComparison.Ordinal) 
                 || !Request.Origin.Scheme.Equals(Request.Location.Scheme, StringComparison.Ordinal));
         }
+
         /// <summary>
         /// Is the current connection a websocket upgrade request handshake
         /// </summary>
@@ -99,11 +99,13 @@ namespace VNLib.Net.Http.Core
         public static bool IsWebSocketRequest(this HttpRequest Request)
         {
             string? upgrade = Request.Headers[HttpRequestHeader.Upgrade];
+
             if (!string.IsNullOrWhiteSpace(upgrade) && upgrade.Contains("websocket", StringComparison.OrdinalIgnoreCase))
             {
                 //This request is a websocket request
                 //Check connection header
                 string? connection = Request.Headers[HttpRequestHeader.Connection];
+
                 //Must be a web socket request
                 return !string.IsNullOrWhiteSpace(connection) && connection.Contains("upgrade", StringComparison.OrdinalIgnoreCase);
             }
@@ -130,175 +132,295 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Initializes the <see cref="HttpRequest.RequestBody"/> for the current request
         /// </summary>
-        /// <param name="Request"></param>
-        /// <param name="maxBufferSize">The maxium buffer size allowed while parsing reqeust body data</param>
-        /// <param name="encoding">The request data encoding for url encoded or form data bodies</param>
+        /// <param name="context"></param>
         /// <exception cref="IOException"></exception>
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        internal static ValueTask InitRequestBodyAsync(this HttpRequest Request, int maxBufferSize, Encoding encoding)
+        internal static ValueTask InitRequestBodyAsync(this HttpContext context)
         {
-            /*
-             * Parses query parameters from the request location query
-             */
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static void ParseQueryArgs(HttpRequest Request)
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                //Query string parse method
-                static void QueryParser(ReadOnlySpan<char> queryArgument, HttpRequest Request)
-                {
-                    //Split spans after the '=' character
-                    ReadOnlySpan<char> key = queryArgument.SliceBeforeParam('=');
-                    ReadOnlySpan<char> value = queryArgument.SliceAfterParam('=');
-                    //Insert into dict
-                    Request.RequestBody.QueryArgs[key.ToString()] = value.ToString();
-                }
-
-                //if the request has query args, parse and store them
-                ReadOnlySpan<char> queryString = Request.Location.Query;
-                if (!queryString.IsEmpty)
-                {
-                    //trim leading '?' if set
-                    queryString = queryString.TrimStart('?');
-                    //Split args by '&'
-                    queryString.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries, QueryParser, Request);
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static async ValueTask ParseInputStream(HttpRequest Request, int maxBufferSize, Encoding encoding)
-            {
-                /*
-                *  Reads all available data from the request input stream  
-                *  If the stream size is smaller than a TCP buffer size, will complete synchronously
-                */
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                static ValueTask<VnString> ReadInputStreamAsync(HttpRequest Request, int maxBufferSize, Encoding encoding)
-                {
-                    //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
-                    int bufferSize = (int)Math.Min(Request.InputStream.Length, maxBufferSize);
-                    //Read the stream into a vnstring
-                    return VnString.FromStreamAsync(Request.InputStream, encoding, HttpPrivateHeap, bufferSize);
-                }
-                /*
-                 * SpanSplit callback function for storing UrlEncoded request entity 
-                 * bodies in key-value pairs and writing them to the 
-                 */
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                static void UrlEncodedSplitCb(ReadOnlySpan<char> kvArg, HttpRequest Request)
-                {
-                    //Get key side of agument (or entire argument if no value is set)
-                    ReadOnlySpan<char> key = kvArg.SliceBeforeParam('=');
-                    ReadOnlySpan<char> value = kvArg.SliceAfterParam('=');
-                    //trim, allocate strings, and store in the request arg dict
-                    Request.RequestBody.RequestArgs[key.TrimCRLF().ToString()] = value.TrimCRLF().ToString();
-                }
-
-                /*
-                * Parses a Form-Data content type request entity body and stores those arguments in 
-                * Request uploads or request args
-                */
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                static void FormDataBodySplitCb(ReadOnlySpan<char> formSegment, ValueTuple<HttpRequestBody, Encoding> state)
-                {
-                    //Form data arguments
-                    string? DispType = null, Name = null, FileName = null;
-                    ContentType ctHeaderVal = ContentType.NonSupported;
-                    //Get sliding window for parsing data
-                    ForwardOnlyReader<char> reader = new(formSegment.TrimCRLF());
-                    //Read content headers
-                    do
-                    {
-                        //Get the index of the next crlf
-                        int index = reader.Window.IndexOf(HttpHelpers.CRLF);
-                        //end of headers
-                        if (index < 1)
-                        {
-                            break;
-                        }
-                        //Get header data
-                        ReadOnlySpan<char> header = reader.Window[..index];
-                        //Split header at colon
-                        int colon = header.IndexOf(':');
-                        //If no data is available after the colon the header is not valid, so move on to the next body
-                        if (colon < 1)
-                        {
-                            return;
-                        }
-                        //Hash the header value into a header enum
-                        HttpRequestHeader headerType = HttpHelpers.GetRequestHeaderEnumFromValue(header[..colon]);
-                        //get the header value
-                        ReadOnlySpan<char> headerValue = header[(colon + 1)..];
-                        //Check for content dispositon header
-                        if (headerType == HttpHelpers.ContentDisposition)
-                        {
-                            //Parse the content dispostion
-                            HttpHelpers.ParseDisposition(headerValue, out DispType, out Name, out FileName);
-                        }
-                        //Check for content type
-                        else if (headerType == HttpRequestHeader.ContentType)
-                        {
-                            //The header value for content type should be an MIME content type
-                            ctHeaderVal = HttpHelpers.GetContentType(headerValue.Trim().ToString());
-                        }
-                        //Shift window to the next line
-                        reader.Advance(index + HttpHelpers.CRLF.Length);
-                    } while (true);
-                    //Remaining data should be the body data (will have leading and trailing CRLF characters
-                    //If filename is set, this must be a file
-                    if (!string.IsNullOrWhiteSpace(FileName))
-                    {
-                        //Store the file in the uploads 
-                        state.Item1.Uploads.Add(FileUpload.FromString(reader.Window.TrimCRLF(), state.Item2, FileName, ctHeaderVal));
-                    }
-                    //Make sure the name parameter was set and store the message body as a string
-                    else if (!string.IsNullOrWhiteSpace(Name))
-                    {
-                        //String data as body
-                        state.Item1.RequestArgs[Name] = reader.Window.TrimCRLF().ToString();
-                    }
-                }
-
-                switch (Request.ContentType)
-                {
-                    //CT not supported, dont read it
-                    case ContentType.NonSupported:
-                        break;
-                    case ContentType.UrlEncoded:
-                        //Create a vnstring from the message body and parse it (assuming url encoded bodies are small so a small stack buffer will be fine)
-                        using (VnString urlbody = await ReadInputStreamAsync(Request, maxBufferSize, encoding))
-                        {
-                            //Get the body as a span, and split the 'string' at the & character
-                            urlbody.AsSpan().Split('&', StringSplitOptions.RemoveEmptyEntries, UrlEncodedSplitCb, Request);
-                        }
-                        break;
-                    case ContentType.MultiPart:
-                        //Make sure we have a boundry specified
-                        if (string.IsNullOrWhiteSpace(Request.Boundry))
-                        {
-                            break;
-                        }
-                        //Read all data from stream into string
-                        using (VnString body = await ReadInputStreamAsync(Request, maxBufferSize, encoding))
-                        {
-                            //Split the body as a span at the boundries
-                            body.AsSpan().Split($"--{Request.Boundry}", StringSplitOptions.RemoveEmptyEntries, FormDataBodySplitCb, (Request.RequestBody, encoding));
-                        }
-                        break;
-                    //Default case is store as a file
-                    default:
-                        //add upload 
-                        Request.RequestBody.Uploads.Add(new(Request.InputStream, string.Empty, Request.ContentType, false));
-                        break;
-                }
-            }
-
             //Parse query
-            ParseQueryArgs(Request);
+            ParseQueryArgs(context.Request);
 
             //Decode requests from body
-            return !Request.HasEntityBody ? ValueTask.CompletedTask : ParseInputStream(Request, maxBufferSize, encoding);
+            return !context.Request.HasEntityBody ? ValueTask.CompletedTask : ParseInputStream(context);
+        }
+
+        private static async ValueTask ParseInputStream(HttpContext context)
+        {
+            HttpRequest request = context.Request;
+            IHttpContextInformation info = context;
+            IHttpMemoryPool pool = context.ParentServer.Config.MemoryPool;
+
+            //Gets the max form data buffer size to help calculate the initial char buffer size
+            int maxBufferSize = context.ParentServer.Config.BufferConfig.FormDataBufferSize;
+
+            switch (request.ContentType)
+            {
+                //CT not supported, dont read it
+                case ContentType.NonSupported:
+                    break;
+                case ContentType.UrlEncoded:
+                    {
+                        //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
+                        int bufferSize = (int)Math.Min(request.InputStream.Length, maxBufferSize);
+
+                        //Alloc the form data character buffer, this will need to grow if the form data is larger than the buffer
+                        using MemoryHandle<char> urlbody = pool.AllocFormDataBuffer<char>(bufferSize);
+
+                        //Get a buffer for the form data
+                        Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
+
+                        //Load char buffer from stream
+                        int chars = await BufferInputStream(request.InputStream, urlbody, formBuffer, info.Encoding);
+
+                        //Get the body as a span, and split the 'string' at the & character
+                        ((ReadOnlySpan<char>)urlbody.AsSpan(0, chars))
+                            .Split('&', StringSplitOptions.RemoveEmptyEntries, UrlEncodedSplitCb, request);
+
+                    }
+                    break;
+                case ContentType.MultiPart:
+                    {
+                        //Make sure we have a boundry specified
+                        if (string.IsNullOrWhiteSpace(request.Boundry))
+                        {
+                            break;
+                        }
+
+                        //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
+                        int bufferSize = (int)Math.Min(request.InputStream.Length, maxBufferSize);
+
+                        //Alloc the form data buffer
+                        using MemoryHandle<char> formBody = pool.AllocFormDataBuffer<char>(bufferSize);
+
+                        //Get a buffer for the form data
+                        Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
+
+                        //Load char buffer from stream
+                        int chars = await BufferInputStream(request.InputStream, formBody, formBuffer, info.Encoding);
+
+                        //Split the body as a span at the boundries
+                        ((ReadOnlySpan<char>)formBody.AsSpan(0, chars))
+                            .Split($"--{request.Boundry}", StringSplitOptions.RemoveEmptyEntries, FormDataBodySplitCb, context);
+
+                    }
+                    break;
+                //Default case is store as a file
+                default:
+                    //add upload 
+                    request.RequestBody.Uploads.Add(new(request.InputStream, false, request.ContentType, null));
+                    break;
+            }
+        }
+
+        /*
+         * Reads the input stream into the char buffer and returns the number of characters read. This method
+         * expands the char buffer as needed to accomodate the input stream.
+         * 
+         * We assume the parsing method checked the size of the input stream so we can assume its safe to read
+         * all of it into memory.
+         */
+        private static async ValueTask<int> BufferInputStream(Stream stream, MemoryHandle<char> charBuffer, Memory<byte> binBuffer, Encoding encoding)
+        {
+            int length = 0;
+            do
+            {
+                //read async
+                int read = await stream.ReadAsync(binBuffer);
+
+                //guard
+                if (read <= 0)
+                {
+                    break;
+                }
+
+                //calculate the number of characters 
+                int numChars = encoding.GetCharCount(binBuffer.Span[..read]);
+
+                //Guard for overflow
+                if (((ulong)(numChars + length)) >= int.MaxValue)
+                {
+                    throw new OverflowException();
+                }
+
+                //Re-alloc buffer
+                charBuffer.ResizeIfSmaller(length + numChars);
+
+                //Decode and update position
+                _ = encoding.GetChars(binBuffer.Span[..read], charBuffer.Span.Slice(length, numChars));
+
+                //Update char count
+                length += numChars;
+
+            } while (true);
+
+            //Return the number of characters read
+            return length;
+        }
+
+        /*
+         * Parses a Form-Data content type request entity body and stores those arguments in 
+         * Request uploads or request args
+         */
+        private static void FormDataBodySplitCb(ReadOnlySpan<char> formSegment, HttpContext state)
+        {
+            //Form data arguments
+            string? DispType = null, Name = null, FileName = null;
+
+            ContentType ctHeaderVal = ContentType.NonSupported;
+
+            //Get sliding window for parsing data
+            ForwardOnlyReader<char> reader = new(formSegment.TrimCRLF());
+
+            //Read content headers
+            do
+            {
+                //Get the index of the next crlf
+                int index = reader.Window.IndexOf(HttpHelpers.CRLF);
+
+                //end of headers
+                if (index < 1)
+                {
+                    break;
+                }
+
+                //Get header data
+                ReadOnlySpan<char> header = reader.Window[..index];
+
+                //Split header at colon
+                int colon = header.IndexOf(':');
+
+                //If no data is available after the colon the header is not valid, so move on to the next body
+                if (colon < 1)
+                {
+                    return;
+                }
+
+                //Hash the header value into a header enum
+                HttpRequestHeader headerType = HttpHelpers.GetRequestHeaderEnumFromValue(header[..colon]);
+
+                //get the header value
+                ReadOnlySpan<char> headerValue = header[(colon + 1)..];
+
+                //Check for content dispositon header
+                if (headerType == HttpHelpers.ContentDisposition)
+                {
+                    //Parse the content dispostion
+                    HttpHelpers.ParseDisposition(headerValue, out DispType, out Name, out FileName);
+                }
+                //Check for content type
+                else if (headerType == HttpRequestHeader.ContentType)
+                {
+                    //The header value for content type should be an MIME content type
+                    ctHeaderVal = HttpHelpers.GetContentType(headerValue.Trim().ToString());
+                }
+
+                //Shift window to the next line
+                reader.Advance(index + HttpHelpers.CRLF.Length);
+
+            } while (true);
+
+            //Remaining data should be the body data (will have leading and trailing CRLF characters
+            //If filename is set, this must be a file
+            if (!string.IsNullOrWhiteSpace(FileName))
+            {
+                ReadOnlySpan<char> fileData = reader.Window.TrimCRLF();
+
+                FileUpload upload = UploadFromString(fileData, state, FileName, ctHeaderVal);
+
+                //Store the file in the uploads 
+                state.Request.RequestBody.Uploads.Add(upload);
+            }
+
+            //Make sure the name parameter was set and store the message body as a string
+            else if (!string.IsNullOrWhiteSpace(Name))
+            {
+                //String data as body
+                state.Request.RequestBody.RequestArgs[Name] = reader.Window.TrimCRLF().ToString();
+            }
+        }
+
+        /// <summary>
+        /// Allocates a new binary buffer, encodes, and copies the specified data to a new <see cref="FileUpload"/>
+        /// structure of the specified content type
+        /// </summary>
+        /// <param name="data">The string data to copy</param>
+        /// <param name="context">The connection context</param>
+        /// <param name="filename">The name of the file</param>
+        /// <param name="ct">The content type of the file data</param>
+        /// <returns>The <see cref="FileUpload"/> container</returns>
+        private static FileUpload UploadFromString(ReadOnlySpan<char> data, HttpContext context, string filename, ContentType ct)
+        {
+            IHttpContextInformation info = context;
+            IHttpMemoryPool pool = context.ParentServer.Config.MemoryPool;
+
+            //get number of bytes 
+            int bytes = info.Encoding.GetByteCount(data);
+
+            //get a buffer from the HTTP heap
+            MemoryHandle<byte> buffHandle = pool.AllocFormDataBuffer<byte>(bytes);
+            try
+            {
+                //Convert back to binary
+                bytes = info.Encoding.GetBytes(data, buffHandle);
+
+                //Create a new memory stream encapsulating the file data
+                VnMemoryStream vms = VnMemoryStream.ConsumeHandle(buffHandle, bytes, true);
+
+                //Create new upload wrapper that owns the stream
+                return new(vms, true, ct, filename);
+            }
+            catch
+            {
+                //Make sure the hanle gets disposed if there is an error
+                buffHandle.Dispose();
+                throw;
+            }
+        }
+
+        /*
+         * SpanSplit callback function for storing UrlEncoded request entity 
+         * bodies in key-value pairs and writing them to the 
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void UrlEncodedSplitCb(ReadOnlySpan<char> kvArg, HttpRequest Request)
+        {
+            //Get key side of agument (or entire argument if no value is set)
+            ReadOnlySpan<char> key = kvArg.SliceBeforeParam('=');
+            ReadOnlySpan<char> value = kvArg.SliceAfterParam('=');
+
+            //trim, allocate strings, and store in the request arg dict
+            Request.RequestBody.RequestArgs[key.TrimCRLF().ToString()] = value.TrimCRLF().ToString();
+        }
+
+        /*
+         * Parses query parameters from the request location query
+         */
+        private static void ParseQueryArgs(HttpRequest Request)
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            //Query string parse method
+            static void QueryParser(ReadOnlySpan<char> queryArgument, HttpRequest Request)
+            {
+                //Split spans at the '=' character
+                ReadOnlySpan<char> key = queryArgument.SliceBeforeParam('=');
+                ReadOnlySpan<char> value = queryArgument.SliceAfterParam('=');
+
+                //Insert into dict
+                Request.RequestBody.QueryArgs[key.ToString()] = value.ToString();
+            }
+
+            //if the request has query args, parse and store them
+            ReadOnlySpan<char> queryString = Request.Location.Query;
+
+            if (!queryString.IsEmpty)
+            {
+                //trim leading '?' if set
+                queryString = queryString.TrimStart('?');
+
+                //Split args by '&'
+                queryString.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries, QueryParser, Request);
+            }
         }
     }
 }

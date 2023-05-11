@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -239,13 +239,16 @@ namespace VNLib.Utils.Memory
             {
                 throw new IOException("The input stream is not readable");
             }
+
             //See if the stream is a vn memory stream
             if (stream is VnMemoryStream vnms)
             {
                 //Get the number of characters
                 int numChars = encoding.GetCharCount(vnms.AsSpan());
+
                 //New handle
                 MemoryHandle<char> charBuffer = heap.Alloc<char>(numChars);
+
                 try
                 {
                     //Write characters to character buffer
@@ -264,8 +267,10 @@ namespace VNLib.Utils.Memory
             {
                 //Create a new char bufer starting with the buffer size
                 MemoryHandle<char> charBuffer = heap.Alloc<char>(bufferSize);
+
                 //Rent a temp binary buffer
                 IMemoryOwner<byte> binBuffer = heap.DirectAlloc<byte>(bufferSize);
+
                 try
                 {
                     int length = 0;
@@ -273,22 +278,28 @@ namespace VNLib.Utils.Memory
                     {
                         //read async
                         int read = await stream.ReadAsync(binBuffer.Memory);
+
                         //guard
                         if (read <= 0)
                         {
                             break;
                         }
+
                         //calculate the number of characters 
                         int numChars = encoding.GetCharCount(binBuffer.Memory.Span[..read]);
+
                         //Guard for overflow
                         if (((ulong)(numChars + length)) >= int.MaxValue)
                         {
                             throw new OverflowException();
                         }
+
                         //Re-alloc buffer
                         charBuffer.ResizeIfSmaller(length + numChars);
+
                         //Decode and update position
                         _ = encoding.GetChars(binBuffer.Memory.Span[..read], charBuffer.Span.Slice(length, numChars));
+
                         //Update char count
                         length += numChars;
                     } while (true);
@@ -319,6 +330,7 @@ namespace VNLib.Utils.Memory
         {
             //Check
             Check();
+
             //Check bounds
             return _stringSequence.Span[index];
         }
@@ -341,13 +353,16 @@ namespace VNLib.Utils.Memory
         {
             //Check
             Check();
+
             //Check bounds
             if (start < 0 || (start + count) >= Length)
             {
                 throw new ArgumentOutOfRangeException(nameof(count));
             }
+
             //get sub-sequence slice for the current string
             SubSequence<char> sub = _stringSequence.Slice((nuint)start, count);
+
             //Create new string with offsets pointing to same internal referrence
             return new VnString(sub);
         }
@@ -365,6 +380,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public VnString Substring(int start) => Substring(start, (Length - start));
+
         public VnString this[Range range]
         {
             get
@@ -489,16 +505,16 @@ namespace VNLib.Utils.Memory
             Handle?.Dispose();
         }
       
-        public static bool operator ==(VnString left, VnString right) => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.Equals(right);
+        public static bool operator ==(VnString left, VnString right) => left is null ? right is not null : left.Equals(right, StringComparison.Ordinal);
 
         public static bool operator !=(VnString left, VnString right) => !(left == right);
 
-        public static bool operator <(VnString left, VnString right) => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : left.CompareTo(right) < 0;
+        public static bool operator <(VnString left, VnString right) => left is null ? right is not null : left.CompareTo(right) < 0;
 
-        public static bool operator <=(VnString left, VnString right) => ReferenceEquals(left, null) || left.CompareTo(right) <= 0;
+        public static bool operator <=(VnString left, VnString right) => left is null || left.CompareTo(right) <= 0;
 
-        public static bool operator >(VnString left, VnString right) => !ReferenceEquals(left, null) && left.CompareTo(right) > 0;
+        public static bool operator >(VnString left, VnString right) => left is not null && left.CompareTo(right) > 0;
 
-        public static bool operator >=(VnString left, VnString right) => ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.CompareTo(right) >= 0;
+        public static bool operator >=(VnString left, VnString right) => left is null ? right is null : left.CompareTo(right) >= 0;
     }
 }
