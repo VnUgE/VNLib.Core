@@ -166,10 +166,29 @@ namespace VNLib.Net.Http
                 bool keepalive = await ProcessRequestAsync(context, (HttpStatusCode)status);
 
 #if DEBUG
+                static void WriteConnectionDebugLog(HttpServer server, HttpContext context)
+                {
+                    //Alloc debug buffer
+                    using IMemoryHandle<char> debugBuffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
+
+                    ForwardOnlyWriter<char> writer = new (debugBuffer.Span);
+
+                    //Request
+                    context.Request.Compile(ref writer);
+
+                    //newline
+                    writer.Append("\r\n");
+
+                    //Response
+                    context.Response.Compile(ref writer);
+
+                    server.Config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
+                }
+
                 //Write debug response log
                 if(Config.RequestDebugLog != null)
                 {
-                    WriteConnectionDebugLog(context);
+                    WriteConnectionDebugLog(this, context);
                 }
 #endif
 
@@ -187,25 +206,6 @@ namespace VNLib.Net.Http
                 //Clean end request
                 context.EndRequest();
             }
-        }
-
-        private void WriteConnectionDebugLog(HttpContext context)
-        {
-            //Alloc debug buffer
-            using IMemoryHandle<char> debugBuffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
-
-            ForwardOnlyWriter<char> writer = new (debugBuffer.Span);
-
-            //Request
-            context.Request.Compile(ref writer);
-
-            //newline
-            writer.Append("\r\n");
-
-            //Response
-            context.Response.Compile(ref writer);
-
-            Config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
         }
 
         /// <summary>
