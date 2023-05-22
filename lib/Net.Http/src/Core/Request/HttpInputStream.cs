@@ -67,16 +67,30 @@ namespace VNLib.Net.Http.Core
         }
 
         /// <summary>
-        /// Creates a new input stream object configured to allow reading of the specified content length
-        /// bytes from the stream and consumes the initial buffer to read data from on initial read calls
+        /// Prepares the input stream for reading from the transport with the specified content length
+        /// and initial data buffer
         /// </summary>
         /// <param name="contentLength">The number of bytes to allow being read from the transport or initial buffer</param>
         /// <param name="initial">Entity body data captured on initial read</param>
-        internal void Prepare(long contentLength, in InitDataBuffer? initial)
+        internal void Prepare(long contentLength, in InitDataBuffer initial)
         {
             ContentLength = contentLength;
             _initalData = initial;
             
+            //Cache transport
+            InputStream = ContextInfo.GetTransport();
+        }
+
+        /// <summary>
+        /// Prepares the input stream for reading from the transport with the specified content length
+        /// amount of data
+        /// </summary>
+        /// <param name="contentLength">The number of bytes to allow being read from the transport</param>
+        internal void Prepare(long contentLength)
+        {
+            ContentLength = contentLength;
+            _initalData = null;
+
             //Cache transport
             InputStream = ContextInfo.GetTransport();
         }

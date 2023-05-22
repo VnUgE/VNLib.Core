@@ -39,7 +39,7 @@ using VNLib.Utils.Memory;
 namespace VNLib.Net.Http.Core.Buffering
 {
 
-    internal class ContextLockedBufferManager : IHttpBufferManager
+    internal sealed class ContextLockedBufferManager : IHttpBufferManager
     {
         private readonly HttpBufferConfig Config;
         private readonly int TotalBufferSize;
@@ -125,6 +125,7 @@ namespace VNLib.Net.Http.Core.Buffering
             }
             catch
             {
+                _segments = default;
                 //Free buffer on error
                 _handle.Dispose();
                 _handle = null;
@@ -136,7 +137,7 @@ namespace VNLib.Net.Http.Core.Buffering
         public void ZeroAll()
         {
             //Zero the buffer completely
-            MemoryUtil.InitializeBlock(_handle.Memory);
+            MemoryUtil.InitializeBlock(_handle!.Memory);
         }
 
         ///<inheritdoc/>

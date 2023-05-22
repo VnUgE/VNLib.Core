@@ -43,7 +43,6 @@ namespace VNLib.Net.Http.Core
         readonly int _dataSize;
         readonly byte[] _buffer;
         readonly ArrayPool<byte> _pool;
-               
 
         InitDataBuffer(ArrayPool<byte> pool, byte[] buffer, int size)
         {

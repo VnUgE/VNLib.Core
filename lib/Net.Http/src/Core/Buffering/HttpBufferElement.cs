@@ -66,7 +66,7 @@ namespace VNLib.Net.Http.Core.Buffering
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual Span<byte> GetBinSpan() => MemoryUtil.GetSpan<byte>(Pinned, Size);
+        public virtual Span<byte> GetBinSpan() => MemoryUtil.GetSpan<byte>(ref Pinned, Size);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -75,7 +75,7 @@ namespace VNLib.Net.Http.Core.Buffering
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected virtual Span<byte> GetBinSpan(int maxSize)
         {
-            return maxSize > Size ? throw new ArgumentOutOfRangeException(nameof(maxSize)) : MemoryUtil.GetSpan<byte>(Pinned, maxSize);
+            return maxSize > Size ? throw new ArgumentOutOfRangeException(nameof(maxSize)) : MemoryUtil.GetSpan<byte>(ref Pinned, maxSize);
         }
     }
 }

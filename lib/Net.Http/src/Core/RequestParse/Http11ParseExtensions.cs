@@ -25,6 +25,7 @@
 using System;
 using System.Net;
 using System.Linq;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Security.Authentication;
 using System.Runtime.CompilerServices;
@@ -39,6 +40,10 @@ namespace VNLib.Net.Http.Core
 
     internal static class Http11ParseExtensions
     {
+        /// <summary>
+        /// An internal HTTP character binary pool for HTTP specific internal buffers
+        /// </summary>
+        public static ArrayPool<byte> InputDataBufferPool { get; } = ArrayPool<byte>.Create();
 
         /// <summary>
         /// Stores the state of an HTTP/1.1 parsing operation
@@ -475,6 +480,7 @@ namespace VNLib.Net.Http.Core
             
             return 0;
         }
+
         /// <summary>
         /// Prepares the entity body for the current HTTP1 request
         /// </summary>
@@ -537,10 +543,35 @@ namespace VNLib.Net.Http.Core
             //Make sure non-zero cl header was provided
             else if (parseState.ContentLength > 0)
             {
-                //Open a temp buffer to store initial data in
-                InitDataBuffer? initData = reader.GetReminaingData(parseState.ContentLength);
-                //Setup the input stream and capture the initial data from the reader, and wrap the transport stream to read data directly
-                Request.InputStream.Prepare(parseState.ContentLength, in initData);
+                //clamp max available to max content length
+                int available = Math.Clamp(reader.Available, 0, (int)parseState.ContentLength);
+
+                /*
+                 * The reader may still have available content data following the headers segment
+                 * that is part of the entity body data. This data must be read and stored in the
+                 * input stream for the request.
+                 * 
+                 * If no data is available from the buffer, we can just prepare the input stream
+                 * with null
+                 */
+
+                if (available > 0)
+                {
+                    //Creates the new initial data buffer
+                    InitDataBuffer initData = InitDataBuffer.AllocBuffer(InputDataBufferPool, available);
+
+                    //Read remaining data into the buffer's data segment
+                    _ = reader.ReadRemaining(initData.DataSegment);
+
+                    //Setup the input stream and capture the initial data from the reader, and wrap the transport stream to read data directly
+                    Request.InputStream.Prepare(parseState.ContentLength, initData);
+                }
+                else
+                {                    
+                    //Empty input stream
+                    Request.InputStream.Prepare(parseState.ContentLength);
+                }
+
                 Request.HasEntityBody = true;
             }
             //Success!

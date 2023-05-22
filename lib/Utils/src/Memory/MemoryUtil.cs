@@ -709,6 +709,17 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> over the block of memory pointed to by the supplied handle.
+        /// reference
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="size">The size of the span (the size of the block)</param>
+        /// <returns>A span over the block of memory pointed to by the handle of the specified size</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Span<T> GetSpan<T>(ref MemoryHandle handle, int size) => new(handle.Pointer, size);
+        
+        /// <summary>
+        /// Gets a <see cref="Span{T}"/> over the block of memory pointed to by the supplied handle.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>

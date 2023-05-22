@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -41,7 +41,7 @@ namespace VNLib.Net.Http.Core
         {
             Uploads = new(1);
 
-            //Request/query args should not be request sensitive
+            //Request/query args should not be case sensitive
             RequestArgs = new(StringComparer.OrdinalIgnoreCase);
             QueryArgs = new(StringComparer.OrdinalIgnoreCase);
         }
