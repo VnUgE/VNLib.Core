@@ -37,7 +37,10 @@ using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
-    internal partial class HttpResponse : IHttpLifeCycle, IStringSerializeable
+    internal partial class HttpResponse : IHttpLifeCycle
+#if DEBUG
+        ,IStringSerializeable
+#endif
     {
         private readonly HashSet<HttpCookie> Cookies;
         private readonly HeaderDataAccumulator Writer;
