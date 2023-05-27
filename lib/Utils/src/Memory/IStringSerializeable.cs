@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -37,6 +37,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <returns>A string of the desired representation of the current instance</returns>
         string Compile();
+
         /// <summary>
         /// Compiles the current instance into its safe string representation, and writes its 
         /// contents to the specified buffer writer
@@ -44,12 +45,13 @@ namespace VNLib.Utils.Memory
         /// <param name="writer">The ouput writer to write the serialized representation to</param>
         /// <exception cref="OutOfMemoryException"></exception>
         void Compile(ref ForwardOnlyWriter<char> writer);
+
         /// <summary>
         /// Compiles the current instance into its safe string representation, and writes its 
         /// contents to the specified buffer writer
         /// </summary>
         /// <param name="buffer">The buffer to write the serialized representation to</param>
         /// <returns>The number of characters written to the buffer</returns>
-        ERRNO Compile(in Span<char> buffer);
+        ERRNO Compile(Span<char> buffer);
     }
 }

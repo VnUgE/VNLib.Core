@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -43,7 +43,7 @@ namespace VNLib.Utils.Memory
         /// of the specified type using the specified internal buffer
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
-        public ForwardOnlyReader(in ReadOnlySpan<T> buffer)
+        public ForwardOnlyReader(ReadOnlySpan<T> buffer)
         {
             _segment = buffer;
             _size = buffer.Length;
@@ -57,7 +57,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
         /// <param name="offset">The offset within the supplied buffer to begin the reader at</param>
-        public ForwardOnlyReader(in ReadOnlySpan<T> buffer, int offset)
+        public ForwardOnlyReader(ReadOnlySpan<T> buffer, int offset)
         {
             _segment = buffer[offset..];
             _size = _segment.Length;

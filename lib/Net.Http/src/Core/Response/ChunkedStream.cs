@@ -93,7 +93,7 @@ namespace VNLib.Net.Http.Core
                 }
 
                 //Init reader
-                ForwardOnlyReader<byte> reader = new(in chunk);
+                ForwardOnlyReader<byte> reader = new(chunk);
                 try
                 {
                     do
@@ -147,7 +147,7 @@ namespace VNLib.Net.Http.Core
                 try
                 {
                     //Init reader
-                    ForwardOnlyMemoryReader<byte> reader = new(in chunk);
+                    ForwardOnlyMemoryReader<byte> reader = new(chunk);
 
                     do
                     {

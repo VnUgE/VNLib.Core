@@ -506,34 +506,37 @@ namespace VNLib.Utils.Memory
             //Check dest bounts
             CheckBounds(dest, destOffset, count);
 
-
-#if TARGET_64BIT
-            //Get the number of bytes to copy
-            nuint byteCount = ByteCount<T>(count);
-
-            //Get memory handle from source
-            using MemoryHandle srcHandle = source.Pin(0);
-
-            //get source offset
-            T* src = (T*)srcHandle.Pointer + offset;
-
-            //pin array
-            fixed (T* dst = dest)
+            //Check if 64bit
+            if(sizeof(nuint) == 8)
             {
-                //Offset dest ptr
-                T* dstOffset = dst + destOffset;
+                //Get the number of bytes to copy
+                nuint byteCount = ByteCount<T>(count);
 
-                //Copy src to set
-                Buffer.MemoryCopy(src, dstOffset, byteCount, byteCount);
+                //Get memory handle from source
+                using MemoryHandle srcHandle = source.Pin(0);
+
+                //get source offset
+                T* src = (T*)srcHandle.Pointer + offset;
+
+                //pin array
+                fixed (T* dst = dest)
+                {
+                    //Offset dest ptr
+                    T* dstOffset = dst + destOffset;
+
+                    //Copy src to set
+                    Buffer.MemoryCopy(src, dstOffset, byteCount, byteCount);
+                }
             }
-#else
-            //If 32bit its safe to use spans
+            else
+            {
+                //If 32bit its safe to use spans
 
-            Span<T> src = source.Span.Slice((int)offset, (int)count);
-            Span<T> dst = dest.AsSpan((int)destOffset, (int)count);
-            //Copy
-            src.CopyTo(dst);
-#endif
+                Span<T> src = source.AsSpan((int)offset, (int)count);
+                Span<T> dst = dest.AsSpan((int)destOffset, (int)count);
+                //Copy
+                src.CopyTo(dst);
+            }
         }
 
         #endregion
@@ -645,7 +648,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(T[] block, nuint offset, nuint count)
         {
-            if (((nuint)block.LongLength - offset) <= count)
+            if (offset + count > (ulong)block.LongLength)
             {
                 throw new ArgumentOutOfRangeException("The offset or count is outside of the range of the block of memory");
             }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -27,7 +27,8 @@ using System.IO;
 using System.Runtime.InteropServices;
 
 namespace VNLib.Utils.IO
-{
+{  
+
     /// <summary>
     /// Contains cross-platform optimized filesystem operations.
     /// </summary>
@@ -38,13 +39,15 @@ namespace VNLib.Utils.IO
         [DllImport("Shlwapi", SetLastError = true, CharSet = CharSet.Auto)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return:MarshalAs(UnmanagedType.Bool)]
-        private static unsafe extern bool PathFileExists(char* path);
+        private static unsafe extern bool PathFileExists([MarshalAs(UnmanagedType.LPWStr)] string path);
+
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Auto)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return:MarshalAs(UnmanagedType.I4)]
-        private static unsafe extern int GetFileAttributes(char* path);
+        private static unsafe extern int GetFileAttributes([MarshalAs(UnmanagedType.LPWStr)] string path);
 
         static readonly bool IsWindows = OperatingSystem.IsWindows();
+
         /// <summary>
         /// Determines if a file exists. If application is current running in the Windows operating system, Shlwapi.PathFileExists is invoked,
         /// otherwise <see cref="File.Exists(string?)"/> is invoked
@@ -58,15 +61,9 @@ namespace VNLib.Utils.IO
             {
                 return File.Exists(filePath);
             }
-            unsafe
-            {
-                //Get a char pointer to the file path
-                fixed (char* path = filePath)
-                {
-                    //Invoke the winap file function
-                    return PathFileExists(path);
-                }
-            }
+
+            //Invoke the winapi file function
+            return PathFileExists(filePath);
         }
 
         /// <summary>
@@ -84,22 +81,18 @@ namespace VNLib.Utils.IO
             {
                 return File.GetAttributes(filePath);
             }
-            unsafe
+
+            //Invoke the winapi file function and cast the returned int value to file attributes
+            int attr = GetFileAttributes(filePath);
+
+            //Check for error
+            if (attr == INVALID_FILE_ATTRIBUTES)
             {
-                //Get a char pointer to the file path
-                fixed (char* path = filePath)
-                {
-                    //Invoke the winap file function and cast the returned int value to file attributes
-                    int attr = GetFileAttributes(path);
-                    //Check for error
-                    if (attr == INVALID_FILE_ATTRIBUTES)
-                    {
-                        throw new FileNotFoundException("The requested file was not found", filePath);
-                    }
-                    //Cast to file attributes and return
-                    return (FileAttributes)attr;
-                }
+                throw new FileNotFoundException("The requested file was not found", filePath);
             }
+
+            //Cast to file attributes and return
+            return (FileAttributes)attr;
         }
     }
 }

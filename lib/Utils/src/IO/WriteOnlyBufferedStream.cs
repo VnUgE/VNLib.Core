@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -24,7 +24,6 @@
 
 using System;
 using System.IO;
-using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -46,28 +45,45 @@ namespace VNLib.Utils.IO
         public Stream BaseStream { get; init; }
 
         /// <summary>
-        /// Initalizes a new <see cref="WriteOnlyBufferedStream"/> using the 
-        /// specified backing stream, using the specified buffer size, and 
-        /// optionally leaves the stream open
+        /// Initalizes a new <see cref="WriteOnlyBufferedStream"/> using the specified backing 
+        /// stream, allocating a pooled buffer of the specified size, and optionally leaves the stream open.
         /// </summary>
         /// <param name="baseStream">The backing stream to write buffered data to</param>
         /// <param name="bufferSize">The size of the internal buffer</param>
         /// <param name="leaveOpen">A value indicating of the stream should be left open when the buffered stream is closed</param>
+        /// <exception cref="ArgumentNullException"></exception>
         public WriteOnlyBufferedStream(Stream baseStream, int bufferSize, bool leaveOpen = false)
+            : this(baseStream, bufferSize, ArrayPoolStreamBuffer<byte>.Shared, leaveOpen)
         {
-            BaseStream = baseStream;
-            //Create buffer 
-            _buffer = InitializeBuffer(bufferSize);
-            LeaveOpen = leaveOpen;
         }
+
         /// <summary>
-        /// Invoked by the constuctor method to allocte the internal buffer with the specified buffer size.
+        /// Creates a new <see cref="WriteOnlyBufferedStream"/> that writes encoded data to the base stream
+        /// and allocates a new buffer of the specified size from the supplied buffer factory.
         /// </summary>
-        /// <param name="bufferSize">The requested size of the buffer to alloc</param>
-        /// <remarks>By default requests the buffer from the <see cref="ArrayPool{T}.Shared"/> instance</remarks>
-        protected virtual ISlindingWindowBuffer<byte> InitializeBuffer(int bufferSize)
+        /// <param name="baseStream">The underlying stream to write data to</param>
+        /// <param name="bufferSize">The size of the internal binary buffer</param>
+        /// <param name="bufferFactory">The buffer factory to create the buffer from</param>
+        /// <param name="leaveOpen">A value indicating of the stream should be left open when the buffered stream is closed</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public WriteOnlyBufferedStream(Stream baseStream, int bufferSize, IStreamBufferFactory<byte> bufferFactory, bool leaveOpen = false)
+            : this(baseStream, bufferFactory?.CreateBuffer(bufferSize)!, leaveOpen)
         {
-            return new ArrayPoolStreamBuffer<byte>(ArrayPool<byte>.Shared, bufferSize);
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="WriteOnlyBufferedStream"/> that writes encoded data to the base stream 
+        /// and uses the specified buffer.
+        /// </summary>
+        /// <param name="baseStream">The underlying stream to write data to</param>
+        /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
+        /// <param name="leaveOpen">A value indicating of the stream should be left open when the buffered stream is closed</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public WriteOnlyBufferedStream(Stream baseStream, ISlindingWindowBuffer<byte> buffer, bool leaveOpen = false)
+        {
+            BaseStream = baseStream ?? throw new ArgumentNullException(nameof(buffer));
+            _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+            LeaveOpen = leaveOpen;
         }
 
         ///<inheritdoc/>
@@ -89,6 +105,7 @@ namespace VNLib.Utils.IO
                 _buffer.Close();
             }
         }
+
         ///<inheritdoc/>
         public override async ValueTask DisposeAsync()
         {
@@ -115,6 +132,7 @@ namespace VNLib.Utils.IO
         
         ///<inheritdoc/>
         public override void Flush() => WriteBuffer();
+
         ///<inheritdoc/>
         public override Task FlushAsync(CancellationToken cancellationToken) => WriteBufferAsync(cancellationToken).AsTask();
         
@@ -138,6 +156,7 @@ namespace VNLib.Utils.IO
                 _buffer.Reset();
             }
         }
+
         ///<inheritdoc/>
         public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
       
@@ -182,6 +201,7 @@ namespace VNLib.Utils.IO
                 {
                     //Buffer is full and needs to be flushed
                     await WriteBufferAsync(cancellationToken);
+
                     //Advance reader and continue to buffer
                     reader.Advance(buffered);
                     continue;
@@ -197,23 +217,28 @@ namespace VNLib.Utils.IO
         /// Always false
         /// </summary>
         public override bool CanRead => false;
+
         /// <summary>
         /// Always returns false
         /// </summary>
         public override bool CanSeek => false;
+
         /// <summary>
         /// Always true
         /// </summary>
         public override bool CanWrite => true;
+
         /// <summary>
         /// Returns the size of the underlying buffer
         /// </summary>
         public override long Length => _buffer.AccumulatedSize;
+
         /// <summary>
         /// Always throws <see cref="NotSupportedException"/>
         /// </summary>
         /// <exception cref="NotSupportedException"></exception>
         public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
         /// <summary>
         /// Always throws <see cref="NotSupportedException"/>
         /// </summary>
@@ -242,11 +267,19 @@ namespace VNLib.Utils.IO
             throw new NotSupportedException();
         }
 
+        /// <summary>
+        /// Always throws <see cref="NotSupportedException"/>
+        /// </summary>
+        /// <exception cref="NotSupportedException"></exception>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Always throws <see cref="NotSupportedException"/>
+        /// </summary>
+        /// <exception cref="NotSupportedException"></exception>
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();

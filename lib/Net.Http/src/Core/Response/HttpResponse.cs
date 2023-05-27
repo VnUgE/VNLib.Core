@@ -382,7 +382,7 @@ namespace VNLib.Net.Http.Core
             writer.Append(HttpHelpers.CRLF);
         }
 
-        public ERRNO Compile(in Span<char> buffer)
+        public ERRNO Compile(Span<char> buffer)
         {
             ForwardOnlyWriter<char> writer = new(buffer);
             Compile(ref writer);

@@ -103,7 +103,7 @@ namespace VNLib.Net.Http.Core
                 writer.Append("; Secure");
             }
         }
-        public ERRNO Compile(in Span<char> buffer)
+        public ERRNO Compile(Span<char> buffer)
         {
             ForwardOnlyWriter<char> writer = new(buffer);
             Compile(ref writer);

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -51,6 +51,7 @@ namespace VNLib.Utils.IO
         /// Gets the underlying stream that interfaces with the backing store
         /// </summary>
         public virtual Stream BaseStream { get; }
+
         ///<inheritdoc/>
         public override Encoding Encoding { get; }
 
@@ -58,36 +59,60 @@ namespace VNLib.Utils.IO
         /// Line termination to use when writing lines to the output
         /// </summary>
         public ReadOnlyMemory<byte> LineTermination { get; set; }
+
         ///<inheritdoc/>
         public override string NewLine
         {
             get => Encoding.GetString(LineTermination.Span);
             set => LineTermination = Encoding.GetBytes(value);
         }
-      
+       
+
         /// <summary>
-        /// Creates a new <see cref="VnStreamWriter"/> that writes formatted data
-        /// to the specified base stream
+        /// Creates a new <see cref="VnStreamWriter"/> that writes encoded data to the base stream
+        /// and allocates a new buffer of the specified size from the shared <see cref="ArrayPool{T}"/>
         /// </summary>
-        /// <param name="baseStream">The stream to write data to</param>
-        /// <param name="encoding">The <see cref="Encoding"/> to use when writing data</param>
-        /// <param name="bufferSize">The size of the internal buffer used to buffer binary data before writing to the base stream</param>
-        public VnStreamWriter(Stream baseStream, Encoding encoding, int bufferSize = 1024)
+        /// <param name="baseStream">The underlying stream to write data to</param>
+        /// <param name="encoding">The <see cref="Encoding"/> to use when writing to the stream</param>
+        /// <param name="bufferSize">The size of the internal binary buffer</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public VnStreamWriter(Stream baseStream, Encoding encoding, int bufferSize)
+            : this(baseStream, encoding, bufferSize, ArrayPoolStreamBuffer<byte>.Shared)
         {
-            //Store base stream
-            BaseStream = baseStream ?? throw new ArgumentNullException(nameof(baseStream));
-            Encoding = encoding ?? throw new ArgumentNullException(nameof(encoding));
-            //Get an encoder
-            Enc = encoding.GetEncoder();
-            _buffer = InitializeBuffer(bufferSize);
         }
 
         /// <summary>
-        /// Invoked by the constuctor method to allocte the internal buffer with the specified buffer size.
+        /// Creates a new <see cref="VnStreamWriter"/> that writes encoded data to the base stream
+        /// and allocates a new buffer of the specified size from the supplied buffer factory.
         /// </summary>
-        /// <param name="bufferSize">The requested size of the buffer to alloc</param>
-        /// <remarks>By default requests the buffer from the <see cref="MemoryPool{T}.Shared"/> instance</remarks>
-        protected virtual ISlindingWindowBuffer<byte> InitializeBuffer(int bufferSize) => new ArrayPoolStreamBuffer<byte>(ArrayPool<byte>.Shared, bufferSize);
+        /// <param name="baseStream">The underlying stream to write data to</param>
+        /// <param name="encoding">The <see cref="Encoding"/> to use when writing to the stream</param>
+        /// <param name="bufferSize">The size of the internal binary buffer</param>
+        /// <param name="bufferFactory">The buffer factory to create the buffer from</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public VnStreamWriter(Stream baseStream, Encoding encoding, int bufferSize, IStreamBufferFactory<byte> bufferFactory)
+            : this(baseStream, encoding, bufferFactory?.CreateBuffer(bufferSize)!)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="VnStreamWriter"/> that writes encoded data to the base stream 
+        /// and uses the specified buffer.
+        /// </summary>
+        /// <param name="baseStream">The underlying stream to write data to</param>
+        /// <param name="encoding">The <see cref="Encoding"/> to use when writing to the stream</param>
+        /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public VnStreamWriter(Stream baseStream, Encoding encoding, ISlindingWindowBuffer<byte> buffer)
+        {
+            BaseStream = baseStream ?? throw new ArgumentNullException(nameof(buffer));
+            Encoding = encoding ?? throw new ArgumentNullException(nameof(encoding));
+            _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+
+            //Get an encoder
+            Enc = encoding.GetEncoder();
+        }
+
         ///<inheritdoc/>
         public void Write(byte value)
         {
@@ -97,19 +122,24 @@ namespace VNLib.Utils.IO
                 //There is not enough room to store the single byte
                 Flush();
             }
+
             //Store at the end of the window
             _buffer.Append(value);
         }
+
         ///<inheritdoc/>
         public override void Write(char value)
         {
             ReadOnlySpan<char> tbuf = MemoryMarshal.CreateSpan(ref value, 0x01);
             Write(tbuf);
         }
+
         ///<inheritdoc/>
         public override void Write(object? value) => Write(value?.ToString());
+
         ///<inheritdoc/>
         public override void Write(string? value) => Write(value.AsSpan());
+
         ///<inheritdoc/>
         public override void Write(ReadOnlySpan<char> buffer)
         {
@@ -123,8 +153,10 @@ namespace VNLib.Utils.IO
             {
                 //Get an available buffer window to store characters in and convert the characters to binary
                 Enc.Convert(reader.Window, _buffer.Remaining, true, out int charsUsed, out int bytesUsed, out completed);
+
                 //Update byte position
                 _buffer.Advance(bytesUsed);
+
                 //Update char position
                 reader.Advance(charsUsed);
 
@@ -136,31 +168,40 @@ namespace VNLib.Utils.IO
                 }
                 
             } while (!completed);
+
             //Reset the encoder
             Enc.Reset();
         }
+
         ///<inheritdoc/>
         public override async Task WriteAsync(ReadOnlyMemory<char> buffer, CancellationToken cancellationToken = default)
         {
             Check();
+          
+            ForwardOnlyMemoryReader<char> reader = new(buffer);
+
             //Create a variable for a character buffer window
             bool completed;
-            ForwardOnlyMemoryReader<char> reader = new(buffer);
             do
             {
                 //Get an available buffer window to store characters in and convert the characters to binary
                 Enc.Convert(reader.Window.Span, _buffer.Remaining, true, out int charsUsed, out int bytesUsed, out completed);
+
                 //Update byte position
                 _buffer.Advance(bytesUsed);
+
                 //Update char position
                 reader.Advance(charsUsed);
+
                 //Converting did not complete because the buffer was too small
                 if (!completed || reader.WindowSize == 0)
                 {
                     //Flush the buffer and continue
                     await FlushWriterAsync(cancellationToken);
                 }
+
             } while (!completed);
+
             //Reset the encoder
             Enc.Reset();
         }      
@@ -169,18 +210,23 @@ namespace VNLib.Utils.IO
         public override void WriteLine()
         {
             Check();
+
             //See if there is room in the binary buffer
             if (_buffer.RemainingSize < LineTermination.Length)
             {
                 //There is not enough room to store the termination, so we need to flush the buffer
                 Flush();
             }
+
             _buffer.Append(LineTermination.Span);
         }
+
         ///<inheritdoc/>
         public override void WriteLine(object? value) => WriteLine(value?.ToString());
+
         ///<inheritdoc/>
         public override void WriteLine(string? value) => WriteLine(value.AsSpan());
+
         ///<inheritdoc/>
         public override void WriteLine(ReadOnlySpan<char> buffer)
         {
@@ -204,6 +250,7 @@ namespace VNLib.Utils.IO
                 _buffer.Reset();
             }
         }
+
         /// <summary>
         /// Asynchronously flushes the internal buffers to the <see cref="BaseStream"/>, and resets the internal buffer state
         /// </summary>
@@ -212,6 +259,7 @@ namespace VNLib.Utils.IO
         public async ValueTask FlushWriterAsync(CancellationToken cancellationToken = default)
         {
             Check();
+
             if (_buffer.AccumulatedSize > 0)
             {
                 //Flush current window to the stream
@@ -232,6 +280,7 @@ namespace VNLib.Utils.IO
             _buffer.Reset();
             Enc.Reset();
         }
+
         ///<inheritdoc/>
         public override void Close()
         {
@@ -252,6 +301,7 @@ namespace VNLib.Utils.IO
                 closed = true;
             }
         }
+
         ///<inheritdoc/>
         protected override void Dispose(bool disposing)
         {
@@ -267,6 +317,7 @@ namespace VNLib.Utils.IO
                 throw new ObjectDisposedException("The stream is closed");
             }
         }
+
         ///<inheritdoc/>
         public override async ValueTask DisposeAsync()
         {

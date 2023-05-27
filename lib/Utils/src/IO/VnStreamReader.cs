@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -33,6 +33,7 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Utils.IO
 {
+
     /// <summary>
     /// Binary based buffered text reader, optimized for reading network streams
     /// </summary>
@@ -41,8 +42,10 @@ namespace VNLib.Utils.IO
         private bool disposedValue;
 
         private readonly ISlindingWindowBuffer<byte> _buffer;
+
         ///<inheritdoc/>
         public virtual Stream BaseStream { get; }
+
         ///<inheritdoc/>
         public Encoding Encoding { get; }
 
@@ -50,33 +53,56 @@ namespace VNLib.Utils.IO
         /// Number of available bytes of buffered data within the current buffer window
         /// </summary>
         public int Available => _buffer.AccumulatedSize;
+
         /// <summary>
         /// Gets or sets the line termination used to deliminate a line of data
         /// </summary>
         public ReadOnlyMemory<byte> LineTermination { get; set; }
-        Span<byte> IVnTextReader.BufferedDataWindow => _buffer.Accumulated;
+
+        ///<inheritdoc/>
+        public Span<byte> BufferedDataWindow => _buffer.Accumulated;
 
         /// <summary>
-        /// Creates a new <see cref="TextReader"/> that reads encoded data from the base.
-        /// Internal buffers will be alloced from <see cref="ArrayPool{T}.Shared"/>
+        /// Creates a new <see cref="TextReader"/> that reads encoded data from the base stream
+        /// and allocates a new buffer of the specified size from the shared <see cref="ArrayPool{T}"/>
         /// </summary>
         /// <param name="baseStream">The underlying stream to read data from</param>
-        /// <param name="enc">The <see cref="Encoding"/> to use when reading from the stream</param>
+        /// <param name="encoding">The <see cref="Encoding"/> to use when reading from the stream</param>
         /// <param name="bufferSize">The size of the internal binary buffer</param>
-        public VnStreamReader(Stream baseStream, Encoding enc, int bufferSize)
+        /// <exception cref="ArgumentNullException"></exception>
+        public VnStreamReader(Stream baseStream, Encoding encoding, int bufferSize)
+            : this(baseStream, encoding, bufferSize, ArrayPoolStreamBuffer<byte>.Shared)
         {
-            BaseStream = baseStream;
-            Encoding = enc;
-            //Init a new buffer
-            _buffer = InitializeBuffer(bufferSize);
         }
 
         /// <summary>
-        /// Invoked by the constuctor method to allocte the internal buffer with the specified buffer size.
+        /// Creates a new <see cref="TextReader"/> that reads encoded data from the base stream
+        /// and allocates a new buffer of the specified size from the supplied buffer factory.
         /// </summary>
-        /// <param name="bufferSize">The requested size of the buffer to alloc</param>
-        /// <remarks>By default requests the buffer from the <see cref="ArrayPool{T}.Shared"/> instance</remarks>
-        protected virtual ISlindingWindowBuffer<byte> InitializeBuffer(int bufferSize) => new ArrayPoolStreamBuffer<byte>(ArrayPool<byte>.Shared, bufferSize);
+        /// <param name="baseStream">The underlying stream to read data from</param>
+        /// <param name="encoding">The <see cref="Encoding"/> to use when reading from the stream</param>
+        /// <param name="bufferSize">The size of the internal binary buffer</param>
+        /// <param name="bufferFactory">The buffer factory to create the buffer from</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public VnStreamReader(Stream baseStream, Encoding encoding, int bufferSize, IStreamBufferFactory<byte> bufferFactory)
+            :this(baseStream, encoding, bufferFactory?.CreateBuffer(bufferSize)!)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="TextReader"/> that reads encoded data from the base stream 
+        /// and uses the specified buffer.
+        /// </summary>
+        /// <param name="baseStream">The underlying stream to read data from</param>
+        /// <param name="encoding">The <see cref="Encoding"/> to use when reading from the stream</param>
+        /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public VnStreamReader(Stream baseStream, Encoding encoding, ISlindingWindowBuffer<byte> buffer)
+        {
+            BaseStream = baseStream ?? throw new ArgumentNullException(nameof(buffer));
+            Encoding = encoding ?? throw new ArgumentNullException(nameof(encoding));
+            _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+        }
 
         ///<inheritdoc/>
         public override async Task<string?> ReadLineAsync()
@@ -86,42 +112,53 @@ namespace VNLib.Utils.IO
             {
                 //Get current buffer window
                 Memory<byte> buffered = _buffer.AccumulatedBuffer;
+
                 //search for line termination in current buffer
                 int term = buffered.IndexOf(LineTermination);
+
                 //Termination found in buffer window
                 if (term > -1)
                 {
                     //Capture the line from the begining of the window to the termination
                     Memory<byte> line = buffered[..term];
+
                     //Shift the window to the end of the line (excluding the termination)
                     _buffer.AdvanceStart(term + LineTermination.Length);
+
                     //Decode the line to a string
                     return Encoding.GetString(line.Span);
                 }
                 //Termination not found
             }
+
             //Compact the buffer window and see if space is avialble to buffer more data
             if (_buffer.CompactBufferWindow())
             {
                 //There is room, so buffer more data
                 await _buffer.AccumulateDataAsync(BaseStream, CancellationToken.None);
+
                 //Check again to see if more data is buffered
                 if (Available <= 0)
                 {
                     //No string found
                     return null;
                 }
+
                 //Get current buffer window
                 Memory<byte> buffered = _buffer.AccumulatedBuffer;
+
                 //search for line termination in current buffer
                 int term = buffered.IndexOf(LineTermination);
+
                 //Termination found in buffer window
                 if (term > -1)
                 {
                     //Capture the line from the begining of the window to the termination
                     Memory<byte> line = buffered[..term];
+
                     //Shift the window to the end of the line (excluding the termination)
                     _buffer.AdvanceStart(term + LineTermination.Length);
+
                     //Decode the line to a string
                     return Encoding.GetString(line.Span);
                 }
@@ -136,6 +173,7 @@ namespace VNLib.Utils.IO
        
         ///<inheritdoc/>
         public override int Read(char[] buffer, int index, int count) => Read(buffer.AsSpan(index, count));
+
         ///<inheritdoc/>
         public override int Read(Span<char> buffer)
         {
@@ -143,17 +181,23 @@ namespace VNLib.Utils.IO
             {
                 return 0;
             }
+
             //Get current buffer window
             Span<byte> buffered = _buffer.Accumulated;
+
             //Convert all avialable data
             int encoded = Encoding.GetChars(buffered, buffer);
+
             //Shift buffer window to the end of the converted data
             _buffer.AdvanceStart(encoded);
+
             //return the number of chars written
             return Encoding.GetCharCount(buffered);
         }
+
         ///<inheritdoc/>
         public override void Close() => _buffer.Close();
+
         ///<inheritdoc/>
         protected override void Dispose(bool disposing)
         {
@@ -173,8 +217,14 @@ namespace VNLib.Utils.IO
             _buffer.Reset();
         }
 
-        void IVnTextReader.Advance(int count) => _buffer.AdvanceStart(count);
-        void IVnTextReader.FillBuffer() => _buffer.AccumulateData(BaseStream);
-        ERRNO IVnTextReader.CompactBufferWindow() => _buffer.CompactBufferWindow();
+
+        ///<inheritdoc/>
+        public void Advance(int count) => _buffer.AdvanceStart(count);
+        
+        ///<inheritdoc/>
+        public void FillBuffer() => _buffer.AccumulateData(BaseStream);
+        
+        ///<inheritdoc/>
+        public ERRNO CompactBufferWindow() => _buffer.CompactBufferWindow();
     }
 }

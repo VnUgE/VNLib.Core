@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -27,32 +27,46 @@ using System.Buffers;
 
 namespace VNLib.Utils.IO
 {
+
     internal class ArrayPoolStreamBuffer<T> : ISlindingWindowBuffer<T>
     {
+        /// <summary>
+        /// The shared <see cref="IStreamBufferFactory{T}"/> instance to allocate buffers 
+        /// from
+        /// </summary>
+        public static IStreamBufferFactory<T> Shared { get; } = new DefaultFactory();
+
         private readonly ArrayPool<T> _pool;
         private T[] _buffer;
 
-        public ArrayPoolStreamBuffer(ArrayPool<T> pool, int bufferSize)
+        /// <summary>
+        /// Creates a new <see cref="ArrayPoolStreamBuffer{T}"/> from the 
+        /// given array instance and <see cref="ArrayPool{T}"/> it came from.
+        /// </summary>
+        /// <param name="array">The rented array to use</param>
+        /// <param name="pool">The pool to return the array to when completed</param>
+        public ArrayPoolStreamBuffer(T[] array, ArrayPool<T> pool)
         {
             _pool = pool;
-            _buffer = _pool.Rent(bufferSize);
+            _buffer = array;
         }
 
+        ///<inheritdoc/>
         public int WindowStartPos { get; set; }
+
+        ///<inheritdoc/>
         public int WindowEndPos { get; set; }
-        
+
+        ///<inheritdoc/>
         public Memory<T> Buffer => _buffer.AsMemory();
 
-        public void Advance(int count)
-        {
-            WindowEndPos += count;
-        }
+        ///<inheritdoc/>
+        public void Advance(int count) => WindowEndPos += count;
 
-        public void AdvanceStart(int count)
-        {
-            WindowStartPos += count;
-        }
+        ///<inheritdoc/>
+        public void AdvanceStart(int count) => WindowStartPos += count;
 
+        ///<inheritdoc/>
         public void Close()
         {
             //Return buffer to pool
@@ -60,11 +74,25 @@ namespace VNLib.Utils.IO
             _buffer = null;
         }
 
+        ///<inheritdoc/>
         public void Reset()
         {
             //Reset window positions
             WindowStartPos = 0;
             WindowEndPos = 0;
+        }
+
+        private sealed class DefaultFactory : IStreamBufferFactory<T>
+        {
+            ///<inheritdoc/>
+            public ISlindingWindowBuffer<T> CreateBuffer(int bufferSize)
+            {
+                //rent buffer
+                T[] array = ArrayPool<T>.Shared.Rent(bufferSize);
+
+                //return wrapper
+                return new ArrayPoolStreamBuffer<T>(array, ArrayPool<T>.Shared);
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -26,10 +26,10 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-using System.Runtime.CompilerServices;
 
 namespace VNLib.Utils.IO
 {
@@ -49,7 +49,7 @@ namespace VNLib.Utils.IO
             //Nothing to compact if the starting data pointer is at the beining of the window
             if (sBuf.WindowStartPos > 0)
             {
-                //Get span over engire buffer
+                //Get span over entire buffer
                 Span<T> buffer = sBuf.Buffer.Span;
                 //Get data within window
                 Span<T> usedData = sBuf.Accumulated;
@@ -79,6 +79,7 @@ namespace VNLib.Utils.IO
             //Advance by 1
             sBuf.Advance(1);
         }
+
         /// <summary>
         /// Appends the specified data to the end of the buffer 
         /// </summary>
@@ -92,6 +93,7 @@ namespace VNLib.Utils.IO
             val.CopyTo(sBuf.Remaining);
             sBuf.Advance(val.Length);
         }
+
         /// <summary>
         /// Formats and appends a value type to the accumulator with proper endianess
         /// </summary>
@@ -165,7 +167,7 @@ namespace VNLib.Utils.IO
         /// <param name="sBuf"></param>
         /// <param name="buffer">The output buffer to write data to</param>
         /// <returns>The number of elements written to the buffer</returns>
-        public static ERRNO Read<T>(this ISlindingWindowBuffer<T> sBuf, in Span<T> buffer)
+        public static ERRNO Read<T>(this ISlindingWindowBuffer<T> sBuf, Span<T> buffer)
         {
             //Calculate the amount of data to copy
             int dataToCopy = Math.Min(buffer.Length, sBuf.AccumulatedSize);
@@ -194,6 +196,7 @@ namespace VNLib.Utils.IO
             //Update the end of the buffer window to the end of the read data
             accumulator.Advance(read);
         }
+
         /// <summary>
         /// Fills the remaining window space of the current accumulator with 
         /// data from the specified stream.

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -31,7 +31,7 @@ namespace VNLib.Utils.Memory
     /// reader for a memory segment
     /// </summary>
     /// <typeparam name="T">The element type</typeparam>
-    public struct ForwardOnlyMemoryReader<T>
+    public record struct ForwardOnlyMemoryReader<T>
     {
         private readonly ReadOnlyMemory<T> _segment;
         private readonly int _size;
@@ -43,7 +43,7 @@ namespace VNLib.Utils.Memory
         /// of the specified type using the specified internal buffer
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
-        public ForwardOnlyMemoryReader(in ReadOnlyMemory<T> buffer)
+        public ForwardOnlyMemoryReader(ReadOnlyMemory<T> buffer)
         {
             _segment = buffer;
             _size = buffer.Length;
@@ -54,6 +54,7 @@ namespace VNLib.Utils.Memory
         /// The remaining data window
         /// </summary>
         public readonly ReadOnlyMemory<T> Window => _segment[_position..];
+
         /// <summary>
         /// The number of elements remaining in the window
         /// </summary>

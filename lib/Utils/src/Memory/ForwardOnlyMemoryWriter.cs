@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -29,16 +29,18 @@ namespace VNLib.Utils.Memory
     /// <summary>
     /// Provides a mutable sliding buffer writer
     /// </summary>
-    public struct ForwardOnlyMemoryWriter<T>
+    public record struct ForwardOnlyMemoryWriter<T>
     {
         /// <summary>
         /// The buffer for writing output data to
         /// </summary>
         public readonly Memory<T> Buffer { get; }
+
         /// <summary>
         /// The number of characters written to the buffer
         /// </summary>
         public int Written { readonly get; set; }
+
         /// <summary>
         /// The number of characters remaining in the buffer
         /// </summary>
@@ -53,7 +55,7 @@ namespace VNLib.Utils.Memory
         /// Creates a new <see cref="ForwardOnlyWriter{T}"/> assigning the specified buffer
         /// </summary>
         /// <param name="buffer">The buffer to write data to</param>
-        public ForwardOnlyMemoryWriter(in Memory<T> buffer)
+        public ForwardOnlyMemoryWriter(Memory<T> buffer)
         {
             Buffer = buffer;
             Written = 0;
@@ -83,6 +85,7 @@ namespace VNLib.Utils.Memory
             //update char position
             Written += data.Length;
         }
+
         /// <summary>
         /// Appends a single item to the buffer
         /// </summary>

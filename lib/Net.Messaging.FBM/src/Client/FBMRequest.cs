@@ -126,9 +126,11 @@ namespace VNLib.Net.Messaging.FBM.Client
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) => WriteHeader((byte)header, value);
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteHeader(byte header, ReadOnlySpan<char> value) => Helpers.WriteHeader(Buffer.RequestBuffer, header, value, Helpers.DefaultEncoding);
+
         ///<inheritdoc/>
         public void WriteBody(ReadOnlySpan<byte> body, ContentType contentType = ContentType.Binary)
         {
@@ -244,7 +246,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             
             using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAlloc<char>(charSize + 128);
             
-            ERRNO count = Compile(buffer.Span);
+            ERRNO count = Compile(buffer);
             
             return buffer.AsSpan(0, count).ToString();
         }
@@ -258,7 +260,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             Helpers.DefaultEncoding.GetChars(requestData.Span, ref writer);
         }
         ///<inheritdoc/>
-        public ERRNO Compile(in Span<char> buffer)
+        public ERRNO Compile(Span<char> buffer)
         {
             ForwardOnlyWriter<char> writer = new(buffer);
             Compile(ref writer);

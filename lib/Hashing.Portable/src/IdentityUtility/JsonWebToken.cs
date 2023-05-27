@@ -310,7 +310,7 @@ namespace VNLib.Hashing.IdentityUtility
         
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
-        public virtual ERRNO Compile(in Span<char> buffer)
+        public virtual ERRNO Compile(Span<char> buffer)
         {
             ForwardOnlyWriter<char> writer = new(buffer);
             Compile(ref writer);
