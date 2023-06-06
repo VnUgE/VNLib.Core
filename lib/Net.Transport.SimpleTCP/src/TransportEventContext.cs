@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -38,19 +38,15 @@ namespace VNLib.Net.Transport.Tcp
     /// Represents the context of a transport connection. It includes the active socket 
     /// and a stream representing the active transport. 
     /// </summary>
-    public readonly struct TransportEventContext
+    public readonly record struct TransportEventContext
     {  
         /// <summary>
         /// The socket referrence to the incoming connection
         /// </summary>
         private readonly Socket Socket;
         
-        internal readonly VnSocketAsyncArgs _socketArgs;
+        private readonly VnSocketAsyncArgs _socketArgs;
 
-        /// <summary>
-        /// The transport security layer security protocol
-        /// </summary>
-        public readonly SslProtocols SslVersion { get; } = SslProtocols.None;
         /// <summary>
         /// A copy of the local endpoint of the listening socket
         /// </summary>
@@ -59,6 +55,7 @@ namespace VNLib.Net.Transport.Tcp
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (Socket.LocalEndPoint as IPEndPoint)!;
         }
+
         /// <summary>
         /// The <see cref="IPEndPoint"/> representing the client's connection information
         /// </summary>
@@ -67,6 +64,7 @@ namespace VNLib.Net.Transport.Tcp
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (Socket.RemoteEndPoint as IPEndPoint)!;
         }
+
         /// <summary>
         /// The transport stream to be actively read
         /// </summary>
@@ -76,48 +74,21 @@ namespace VNLib.Net.Transport.Tcp
         internal TransportEventContext(VnSocketAsyncArgs args, Stream @stream)
         {
             _socketArgs = args;
-            Socket = args.Socket!;
+            Socket = args.AcceptSocket!;
             ConnectionStream = stream;
-        }
-        internal TransportEventContext(VnSocketAsyncArgs args, SslStream @stream):this(args, (Stream)stream)
-        {
-            SslVersion = stream.SslProtocol;
         }
 
         /// <summary>
         /// Closes a connection and cleans up any resources
         /// </summary>
-        /// <param name="ctx"></param>
         /// <returns></returns>
         public async ValueTask CloseConnectionAsync()
         {
-            //Var to capture ssl shudown exception
-            Exception? closeExp = null;
-
-            //Verify ssl is being used and the socket is still 'connected'
-            if (SslVersion > SslProtocols.None && _socketArgs.Socket!.Connected)
-            {
-                try
-                {
-                    await (ConnectionStream as SslStream)!.ShutdownAsync();
-                }
-                catch (Exception ex)
-                {
-                    closeExp = ex;
-                }
-            }
-
             //dispose the stream and wait for buffered data to be sent
             await ConnectionStream.DisposeAsync();
 
             //Disconnect
             _socketArgs.Disconnect();
-
-            //if excp occured, re-throw
-            if (closeExp != null)
-            {
-                throw closeExp;
-            }
         }
     }
 }

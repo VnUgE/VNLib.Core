@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -29,10 +29,8 @@ using System.IO.Pipelines;
 
 using VNLib.Utils.Memory.Caching;
 
-
 namespace VNLib.Net.Transport.Tcp
 {
-    internal delegate void SocketCallback(VnSocketAsyncArgs args);
 
     /// <summary>
     /// Reusable <see cref="SocketAsyncEventArgs"/> that manages a pipeline for sending and recieving data.
@@ -40,23 +38,19 @@ namespace VNLib.Net.Transport.Tcp
     /// </summary>
     internal sealed class VnSocketAsyncArgs : SocketAsyncEventArgs, IReusable
     {
-        private readonly SocketCallback SocketAccepted;
-        private readonly SocketCallback SocketDisconnected;
+        private readonly ISockAsyncArgsHandler _handler;
 
         public readonly SocketPipeLineWorker SocketWorker;
 
-        public Socket? Socket => AcceptSocket;
+        public Stream Stream => SocketWorker.NetworkStream;
 
-        public VnSocketAsyncArgs(SocketCallback accepted, SocketCallback disconnected, PipeOptions options) : base()
+        public VnSocketAsyncArgs(ISockAsyncArgsHandler handler, PipeOptions options) : base()
         {
             SocketWorker = new(options);
-            SocketAccepted = accepted;
+            _handler = handler;
             //Only reuse socketes if windows
             DisconnectReuseSocket = OperatingSystem.IsWindows();
-            SocketDisconnected = disconnected;
         }
-
-        public Stream Stream => SocketWorker.NetworkStream;
 
         /// <summary>
         /// Begins an asynchronous accept operation on the current (bound) socket 
@@ -69,7 +63,7 @@ namespace VNLib.Net.Transport.Tcp
             SocketError = SocketError.Success;
             SocketFlags = SocketFlags.None;
 
-            //Recv during accept is not supported on linux, this flag is set to false on linux
+            //Recv during accept is only supported on windows, this flag is true when on windows
             if (DisconnectReuseSocket)
             {
                 //get buffer from the pipe to write initial accept data to
@@ -93,7 +87,7 @@ namespace VNLib.Net.Transport.Tcp
                 //remove ref to buffer
                 SetBuffer(null);
                 //start the socket worker
-                SocketWorker.Start(Socket!, BytesTransferred);
+                SocketWorker.Start(AcceptSocket!, BytesTransferred);
                 return true;
             }
             return false;
@@ -108,12 +102,12 @@ namespace VNLib.Net.Transport.Tcp
             //Clear flags
             SocketError = SocketError.Success;
             //accept async
-            if (!Socket!.DisconnectAsync(this))
+            if (!AcceptSocket!.DisconnectAsync(this))
             {
                 //Invoke disconnected callback since op completed sync
                 EndDisconnect();
                 //Invoke disconnected callback since op completed sync
-                SocketDisconnected(this);
+                _handler.OnSocketDisconnected(this);
             }
         }
         
@@ -123,7 +117,7 @@ namespace VNLib.Net.Transport.Tcp
             if (SocketError != SocketError.Success)
             {
                 //Dispose the socket before clearing the socket
-                Socket?.Dispose();
+                AcceptSocket?.Dispose();
                 AcceptSocket = null;
             }
         }
@@ -134,12 +128,12 @@ namespace VNLib.Net.Transport.Tcp
             {
                 case SocketAsyncOperation.Accept:
                     //Invoke the accepted callback
-                    SocketAccepted(this);
+                    _handler.OnSocketAccepted(this);
                     break;
                 case SocketAsyncOperation.Disconnect:
                     EndDisconnect();
                     //Invoke disconnected callback since op completed sync
-                    SocketDisconnected(this);
+                    _handler.OnSocketDisconnected(this);
                     break;
                 default:
                     throw new InvalidOperationException("Invalid socket operation");
@@ -158,6 +152,7 @@ namespace VNLib.Net.Transport.Tcp
         {
             UserToken = null;
             SocketWorker.Release();
+
             //if the sockeet is connected (or not windows), dispose it and clear the accept socket
             if (AcceptSocket?.Connected == true || !DisconnectReuseSocket)
             {
@@ -171,10 +166,12 @@ namespace VNLib.Net.Transport.Tcp
         {
             //Dispose the base class
             base.Dispose();
+
             //Dispose the socket if its set
             AcceptSocket?.Dispose();
             AcceptSocket = null;
-            //Dispose the overlapped stream
+
+            //Cleanup socket worker
             SocketWorker.DisposeInternal();
         }
     }

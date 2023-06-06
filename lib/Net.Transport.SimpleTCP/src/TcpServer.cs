@@ -26,10 +26,8 @@ using System;
 using System.Security;
 using System.Threading;
 using System.Net.Sockets;
-using System.Net.Security;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
-using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Async;
@@ -48,7 +46,7 @@ namespace VNLib.Net.Transport.Tcp
     /// connections is expected. This class cannot be inherited
     /// </para>
     /// </summary>
-    public sealed class TcpServer : ICacheHolder
+    public sealed class TcpServer : ICacheHolder, ISockAsyncArgsHandler
     {
         /// <summary>
         /// The current <see cref="TcpServer"/> configuration
@@ -57,7 +55,6 @@ namespace VNLib.Net.Transport.Tcp
 
         private readonly ObjectRental<VnSocketAsyncArgs> SockAsyncArgPool;
         private readonly PipeOptions PipeOptions;
-        private readonly bool _usingTls;
 
         /// <summary>
         /// Initializes a new <see cref="TcpServer"/> with the specified <see cref="TCPConfig"/>
@@ -94,14 +91,13 @@ namespace VNLib.Net.Transport.Tcp
                 minimumSegmentSize: 8192,
                 useSynchronizationContext:false
                 );
-            //store tls value
-            _usingTls = Config.AuthenticationOptions != null;
 
             SockAsyncArgPool = ObjectRental.CreateReusable(ArgsConstructor, Config.CacheQuota);
         }
 
         ///<inheritdoc/>
         public void CacheClear() => SockAsyncArgPool.CacheClear();
+
         ///<inheritdoc/>
         public void CacheHardClear() => SockAsyncArgPool.CacheHardClear();
       
@@ -151,7 +147,7 @@ namespace VNLib.Net.Transport.Tcp
             Config.OnSocketCreated?.Invoke(ServerSock);
 
             //Init waiting socket queue
-            WaitingSockets = new(false, true);
+            WaitingSockets = new(false, false);
 
             //Clear canceled flag
             _canceledFlag = false;
@@ -186,11 +182,23 @@ namespace VNLib.Net.Transport.Tcp
             //Register cleanup
             _ = token.Register(cleanup, this, false);
         }
+      
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ReturnCb(VnSocketAsyncArgs args)
+        private VnSocketAsyncArgs ArgsConstructor()
         {
-            //If the server has exited, dispose the args and dont return to pool
+            //Socket args accept callback functions for this 
+            VnSocketAsyncArgs args = new(this, PipeOptions);
+            return args;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void ISockAsyncArgsHandler.OnSocketAccepted(VnSocketAsyncArgs args) => AcceptCompleted(args);        
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void ISockAsyncArgsHandler.OnSocketDisconnected(VnSocketAsyncArgs args)
+        {
+            //If the is closed, dispose the args and exit
             if (_canceledFlag)
             {
                 args.Dispose();
@@ -199,14 +207,6 @@ namespace VNLib.Net.Transport.Tcp
             {
                 SockAsyncArgPool.Return(args);
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private VnSocketAsyncArgs ArgsConstructor()
-        {
-            //Socket args accept callback functions for this 
-            VnSocketAsyncArgs args = new(AcceptCompleted, ReturnCb, PipeOptions);
-            return args;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -249,42 +249,45 @@ namespace VNLib.Net.Transport.Tcp
             //Accept a new connection
             AcceptConnection();
         }
-
         
         /// <summary>
         /// Retreives a connected socket from the waiting queue
         /// </summary>
         /// <returns>The context of the connect</returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public async ValueTask<TransportEventContext> AcceptAsync(CancellationToken cancellation)
+        public ValueTask<TransportEventContext> AcceptAsync(CancellationToken cancellation)
         {
             _ = WaitingSockets ?? throw new InvalidOperationException("Server is not listening");
-            //Args is ready to use
-            VnSocketAsyncArgs args = await WaitingSockets.DequeueAsync(cancellation);
-            //See if tls is enabled, if so, start tls handshake
-            if (_usingTls)
+
+            //Try get args from queue
+            if(WaitingSockets.TryDequeue(out VnSocketAsyncArgs? args))
             {
-                //Begin authenication and make sure the socket stream is closed as its required to cleanup
-                SslStream stream = new(args.Stream, false);
-                try
-                {
-                    //auth the new connection
-                    await stream.AuthenticateAsServerAsync(Config.AuthenticationOptions!, cancellation);
-                    return new(args, stream);
-                }
-                catch(Exception ex)
-                {
-                    await stream.DisposeAsync();
+                return ValueTask.FromResult<TransportEventContext>(new(args, args.Stream));
+            }
 
-                    //Disconnect socket 
-                    args.Disconnect();
+            return AcceptAsyncCore(cancellation);
+        }
 
-                    throw new AuthenticationException("Failed client/server TLS authentication", ex);
-                }
+        private async ValueTask<TransportEventContext> AcceptAsyncCore(CancellationToken cancellation)
+        {
+            //Await async
+            VnSocketAsyncArgs args = await WaitingSockets.DequeueAsync(cancellation);
+
+            return new(args, args.Stream);
+        }
+
+        internal ValueTask<VnSocketAsyncArgs> AcceptArgsAsync(CancellationToken cancellation)
+        {
+            _ = WaitingSockets ?? throw new InvalidOperationException("Server is not listening");
+
+            //Try get args from queue
+            if (WaitingSockets.TryDequeue(out VnSocketAsyncArgs? args))
+            {
+                return ValueTask.FromResult(args);
             }
             else
             {
-                return new(args, args.Stream);
+                return WaitingSockets.DequeueAsync(cancellation);
             }
         }
     }

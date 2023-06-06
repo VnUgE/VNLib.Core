@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -26,7 +26,6 @@ using System;
 using System.Net;
 using System.Buffers;
 using System.Net.Sockets;
-using System.Net.Security;
 
 using VNLib.Utils.Logging;
 
@@ -35,7 +34,7 @@ namespace VNLib.Net.Transport.Tcp
     /// <summary>
     /// Represents the required configuration variables for the transport
     /// </summary>
-    public readonly struct TCPConfig
+    public readonly record struct TCPConfig
     {
         /// <summary>
         /// The <see cref="IPEndPoint"/> the listening socket will bind to
@@ -57,10 +56,6 @@ namespace VNLib.Net.Transport.Tcp
         /// Enables TCP keepalive
         /// </summary>
         public readonly bool TcpKeepalive { get; init; }
-        /// <summary>
-        /// The authentication options to use for processing TLS connections. This value must be set when a certificate has been specified
-        /// </summary>
-        public readonly SslServerAuthenticationOptions? AuthenticationOptions { get; init; }
         /// <summary>
         /// The maximum number of waiting WSA asynchronous socket accept operations
         /// </summary>

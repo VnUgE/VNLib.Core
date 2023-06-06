@@ -56,8 +56,7 @@ namespace VNLib.Net.Transport.Tcp
              * may be safely reset for reuse
              */
             if (_recvTask != null)
-            {
-                //Since the 
+            {                 
                 SendPipe.Reset();
                 RecvPipe.Reset();
             }
@@ -100,8 +99,10 @@ namespace VNLib.Net.Transport.Tcp
         private readonly Timer SendTimer;
         private readonly Stream RecvStream;
 
+        ///<inheritdoc/>
         public int SendTimeoutMs { get; set; }
 
+        ///<inheritdoc/>
         public int RecvTimeoutMs { get; set; }
 
 
@@ -180,6 +181,8 @@ namespace VNLib.Net.Transport.Tcp
          * the pipes and the socket
          */
 
+        private ReadResult _sendReadRes;
+
         private async Task SendDoWorkAsync(Socket sock)
         {
             Exception? cause = null;
@@ -189,18 +192,21 @@ namespace VNLib.Net.Transport.Tcp
                 while (true)
                 {
                     //wait for data from the write pipe and write it to the socket
-                    ReadResult result = await SendPipe.Reader.ReadAsync(CancellationToken.None);
+                    _sendReadRes = await SendPipe.Reader.ReadAsync(CancellationToken.None);
 
                     //Catch error/cancel conditions and break the loop
-                    if (result.IsCanceled || !sock.Connected || result.Buffer.IsEmpty)
+                    if (_sendReadRes.IsCanceled || !sock.Connected || _sendReadRes.Buffer.IsEmpty)
                     {
                         break;
                     }
-                    //get sequence
-                    ReadOnlySequence<byte> buffer = result.Buffer;
+
+                    /*
+                     * Even if the pipe was completed, and if the buffer is not empty, then 
+                     * there is still data to be written to the socket, so we must continue
+                     */
 
                     //Get enumerator to write memory segments
-                    ReadOnlySequence<byte>.Enumerator enumerator = buffer.GetEnumerator();
+                    ReadOnlySequence<byte>.Enumerator enumerator = _sendReadRes.Buffer.GetEnumerator();
 
                     //Begin enumerator
                     while (enumerator.MoveNext())
@@ -233,10 +239,10 @@ namespace VNLib.Net.Transport.Tcp
                     }
                   
                     //Advance pipe
-                    SendPipe.Reader.AdvanceTo(buffer.End);
+                    SendPipe.Reader.AdvanceTo(_sendReadRes.Buffer.End);
                     
                     //Pipe has been completed and all data was written
-                    if (result.IsCompleted)
+                    if (_sendReadRes.IsCompleted)
                     {
                         break;
                     }
@@ -248,6 +254,8 @@ namespace VNLib.Net.Transport.Tcp
             }
             finally
             {
+                _sendReadRes = default;
+
                 //Complete the send pipe writer
                 await SendPipe.Reader.CompleteAsync(cause);
 
@@ -255,6 +263,8 @@ namespace VNLib.Net.Transport.Tcp
                 _cts!.Cancel();
             }
         }
+
+        private FlushResult _recvFlushRes;
 
         private async Task RecvDoWorkAsync(Socket sock, bool initialData)
         {
@@ -299,10 +309,10 @@ namespace VNLib.Net.Transport.Tcp
                     RecvPipe.Writer.Advance(count);
 
                     //Publish read data
-                    FlushResult res = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
+                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
 
                     //Writing has completed, time to exit
-                    if (res.IsCompleted || res.IsCanceled)
+                    if (_recvFlushRes.IsCompleted || _recvFlushRes.IsCanceled)
                     {
                         break;
                     }
@@ -323,6 +333,8 @@ namespace VNLib.Net.Transport.Tcp
             }
             finally
             {
+                _recvFlushRes = default;
+
                 //Stop timer incase exception
                 RecvTimer.Stop();
 
