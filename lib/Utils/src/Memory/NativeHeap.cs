@@ -112,65 +112,44 @@ namespace VNLib.Utils.Memory
                 throw;
             }
         }
-
-
-        private readonly SafeLibraryHandle LibHandle;
-        private AllocDelegate AllocMethod;
-        private ReallocDelegate ReallocMethod;
-        private FreeDelegate FreeMethod;
-        private DestroyHeapDelegate Destroy;
+       
+        private HeapMethods MethodTable;
 
         private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) :base(flags->InternalFlags, true)
         {
             //Store heap pointer
-            handle = flags->HeapPointer;
+            SetHandle(flags->HeapPointer);
 
-            //Store the method table
-            AllocMethod = methodTable.Alloc;
-            ReallocMethod = methodTable.Realloc;
-            FreeMethod = methodTable.Free;
-            Destroy = methodTable.Destroy;
-
-            //Store library
-            LibHandle = methodTable.Library;
+            //Copy method table
+            MethodTable = methodTable;
         }
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected override IntPtr AllocBlock(nuint elements, nuint size, bool zero) => AllocMethod(handle, elements, size, zero);
+        protected override IntPtr AllocBlock(nuint elements, nuint size, bool zero) => MethodTable.Alloc(handle, elements, size, zero);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected override IntPtr ReAllocBlock(IntPtr block, nuint elements, nuint size, bool zero) => ReallocMethod(handle, block, elements, size, zero);
+        protected override IntPtr ReAllocBlock(IntPtr block, nuint elements, nuint size, bool zero) => MethodTable.Realloc(handle, block, elements, size, zero);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected override bool FreeBlock(IntPtr block) => FreeMethod(handle, block);
+        protected override bool FreeBlock(IntPtr block) => MethodTable.Free(handle, block);
 
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
         {
             //Destroy the heap
-            bool ret = Destroy(handle);
-
-            //Cleanup the method table
-            Cleanup();
+            bool ret = MethodTable.Destroy(handle);
 
             //Free the library
-            LibHandle.Dispose();
+            MethodTable.Library.Dispose();
+
+            //Cleanup the method table
+            MethodTable = default;
 
             return ret;
         }
-
-#nullable disable
-        private void Cleanup()
-        {
-            AllocMethod = null;
-            ReallocMethod = null;
-            FreeMethod = null;
-            Destroy = null;
-        }
-#nullable enable
 
         /*
          * Delegate methods match the native header impl for unmanaged heaps

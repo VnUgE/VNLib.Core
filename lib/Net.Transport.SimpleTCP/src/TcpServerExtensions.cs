@@ -48,10 +48,10 @@ namespace VNLib.Net.Transport.Tcp
         public static async Task<TransportEventContext> AcceptSslAsync(this TcpServer server, SslServerAuthenticationOptions options, CancellationToken cancellation = default)
         {
             //accept internal args
-            VnSocketAsyncArgs args = await server.AcceptArgsAsync(cancellation);
+            ITcpConnectionDescriptor args = await server.AcceptConnectionAsync(cancellation);
 
             //Begin authenication and make sure the socket stream is closed as its required to cleanup
-            SslStream stream = new(args.Stream, false);
+            SslStream stream = new(args.GetStream(), false);
             try
             {
                 //auth the new connection
@@ -64,14 +64,14 @@ namespace VNLib.Net.Transport.Tcp
                 await stream.DisposeAsync();
 
                 //Disconnect socket 
-                args.Disconnect();
+                args.CloseConnection();
 
                 throw new AuthenticationException("Failed client/server TLS authentication", ex);
             }
         }
 
         /// <summary>
-        /// Safley closes an ssl connection
+        /// Safely closes an ssl connection
         /// </summary>
         /// <param name="ctx">The context to close the connection on</param>
         /// <returns>A value task that completes when the connection is closed</returns>

@@ -36,13 +36,14 @@ namespace VNLib.Net.Transport.Tcp
     /// Reusable <see cref="SocketAsyncEventArgs"/> that manages a pipeline for sending and recieving data.
     /// on the connected socket
     /// </summary>
-    internal sealed class VnSocketAsyncArgs : SocketAsyncEventArgs, IReusable
+    internal sealed class VnSocketAsyncArgs : SocketAsyncEventArgs, ITcpConnectionDescriptor, IReusable
     {
         private readonly ISockAsyncArgsHandler _handler;
 
         public readonly SocketPipeLineWorker SocketWorker;
 
         public Stream Stream => SocketWorker.NetworkStream;
+        
 
         public VnSocketAsyncArgs(ISockAsyncArgsHandler handler, PipeOptions options) : base()
         {
@@ -142,7 +143,17 @@ namespace VNLib.Net.Transport.Tcp
             SocketError = SocketError.Success;
             SocketFlags = SocketFlags.None;
         }
-        
+
+        ///<inheritdoc/>
+        Socket ITcpConnectionDescriptor.Socket => AcceptSocket!;
+
+        ///<inheritdoc/>
+        Stream ITcpConnectionDescriptor.GetStream() => SocketWorker.NetworkStream;
+
+        ///<inheritdoc/>
+        void ITcpConnectionDescriptor.CloseConnection() => Disconnect();        
+
+
         void IReusable.Prepare()
         {
             SocketWorker.Prepare();
@@ -174,5 +185,6 @@ namespace VNLib.Net.Transport.Tcp
             //Cleanup socket worker
             SocketWorker.DisposeInternal();
         }
+       
     }
 }

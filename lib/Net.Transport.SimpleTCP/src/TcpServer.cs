@@ -65,9 +65,13 @@ namespace VNLib.Net.Transport.Tcp
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public TcpServer(TCPConfig config, PipeOptions? pipeOptions = null)
         {
-            Config = config;
             //Check config
-            _ = config.BufferPool ?? throw new ArgumentException("Buffer pool argument cannot be null");
+            if(pipeOptions == null)
+            {
+                //Pool is required when using default pipe options
+                _ = config.BufferPool ?? throw new ArgumentException("Buffer pool argument cannot be null");
+            }
+            
             _ = config.Log ?? throw new ArgumentException("Log argument is required");
             
             if (config.MaxRecvBufferData < 4096)
@@ -82,10 +86,13 @@ namespace VNLib.Net.Transport.Tcp
             {
                 config.Log.Debug("Suggestion: Setting accept threads to {pc}", Environment.ProcessorCount);
             }
+
+            Config = config;
+
             //Cache pipe options
             PipeOptions = pipeOptions ?? new(
                 config.BufferPool,
-                readerScheduler:PipeScheduler.ThreadPool, 
+                readerScheduler:PipeScheduler.ThreadPool,
                 writerScheduler:PipeScheduler.ThreadPool, 
                 pauseWriterThreshold: config.MaxRecvBufferData, 
                 minimumSegmentSize: 8192,
@@ -240,12 +247,23 @@ namespace VNLib.Net.Transport.Tcp
                 args.Dispose();
                 return;
             }
-            //Check for error on accept, and if no error, enqueue the socket, otherwise disconnect the socket
-            if (!args.EndAccept() || !WaitingSockets!.TryEnque(args))
+            
+            //Check for error and log it
+            if (!args.EndAccept())
             {
-                //Disconnect the socket (will return the args to the pool)
                 args.Disconnect();
+                Config.Log.Debug("Socket accept failed with error code {ec}", args.SocketError);
+                return;
             }
+
+            //Try to enqueue the args to the waiting queue, if the queue is full, disconnect the socket
+            if (!WaitingSockets!.TryEnque(args))
+            {
+                args.Disconnect();
+                Config.Log.Warn("Socket {e} disconnected because the waiting queue is overflowing", args.GetHashCode());
+                return;
+            }
+            
             //Accept a new connection
             AcceptConnection();
         }
@@ -265,29 +283,44 @@ namespace VNLib.Net.Transport.Tcp
                 return ValueTask.FromResult<TransportEventContext>(new(args, args.Stream));
             }
 
-            return AcceptAsyncCore(cancellation);
+            return AcceptAsyncCore(this, cancellation);
+
+            static async ValueTask<TransportEventContext> AcceptAsyncCore(TcpServer server, CancellationToken cancellation)
+            {
+                //Await async
+                VnSocketAsyncArgs args = await server.WaitingSockets!.DequeueAsync(cancellation);
+
+                return new(args, args.Stream);
+            }
         }
 
-        private async ValueTask<TransportEventContext> AcceptAsyncCore(CancellationToken cancellation)
-        {
-            //Await async
-            VnSocketAsyncArgs args = await WaitingSockets.DequeueAsync(cancellation);
-
-            return new(args, args.Stream);
-        }
-
-        internal ValueTask<VnSocketAsyncArgs> AcceptArgsAsync(CancellationToken cancellation)
+        /// <summary>
+        /// Accepts a connection and returns the connection descriptor.
+        /// </summary>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>The connection descriptor</returns>
+        /// <remarks>
+        /// NOTE: You must always call the <see cref="ITcpConnectionDescriptor.CloseConnection"/> and 
+        /// destroy all references to it when you are done. You must also dispose the stream returned
+        /// from the <see cref="ITcpConnectionDescriptor.GetStream"/> method.
+        /// </remarks>
+        /// <exception cref="InvalidOperationException"></exception>
+        public ValueTask<ITcpConnectionDescriptor> AcceptConnectionAsync(CancellationToken cancellation)
         {
             _ = WaitingSockets ?? throw new InvalidOperationException("Server is not listening");
 
             //Try get args from queue
             if (WaitingSockets.TryDequeue(out VnSocketAsyncArgs? args))
             {
-                return ValueTask.FromResult(args);
+                return ValueTask.FromResult<ITcpConnectionDescriptor>(args);
             }
-            else
+
+            return AcceptConnectionAsyncCore(this, cancellation);
+
+            static async ValueTask<ITcpConnectionDescriptor> AcceptConnectionAsyncCore(TcpServer server, CancellationToken cancellation)
             {
-                return WaitingSockets.DequeueAsync(cancellation);
+                //Await async
+                return await server.WaitingSockets!.DequeueAsync(cancellation);
             }
         }
     }

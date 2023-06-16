@@ -25,70 +25,75 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Net.Sockets;
-using System.Net.Security;
-using System.Security.Authentication;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-
 
 namespace VNLib.Net.Transport.Tcp
 {
+
     /// <summary>
     /// Represents the context of a transport connection. It includes the active socket 
     /// and a stream representing the active transport. 
     /// </summary>
     public readonly record struct TransportEventContext
     {  
-        /// <summary>
-        /// The socket referrence to the incoming connection
-        /// </summary>
-        private readonly Socket Socket;
-        
-        private readonly VnSocketAsyncArgs _socketArgs;
+        private readonly ITcpConnectionDescriptor _descriptor;
 
         /// <summary>
         /// A copy of the local endpoint of the listening socket
         /// </summary>
-        public readonly IPEndPoint LocalEndPoint
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (Socket.LocalEndPoint as IPEndPoint)!;
-        }
+        public readonly IPEndPoint LocalEndPoint;
 
         /// <summary>
         /// The <see cref="IPEndPoint"/> representing the client's connection information
         /// </summary>
-        public readonly IPEndPoint RemoteEndpoint
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (Socket.RemoteEndPoint as IPEndPoint)!;
-        }
+        public readonly IPEndPoint RemoteEndpoint;
 
         /// <summary>
-        /// The transport stream to be actively read
+        /// The transport stream that wraps the connection
         /// </summary>
         public readonly Stream ConnectionStream;
       
       
-        internal TransportEventContext(VnSocketAsyncArgs args, Stream @stream)
+        /// <summary>
+        /// Creates a new <see cref="TransportEventContext"/> wrapper for the given connection descriptor
+        /// and captures the default stream from the descriptor.
+        /// </summary>
+        /// <param name="descriptor">The connection to wrap</param>
+        public TransportEventContext(ITcpConnectionDescriptor descriptor):this(descriptor, descriptor.GetStream())
+        { }
+
+        /// <summary>
+        /// Creates a new <see cref="TransportEventContext"/> wrapper for the given connection descriptor
+        /// and your custom stream implementation.
+        /// </summary>
+        /// <param name="descriptor">The connection descriptor to wrap</param>
+        /// <param name="customStream">Your custom stream wrapper around the transport stream</param>
+        public TransportEventContext(ITcpConnectionDescriptor descriptor, Stream customStream)
         {
-            _socketArgs = args;
-            Socket = args.AcceptSocket!;
-            ConnectionStream = stream;
+            _descriptor = descriptor;
+            ConnectionStream = customStream;
+
+            //Call once and store locally
+            LocalEndPoint = (descriptor.Socket.LocalEndPoint as IPEndPoint)!;
+            RemoteEndpoint = (descriptor.Socket.RemoteEndPoint as IPEndPoint)!;
         }
 
         /// <summary>
-        /// Closes a connection and cleans up any resources
+        /// Cleans up the stream and closes the connection descriptor
         /// </summary>
-        /// <returns></returns>
-        public async ValueTask CloseConnectionAsync()
+        /// <returns>A value-task that completes when the resources have been cleaned up</returns>
+        public readonly async ValueTask CloseConnectionAsync()
         {
-            //dispose the stream and wait for buffered data to be sent
-            await ConnectionStream.DisposeAsync();
-
-            //Disconnect
-            _socketArgs.Disconnect();
+            try
+            {
+                //dispose the stream and wait for buffered data to be sent
+                await ConnectionStream.DisposeAsync();
+            }
+            finally
+            {
+                //Disconnect
+                _descriptor.CloseConnection();
+            }
         }
     }
 }

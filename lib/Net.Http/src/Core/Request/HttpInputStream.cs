@@ -200,13 +200,13 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         /// <param name="bufMan">The buffer manager to request the discard buffer from</param>
         /// <returns>A task that represents the discard operations</returns>
-        public async ValueTask DiscardRemainingAsync(IHttpBufferManager bufMan)
+        public ValueTask DiscardRemainingAsync(IHttpBufferManager bufMan)
         {
             long remaining = Remaining;
 
             if(remaining == 0)
             {
-                return;
+                return ValueTask.CompletedTask;
             }
 
             //See if all data has already been buffered
@@ -214,21 +214,27 @@ namespace VNLib.Net.Http.Core
             {
                 //All data has been buffred, so just clear the buffer
                 _position = Length;
+                return ValueTask.CompletedTask;
             }
             //We must actaully disacrd data from the stream
             else
             {
-                //Reqest discard buffer
-                Memory<byte> discardBuffer = bufMan.GetDiscardBuffer();
-
-                int read;
-                do
-                {
-                    //Read data to the discard buffer until reading is completed (read == 0)
-                    read = await ReadAsync(discardBuffer, CancellationToken.None).ConfigureAwait(true);
-
-                } while (read != 0);
+                return DiscardStreamDataAsync(bufMan);
             }
+        }
+
+        private async ValueTask DiscardStreamDataAsync(IHttpBufferManager bufMan)
+        {
+            //Reqest discard buffer
+            Memory<byte> discardBuffer = bufMan.GetDiscardBuffer();
+
+            int read;
+            do
+            {
+                //Read data to the discard buffer until reading is completed (read == 0)
+                read = await ReadAsync(discardBuffer, CancellationToken.None).ConfigureAwait(true);
+
+            } while (read != 0);
         }
 
         public override long Seek(long offset, SeekOrigin origin)

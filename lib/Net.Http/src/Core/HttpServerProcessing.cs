@@ -74,7 +74,7 @@ namespace VNLib.Net.Http
                         break;
                     }
 
-                    //Set inactive keeaplive timeout
+                    //Reset inactive keeaplive timeout, when expired the following read will throw a cancealltion exception
                     transportContext.ConnectionStream.ReadTimeout = (int)Config.ConnectionKeepAlive.TotalMilliseconds;
                     
                     //"Peek" or wait for more data to begin another request (may throw timeout exception when timmed out)
@@ -109,7 +109,12 @@ namespace VNLib.Net.Http
             {
                 WriteSocketExecption(se);
             }
-            catch(OperationCanceledException oce)
+            //Catch wrapped OC exceptions
+            catch (IOException ioe) when (ioe.InnerException is OperationCanceledException oce)
+            {
+                Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m}, connection closed", oce.Message);
+            }
+            catch (OperationCanceledException oce)
             {
                 Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m}, connection closed", oce.Message);
             }

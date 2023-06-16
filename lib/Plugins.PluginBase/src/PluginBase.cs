@@ -38,11 +38,12 @@ using VNLib.Plugins.Attributes;
 
 namespace VNLib.Plugins
 {
+
     /// <summary>
     /// Provides a concrete base class for <see cref="IPlugin"/> instances using the Serilog logging provider.
     /// Accepts the standard plugin <see cref="JsonDocument"/> configuration constructors
     /// </summary>
-    public abstract class PluginBase : MarshalByRefObject, IPlugin
+    public abstract class PluginBase : MarshalByRefObject, IPlugin, IPluginTaskObserver
     {
         /*
          * CTS exists for the life of the plugin, its resources are never disposed
@@ -90,9 +91,7 @@ namespace VNLib.Plugins
         /// </summary>
         public JsonElement PluginConfig => Configuration.RootElement.GetProperty(GetType().Name);
 
-        /// <summary>
         /// <inheritdoc/>
-        /// </summary>
         public abstract string PluginName { get; }
 
         /// <summary>
@@ -340,10 +339,7 @@ namespace VNLib.Plugins
             }
         }
 
-        /// <summary>
-        /// Adds a task to the observation list
-        /// </summary>
-        /// <param name="task">The task to observe</param>
+        ///<inheritdoc/>
         public void ObserveTask(Task task)
         {
             lock (DeferredTasks)
@@ -352,10 +348,7 @@ namespace VNLib.Plugins
             }
         }
 
-        /// <summary>
-        /// Removes a task from the task observation list
-        /// </summary>
-        /// <param name="task">The task to remove</param>
+        ///<inheritdoc/>
         public void RemoveObservedTask(Task task)
         {
             lock (DeferredTasks)
@@ -379,10 +372,12 @@ namespace VNLib.Plugins
         /// </para>
         /// </summary>
         protected abstract void OnLoad();
+        
         /// <summary>
         /// Invoked when all endpoints have been removed from service. All managed and unmanged resources should be released.
         /// </summary>
         protected abstract void OnUnLoad();
+        
         /// <summary>
         /// Invoked before <see cref="IPlugin.GetEndpoints"/> called by the host app to get all endpoints
         /// for the current plugin

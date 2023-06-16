@@ -29,7 +29,6 @@ using System.Threading;
 using System.Net.Sockets;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Memory.Caching;
@@ -43,61 +42,23 @@ namespace VNLib.Net.Transport.Tcp
     /// </summary>
     internal sealed class SocketPipeLineWorker : ITransportInterface, IReusable
     {
-        public void Prepare()
-        {}
+        /*
+         * [0] = Recv
+         * [1] = Send
+         * [2] = Send Complete
+         * [3] = Read Complete
+         */
 
-        public bool Release()
-        {
-            /*
-             * If the pipeline has been started, then the pipes 
-             * will be completed by the worker threads (or by the streams)
-             * and when release is called, there will no longer be 
-             * an observer for the result, which means the pipes 
-             * may be safely reset for reuse
-             */
-            if (_recvTask != null)
-            {                 
-                SendPipe.Reset();
-                RecvPipe.Reset();
-            }
-            /*
-             * If socket had an error and was not started,
-             * it means there may be data written to the 
-             * recv pipe from the accept operation, that 
-             * needs to be cleared
-             */
-            else
-            {
-                //Complete the recvpipe then reset it to discard buffered data
-                RecvPipe.Reader.Complete();
-                RecvPipe.Writer.Complete();
-                //now reset it
-                RecvPipe.Reset();
-            }
-           
-            //Cleanup tasks
-            _recvTask = null;
-            _sendTask = null;
-            
-            //Cleanup cts
-            _cts?.Dispose();
-            _cts = null;
-
-            return true;
-        }
-
-        private Task? _recvTask;
-        private Task? _sendTask;
-      
-        private CancellationTokenSource? _cts;
+        private readonly Task[] _tasks;
         
         public readonly ReusableNetworkStream NetworkStream;
-
         private readonly Pipe SendPipe;
         private readonly Pipe RecvPipe;
         private readonly Timer RecvTimer;
         private readonly Timer SendTimer;
         private readonly Stream RecvStream;
+
+        private CancellationTokenSource? _cts;
 
         ///<inheritdoc/>
         public int SendTimeoutMs { get; set; }
@@ -127,6 +88,54 @@ namespace VNLib.Net.Transport.Tcp
 
             SendTimeoutMs = Timeout.Infinite;
             RecvTimeoutMs = Timeout.Infinite;
+
+            /*
+             * Store the operation tasks in an array, so they can be
+             * joined when the stream is closed
+             */
+            _tasks = new Task[4];
+        }
+
+        public void Prepare()
+        { }
+
+        public bool Release()
+        {
+            /*
+             * If the pipeline has been started, then the pipes 
+             * will be completed by the worker threads (or by the streams)
+             * and when release is called, there will no longer be 
+             * an observer for the result, which means the pipes 
+             * may be safely reset for reuse
+             */
+            if (_tasks[0] != null)
+            {
+                SendPipe.Reset();
+                RecvPipe.Reset();
+            }
+            /*
+             * If socket had an error and was not started,
+             * it means there may be data written to the 
+             * recv pipe from the accept operation, that 
+             * needs to be cleared
+             */
+            else
+            {
+                //Complete the recvpipe then reset it to discard buffered data
+                RecvPipe.Reader.Complete();
+                RecvPipe.Writer.Complete();
+                //now reset it
+                RecvPipe.Reset();
+            }
+
+            //Cleanup tasks
+            Array.Clear(_tasks);
+
+            //Cleanup cts
+            _cts?.Dispose();
+            _cts = null;
+
+            return true;
         }
 
         /// <summary>
@@ -146,8 +155,8 @@ namespace VNLib.Net.Transport.Tcp
             //Advance writer
             RecvPipe.Writer.Advance(bytesTransferred);
             //begin recv tasks, and pass inital data to be flushed flag
-            _recvTask = RecvDoWorkAsync(client, bytesTransferred > 0);
-            _sendTask = SendDoWorkAsync(client);
+            _tasks[0] = RecvDoWorkAsync(client, bytesTransferred > 0);
+            _tasks[1] = SendDoWorkAsync(client);
         }
 
 
@@ -185,7 +194,6 @@ namespace VNLib.Net.Transport.Tcp
 
         private async Task SendDoWorkAsync(Socket sock)
         {
-            Exception? cause = null;
             try
             {
                 //Enter work loop
@@ -247,22 +255,23 @@ namespace VNLib.Net.Transport.Tcp
                         break;
                     }
                 }
+
+                //All done, complete the send pipe reader
+                await SendPipe.Reader.CompleteAsync();
             }
             catch (Exception ex)
             {
-                cause = ex;
+                //Complete the send pipe reader
+                await SendPipe.Reader.CompleteAsync(ex);
             }
             finally
             {
                 _sendReadRes = default;
-
-                //Complete the send pipe writer
-                await SendPipe.Reader.CompleteAsync(cause);
-
                 //Cancel the recv task
                 _cts!.Cancel();
             }
         }
+
 
         private FlushResult _recvFlushRes;
 
@@ -344,6 +353,7 @@ namespace VNLib.Net.Transport.Tcp
             }
         }
 
+
         /// <summary>
         /// The internal cleanup/dispose method to be called
         /// when the pipeline is no longer needed
@@ -354,10 +364,9 @@ namespace VNLib.Net.Transport.Tcp
             SendTimer.Dispose();
 
             //Perform some managed cleanup
-            
+
             //Cleanup tasks
-            _recvTask = null;
-            _sendTask = null;
+            Array.Clear(_tasks);
 
             //Cleanup cts
             _cts?.Dispose();
@@ -544,17 +553,18 @@ namespace VNLib.Net.Transport.Tcp
         Task ITransportInterface.CloseAsync()
         {
             //Complete the send pipe writer since stream is closed
-            ValueTask vt = SendPipe.Writer.CompleteAsync();
+            _tasks[2] = SendPipe.Writer.CompleteAsync().AsTask();
+
             //Complete the recv pipe reader since its no longer used
-            ValueTask rv = RecvPipe.Reader.CompleteAsync();
+            _tasks[3] = RecvPipe.Reader.CompleteAsync().AsTask();
+
             //Join worker tasks, no alloc if completed sync, otherwise alloc anyway
-            return Task.WhenAll(vt.AsTask(), rv.AsTask(), _recvTask!, _sendTask!);
+            return Task.WhenAll(_tasks);
         }
       
 
         private static class ThrowHelpers
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        {            
             public static void ThrowWriterCanceled() 
             {
                 throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter");

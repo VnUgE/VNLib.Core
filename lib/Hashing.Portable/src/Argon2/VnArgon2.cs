@@ -370,7 +370,7 @@ namespace VNLib.Hashing
             int rawPassLen = LocEncoding.GetByteCount(rawPass);
 
             //Alloc buffer for decoded data
-            using IMemoryHandle<byte> rawBufferHandle = MemoryUtil.Shared.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen, true);
+            using IMemoryHandle<byte> rawBufferHandle = PwHeap.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen, true);
             
             //Split buffers
             Span<byte> saltBuf = rawBufferHandle.Span[..saltBase64BufSize];

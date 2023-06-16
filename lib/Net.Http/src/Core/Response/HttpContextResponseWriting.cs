@@ -29,7 +29,6 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-
 namespace VNLib.Net.Http.Core
 {
 
@@ -50,16 +49,24 @@ namespace VNLib.Net.Http.Core
             {
                 //Parallel the write and discard
                 Task response = WriteResponseInternalAsync(cancellation);
-                Task discard = discardTask.AsTask();
 
-                await Task.WhenAll(response, discard);
+                if (discardTask.IsCompletedSuccessfully)
+                {
+                    //If discard is already complete, await the response
+                    await response;
+                }
+                else
+                {
+                    //If discard is not complete, await both
+                    await Task.WhenAll(discardTask.AsTask(), response);
+                }
             }
             else
             {
                 await discardTask;
             }
 
-            //Close response 
+            //Close response once send and discard are complete
             await Response.CloseAsync();
         }
         

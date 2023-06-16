@@ -69,11 +69,11 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public RuntimePluginLoader(IPluginAssemblyLoader loader, JsonElement? hostConfig, ILogProvider? log)
         {
+            Log = log;
+            Loader = loader ?? throw new ArgumentNullException(nameof(loader));
+
             //Default to empty config if null, otherwise clone a copy of the host config element
             HostConfig = hostConfig.HasValue ? Clone(hostConfig.Value) : JsonDocument.Parse("{}");
-
-            Log = log;
-            Loader = loader;
 
             //Configure watcher if requested
             if (loader.Config.WatchForReload)
@@ -104,7 +104,7 @@ namespace VNLib.Plugins.Runtime
                 //Get the plugin's configuration file
                 if (FileOperations.FileExists(PluginConfigPath))
                 {
-                    pluginConfig = this.GetPluginConfigAsync();
+                    pluginConfig = this.GetPluginConfig();
                 }
                 else
                 {
@@ -151,7 +151,7 @@ namespace VNLib.Plugins.Runtime
                 throw new NotSupportedException("The loading context is not unloadable, you may not dynamically reload plugins");
             }
             
-            //All plugins must be unloaded forst
+            //All plugins must be unloaded first
             UnloadPlugins();
 
             //Reload the assembly and 

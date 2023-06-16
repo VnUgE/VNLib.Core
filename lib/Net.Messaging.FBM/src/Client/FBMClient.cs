@@ -140,11 +140,15 @@ namespace VNLib.Net.Messaging.FBM.Client
                 $"{REQ_RECV_BUF_QUERY_ARG}={Config.RecvBufferSize}" +
                 $"&{REQ_HEAD_BUF_QUERY_ARG}={Config.MaxHeaderBufferSize}" +
                 $"&{REQ_MAX_MESS_QUERY_ARG}={Config.MaxMessageSize}";
+
             Debug("Connection string {con}", urib.Uri.ToString());
+
             //Connect to server
             await ClientSocket.ConnectAsync(urib.Uri, cancellationToken);
+
             //Reset wait handle before return
             ConnectionStatusHandle.Reset();
+
             //Begin listeing for requets in a background task
             _ = Task.Run(ProcessContinuousRecvAsync, cancellationToken);
         }

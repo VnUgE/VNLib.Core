@@ -26,7 +26,6 @@ using System;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
-using VNLib.Utils.Logging;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -87,51 +86,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 {
                     throw new ArgumentException("Failed to configure the service domain, you must expose at least one service host");
                 }
-
-                LinkedList<IHttpServer> servers = new();
-
-                //enumerate hosts groups
-                foreach (ServiceGroup hosts in sd.ServiceGroups)
-                {
-                    //Create new server
-                    IHttpServer server = _getServers.Invoke(hosts);
-
-                    //Add server to internal list
-                    servers.AddLast(server);
-                }
-
-                //Return the service stack
-                return new HttpServiceStack(servers, sd);
-            }
-            catch
-            {
-                sd.Dispose();
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Builds the new <see cref="HttpServiceStack"/> from configured callbacks, AND loads your plugin environment 
-        /// asynchronously
-        /// </summary>
-        /// <returns>The newly constructed <see cref="HttpServiceStack"/> that may be used to manage your http services</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        public HttpServiceStack Build(IPluginLoadConfiguration config, ILogProvider appLog)
-        {
-            _ = _hostBuilder ?? throw new ArgumentNullException("WithDomainBuilder", "You have not configured a service domain configuration callback");
-            _ = _getServers ?? throw new ArgumentNullException("WithHttp", "You have not configured a IHttpServer configuration callback");
-
-            //Inint the service domain
-            ServiceDomain sd = new();
-            try
-            {
-                if (!sd.BuildDomain(_hostBuilder))
-                {
-                    throw new ArgumentException("Failed to configure the service domain, you must expose at least one service host");
-                }
-
-                //Load plugins async
-                sd.PluginManager.LoadPlugins(config, appLog);
 
                 LinkedList<IHttpServer> servers = new();
 

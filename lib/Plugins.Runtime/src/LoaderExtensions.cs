@@ -120,7 +120,7 @@ namespace VNLib.Plugins.Runtime
         /// </summary>
         /// <param name="loader"></param>
         /// <returns>A new <see cref="JsonDocument"/> of the loaded configuration file</returns>
-        public static JsonDocument GetPluginConfigAsync(this RuntimePluginLoader loader)
+        public static JsonDocument GetPluginConfig(this RuntimePluginLoader loader)
         {
             //Open and read the config file
             using FileStream confStream = File.OpenRead(loader.PluginConfigPath);

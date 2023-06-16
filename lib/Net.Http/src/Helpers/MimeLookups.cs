@@ -3207,6 +3207,7 @@ namespace VNLib.Net.Http
             { "application/vnd.openxmlformats-officedocument.spreadsheetml.template", ContentType.Xltx },
             { "audio/xm", ContentType.Xm },
             { "application/xml", ContentType.Xml },
+            { "text/xml", ContentType.Xml },
             { "application/xcap-ns+xml", ContentType.Xns },
             { "application/vnd.olpc-sugar", ContentType.Xo },
             { "application/xop+xml", ContentType.Xop },
