@@ -10,8 +10,8 @@ Debug build w/ symbols & xml docs, release builds, NuGet packages, and individua
 ### Docs and Guides
 Documentation, specifications, and setup guides are available on my website.
 
-[Docs and Articles](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Plugins)
-[Builds and Source](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core)
+[Docs and Articles](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Plugins)  
+[Builds and Source](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core)  
 
 ## License 
 The software in this repository is licensed under the GNU GPL version 2.0 (or any later version). See the LICENSE files for more information.

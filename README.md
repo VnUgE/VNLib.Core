@@ -18,10 +18,10 @@ Docs and articles will be available from the docs link below . There are docs pe
 Again, go to my website below, my email address is available, go ahead and send me a message. Or use the email address from my profile to send me an email (via proton mail for now)
 
 ### Links
-[Home Page](https://www.vaughnnugent.com)- Website home page
-[Documentation](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Core) - Docs and articles for this module
-[Builds for VNLib.Core](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core) - Per-project build artifacts
-[Links for Nuget Feeds](https://www.vaughnnugent.com/resources/software/modules) - Get my NuGet feed links
+[Home Page](https://www.vaughnnugent.com)- Website home page  
+[Documentation](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Core) - Docs and articles for this module  
+[Builds for VNLib.Core](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core) - Per-project build artifacts  
+[Links for Nuget Feeds](https://www.vaughnnugent.com/resources/software/modules) - Get my NuGet feed links  
 
 ## Index/NameSpaces
 **VNLib.**

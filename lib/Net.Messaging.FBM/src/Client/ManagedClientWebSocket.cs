@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -32,8 +32,6 @@ using System.Security.Cryptography.X509Certificates;
 
 using VNLib.Utils.Memory;
 
-#nullable enable
-
 namespace VNLib.Net.Messaging.FBM.Client
 {
 
@@ -52,9 +50,13 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// A collection of headers to add to the client 
         /// </summary>
         public WebHeaderCollection Headers { get; }
+
         public X509CertificateCollection Certificates { get; }
+
         public IWebProxy? Proxy { get; set; }
+
         public CookieContainer? Cookies { get; set; }
+
         public RemoteCertificateValidationCallback? RemoteCertificateValidationCallback { get; set; }
 
 

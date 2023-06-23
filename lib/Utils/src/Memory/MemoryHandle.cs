@@ -141,8 +141,6 @@ namespace VNLib.Utils.Memory
         public unsafe void Resize(nuint elements)
         {
             this.ThrowIfClosed();
-            //Update size (should never be less than inital size)
-            _length = elements;
             //Re-alloc (Zero if required)
             try
             {
@@ -150,9 +148,12 @@ namespace VNLib.Utils.Memory
                  * If resize raises an exception the current block pointer
                  * should still be valid, if its not, the pointer should 
                  * be set to 0/-1, which will be considered invalid anyway
-                 */
+                 */            
 
-                Heap.Resize(ref handle, Length, (nuint)sizeof(T), ZeroMemory);
+                Heap.Resize(ref handle, elements, (nuint)sizeof(T), ZeroMemory);
+
+                //Update size only if succeeded
+                _length = elements;
             }
             //Catch the disposed exception so we can invalidate the current ptr
             catch (ObjectDisposedException)

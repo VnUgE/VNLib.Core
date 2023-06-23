@@ -65,6 +65,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// You may inspect the event args to determine the cause of the error.
         /// </summary>
         public event EventHandler<FMBClientErrorEventArgs>? ConnectionClosedOnError;
+        
         /// <summary>
         /// Raised when the client listener operaiton has completed as a normal closure
         /// </summary>
@@ -78,11 +79,13 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// The configuration for the current client
         /// </summary>
         public FBMClientConfig Config { get; }        
+        
         /// <summary>
         /// A handle that is reset when a connection has been successfully set, and is set
         /// when the connection exists
         /// </summary>
         public ManualResetEvent ConnectionStatusHandle { get; }        
+        
         /// <summary>
         /// The <see cref="ClientWebSocket"/> to send/recieve message on
         /// </summary>
@@ -150,7 +153,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             ConnectionStatusHandle.Reset();
 
             //Begin listeing for requets in a background task
-            _ = Task.Run(ProcessContinuousRecvAsync, cancellationToken);
+            _ = Task.Run(() => ProcessContinuousRecvAsync(ClientSocket), cancellationToken);
         }
 
         /// <summary>
@@ -298,16 +301,19 @@ namespace VNLib.Net.Messaging.FBM.Client
                 {
                     //Send the initial request packet
                     await ClientSocket.SendAsync(requestData, WebSocketMessageType.Binary, false, cancellationToken);
+
                     //Stream mesage body
                     do
                     {
                         //Read data
                         int read = await payload.ReadAsync(buffer.Memory, cancellationToken);
+
                         if (read == 0)
                         {
                             //No more data avialable
                             break;
                         }
+
                         //write message to socket, if the read data was smaller than the buffer, we can send the last packet
                         await ClientSocket.SendAsync(buffer.Memory[..read], WebSocketMessageType.Binary, read < bufSize, cancellationToken);
 
@@ -388,9 +394,10 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// until the socket is closed, or canceled
         /// </summary>
         /// <returns></returns>
-        protected async Task ProcessContinuousRecvAsync()
+        protected async Task ProcessContinuousRecvAsync(WebSocket socket)
         {
             Debug("Begining receive loop");
+
             //Alloc recv buffer
             IMemoryOwner<byte> recvBuffer = Config.BufferHeap.DirectAlloc<byte>(Config.RecvBufferSize);
             try
@@ -399,7 +406,8 @@ namespace VNLib.Net.Messaging.FBM.Client
                 while (true)
                 {
                     //Listen for incoming packets with the intial data buffer
-                    ValueWebSocketReceiveResult result = await ClientSocket.ReceiveAsync(recvBuffer.Memory, CancellationToken.None);
+                    ValueWebSocketReceiveResult result = await socket.ReceiveAsync(recvBuffer.Memory, CancellationToken.None);
+
                     //If the message is a close message, its time to exit
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
@@ -412,15 +420,19 @@ namespace VNLib.Net.Messaging.FBM.Client
                         Debug("Empty message recieved from server");
                         continue;
                     }
+
                     //Alloc data buffer and write initial data
                     VnMemoryStream responseBuffer = new(Config.BufferHeap);
+
                     //Copy initial data
                     responseBuffer.Write(recvBuffer.Memory.Span[..result.Count]);
+
                     //Receive packets until the EOF is reached
                     while (!result.EndOfMessage)
                     {
                         //recive more data
-                        result = await ClientSocket.ReceiveAsync(recvBuffer.Memory, CancellationToken.None);
+                        result = await socket.ReceiveAsync(recvBuffer.Memory, CancellationToken.None);
+
                         //Make sure the buffer is not too large
                         if ((responseBuffer.Length + result.Count) > Config.MaxMessageSize)
                         {
@@ -429,12 +441,15 @@ namespace VNLib.Net.Messaging.FBM.Client
                             Debug("Recieved a message that was too large, skipped");
                             goto Skip;
                         }
+
                         //Copy continuous data
                         responseBuffer.Write(recvBuffer.Memory.Span[..result.Count]);
                     }
+
                     //Reset the buffer stream position
                     _ = responseBuffer.Seek(0, SeekOrigin.Begin);
                     ProcessResponse(responseBuffer);
+
                 //Goto skip statment to cleanup resources
                 Skip:;
                 }
