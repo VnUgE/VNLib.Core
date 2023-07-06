@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: OpenHandle.cs 
+* File: NativeMemoryOutOfMemoryException.cs 
 *
-* OpenHandle.cs is part of VNLib.Utils which is part of the larger 
-* VNLib collection of libraries and utilities.
+* NativeMemoryOutOfMemoryException.cs is part of VNLib.Utils which is 
+* part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU General Public License as published
@@ -22,17 +22,23 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Utils.Resources
-{
+using System;
 
+namespace VNLib.Utils.Native
+{
     /// <summary>
-    /// Represents a base class for an open resource or operation that is valid while being held, 
-    /// and is released or unwound when disposed.
+    /// Raised when a memory allocation or resize failed because there is 
+    /// no more memory available
     /// </summary>
-    /// <remarks>
-    /// The <see cref="OpenHandle"/> pattern, may throw exceptions when disposed as deferred 
-    /// release actions are completed
-    /// </remarks>
-    public abstract class OpenHandle : VnDisposeable
-    { }
+    public class NativeMemoryOutOfMemoryException : OutOfMemoryException
+    {
+        public NativeMemoryOutOfMemoryException(string message) : base(message)
+        { }
+
+        public NativeMemoryOutOfMemoryException(string message, Exception innerException) : base(message, innerException)
+        { }
+
+        public NativeMemoryOutOfMemoryException()
+        { }
+    }
 }

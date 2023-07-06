@@ -26,6 +26,8 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
+using VNLib.Utils.Native;
+
 namespace VNLib.Utils.Memory
 {
     /// <summary>
@@ -54,9 +56,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         public ProcessHeap()
         {
-#if TRACE
             Trace.WriteLine($"Default heap instnace created {GetHashCode():x}");
-#endif
         }
 
         ///<inheritdoc/>
@@ -82,9 +82,7 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         protected override void Free()
         {
-#if TRACE
             Trace.WriteLine($"Default heap instnace disposed {GetHashCode():x}");
-#endif
         }
         
         ///<inheritdoc/>

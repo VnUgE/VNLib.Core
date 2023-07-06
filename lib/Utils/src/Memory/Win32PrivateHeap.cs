@@ -28,6 +28,8 @@ using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils.Native;
+
 using DWORD = System.Int64;
 using LPVOID = System.IntPtr;
 
@@ -137,9 +139,8 @@ namespace VNLib.Utils.Memory
             {
                 throw new NativeMemoryException("Heap could not be created");
             }
-#if TRACE
             Trace.WriteLine($"Win32 private heap {heapHandle:x} created");
-#endif
+
             //Heap has been created so we can wrap it
             return new(heapHandle, cFlags, true);
         }
@@ -202,9 +203,8 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
         {
-#if TRACE
             Trace.WriteLine($"Win32 private heap {handle:x} destroyed");
-#endif
+
             return HeapDestroy(handle);
         }
 

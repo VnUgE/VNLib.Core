@@ -42,6 +42,7 @@ namespace VNLib.Utils.Memory
     /// </remarks>
     public sealed class MemoryHandle<T> : SafeHandleZeroOrMinusOneIsInvalid, IMemoryHandle<T>, IEquatable<MemoryHandle<T>> where T : unmanaged
     {
+
         /// <summary>
         /// New <typeparamref name="T"/>* pointing to the base of the allocated block
         /// </summary>
@@ -51,6 +52,7 @@ namespace VNLib.Utils.Memory
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => GetOffset(0);
         }
+
         /// <summary>
         /// New <see cref="IntPtr"/> pointing to the base of the allocated block
         /// </summary>
@@ -60,6 +62,7 @@ namespace VNLib.Utils.Memory
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (IntPtr)GetOffset(0);
         }
+
         /// <summary>
         /// Gets a span over the entire allocated block
         /// </summary>
@@ -112,7 +115,7 @@ namespace VNLib.Utils.Memory
             ZeroMemory = zero;
             //assign heap ref
             Heap = heap;
-            handle = initial;
+            SetHandle(initial);
         }
 
         /*
@@ -238,7 +241,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         public bool Equals(MemoryHandle<T>? other)
         {
-            return other != null && IsClosed == other.IsClosed && _length == other._length && handle == other.handle;
+            return other != null && (IsClosed | other.IsClosed) == false && _length == other._length && handle == other.handle;
         }
         
         ///<inheritdoc/>

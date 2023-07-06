@@ -24,6 +24,7 @@
 
 using System;
 using System.Threading;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -69,14 +70,14 @@ namespace VNLib.Utils.Async
         {
             MaxPoolSize = maxPoolSize;
             StoreLock = new();
-            EntryPool = new Stack<WaitEntry>(maxPoolSize);
+            EntryPool = new(maxPoolSize);
             WaitTable = new(initialCapacity, keyComparer);
         }
 
         ///<inheritdoc/>
         public virtual Task WaitAsync(TMoniker moniker, CancellationToken cancellation = default)
         {
-            //Token must not be cancelled 
+            //Token must not be cancelled before entering wait 
             cancellation.ThrowIfCancellationRequested();
 
             WaitEnterToken token;
@@ -93,7 +94,7 @@ namespace VNLib.Utils.Async
                 }
 
                 //Get waiter before leaving lock
-                token = wait.GetWaiter();
+                wait.GetWaiter(out token);
             }
 
             return token.EnterWaitAsync(cancellation);
@@ -163,7 +164,8 @@ namespace VNLib.Utils.Async
         }
 
         /// <summary>
-        /// Returns an empty <see cref="WaitEntry"/> back to the pool for reuse
+        /// Returns an empty <see cref="WaitEntry"/> back to the pool for reuse 
+        /// (does not hold the store lock)
         /// </summary>
         /// <param name="entry">The entry to return to the pool</param>
         protected virtual void ReturnEntry(WaitEntry entry)
@@ -214,40 +216,36 @@ namespace VNLib.Utils.Async
         protected class WaitEntry : VnDisposeable
         {
             private uint _waitCount;
-            private readonly SemaphoreSlim _waitHandle;
+            private readonly SemaphoreSlim _waitHandle = new(1, 1);
 
             /// <summary>
             /// A stored referrnece to the moniker while the wait exists
             /// </summary>
-            public TMoniker? Moniker { get; private set; }
-
-            /// <summary>
-            /// Initializes a new <see cref="WaitEntry"/>
-            /// </summary>
-            public WaitEntry()
-            {
-                _waitHandle = new(1, 1);
-                Moniker = default!;
-            }
+            public TMoniker? Moniker { get; private set; }         
 
             /// <summary>
             /// Gets a token used to enter the lock which may block, or yield async
             /// outside of a nested lock
             /// </summary>
-            /// <returns>The waiter used to enter a wait on the moniker</returns>
-            public WaitEnterToken GetWaiter()
+            /// <param name="enterToken">A referrence to the wait entry token</param>
+            /// <returns>
+            /// The incremented reference count.
+            /// </returns>
+            public uint GetWaiter(out WaitEnterToken enterToken)
             {
                 /*
                  * Increment wait count before entering the lock
                  * A cancellation is the only way out, so cover that 
                  * during the async, only if the token is cancelable
                  */
-                _ = Interlocked.Increment(ref _waitCount);
-                return new(this);
+
+                enterToken = new(this);
+                return Interlocked.Increment(ref _waitCount);               
             }
 
             /// <summary>
-            /// Prepares a release 
+            /// Prepares a release token and atomically decrements the waiter count
+            /// and returns the remaining number of waiters.
             /// </summary>
             /// <param name="releaser">
             /// The token that should be used to release the exclusive lock held on 
@@ -270,7 +268,9 @@ namespace VNLib.Utils.Async
             public void Prepare(TMoniker? moniker)
             {
                 Moniker = moniker;
-                _waitCount = 0;
+                
+                //Wait count should be 0 on calls to prepare, its a bug if not
+                Debug.Assert(_waitCount == 0);
             }
 
             /*

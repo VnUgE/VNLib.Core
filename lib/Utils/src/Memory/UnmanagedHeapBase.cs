@@ -27,6 +27,8 @@ using System.Runtime.InteropServices;
 
 using Microsoft.Win32.SafeHandles;
 
+using VNLib.Utils.Native;
+
 using LPVOID = System.IntPtr;
 
 namespace VNLib.Utils.Memory

@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
@@ -63,7 +64,7 @@ namespace VNLib.Utils.Memory
 
             //Set defaults
             hFlags->Flags = flags;
-            hFlags->InternalFlags = creationFlags;
+            hFlags->CreationFlags = creationFlags;
             hFlags->HeapPointer = IntPtr.Zero;
 
             //Create the heap
@@ -91,8 +92,10 @@ namespace VNLib.Utils.Memory
                     Library = library
                 };
 
+                Trace.WriteLine($"Creating user defined native heap at {path}");
+
                 //Get the create method
-                CreateHeapDelegate create = library.DangerousGetMethod<CreateHeapDelegate>(CREATE_METHOD_NAME);               
+                CreateHeapDelegate create = library.DangerousGetMethod<CreateHeapDelegate>(CREATE_METHOD_NAME);
 
                 //Create the new heap
                 bool success = create(flags);
@@ -101,6 +104,8 @@ namespace VNLib.Utils.Memory
                 {
                     throw new NativeMemoryException("Failed to create the new heap, the heap create method returned a null pointer");
                 }
+
+                Trace.WriteLine($"Successfully created user defined native heap {flags->HeapPointer:x} with flags {flags->CreationFlags:x}");
 
                 //Return the neap heap
                 return new(flags, table);
@@ -115,7 +120,7 @@ namespace VNLib.Utils.Memory
        
         private HeapMethods MethodTable;
 
-        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) :base(flags->InternalFlags, true)
+        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) :base(flags->CreationFlags, true)
         {
             //Store heap pointer
             SetHandle(flags->HeapPointer);
@@ -148,6 +153,8 @@ namespace VNLib.Utils.Memory
             //Cleanup the method table
             MethodTable = default;
 
+            Trace.WriteLine($"Successfully deestroyed user defined heap {handle:x}");
+
             return ret;
         }
 
@@ -170,7 +177,7 @@ namespace VNLib.Utils.Memory
         {
             public IntPtr HeapPointer;
 
-            public HeapCreation InternalFlags;
+            public HeapCreation CreationFlags;
 
             public ERRNO Flags;
         }

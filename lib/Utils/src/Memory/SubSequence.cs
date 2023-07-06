@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -62,8 +62,7 @@ namespace VNLib.Utils.Memory
 
             //Check handle bounds 
             MemoryUtil.CheckBounds(block, offset, (uint)size);
-        }
-      
+        }      
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> that is offset from the base of the handle

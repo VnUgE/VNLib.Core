@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,6 +23,8 @@
 */
 
 using System;
+
+using VNLib.Utils.Native;
 
 namespace VNLib.Utils.Memory.Diagnostics
 {

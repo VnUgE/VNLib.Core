@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: OpenHandle.cs 
+* File: NativeLibraryException.cs 
 *
-* OpenHandle.cs is part of VNLib.Utils which is part of the larger 
+* NativeLibraryException.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -22,17 +22,22 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Utils.Resources
-{
+using System;
 
+namespace VNLib.Utils
+{
     /// <summary>
-    /// Represents a base class for an open resource or operation that is valid while being held, 
-    /// and is released or unwound when disposed.
+    /// Raised when an internal buffer was not propery sized for the opreation
     /// </summary>
-    /// <remarks>
-    /// The <see cref="OpenHandle"/> pattern, may throw exceptions when disposed as deferred 
-    /// release actions are completed
-    /// </remarks>
-    public abstract class OpenHandle : VnDisposeable
-    { }
+    public class InternalBufferTooSmallException : OutOfMemoryException
+    {
+        public InternalBufferTooSmallException(string message) : base(message)
+        { }
+
+        public InternalBufferTooSmallException(string message, Exception innerException) : base(message, innerException)
+        { }
+
+        public InternalBufferTooSmallException()
+        { }
+    }
 }

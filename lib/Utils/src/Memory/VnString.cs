@@ -79,14 +79,20 @@ namespace VNLib.Utils.Memory
         }
         
         /// <summary>
-        /// Creates a new <see cref="VnString"/> around a <see cref="ReadOnlySpan{T}"/> or a <see cref="string"/> of data
+        /// Creates a new <see cref="VnString"/> around a <see cref="ReadOnlySpan{T}"/> or 
+        /// a <see cref="string"/> of data
         /// </summary>
         /// <param name="data"><see cref="ReadOnlySpan{T}"/> of data to replicate</param>
+        /// <param name="heap">The heap to allocate the buffer from</param>
         /// <exception cref="OutOfMemoryException"></exception>
-        public VnString(ReadOnlySpan<char> data)
+        /// <remarks>Copies the value into internal memory</remarks>
+        public VnString(ReadOnlySpan<char> data, IUnmangedHeap? heap = null)
         {
+            //Default to shared heap
+            heap ??= MemoryUtil.Shared;
+
             //Create new handle and copy incoming data to it
-            Handle = MemoryUtil.Shared.AllocAndCopy(data);
+            Handle = heap.AllocAndCopy(data);
             
             //Get subsequence over the whole copy of data
             _stringSequence = Handle.GetSubSequence(0, data.Length);
@@ -98,14 +104,19 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="stream">Active stream of data to decode to a string</param>
         /// <param name="encoding"><see cref="Encoding"/> to use for decoding</param>
+        /// <param name="heap">The heap to allocate the buffer from</param>
         /// <param name="bufferSize">The size of the buffer to allocate during copying</param>
         /// <returns>The new <see cref="VnString"/> instance</returns>
         /// <exception cref="IOException"></exception>
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public static VnString FromStream(Stream stream, Encoding encoding, uint bufferSize)
+        public static VnString FromStream(Stream stream, Encoding encoding, IUnmangedHeap heap, uint bufferSize)
         {
+            _ = stream ?? throw new ArgumentNullException(nameof(stream));
+            _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
+            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+
             //Make sure the stream is readable
             if (!stream.CanRead)
             {
@@ -117,7 +128,7 @@ namespace VNLib.Utils.Memory
                 //Get the number of characters
                 int numChars = encoding.GetCharCount(vnms.AsSpan());
                 //New handle
-                MemoryHandle<char> charBuffer = MemoryUtil.Shared.Alloc<char>(numChars);
+                MemoryHandle<char> charBuffer = heap.Alloc<char>(numChars);
                 try
                 {
                     //Write characters to character buffer
@@ -136,9 +147,9 @@ namespace VNLib.Utils.Memory
             else
             {
                 //Create a new char bufer that will expand dyanmically
-                MemoryHandle<char> charBuffer = MemoryUtil.Shared.Alloc<char>(bufferSize);
+                MemoryHandle<char> charBuffer = heap.Alloc<char>(bufferSize);
                 //Allocate a binary buffer 
-                MemoryHandle<byte> binBuffer = MemoryUtil.Shared.Alloc<byte>(bufferSize);
+                MemoryHandle<byte> binBuffer = heap.Alloc<byte>(bufferSize);
                 try
                 {
                     int length = 0;
@@ -381,6 +392,15 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public VnString Substring(int start) => Substring(start, (Length - start));
 
+        /// <summary>
+        /// Creates a substring wrapper of the internal string designated by the 
+        /// given range.
+        /// </summary>
+        /// <param name="range">The range of elements to create the wraper around</param>
+        /// <returns>
+        /// A new <see cref="VnString"/> instance pointing to the new substring window.
+        /// Memory belongs to the original string instance.
+        /// </returns>
         public VnString this[Range range]
         {
             get
@@ -462,7 +482,7 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         public bool Equals(ReadOnlySpan<char> other, StringComparison stringComparison = StringComparison.Ordinal) => Length == other.Length && AsSpan().Equals(other, stringComparison);
         ///<inheritdoc/>
-        public bool Equals(SubSequence<char> other) => Length == other.Size && AsSpan().SequenceEqual(other.Span);
+        public bool Equals(in SubSequence<char> other) => Length == other.Size && AsSpan().SequenceEqual(other.Span);
         ///<inheritdoc/>
         public int CompareTo(string? other) => AsSpan().CompareTo(other, StringComparison.Ordinal);
         ///<inheritdoc/>
