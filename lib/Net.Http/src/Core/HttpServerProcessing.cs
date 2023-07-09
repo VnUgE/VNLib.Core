@@ -27,7 +27,9 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Net.Sockets;
+using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
@@ -66,9 +68,9 @@ namespace VNLib.Net.Http
                     transportContext.ConnectionStream.ReadTimeout = Config.ActiveConnectionRecvTimeout;
                     
                     //Process the request
-                    bool keepAlive = await ProcessHttpEventAsync(transportContext, context);
+                    bool keepAlive = await ProcessHttpEventAsync(context);
 
-                    //If not keepalive, exit the listening loop
+                    //If not keepalive, exit the listening loop and clean up connection
                     if (!keepAlive)
                     {
                         break;
@@ -112,11 +114,11 @@ namespace VNLib.Net.Http
             //Catch wrapped OC exceptions
             catch (IOException ioe) when (ioe.InnerException is OperationCanceledException oce)
             {
-                Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m}, connection closed", oce.Message);
+                Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m} connection closed", oce.Message);
             }
             catch (OperationCanceledException oce)
             {
-                Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m}, connection closed", oce.Message);
+                Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m} connection closed", oce.Message);
             }
             catch(Exception ex)
             {
@@ -148,10 +150,9 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Main event handler for all incoming connections
         /// </summary>
-        /// <param name="transportContext">The <see cref="ITransportContext"/> describing the incoming connection</param>
         /// <param name="context">Reusable context object</param>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<bool> ProcessHttpEventAsync(ITransportContext transportContext, HttpContext context)
+        private async Task<bool> ProcessHttpEventAsync(HttpContext context)
         {
             //Prepare http context to process a new message
             context.BeginRequest();
@@ -159,7 +160,7 @@ namespace VNLib.Net.Http
             try
             {
                 //Try to parse the http request (may throw exceptions, let them propagate to the transport layer)
-                int status = (int)ParseRequest(transportContext, context);
+                int status = (int)ParseRequest(context);
 
                 //Check status code for socket error, if so, return false to close the connection
                 if (status >= 1000)
@@ -198,7 +199,10 @@ namespace VNLib.Net.Http
 #endif
 
                 //Close the response
-                await context.WriteResponseAsync(StopToken!.Token);
+                await context.WriteResponseAsync();
+
+                //Flush the stream before retuning
+                await context.FlushTransportAsnc();
                 
                 /*
                  * If an alternate protocol was specified, we need to break the keepalive loop
@@ -217,7 +221,6 @@ namespace VNLib.Net.Http
         /// Reads data synchronously from the transport and attempts to parse an HTTP message and 
         /// built a request. 
         /// </summary>
-        /// <param name="transport"></param>
         /// <param name="ctx"></param>
         /// <returns>0 if the request was successfully parsed, the <see cref="HttpStatusCode"/> 
         /// to return to the client because the entity could not be processed</returns>
@@ -231,13 +234,13 @@ namespace VNLib.Net.Http
         /// </para>
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private HttpStatusCode ParseRequest(ITransportContext transport, HttpContext ctx)
+        private HttpStatusCode ParseRequest(HttpContext ctx)
         {
             //Get the parse buffer
             IHttpHeaderParseBuffer parseBuffer = ctx.Buffers.RequestHeaderParseBuffer;
 
             //Init parser
-            TransportReader reader = new (transport.ConnectionStream, parseBuffer, Config.HttpEncoding, HeaderLineTermination);
+            TransportReader reader = new (ctx.GetTransport(), parseBuffer, Config.HttpEncoding, HeaderLineTermination);
            
             try
             {
@@ -283,7 +286,7 @@ namespace VNLib.Net.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async ValueTask<bool> ProcessRequestAsync(HttpContext context, HttpStatusCode status)
+        private async Task<bool> ProcessRequestAsync(HttpContext context, HttpStatusCode status)
         {
             //Check status
             if (status != 0)
@@ -302,8 +305,8 @@ namespace VNLib.Net.Http
                 return false;
             }
 
-            //We only support version 1 and 1/1
-            if ((context.Request.HttpVersion & (HttpVersion.Http11 | HttpVersion.Http1)) == 0)
+            //Make sure the server supports the http version
+            if ((context.Request.HttpVersion & SupportedVersions) == 0)
             {
                 //Close the connection when we exit
                 context.Response.Headers[HttpResponseHeader.Connection] = "closed";
@@ -323,9 +326,16 @@ namespace VNLib.Net.Http
             //Store keepalive value from request, and check if keepalives are enabled by the configuration
             bool keepalive = context.Request.KeepAlive & Config.ConnectionKeepAlive > TimeSpan.Zero;
             
-            //Set connection header (only for http1 and 1.1)
+            //Set connection header (only for http1.1)
+          
             if (keepalive)
             {
+                /*
+                * Request parsing only sets the keepalive flag if the connection is http1.1
+                * so we can verify this in an assert
+                */
+                Debug.Assert(context.Request.HttpVersion == HttpVersion.Http11, "Request parsing allowed keepalive for a non http1.1 connection, this is a bug");
+
                 context.Response.Headers[HttpResponseHeader.Connection] = "keep-alive";
                 context.Response.Headers[HttpResponseHeader.KeepAlive] = KeepAliveTimeoutHeaderValue;
             }
@@ -336,7 +346,9 @@ namespace VNLib.Net.Http
             }
 
             //Get the server root for the specified location
-            if (!ServerRoots.TryGetValue(context.Request.Location.DnsSafeHost, out IWebRoot? root) && !ServerRoots.TryGetValue(WILDCARD_KEY, out root))
+            IWebRoot? root = ServerRoots!.GetValueOrDefault(context.Request.Location.DnsSafeHost, _wildcardRoot);
+            
+            if (root == null)
             {
                 context.Respond(HttpStatusCode.NotFound);
                 //make sure control leaves
@@ -374,16 +386,23 @@ namespace VNLib.Net.Http
 
             await context.InitRequestBodyAsync();
 
+            /*
+             * The event object should be cleared when it is no longer in use, IE before 
+             * this procedure returns. 
+             */
+            HttpEvent ev = new(context);
+
             try
             {
-                await ProcessAsync(root, context);
-                return keepalive;
+                //Enter user-code
+                await root.ClientConnectedAsync(ev);
             }
             //The user-code requested termination of the connection
             catch (TerminateConnectionException tce)
             {
-                //Log the event as a debug so user can see the result
+                //Log the event as a debug so user can see it was handled
                 Config.ServerLog.Debug(tce, "User-code requested a connection termination");
+
                 //See if the exception requested an error code response
                 if (tce.Code > 0)
                 {
@@ -395,47 +414,33 @@ namespace VNLib.Net.Http
                     //Clear any currently set headers since no response is requested
                     context.Response.Headers.Clear();
                 }
-            }
-            return false;
-        }
 
-        /// <summary>
-        /// Processes a client connection after pre-processing has completed
-        /// </summary>
-        /// <param name="root">The <see cref="IWebRoot"/> to process the event on</param>
-        /// <param name="ctx">The <see cref="HttpContext"/> to process</param>
-        /// <returns>A task that resolves when the user-code has completed processing the entity</returns>
-        /// <exception cref="IOException"></exception>
-        /// <exception cref="TerminateConnectionException"></exception>
-        private static async ValueTask ProcessAsync(IWebRoot root, HttpContext ctx)
-        {
-            /*
-             * The event object should be cleared when it is no longer in use, IE before 
-             * this procedure returns. 
-             */
-            HttpEvent ev = new (ctx);
-            try
-            {
-                await root.ClientConnectedAsync(ev);
-            }
-            //User code requested exit, elevate the exception
-            catch (TerminateConnectionException)
-            {
-                throw;
+                //Close connection
+                return false;
             }
             //Transport exception
-            catch(IOException ioe) when (ioe.InnerException is SocketException)
+            catch (IOException ioe) when (ioe.InnerException is SocketException)
             {
                 throw;
             }
             catch (Exception ex)
             {
-                ctx.ParentServer.Config.ServerLog.Warn(ex, "Unhandled exception during application code execution.");
+                Config.ServerLog.Warn(ex, "Unhandled exception during application code execution.");
             }
             finally
             {
                 ev.Clear();
             }
+
+            /*
+             * The http state should still be salvagable event with a user-code failure, 
+             * so we shouldnt need to terminate requests here. This may need to be changed 
+             * if a bug is found and users expect the framework to handle the error.
+             * The safest option would be terminate the connection, well see.
+             * 
+             * For now I will allow it.
+             */
+            return keepalive;
         }
  
     }

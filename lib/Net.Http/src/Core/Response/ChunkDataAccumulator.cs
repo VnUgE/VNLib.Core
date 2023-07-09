@@ -28,21 +28,20 @@ using VNLib.Utils;
 using VNLib.Utils.IO;
 using VNLib.Net.Http.Core.Buffering;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Response
 {
     /// <summary>
     /// A specialized <see cref="IDataAccumulator{T}"/> for buffering data 
     /// in Http/1.1 chunks
     /// </summary>
-    internal class ChunkDataAccumulator : IDataAccumulator<byte>, IHttpLifeCycle
+    internal class ChunkDataAccumulator : IDataAccumulator<byte>
     {
-        private const string LAST_CHUNK_STRING = "0\r\n\r\n";
         public const int RESERVED_CHUNK_SUGGESTION = 32;
        
         private readonly int ReservedSize;
         private readonly IHttpContextInformation Context;
         private readonly IChunkAccumulatorBuffer Buffer;
-        private readonly ReadOnlyMemory<byte> LastChunk;
+        
 
         public ChunkDataAccumulator(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
         {
@@ -50,9 +49,6 @@ namespace VNLib.Net.Http.Core
 
             Context = context;
             Buffer = buffer;
-
-            //Convert and store cached versions of the last chunk bytes
-            LastChunk = context.Encoding.GetBytes(LAST_CHUNK_STRING);
         }
       
         /*
@@ -92,7 +88,7 @@ namespace VNLib.Net.Http.Core
         public ERRNO TryBufferChunk(ReadOnlySpan<byte> data)
         {
             //Calc data size and reserve space for final crlf
-            int dataToCopy = Math.Min(data.Length, RemainingSize - Context.CrlfBytes.Length);
+            int dataToCopy = Math.Min(data.Length, RemainingSize - Context.EncodedSegments.CrlfBytes.Length);
 
             //Write as much data as possible
             data[..dataToCopy].CopyTo(Remaining);
@@ -134,7 +130,7 @@ namespace VNLib.Net.Http.Core
             UpdateChunkSize();
 
             //Write trailing chunk delimiter
-            this.Append(Context.CrlfBytes.Span);
+            this.Append(Context.EncodedSegments.CrlfBytes.Span);
 
             return GetCompleteChunk();
         }
@@ -150,10 +146,10 @@ namespace VNLib.Net.Http.Core
             UpdateChunkSize();
 
             //Write trailing chunk delimiter
-            this.Append(Context.CrlfBytes.Span);
+            this.Append(Context.EncodedSegments.CrlfBytes.Span);
 
             //Write final chunk to the end of the accumulator
-            this.Append(LastChunk.Span);
+            this.Append(Context.EncodedSegments.FinalChunkTermination.Span);
 
             return GetCompleteChunk();
         }
@@ -174,7 +170,7 @@ namespace VNLib.Net.Http.Core
          * the start of the chunk data.
          * 
          * [reserved segment] [chunk data] [eoc]
-         * [...0a \r\n] [10 bytes of data] [eoc]
+         * [...0a\r\n] [10 bytes of data] [eoc]
          */
 
         private void UpdateChunkSize()
@@ -209,7 +205,7 @@ namespace VNLib.Net.Http.Core
              * the exact size required to store the encoded chunk size
              */
 
-            _reservedOffset = (ReservedSize - (initOffset + Context.CrlfBytes.Length));
+            _reservedOffset = (ReservedSize - (initOffset + Context.EncodedSegments.CrlfBytes.Length));
             
             Span<byte> upshifted = Buffer.GetBinSpan()[_reservedOffset..ReservedSize];
 
@@ -220,7 +216,7 @@ namespace VNLib.Net.Http.Core
             upshifted = upshifted[initOffset..];
 
             //Copy crlf
-            Context.CrlfBytes.Span.CopyTo(upshifted);
+            Context.EncodedSegments.CrlfBytes.Span.CopyTo(upshifted);
         }
 
 
@@ -235,12 +231,5 @@ namespace VNLib.Net.Http.Core
             _reservedOffset = 0;
             AccumulatedSize = 0;
         }
-
-        public void OnPrepare()
-        { }
-
-        public void OnRelease()
-        { }
-
     }
 }

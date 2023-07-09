@@ -25,6 +25,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -33,11 +34,13 @@ using VNLib.Utils;
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
+
 using VNLib.Net.Http.Core.Buffering;
+using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http.Core
 {
-    internal partial class HttpResponse : IHttpLifeCycle
+    internal sealed class HttpResponse : IHttpLifeCycle
 #if DEBUG
         ,IStringSerializeable
 #endif
@@ -79,6 +82,7 @@ namespace VNLib.Net.Http.Core
         /// Sets the status code of the response
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetStatusCode(HttpStatusCode code)
         {
             if (HeadersBegun)
@@ -97,36 +101,7 @@ namespace VNLib.Net.Http.Core
         internal void AddCookie(HttpCookie cookie) => Cookies.Add(cookie);
 
         /// <summary>
-        /// Allows sending an early 100-Continue status message to the client
-        /// </summary>
-        /// <exception cref="InvalidOperationException"></exception>
-        internal async Task SendEarly100ContinueAsync()
-        {
-            Check();
-
-            //Send a status message with the continue response status
-            Writer.WriteToken(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, HttpStatusCode.Continue));
-
-            //Trailing crlf
-            Writer.WriteTermination();
-
-            //Get the response data header block
-            Memory<byte> responseBlock = Writer.GetResponseData();
-
-            //get base stream
-            Stream bs = ContextInfo.GetTransport();
-
-            //Write the response data to the base stream
-            await bs.WriteAsync(responseBlock);
-         
-            //Flush the base stream
-            await bs.FlushAsync();
-        }
-
-
-        /// <summary>
-        /// Sends the status message and all available headers to the client. 
-        /// Headers set after method returns will be sent when output stream is requested or scope exits
+        /// Compiles and flushes all headers to the header accumulator ready for sending
         /// </summary>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
@@ -187,7 +162,7 @@ namespace VNLib.Net.Http.Core
             Writer.CommitChars(ref writer);
         }
 
-        private ValueTask EndFlushHeadersAsync(Stream transport)
+        private ValueTask EndFlushHeadersAsync()
         {
             //Sent all available headers
             FlushHeaders();
@@ -201,6 +176,15 @@ namespace VNLib.Net.Http.Core
             //Update sent headers
             HeadersSent = true;
 
+            //Get the transport stream to write the response data to
+            Stream transport = ContextInfo.GetTransport();
+
+            /*
+             * ASYNC NOTICE: It is safe to get the memory block then return the task
+             * because the response writer is not cleaned up until the OnComplete()
+             * method, so the memory block is valid until then.
+             */
+
             //Write the response data to the base stream
             return responseBlock.IsEmpty ? ValueTask.CompletedTask : transport.WriteAsync(responseBlock);
         }
@@ -212,23 +196,20 @@ namespace VNLib.Net.Http.Core
         /// <returns>A <see cref="Stream"/> configured for writing data to client</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public async ValueTask<Stream> GetStreamAsync(long ContentLength)
+        public ValueTask<Stream> GetStreamAsync(long ContentLength)
         {
             Check();
 
             //Add content length header
             Headers[HttpResponseHeader.ContentLength] = ContentLength.ToString();
 
-            //End sending headers so the user can write to the ouput stream
-            Stream transport = ContextInfo.GetTransport();
+            //Flush headers
+            ValueTask flush = EndFlushHeadersAsync();
 
-            await EndFlushHeadersAsync(transport);
-
-            //Init direct stream
-            ReusableDirectStream.Prepare(transport);
-
-            //Return the direct stream
-            return ReusableDirectStream;
+            //Return the reusable stream
+            return flush.IsCompletedSuccessfully ?
+                ValueTask.FromResult<Stream>(ReusableDirectStream)
+                : GetStreamAsyncCore(flush, ReusableDirectStream);
         }
 
         /// <summary>
@@ -237,26 +218,30 @@ namespace VNLib.Net.Http.Core
         /// <returns><see cref="Stream"/> supporting chunked encoding</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public async ValueTask<Stream> GetStreamAsync()
+        public ValueTask<Stream> GetStreamAsync()
         {
-#if DEBUG
-            if (ContextInfo.CurrentVersion != HttpVersion.Http11)
-            {
-                throw new InvalidOperationException("Chunked transfer encoding is not acceptable for this http version");
-            }
-#endif
+            //Chunking is only an http 1.1 feature (should never get called otherwise)
+            Debug.Assert(ContextInfo.CurrentVersion == HttpVersion.Http11);
+
             Check();
 
             //Set encoding type to chunked with user-defined compression
             Headers[HttpResponseHeader.TransferEncoding] = "chunked";
 
-            //End sending headers so the user can write to the ouput stream
-            Stream transport = ContextInfo.GetTransport();
-
-            await EndFlushHeadersAsync(transport);
+            //Flush headers
+            ValueTask flush = EndFlushHeadersAsync();
 
             //Return the reusable stream
-            return ReusableChunkedStream;
+            return flush.IsCompletedSuccessfully ? 
+                ValueTask.FromResult<Stream>(ReusableChunkedStream) 
+                : GetStreamAsyncCore(flush, ReusableChunkedStream);
+        }
+        
+        private static async ValueTask<Stream> GetStreamAsyncCore(ValueTask flush, Stream stream)
+        {
+            //Await the flush and get the stream
+            await flush.ConfigureAwait(false);
+            return stream;
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -267,16 +252,45 @@ namespace VNLib.Net.Http.Core
                 throw new InvalidOperationException("Headers have already been sent!");
             }
         }
-       
+
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
+
+        /// <summary>
+        /// Allows sending an early 100-Continue status message to the client
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
+        internal async Task SendEarly100ContinueAsync()
+        {
+            Check();
+
+            //Send a status message with the continue response status
+            Writer.WriteToken(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, HttpStatusCode.Continue));
+
+            //Trailing crlf
+            Writer.WriteTermination();
+
+            //Get the response data header block
+            Memory<byte> responseBlock = Writer.GetResponseData();
+
+            //get base stream
+            Stream bs = ContextInfo.GetTransport();
+
+            //Write the response data to the base stream
+            await bs.WriteAsync(responseBlock);
+
+            //Flush the base stream to send the data to the client
+            await bs.FlushAsync();
+        }
+
         /// <summary>
         /// Finalzies the response to a client by sending all available headers if 
         /// they have not been sent yet
         /// </summary>
         /// <exception cref="OutOfMemoryException"></exception>
-        internal async ValueTask CloseAsync()
+        internal ValueTask CloseAsync()
         {
-            //If headers havent been sent yet, send them and there must be no content
-            if (!HeadersBegun || !HeadersSent)
+            //If headers haven't been sent yet, send them and there must be no content
+            if (!HeadersSent)
             {
                 //RFC 7230, length only set on 200 + but not 204
                 if ((int)_code >= 200 && (int)_code != 204)
@@ -285,29 +299,36 @@ namespace VNLib.Net.Http.Core
                     Headers[HttpResponseHeader.ContentLength] = "0";
                 }
 
-                //Flush transport
-                Stream transport = ContextInfo.GetTransport();
-                
                 //Finalize headers
-                await EndFlushHeadersAsync(transport);
-
-                //Flush transport
-                await transport.FlushAsync();
+                return EndFlushHeadersAsync();
             }
+
+            return ValueTask.CompletedTask;
         }
 
-     
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
+
+        ///<inheritdoc/>
         public void OnPrepare()
-        {
-            //Propagate all child lifecycle hooks
-            ReusableChunkedStream.OnPrepare();
-        }
+        { }
 
+        ///<inheritdoc/>
         public void OnRelease()
         {
             ReusableChunkedStream.OnRelease();
+            ReusableDirectStream.OnRelease();
         }
 
+        ///<inheritdoc/>
+        public void OnNewConnection()
+        {
+            //Get the transport stream and init streams
+            Stream transport = ContextInfo.GetTransport();
+            ReusableChunkedStream.OnNewConnection(transport);
+            ReusableDirectStream.OnNewConnection(transport);
+        }
+
+        ///<inheritdoc/>
         public void OnNewRequest()
         {
             //Default to okay status code
@@ -316,6 +337,7 @@ namespace VNLib.Net.Http.Core
             ReusableChunkedStream.OnNewRequest();
         }
 
+        ///<inheritdoc/>
         public void OnComplete()
         {
             //Clear headers and cookies

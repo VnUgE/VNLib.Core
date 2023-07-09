@@ -124,6 +124,20 @@ namespace VNLib.Net.Rest.Client.Construction
         }
 
         /// <summary>
+        /// Sets a constant request method of a new request
+        /// </summary>
+        /// <typeparam name="TModel"></typeparam>
+        /// <param name="builder"></param>
+        /// <param name="method">The constant request method</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithMethod<TModel>(this IRestRequestBuilder<TModel> builder, Method method)
+        {
+            //Set constant method value
+            builder.WithModifier((m, r) => r.Method = method);
+            return builder;
+        }
+
+        /// <summary>
         /// Sets a callback that will create a query string argument value
         /// </summary>
         /// <typeparam name="TModel">The request entity type</typeparam>
@@ -168,6 +182,50 @@ namespace VNLib.Net.Rest.Client.Construction
         }
 
         /// <summary>
+        /// Sets the uri for all new request messages
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="withUri">Specifies the uri for the request builder</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithUrl<TModel>(this IRestRequestBuilder<TModel> builder, Func<TModel, Uri> withUri)
+        {
+            //Use the supplied method to convert the uri to a string
+            builder.WithUrl((m) => withUri(m).ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Specifies a connection header to set for every request
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="header">The name of the header to set</param>
+        /// <param name="func">The callback function to get the request header value</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithHeader<TModel>(this IRestRequestBuilder<TModel> builder, string header, Func<TModel, string> func)
+        {
+            //Specify a header by the given name
+            builder.WithModifier((m, req) => req.AddHeader(header, func(m)));
+            return builder;
+        }
+
+        /// <summary>
+        /// Specifies a static connection header to set for every request
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="header">The name of the header to set</param>
+        /// <param name="value">The static header value to set for all requests</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithHeader<TModel>(this IRestRequestBuilder<TModel> builder, string header, string value)
+        {
+            //Specify a header by the given name
+            builder.WithModifier((m, req) => req.AddHeader(header, value));
+            return builder;
+        }
+
+        /// <summary>
         /// Converts a task that resolves a <see cref="RestResponse"/> to a task that deserializes 
         /// the response data as json.
         /// </summary>
@@ -178,6 +236,18 @@ namespace VNLib.Net.Rest.Client.Construction
         {
             RestResponse r = await response.ConfigureAwait(false);
             return JsonSerializer.Deserialize<TResult>(r.RawBytes);
+        }
+
+        /// <summary>
+        /// Converts a task that resolves a <see cref="RestResponse"/> to a task that deserializes 
+        /// the response data as json.
+        /// </summary>
+        /// <param name="response">The response task</param>
+        /// <returns>A task that resolves the deserialized entity type</returns>
+        public static async Task<byte[]?> AsBytes(this Task<RestResponse> response)
+        {
+            RestResponse r = await response.ConfigureAwait(false);
+            return r.RawBytes;
         }
 
         private record class EndpointAdapterBuilder(IRestSiteEndpointStore Site) : IRestEndpointBuilder

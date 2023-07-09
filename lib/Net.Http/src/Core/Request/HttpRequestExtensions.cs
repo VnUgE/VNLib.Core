@@ -35,46 +35,49 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Http.Core
 {
+
     internal static class HttpRequestExtensions
     {
-        public enum CompressionType
-        {
-            None,
-            Gzip,
-            Deflate,
-            Brotli
-        }
-        
         /// <summary>
-        /// Gets the <see cref="CompressionType"/> that the connection accepts
-        /// in a default order, or none if not enabled
+        /// Gets the <see cref="CompressionMethod"/> that the connection accepts
+        /// in a default order, or none if not enabled or the server does not support it
         /// </summary>
         /// <param name="request"></param>
-        /// <returns>A <see cref="CompressionType"/> with a value the connection support</returns>
+        /// <param name="serverSupported">The server supported methods</param>
+        /// <returns>A <see cref="CompressionMethod"/> with a value the connection support</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static CompressionType GetCompressionSupport(this HttpRequest request)
+        public static CompressionMethod GetCompressionSupport(this HttpRequest request, CompressionMethod serverSupported)
         {
             string? acceptEncoding = request.Headers[HttpRequestHeader.AcceptEncoding];
 
+            /*
+             * Priority order is gzip, deflate, br. Br is last for dynamic compression 
+             * because of performace. We also need to make sure the server supports 
+             * the desired compression method also.
+             */
+
             if (acceptEncoding == null)
             {
-                return CompressionType.None;
+                return CompressionMethod.None;
             }
-            else if (acceptEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
+            else if (serverSupported.HasFlag(CompressionMethod.Gzip) 
+                && acceptEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
             {
-                return CompressionType.Gzip;
+                return CompressionMethod.Gzip;
             }
-            else if (acceptEncoding.Contains("deflate", StringComparison.OrdinalIgnoreCase))
+            else if (serverSupported.HasFlag(CompressionMethod.Deflate) 
+                && acceptEncoding.Contains("deflate", StringComparison.OrdinalIgnoreCase))
             {
-                return CompressionType.Deflate;
+                return CompressionMethod.Deflate;
             }
-            else if (acceptEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
+            else if (serverSupported.HasFlag(CompressionMethod.Brotli) 
+                && acceptEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
             {
-                return CompressionType.Brotli;
+                return CompressionMethod.Brotli;
             }
             else
             {
-                return CompressionType.None;
+                return CompressionMethod.None;
             }
         }
     

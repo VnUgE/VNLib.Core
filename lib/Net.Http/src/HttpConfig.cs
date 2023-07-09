@@ -24,7 +24,6 @@
 
 using System;
 using System.Text;
-using System.IO.Compression;
 
 using VNLib.Utils.Logging;
 
@@ -76,12 +75,6 @@ namespace VNLib.Net.Http
         public readonly Encoding HttpEncoding { get; init; } = Encoding.UTF8;
 
         /// <summary>
-        /// Sets the compression level for response entity streams of all supported types when
-        /// compression is used.
-        /// </summary>
-        public readonly CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
-
-        /// <summary>
         /// Sets the default Http version for responses when the client version cannot be parsed from the request 
         /// </summary>
         public readonly HttpVersion DefaultHttpVersion { get; init; } = HttpVersion.Http11;
@@ -120,5 +113,11 @@ namespace VNLib.Net.Http
         /// The buffer configuration for the server
         /// </summary>
         public readonly HttpBufferConfig BufferConfig { get; init; } = new();
+
+        /// <summary>
+        /// Gets the <see cref="IHttpCompressorManager"/> used to manage response compression for 
+        /// the server.
+        /// </summary>
+        public readonly IHttpCompressorManager? CompressorManager { get; init; } = null;
     }
 }

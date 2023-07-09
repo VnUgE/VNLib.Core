@@ -30,7 +30,6 @@ using System.Threading.Tasks;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core
 {
@@ -39,6 +38,7 @@ namespace VNLib.Net.Http.Core
     /// </summary>
     internal sealed class HttpInputStream : Stream
     {
+
         private readonly IHttpContextInformation ContextInfo;
 
         private long ContentLength;
@@ -183,7 +183,7 @@ namespace VNLib.Net.Http.Core
             if (writer.RemainingSize > 0)
             {
                 //Read from transport
-                ERRNO read = await InputStream!.ReadAsync(writer.Remaining, cancellationToken).ConfigureAwait(true);
+                int read = await InputStream!.ReadAsync(writer.Remaining, cancellationToken).ConfigureAwait(true);
 
                 //Update writer position
                 writer.Advance(read);
@@ -198,9 +198,8 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Asynchronously discards all remaining data in the stream 
         /// </summary>
-        /// <param name="bufMan">The buffer manager to request the discard buffer from</param>
         /// <returns>A task that represents the discard operations</returns>
-        public ValueTask DiscardRemainingAsync(IHttpBufferManager bufMan)
+        public ValueTask DiscardRemainingAsync()
         {
             long remaining = Remaining;
 
@@ -219,20 +218,18 @@ namespace VNLib.Net.Http.Core
             //We must actaully disacrd data from the stream
             else
             {
-                return DiscardStreamDataAsync(bufMan);
+                return DiscardStreamDataAsync();
             }
         }
 
-        private async ValueTask DiscardStreamDataAsync(IHttpBufferManager bufMan)
+        private async ValueTask DiscardStreamDataAsync()
         {
-            //Reqest discard buffer
-            Memory<byte> discardBuffer = bufMan.GetDiscardBuffer();
-
             int read;
             do
             {
                 //Read data to the discard buffer until reading is completed (read == 0)
-                read = await ReadAsync(discardBuffer, CancellationToken.None).ConfigureAwait(true);
+                read = await ReadAsync(HttpServer.WriteOnlyScratchBuffer, CancellationToken.None)
+                    .ConfigureAwait(true);
 
             } while (read != 0);
         }

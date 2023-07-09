@@ -84,8 +84,8 @@ namespace VNLib.Net.Http.Core.Buffering
                 //Header parse buffer is a special case as it will be double the size due to the char buffer
                 int headerParseBufferSize = GetMaxHeaderBufferSize(in Config);
 
-                //Discard/form data buffer
-                int discardAndFormDataSize = ComputeDiscardFormataBufferSize(in Config);
+                //Response/form data buffer
+                int responseAndFormDataSize = ComputeResponseAndFormDataBuffer(in Config);
 
                 //Slice and store the buffer segments
                 _segments = new()
@@ -93,13 +93,11 @@ namespace VNLib.Net.Http.Core.Buffering
                     //Shared header buffer
                     HeaderAccumulator = GetNextSegment(ref full, headerParseBufferSize),
 
-                    //Shared discard buffer and form data buffer
-                    DiscardAndFormData = GetNextSegment(ref full, discardAndFormDataSize),
+                    //Shared response and form data buffer
+                    ResponseAndFormData = GetNextSegment(ref full, responseAndFormDataSize),
 
                     //Buffers cannot be shared
-                    ChunkedResponseAccumulator = GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize),
-
-                    ResponseBuffer = GetNextSegment(ref full, Config.ResponseBufferSize),
+                    ChunkedResponseAccumulator = GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize)
                 };
 
                 /*
@@ -172,20 +170,15 @@ namespace VNLib.Net.Http.Core.Buffering
 
 
         /*
-         * Discard buffer may be used for form-data parsing as they will never be used at 
-         * the same time during normal operation
+         * Response buffer and form data buffer are shared because they are never 
+         * used at the same time.
          */
 
         ///<inheritdoc/>
-        public Memory<byte> GetFormDataBuffer() => _segments.DiscardAndFormData;
+        public Memory<byte> GetFormDataBuffer() => _segments.ResponseAndFormData;
 
         ///<inheritdoc/>
-        public Memory<byte> GetDiscardBuffer() => _segments.DiscardAndFormData;
-
-        ///<inheritdoc/>
-        public Memory<byte> GetResponseDataBuffer() => _segments.ResponseBuffer;
-
-
+        public Memory<byte> GetResponseDataBuffer() => _segments.ResponseAndFormData;
 
         static Memory<byte> GetNextSegment(ref Memory<byte> buffer, int size)
         {
@@ -216,14 +209,14 @@ namespace VNLib.Net.Http.Core.Buffering
         {
             return config.ResponseBufferSize
                 + config.ChunkedResponseAccumulatorSize
-                + ComputeDiscardFormataBufferSize(in config)
+                + ComputeResponseAndFormDataBuffer(in config)
                 + GetMaxHeaderBufferSize(in config);    //Header buffers are shared
         }
 
-        static int ComputeDiscardFormataBufferSize(in HttpBufferConfig config)
+        static int ComputeResponseAndFormDataBuffer(in HttpBufferConfig config)
         {
             //Get the larger of the two buffers, so it can be shared between the two
-            return Math.Max(config.DiscardBufferSize, config.FormDataBufferSize);
+            return Math.Max(config.ResponseBufferSize, config.FormDataBufferSize);
         }
 
 
@@ -231,9 +224,8 @@ namespace VNLib.Net.Http.Core.Buffering
         {
             public readonly Memory<T> HeaderAccumulator { get; init; }
             public readonly Memory<T> ChunkedResponseAccumulator { get; init; }
-            public readonly Memory<T> DiscardAndFormData { get; init; }
-            public readonly Memory<T> ResponseBuffer { get; init; }
-        }
+            public readonly Memory<T> ResponseAndFormData { get; init; }
+        }  
       
 
         private sealed class HeaderAccumulatorBuffer: SplitHttpBufferElement, IResponseHeaderAccBuffer, IHttpHeaderParseBuffer

@@ -24,31 +24,31 @@
 
 using System;
 using System.IO;
-using System.IO.Compression;
 using System.Net;
-using System.Threading;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace VNLib.Net.Http.Core
 {
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
     internal partial class HttpContext
     {
         ///<inheritdoc/>
-        public async Task WriteResponseAsync(CancellationToken cancellation)
+        public async Task WriteResponseAsync()
         {
             /*
              * If exceptions are raised, the transport is unusable, the connection is terminated,
              * and the release method will be called so the context can be reused
              */
 
-            ValueTask discardTask = Request.InputStream.DiscardRemainingAsync(Buffers);
+            ValueTask discardTask = Request.InputStream.DiscardRemainingAsync();
 
             //See if discard is needed
             if (ResponseBody.HasData)
             {
                 //Parallel the write and discard
-                Task response = WriteResponseInternalAsync(cancellation);
+                Task response = WriteResponseInternalAsync();
 
                 if (discardTask.IsCompletedSuccessfully)
                 {
@@ -57,7 +57,7 @@ namespace VNLib.Net.Http.Core
                 }
                 else
                 {
-                    //If discard is not complete, await both
+                    //If discard is not complete, await both, avoid wait-all method because it will allocate
                     await Task.WhenAll(discardTask.AsTask(), response);
                 }
             }
@@ -69,77 +69,46 @@ namespace VNLib.Net.Http.Core
             //Close response once send and discard are complete
             await Response.CloseAsync();
         }
-        
+
         /// <summary>
         /// If implementing application set a response entity body, it is written to the output stream
         /// </summary>
-        /// <param name="token">A token to cancel the operation</param>
-        private async Task WriteResponseInternalAsync(CancellationToken token)
+        private Task WriteResponseInternalAsync()
         {
             //Adjust/append vary header
             Response.Headers.Add(HttpResponseHeader.Vary, "Accept-Encoding");
 
-            //For head methods
-            if (Request.Method == HttpMethod.HEAD)
+            bool hasRange = Request.Range != null;
+            long length = ResponseBody.Length;
+            CompressionMethod compMethod = CompressionMethod.None;
+
+            /*
+             * Process range header, data will not be compressed because that would 
+             * require buffering, not a feature yet, and since the range will tell
+             * us the content length, we can get a direct stream to write to
+            */
+            if (hasRange)
             {
-                if (Request.Range != null)
-                {
-                    //Get local range
-                    Tuple<long, long> range = Request.Range;
+                //Get local range
+                Tuple<long, long> range = Request.Range!;
 
-                    //Calc constrained content length
-                    long length = ResponseBody.GetResponseLengthWithRange(range);
+                //Calc constrained content length
+                length = ResponseBody.GetResponseLengthWithRange(range);
 
-                    //End range is inclusive so substract 1
-                    long endRange = (range.Item1 + length) - 1;
+                //End range is inclusive so substract 1
+                long endRange = (range.Item1 + length) - 1;
 
-                    //Set content-range header
-                    Response.SetContentRange(range.Item1, endRange, length);
-
-                    //Specify what the content length would be
-                    Response.Headers[HttpResponseHeader.ContentLength] = length.ToString();
-
-                }
-                else
-                {
-                    //If the request method is head, do everything but send the body
-                    Response.Headers[HttpResponseHeader.ContentLength] = ResponseBody.Length.ToString();
-                }
-
-                //We must send headers here so content length doesnt get overwritten, close will be called after this to flush to transport
-                Response.FlushHeaders();
+                //Set content-range header
+                Response.SetContentRange(range.Item1, endRange, length);
             }
-            else
+            /*
+             * It will be known at startup whether compression is supported, if not this is 
+             * essentially a constant. 
+             */
+            else if (ParentServer.SupportedCompressionMethods != CompressionMethod.None)
             {
-                Stream outputStream;
-                /*
-                 * Process range header, data will not be compressed because that would 
-                 * require buffering, not a feature yet, and since the range will tell
-                 * us the content length, we can get a direct stream to write to
-                */
-                if (Request.Range != null)
-                {
-                    //Get local range
-                    Tuple<long, long> range = Request.Range;
-
-                    //Calc constrained content length
-                    long length = ResponseBody.GetResponseLengthWithRange(range);
-
-                    //End range is inclusive so substract 1
-                    long endRange = (range.Item1 + length) - 1;
-
-                    //Set content-range header
-                    Response.SetContentRange(range.Item1, endRange, length);
-
-                    //Get the raw output stream and set the length to the number of bytes
-                    outputStream = await Response.GetStreamAsync(length);
-
-                    await WriteEntityDataAsync(outputStream, length, token);
-                }
-                else
-                {
-                    //Determine if compression should be used
-                    bool compressionDisabled = 
+                //Determine if compression should be used
+                bool compressionDisabled = 
                         //disabled because app code disabled it
                         ContextFlags.IsSet(COMPRESSION_DISABLED_MSK)
                         //Disabled because too large or too small
@@ -148,109 +117,95 @@ namespace VNLib.Net.Http.Core
                         //Disabled because lower than http11 does not support chunked encoding
                         || Request.HttpVersion < HttpVersion.Http11;
 
+                if (!compressionDisabled)
+                {
                     //Get first compression method or none if disabled
-                    HttpRequestExtensions.CompressionType ct = compressionDisabled ? HttpRequestExtensions.CompressionType.None : Request.GetCompressionSupport();
+                    compMethod = Request.GetCompressionSupport(ParentServer.SupportedCompressionMethods);
 
-                    switch (ct)
+                    //Set response headers
+                    switch (compMethod)
                     {
-                        case HttpRequestExtensions.CompressionType.Gzip:
-                            {
-                                //Specify gzip encoding (using chunked encoding)
-                                Response.Headers[HttpResponseHeader.ContentEncoding] = "gzip";
-
-                                //get the chunked output stream
-                                Stream chunked = await Response.GetStreamAsync();
-
-                                //Use chunked encoding and send data as its written 
-                                outputStream = new GZipStream(chunked, ParentServer.Config.CompressionLevel, false);
-                            }
+                        case CompressionMethod.Gzip:
+                            //Specify gzip encoding (using chunked encoding)
+                            Response.Headers[HttpResponseHeader.ContentEncoding] = "gzip";
                             break;
-                        case HttpRequestExtensions.CompressionType.Deflate:
-                            {
-                                //Specify gzip encoding (using chunked encoding)
-                                Response.Headers[HttpResponseHeader.ContentEncoding] = "deflate";
-                                //get the chunked output stream
-                                Stream chunked = await Response.GetStreamAsync();
-                                //Use chunked encoding and send data as its written
-                                outputStream = new DeflateStream(chunked, ParentServer.Config.CompressionLevel, false);
-                            }
+                        case CompressionMethod.Deflate:
+                            //Specify delfate encoding (using chunked encoding)
+                            Response.Headers[HttpResponseHeader.ContentEncoding] = "deflate";
                             break;
-                        case HttpRequestExtensions.CompressionType.Brotli:
-                            {
-                                //Specify Brotli encoding (using chunked encoding)
-                                Response.Headers[HttpResponseHeader.ContentEncoding] = "br";
-                                //get the chunked output stream
-                                Stream chunked = await Response.GetStreamAsync();
-                                //Use chunked encoding and send data as its written
-                                outputStream = new BrotliStream(chunked, ParentServer.Config.CompressionLevel, false);
-                            }
-                            break;
-                        //Default is no compression
-                        case HttpRequestExtensions.CompressionType.None:
-                        default:
-                            //Since we know how long the response will be, we can submit it now (see note above for same issues)
-                            outputStream = await Response.GetStreamAsync(ResponseBody.Length);
+                        case CompressionMethod.Brotli:
+                            //Specify Brotli encoding (using chunked encoding)
+                            Response.Headers[HttpResponseHeader.ContentEncoding] = "br";
                             break;
                     }
-
-                    //Write entity to output
-                    await WriteEntityDataAsync(outputStream, token);
                 }
             }
-        }
 
-        private async Task WriteEntityDataAsync(Stream outputStream, CancellationToken token)
+            //Check on head methods
+            if (Request.Method == HttpMethod.HEAD)
+            {
+                //Specify what the content length would be
+                Response.Headers[HttpResponseHeader.ContentLength] = length.ToString();
+
+                //We must send headers here so content length doesnt get overwritten, close will be called after this to flush to transport
+                Response.FlushHeaders();
+
+                return Task.CompletedTask;
+            }
+            else
+            {
+                //Set the explicit length if a range was set
+                return WriteEntityDataAsync(length, compMethod, hasRange);
+            }
+        }
+      
+        private async Task WriteEntityDataAsync(long length, CompressionMethod compMethod, bool hasExplicitLength)
         {
-            try
-            {
-                //Determine if buffer is required
-                if (ResponseBody.BufferRequired)
-                {
-                    //Get response data buffer, may be smaller than suggested size
-                    Memory<byte> buffer = Buffers.GetResponseDataBuffer();
+            //Get output stream, and always dispose it
+            await using Stream outputStream = await GetOutputStreamAsync(length, compMethod);
 
-                    //Write response
-                    await ResponseBody.WriteEntityAsync(outputStream, buffer, token);
-                }
-                //No buffer is required, write response directly
-                else
-                {
-                    //Write without buffer
-                    await ResponseBody.WriteEntityAsync(outputStream, null, token);
-                }
-            }
-            finally
+            //Determine if buffer is required
+            Memory<byte> buffer = ResponseBody.BufferRequired ? Buffers.GetResponseDataBuffer() : Memory<byte>.Empty;
+
+            /*
+             * Using compression, we must initialize a compressor, and write the response
+             * with the locked compressor
+             */
+            if (compMethod != CompressionMethod.None)
             {
-                //always dispose output stream
-                await outputStream.DisposeAsync();
+                //Compressor must never be null at this point
+                Debug.Assert(_compressor != null, "Compression was allowed but the compressor was not initialized");
+
+                //Init compressor (Deinint is deferred to the end of the request)
+                _compressor.Init(outputStream, compMethod);
+
+                //Write response
+                await ResponseBody.WriteEntityAsync(_compressor, buffer);
+
+            }
+            /*
+             * Explicit length may be set when the response may have more data than requested
+             * by the client. IE: when a range is set, we need to make sure we sent exactly the 
+             * correct data, otherwise the client will drop the connection.
+             */
+            else if(hasExplicitLength)
+            {
+                //Write response with explicit length
+                await ResponseBody.WriteEntityAsync(outputStream, length, buffer);
+               
+            }
+            else
+            {                
+                 await ResponseBody.WriteEntityAsync(outputStream, buffer);
             }
         }
 
-        private async Task WriteEntityDataAsync(Stream outputStream, long length, CancellationToken token)
+        private ValueTask<Stream> GetOutputStreamAsync(long length, CompressionMethod compMethod)
         {
-            try
-            {
-                //Determine if buffer is required
-                if (ResponseBody.BufferRequired)
-                {
-                    //Get response data buffer, may be smaller than suggested size
-                    Memory<byte> buffer = Buffers.GetResponseDataBuffer();
-
-                    //Write response
-                    await ResponseBody.WriteEntityAsync(outputStream, length, buffer, token);
-                }
-                //No buffer is required, write response directly
-                else
-                {
-                    //Write without buffer
-                    await ResponseBody.WriteEntityAsync(outputStream, length, null, token);
-                }
-            }
-            finally
-            {
-                //always dispose output stream
-                await outputStream.DisposeAsync();
-            }
+            return compMethod == CompressionMethod.None ? Response.GetStreamAsync(length) : Response.GetStreamAsync();
         }
+
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
+
     }
 }

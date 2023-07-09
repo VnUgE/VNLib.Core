@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: DirectStream.cs 
+* File: CompressionMethod.cs 
 *
-* DirectStream.cs is part of VNLib.Net.Http which is part of the larger 
+* CompressionMethod.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -23,28 +23,30 @@
 */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace VNLib.Net.Http.Core.Response
+namespace VNLib.Net.Http
 {
-    internal sealed class DirectStream : ReusableResponseStream
+    /// <summary>
+    /// Represents a supported compression type
+    /// </summary>
+    [Flags]
+    public enum CompressionMethod
     {
-
-        public override void Write(ReadOnlySpan<byte> buffer)
-        {
-            transport!.Write(buffer);
-        }
-
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            return transport!.WriteAsync(buffer, cancellationToken);
-        }
-      
-        //Pass through flush methods
-        public override void Flush() => transport!.Flush();
-
-        public override Task FlushAsync(CancellationToken cancellationToken) => transport!.FlushAsync(cancellationToken);
-
+        /// <summary>
+        /// No compression
+        /// </summary>
+        None = 0x00,
+        /// <summary>
+        /// GZip compression is required
+        /// </summary>
+        Gzip = 0x01,
+        /// <summary>
+        /// Deflate compression is required
+        /// </summary>
+        Deflate = 0x02,
+        /// <summary>
+        /// Brotli compression is required
+        /// </summary>
+        Brotli = 0x04
     }
 }

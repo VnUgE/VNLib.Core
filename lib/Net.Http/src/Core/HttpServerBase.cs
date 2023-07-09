@@ -36,6 +36,7 @@
  */
 
 using System;
+using System.Text;
 using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
@@ -64,9 +65,20 @@ namespace VNLib.Net.Http
         /// not specific route
         /// </summary>
         public const string WILDCARD_KEY = "*";
-     
+
+        /// <summary>
+        /// Gets the servers supported http versions
+        /// </summary>
+        public const HttpVersion SupportedVersions = HttpVersion.Http09 | HttpVersion.Http1 | HttpVersion.Http11;
+
+        /// <summary>
+        /// Static discard buffer for destroying data. This buffer must never be read from
+        /// </summary>
+        internal static readonly Memory<byte> WriteOnlyScratchBuffer = new byte[64 * 1024];
+
         private readonly ITransportProvider Transport;
         private readonly IReadOnlyDictionary<string, IWebRoot> ServerRoots;
+        private readonly IWebRoot? _wildcardRoot;
 
         #region caches
         /// <summary>
@@ -93,6 +105,15 @@ namespace VNLib.Net.Http
         /// </summary>
         public bool Running { get; private set; }
 
+        /// <summary>
+        /// The <see cref="ServerPreEncodedSegments"/> for the current server
+        /// </summary>
+        internal readonly ServerPreEncodedSegments PreEncodedSegments;
+        /// <summary>
+        /// Cached supported compression methods
+        /// </summary>
+        internal readonly CompressionMethod SupportedCompressionMethods;
+
         private CancellationTokenSource? StopToken;
 
         /// <summary>
@@ -113,12 +134,21 @@ namespace VNLib.Net.Http
             ServerRoots = sites.ToDictionary(static r => r.Hostname, static tv => tv, StringComparer.OrdinalIgnoreCase);
             //Compile and store the timeout keepalive header
             KeepAliveTimeoutHeaderValue = $"timeout={(int)Config.ConnectionKeepAlive.TotalSeconds}";
-            //Store termination for the current instance
-            HeaderLineTermination = config.HttpEncoding.GetBytes(HttpHelpers.CRLF);
             //Create a new context store
             ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this));
             //Setup config copy with the internal http pool
             Transport = transport;
+            //Create the pre-encoded segments
+            PreEncodedSegments = GetSegments(config.HttpEncoding);
+            //Store a ref to the crlf memory segment
+            HeaderLineTermination = PreEncodedSegments.CrlfBytes.Memory;
+            //Cache supported compression methods, or none if compressor is null
+            SupportedCompressionMethods = config.CompressorManager == null ? 
+                CompressionMethod.None : 
+                config.CompressorManager.GetSupportedMethods();
+
+            //Cache wildcard root
+            _wildcardRoot = ServerRoots.GetValueOrDefault(WILDCARD_KEY);
         }
 
         private static void ValidateConfig(in HttpConfig conf)
@@ -151,11 +181,6 @@ namespace VNLib.Net.Http
             if (conf.DefaultHttpVersion == HttpVersion.None)
             {
                 throw new ArgumentException("DefaultHttpVersion cannot be NotSupported", nameof(conf));
-            }
-
-            if (conf.BufferConfig.DiscardBufferSize < 64)
-            {
-                throw new ArgumentException("DiscardBufferSize cannot be less than 64 bytes", nameof(conf));
             }
 
             if (conf.BufferConfig.FormDataBufferSize < 64)
@@ -202,6 +227,40 @@ namespace VNLib.Net.Http
             {
                 throw new ArgumentException("SendTimeout cannot be less than 1 millisecond", nameof(conf));
             }
+        }
+
+        private static ServerPreEncodedSegments GetSegments(Encoding encoding)
+        {
+            int offset = 0, length;
+            
+            //Alloc buffer to store segments in
+            byte[] buffer = new byte[16];
+
+            Span<byte> span = buffer;
+
+            //Get crlf bytes
+            length = encoding.GetBytes(HttpHelpers.CRLF, span);
+
+            //Build crlf segment
+            HttpEncodedSegment crlf = new(buffer, offset, length);
+
+            offset += length;
+            span = span[offset..];
+
+            //Get final chunk bytes
+            length = encoding.GetBytes("0\r\n\r\n", span);
+
+            //Build final chunk segment
+            HttpEncodedSegment finalChunk = new(buffer, offset, length);
+
+            offset += length;
+
+            //Build the segments
+            return new ServerPreEncodedSegments(buffer)
+            {
+                FinalChunkTermination = finalChunk,
+                CrlfBytes = crlf
+            };
         }
 
         /// <summary>
@@ -272,14 +331,14 @@ namespace VNLib.Net.Http
                 }
             }
 
-            //Clear all caches
+            //Clear all caches before leaving to aid gc
             CacheHardClear();
 
             //Clear running flag
             Running = false;
             Config.ServerLog.Information("HTTP server {hc} exiting", GetHashCode());
         }
-
+       
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
@@ -297,7 +356,6 @@ namespace VNLib.Net.Http
         {
             //When clause guards nulls
             switch (se.SocketErrorCode)
-
             {
                 //Ignore aborted messages
                 case SocketError.ConnectionAborted:

@@ -25,10 +25,12 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory.Caching;
 using VNLib.Net.Http.Core.Buffering;
+using VNLib.Net.Http.Core.Compression;
 
 namespace VNLib.Net.Http.Core
 {
@@ -70,7 +72,7 @@ namespace VNLib.Net.Http.Core
         public readonly ContextLockedBufferManager Buffers;
 
         /// <summary>
-        /// Gets or sets the alternate application protocol to swtich to
+        /// Gets or sets the alternate application protocol to switch to
         /// </summary>
         /// <remarks>
         /// This property is only cleared when the context is released for reuse
@@ -78,29 +80,34 @@ namespace VNLib.Net.Http.Core
         /// or this property must be exlicitly cleared
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
-       
 
+        private readonly IResponseCompressor? _compressor;
         private readonly ResponseWriter responseWriter;
-        private ITransportContext? _ctx;   
+        private ITransportContext? _ctx;
         
         public HttpContext(HttpServer server)
         {
             ParentServer = server;
 
-            //Store CRLF bytes
-            CrlfBytes = server.Config.HttpEncoding.GetBytes(HttpHelpers.CRLF);
-
             //Init buffer manager
             Buffers = new(server.Config.BufferConfig);
 
             //Create new request
-            Request = new HttpRequest(this);
+            Request = new (this);
             
             //create a new response object
-            Response = new HttpResponse(Buffers, this);
+            Response = new (Buffers, this);
 
             //Init response writer
             ResponseBody = responseWriter = new ResponseWriter();
+
+            /*
+             * We can alloc a new compressor if the server supports compression.
+             * If no compression is supported, the compressor will never be accessed
+             */
+            _compressor = server.SupportedCompressionMethods == CompressionMethod.None ? 
+                null :
+                new ManagedHttpCompressor(server.Config.CompressorManager!);
 
             ContextFlags = new(0);
         }
@@ -108,9 +115,6 @@ namespace VNLib.Net.Http.Core
         public TransportSecurityInfo? GetSecurityInfo() => _ctx?.GetSecurityInfo();
 
         #region Context information
-
-        ///<inheritdoc/>
-        public ReadOnlyMemory<byte> CrlfBytes { get; }
 
         ///<inheritdoc/>
         Encoding IHttpContextInformation.Encoding => ParentServer.Config.HttpEncoding;
@@ -122,15 +126,26 @@ namespace VNLib.Net.Http.Core
         HttpConfig IHttpContextInformation.Config => ParentServer.Config;
 
         ///<inheritdoc/>
-        Stream IHttpContextInformation.GetTransport() => _ctx!.ConnectionStream;
+        public ServerPreEncodedSegments EncodedSegments => ParentServer.PreEncodedSegments;
+
+        ///<inheritdoc/>
+        public Stream GetTransport() => _ctx!.ConnectionStream;
 
         #endregion
 
         #region LifeCycle Hooks
 
         ///<inheritdoc/>
-        public void InitializeContext(ITransportContext ctx) => _ctx = ctx;
-      
+        public void InitializeContext(ITransportContext ctx)
+        {
+            _ctx = ctx;
+
+            //Alloc buffers
+            Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
+
+            //Init new connection
+            Response.OnNewConnection();
+        } 
 
         ///<inheritdoc/>
         public void BeginRequest()
@@ -147,20 +162,25 @@ namespace VNLib.Net.Http.Core
         }
 
         ///<inheritdoc/>
+        public Task FlushTransportAsnc()
+        {
+            return _ctx!.ConnectionStream.FlushAsync();
+        }
+
+        ///<inheritdoc/>
         public void EndRequest()
         {
             Request.OnComplete();
             Response.OnComplete();
             responseWriter.OnComplete();
+
+            //Free compressor when a message flow is complete
+            _compressor?.Free();
         }
 
         void IReusable.Prepare()
         {
-            Request.OnPrepare();
             Response.OnPrepare();
-
-            //Alloc buffers
-            Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
         }        
         
         bool IReusable.Release()
@@ -170,7 +190,6 @@ namespace VNLib.Net.Http.Core
             AlternateProtocol = null;
 
             //Release response/requqests
-            Request.OnRelease();
             Response.OnRelease();
 
             //Zero before returning to pool

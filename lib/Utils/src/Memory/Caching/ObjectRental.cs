@@ -24,15 +24,14 @@
 
 using System;
 using System.Diagnostics;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace VNLib.Utils.Memory.Caching
-{
-    //TODO: implement lock-free object tracking
+{  
 
     /// <summary>
     /// Provides concurrent storage for reusable objects to be rented and returned. This class
-    /// and its members is thread-safe
+    /// and its members are thread-safe
     /// </summary>
     /// <typeparam name="T">The data type to reuse</typeparam>
     public class ObjectRental<T> : ObjectRental, IObjectRental<T>, ICacheHolder where T: class
@@ -41,14 +40,13 @@ namespace VNLib.Utils.Memory.Caching
         /// The initial data-structure capacity if quota is not defined
         /// </summary>
         public const int INITIAL_STRUCTURE_SIZE = 50;
-
-        protected readonly object StorageLock;
-        protected readonly Stack<T> Storage;
-        protected readonly HashSet<T> ContainsStore;
+        
+        protected readonly ConcurrentStack<T> Storage;
 
         protected readonly Action<T>? ReturnAction;
         protected readonly Action<T>? RentAction;
         protected readonly Func<T> Constructor;
+
         /// <summary>
         /// Is the object type in the current store implement the Idisposable interface?
         /// </summary>
@@ -66,11 +64,7 @@ namespace VNLib.Utils.Memory.Caching
 #pragma warning restore CS8618 
         {
             //alloc new stack for rentals
-            Storage = new(Math.Max(quota, INITIAL_STRUCTURE_SIZE));
-            //Hashtable for quick lookups
-            ContainsStore = new(Math.Max(quota, INITIAL_STRUCTURE_SIZE));
-            //Semaphore slim to provide exclusive access
-            StorageLock = new ();
+            Storage = new();
             //Store quota, if quota is -1, set to int-max to "disable quota"
             QuotaLimit = quota == 0 ? int.MaxValue : quota;
             //Determine if the type is disposeable and store a local value
@@ -99,16 +93,10 @@ namespace VNLib.Utils.Memory.Caching
             //See if we have an available object, if not return a new one by invoking the constructor function
             T? rental = default;
 
-            //Enter Lock
-            lock (StorageLock)
+            //See if the store contains an item ready to use
+            if (Storage.TryPop(out T? item))
             {
-                //See if the store contains an item ready to use
-                if (Storage.TryPop(out T? item))
-                {
-                    rental = item;
-                    //Remove the item from the hash table
-                    ContainsStore.Remove(item);
-                }
+                rental = item;
             }
 
             //If no object was removed from the store, create a new one
@@ -129,26 +117,13 @@ namespace VNLib.Utils.Memory.Caching
             //Invoke return callback if set
             ReturnAction?.Invoke(item);
 
-            //Keeps track to know if the element was added or need to be cleaned up
-            bool wasAdded = false;
-
-            lock (StorageLock)
+            //Check quota limit (Doesnt need to be perfect)
+            if (Storage.Count < QuotaLimit)
             {
-                //Check quota limit
-                if (Storage.Count < QuotaLimit)
-                {
-                    //Store item if it doesnt exist already
-                    if (ContainsStore.Add(item))
-                    {
-                        //Store the object
-                        Storage.Push(item);
-                    }
-                    //Set the was added flag
-                    wasAdded = true;
-                }
+                //Store the object
+                Storage.Push(item);
             }
-
-            if (!wasAdded && IsDisposableType)
+            else if(IsDisposableType)
             {
                 //If the element was not added and is disposeable, we can dispose the element
                 (item as IDisposable)!.Dispose();
@@ -173,12 +148,8 @@ namespace VNLib.Utils.Memory.Caching
                 return;
             }
 
-            lock(StorageLock)
-            {
-                //Clear stores
-                ContainsStore.Clear();
-                Storage.Clear();
-            }
+            //Clear store
+            Storage.Clear();
         }
 
         /// <summary>
@@ -188,15 +159,8 @@ namespace VNLib.Utils.Memory.Caching
         /// <returns></returns>
         protected T[] GetElementsWithLock()
         {
-            T[] result;
-
-            lock (StorageLock)
-            {
-                //Enumerate all items to the array
-                result = Storage.ToArray();
-            }
-
-            return result;
+            //Enumerate all items to the array
+            return Storage.ToArray();
         }
      
 
@@ -218,18 +182,7 @@ namespace VNLib.Utils.Memory.Caching
 
             if (IsDisposableType)
             {
-                T[] result;
-
-                //Enter Lock
-                lock (StorageLock)
-                {
-                    //Enumerate all items to the array
-                    result = Storage.ToArray();
-
-                    //Clear stores
-                    ContainsStore.Clear();
-                    Storage.Clear();
-                }
+                T[] result = GetElementsWithLock();
 
                 //Dispose all elements
                 foreach (T element in result)

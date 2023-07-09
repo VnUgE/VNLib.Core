@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -28,12 +28,12 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using VNLib.Utils.Extensions;
-
+using VNLib.Net.Http.Core.Compression;
 
 namespace VNLib.Net.Http.Core
 {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "<Pending>")]
-    internal sealed class ResponseWriter : IHttpResponseBody, IHttpLifeCycle
+
+    internal sealed class ResponseWriter : IHttpResponseBody
     {
         private Stream? _streamResponse;
         private IMemoryResponseReader? _memoryResponse;
@@ -89,82 +89,185 @@ namespace VNLib.Net.Http.Core
             return true;
         }
 
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
+
         ///<inheritdoc/>
-        async Task IHttpResponseBody.WriteEntityAsync(Stream dest, long count, Memory<byte>? buffer, CancellationToken token)
+        async Task IHttpResponseBody.WriteEntityAsync(Stream dest, long count, Memory<byte> buffer)
         {
+            int remaining;
+            ReadOnlyMemory<byte> segment;
+
             //Write a sliding window response
             if (_memoryResponse != null)
             {
                 //Get min value from count/range length
-                int remaining = (int)Math.Min(count, _memoryResponse.Remaining);
+                remaining = (int)Math.Min(count, _memoryResponse.Remaining);
 
                 //Write response body from memory
                 while (remaining > 0)
                 {
                     //Get remaining segment
-                    ReadOnlyMemory<byte> segment = _memoryResponse.GetRemainingConstrained(remaining);
-
+                    segment = _memoryResponse.GetRemainingConstrained(remaining);
+                    
                     //Write segment to output stream
-                    await dest.WriteAsync(segment, token);
-
-                    int written = segment.Length;
-
+                    await dest.WriteAsync(segment);
+                  
                     //Advance by the written ammount
-                    _memoryResponse.Advance(written);
+                    _memoryResponse.Advance(segment.Length);
 
                     //Update remaining
-                    remaining -= written;
+                    remaining -= segment.Length;
                 }
             }
             else
             {
                 //Buffer is required, and count must be supplied
-                await _streamResponse!.CopyToAsync(dest, buffer!.Value, count, token);
+                await _streamResponse!.CopyToAsync(dest, buffer, count);
+
+                //Try to dispose the response stream asyncrhonously since we are done with it
+                await _streamResponse!.DisposeAsync();
+
+                //remove ref so its not disposed again
+                _streamResponse = null;
             }
         }
 
-        ///<inheritdoc/>        
-        async Task IHttpResponseBody.WriteEntityAsync(Stream dest, Memory<byte>? buffer, CancellationToken token)
+        ///<inheritdoc/>
+        async Task IHttpResponseBody.WriteEntityAsync(Stream dest, Memory<byte> buffer)
         {
+            ReadOnlyMemory<byte> segment;
+
             //Write a sliding window response
             if (_memoryResponse != null)
             {
                 //Write response body from memory
                 while (_memoryResponse.Remaining > 0)
                 {
-                    //Get segment
-                    ReadOnlyMemory<byte> segment = _memoryResponse.GetMemory();
+                    //Get remaining segment
+                    segment = _memoryResponse.GetMemory();
 
-                    await dest.WriteAsync(segment, token);
+                    //Write segment to output stream
+                    await dest.WriteAsync(segment);
 
-                    //Advance by
+                    //Advance by the written ammount
                     _memoryResponse.Advance(segment.Length);
                 }
             }
             else
             {
-                //Buffer is required
-                await _streamResponse!.CopyToAsync(dest, buffer!.Value, token);
+                //Buffer is required, and count must be supplied
+                await _streamResponse!.CopyToAsync(dest, buffer);
 
-                //Try to dispose the response stream
+                //Try to dispose the response stream asyncrhonously since we are done with it
                 await _streamResponse!.DisposeAsync();
-                
-                //remove ref
+
+                //remove ref so its not disposed again
                 _streamResponse = null;
             }
         }
 
-        ///<inheritdoc/>
-        void IHttpLifeCycle.OnPrepare()
-        {}
-        
-        ///<inheritdoc/>
-        void IHttpLifeCycle.OnRelease()
-        {}
+        ///<inheritdoc/>        
+        async Task IHttpResponseBody.WriteEntityAsync(IResponseCompressor dest, Memory<byte> buffer)
+        {
+            //Locals
+            bool remaining;
+            int read;
+            ReadOnlyMemory<byte> segment;
 
-        ///<inheritdoc/>
-        void IHttpLifeCycle.OnNewRequest()
-        {}
+            //Write a sliding window response
+            if (_memoryResponse != null)
+            {
+                /*
+                 * It is safe to assume if a response body was set, that it contains data.
+                 * So the cost or running a loop without data is not a concern.
+                 * 
+                 * Since any failed writes to the output will raise exceptions, it is safe
+                 * to advance the reader before writing the data, so we can determine if the
+                 * block is final. 
+                 * 
+                 * Since we are using a byte-stream reader for memory responses, we can optimize the 
+                 * compression loop, if we know its operating block size, so we only compress blocks
+                 * of the block size, then continue the loop without branching or causing nested
+                 * loops
+                 */            
+
+                //Optimize for block size
+                if (dest.BlockSize > 0)
+                {
+                    //Write response body from memory
+                    do
+                    {
+                        segment = _memoryResponse.GetRemainingConstrained(dest.BlockSize);
+
+                        //Advance by the trimmed segment length
+                        _memoryResponse.Advance(segment.Length);
+
+                        //Check if data is remaining after an advance
+                        remaining = _memoryResponse.Remaining > 0;
+
+                        //Compress the trimmed block
+                        await dest.CompressBlockAsync(segment, !remaining);
+
+                    } while (remaining);
+                }
+                else
+                {
+                    do
+                    {
+                        segment = _memoryResponse.GetMemory();
+
+                        //Advance by the segment length, this should be safe even if its zero
+                        _memoryResponse.Advance(segment.Length);
+
+                        //Check if data is remaining after an advance
+                        remaining = _memoryResponse.Remaining > 0;
+
+                        //Write to output 
+                        await dest.CompressBlockAsync(segment, !remaining);
+
+                    } while (remaining);
+                }
+
+                //Disposing of memory response can be deferred until the end of the request since its always syncrhonous
+            }
+            else
+            {
+                //Trim buffer to block size if it is set by the compressor
+                if (dest.BlockSize > 0)
+                {
+                    buffer = buffer[..dest.BlockSize];
+                }
+
+                //Read in loop
+                do
+                {
+                    //read
+                    read = await _streamResponse!.ReadAsync(buffer, CancellationToken.None);
+
+                    //Guard
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    //write only the data that was read, as a segment instead of a block
+                    await dest.CompressBlockAsync(buffer[..read], read < buffer.Length);
+
+                } while (true);
+
+                /*
+                 * Try to dispose the response stream asyncrhonously since we can safley here
+                 * otherwise it will be deferred until the end of the request cleanup
+                 */
+                await _streamResponse!.DisposeAsync();
+
+                //remove ref so its not disposed again
+                _streamResponse = null;
+            }
+        }
+
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
+       
 
         public void OnComplete()
         {

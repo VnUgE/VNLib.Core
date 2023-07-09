@@ -28,97 +28,94 @@ using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http.Core.Buffering;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Response
 {
 
-    internal partial class HttpResponse
+    /// <summary>
+    /// Specialized data accumulator for compiling response headers
+    /// </summary>
+    internal sealed class HeaderDataAccumulator
     {
-        /// <summary>
-        /// Specialized data accumulator for compiling response headers
-        /// </summary>
-        private sealed class HeaderDataAccumulator
+        private readonly IResponseHeaderAccBuffer _buffer;
+        private readonly IHttpContextInformation _contextInfo;
+        private int AccumulatedSize;
+
+        public HeaderDataAccumulator(IResponseHeaderAccBuffer accBuffer, IHttpContextInformation ctx)
         {
-            private readonly IResponseHeaderAccBuffer _buffer;
-            private readonly IHttpContextInformation _contextInfo;
-            private int AccumulatedSize;
+            _buffer = accBuffer;
+            _contextInfo = ctx;
+        }
 
-            public HeaderDataAccumulator(IResponseHeaderAccBuffer accBuffer, IHttpContextInformation ctx)
+        /// <summary>
+        /// Initializes a new <see cref="ForwardOnlyWriter{T}"/> for buffering character header data
+        /// </summary>
+        /// <returns>A <see cref="ForwardOnlyWriter{T}"/> for buffering character header data</returns>
+        public ForwardOnlyWriter<char> GetWriter()
+        {
+            Span<char> chars = _buffer.GetCharSpan();
+            return new ForwardOnlyWriter<char>(chars);
+        }
+
+        /// <summary>
+        /// Encodes and writes the contents of the <see cref="ForwardOnlyWriter{T}"/> to the internal accumulator
+        /// </summary>
+        /// <param name="writer">The character buffer writer to commit data from</param>
+        public void CommitChars(ref ForwardOnlyWriter<char> writer)
+        {
+            if (writer.Written == 0)
             {
-                _buffer = accBuffer;
-                _contextInfo = ctx;
+                return;
             }
 
-            /// <summary>
-            /// Initializes a new <see cref="ForwardOnlyWriter{T}"/> for buffering character header data
-            /// </summary>
-            /// <returns>A <see cref="ForwardOnlyWriter{T}"/> for buffering character header data</returns>
-            public ForwardOnlyWriter<char> GetWriter()
-            {
-                Span<char> chars = _buffer.GetCharSpan();
-                return new ForwardOnlyWriter<char>(chars);
-            }
+            //Write the entire token to the buffer
+            WriteToken(writer.AsSpan());
+        }
 
-            /// <summary>
-            /// Encodes and writes the contents of the <see cref="ForwardOnlyWriter{T}"/> to the internal accumulator
-            /// </summary>
-            /// <param name="writer">The character buffer writer to commit data from</param>
-            public void CommitChars(ref ForwardOnlyWriter<char> writer)
-            {
-                if (writer.Written == 0)
-                {
-                    return;
-                }
+        /// <summary>
+        /// Encodes a single token and writes it directly to the internal accumulator
+        /// </summary>
+        /// <param name="chars">The character sequence to accumulate</param>
+        public void WriteToken(ReadOnlySpan<char> chars)
+        {
+            //Get remaining buffer
+            Span<byte> remaining = _buffer.GetBinSpan()[AccumulatedSize..];
 
-                //Write the entire token to the buffer
-                WriteToken(writer.AsSpan());
-            }
+            //Commit all chars to the buffer
+            AccumulatedSize += _contextInfo.Encoding.GetBytes(chars, remaining);
+        }
 
-            /// <summary>
-            /// Encodes a single token and writes it directly to the internal accumulator
-            /// </summary>
-            /// <param name="chars">The character sequence to accumulate</param>
-            public void WriteToken(ReadOnlySpan<char> chars) 
-            {
-                //Get remaining buffer
-                Span<byte> remaining = _buffer.GetBinSpan()[AccumulatedSize..];
+        /// <summary>
+        /// Writes the http termination sequence to the internal accumulator
+        /// </summary>
+        public void WriteTermination()
+        {
+            //Write the http termination sequence
+            Span<byte> remaining = _buffer.GetBinSpan()[AccumulatedSize..];
 
-                //Commit all chars to the buffer
-                AccumulatedSize += _contextInfo.Encoding.GetBytes(chars, remaining);
-            }
-           
-            /// <summary>
-            /// Writes the http termination sequence to the internal accumulator
-            /// </summary>
-            public void WriteTermination()
-            {
-                //Write the http termination sequence
-                Span<byte> remaining = _buffer.GetBinSpan()[AccumulatedSize..];
-                
-                _contextInfo.CrlfBytes.Span.CopyTo(remaining);
-                
-                //Advance the accumulated window
-                AccumulatedSize += _contextInfo.CrlfBytes.Length;
-            }
+            _contextInfo.EncodedSegments.CrlfBytes.Span.CopyTo(remaining);
 
-            /// <summary>
-            /// Resets the internal accumulator
-            /// </summary>
-            public void Reset() => AccumulatedSize = 0;
+            //Advance the accumulated window
+            AccumulatedSize += _contextInfo.EncodedSegments.CrlfBytes.Length;
+        }
 
-            /// <summary>
-            /// Gets the accumulated response data as its memory buffer, and resets the internal accumulator
-            /// </summary>
-            /// <returns>The buffer segment containing the accumulated response data</returns>
-            public Memory<byte> GetResponseData()
-            {
-                //get the current buffer as memory and return the accumulated segment
-                Memory<byte> accumulated = _buffer.GetMemory()[..AccumulatedSize];
+        /// <summary>
+        /// Resets the internal accumulator
+        /// </summary>
+        public void Reset() => AccumulatedSize = 0;
 
-                //Reset the buffer
-                Reset();
+        /// <summary>
+        /// Gets the accumulated response data as its memory buffer, and resets the internal accumulator
+        /// </summary>
+        /// <returns>The buffer segment containing the accumulated response data</returns>
+        public Memory<byte> GetResponseData()
+        {
+            //get the current buffer as memory and return the accumulated segment
+            Memory<byte> accumulated = _buffer.GetMemory()[..AccumulatedSize];
 
-                return accumulated;
-            }
+            //Reset the buffer
+            Reset();
+
+            return accumulated;
         }
     }
 }

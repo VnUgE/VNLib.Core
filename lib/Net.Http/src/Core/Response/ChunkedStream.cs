@@ -35,7 +35,6 @@
 */
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -43,223 +42,178 @@ using VNLib.Utils;
 using VNLib.Utils.Memory;
 using VNLib.Net.Http.Core.Buffering;
 
-#pragma warning disable CA2215 // Dispose methods should call base class dispose
-
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Response
 {
 
-    internal sealed partial class HttpResponse
+#pragma warning disable CA2215 // Dispose methods should call base class dispose
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
+
+    /// <summary>
+    /// Writes chunked HTTP message bodies to an underlying streamwriter 
+    /// </summary>
+    internal sealed class ChunkedStream : ReusableResponseStream
     {
-        /// <summary>
-        /// Writes chunked HTTP message bodies to an underlying streamwriter 
-        /// </summary>
-        private sealed class ChunkedStream : Stream, IHttpLifeCycle
+        private readonly ChunkDataAccumulator ChunckAccumulator;
+        
+        private bool HadError;
+
+        internal ChunkedStream(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
         {
-                 
-            private readonly ChunkDataAccumulator ChunckAccumulator;
-            private readonly IHttpContextInformation ContextInfo;
-
-            private Stream? TransportStream;
-            private bool HadError;
-
-            internal ChunkedStream(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
-            {
-                ContextInfo = context;
-
-                //Init accumulator
-                ChunckAccumulator = new(buffer, context);
-            }
-           
-
-            public override bool CanRead => false;
-            public override bool CanSeek => false;
-            public override bool CanWrite => true;
-            public override long Length => throw new NotSupportedException();
-            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException("This stream cannot be read from");
-            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException("This stream does not support seeking");
-            public override void SetLength(long value) => throw new NotSupportedException("This stream does not support seeking");
-            public override void Flush() { }
-            public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-           
-            
-            public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
-            public override void Write(ReadOnlySpan<byte> chunk)
-            {
-                //Only write non-zero chunks
-                if (chunk.Length <= 0)
-                {
-                    return;
-                }
-
-                //Init reader
-                ForwardOnlyReader<byte> reader = new(chunk);
-                try
-                {
-                    do
-                    {
-                        //try to accumulate the chunk data
-                        ERRNO written = ChunckAccumulator.TryBufferChunk(reader.Window);
-
-                        //Not all data was buffered
-                        if (written < reader.WindowSize)
-                        {
-                            //Advance reader
-                            reader.Advance(written);
-
-                            //Flush accumulator
-                            Memory<byte> accChunk = ChunckAccumulator.GetChunkData();
-
-                            //Reset the chunk accumulator
-                            ChunckAccumulator.Reset();
-
-                            //Write chunk data
-                            TransportStream!.Write(accChunk.Span);
-
-                            //Continue to buffer / flush as needed
-                            continue;
-                        }
-                        break;
-                    }
-                    while (true);
-                }
-                catch
-                {
-                    HadError = true;
-                    throw;
-                }
-            }
-         
-
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                return WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-            }
-
-            public override async ValueTask WriteAsync(ReadOnlyMemory<byte> chunk, CancellationToken cancellationToken = default)
-            {
-                //Only write non-zero chunks
-                if (chunk.Length <= 0)
-                {
-                    return;
-                }
-
-                try
-                {
-                    //Init reader
-                    ForwardOnlyMemoryReader<byte> reader = new(chunk);
-
-                    do
-                    {
-                        //try to accumulate the chunk data
-                        ERRNO written = ChunckAccumulator.TryBufferChunk(reader.Window.Span);
-
-                        //Not all data was buffered
-                        if (written < reader.WindowSize)
-                        {
-                            //Advance reader
-                            reader.Advance(written);
-
-                            //Flush accumulator
-                            Memory<byte> accChunk = ChunckAccumulator.GetChunkData();
-
-                            //Reset the chunk accumulator
-                            ChunckAccumulator.Reset();
-
-                            //Flush accumulator async
-                            await TransportStream!.WriteAsync(accChunk, cancellationToken);
-                            
-                            //Continue to buffer / flush as needed
-                            continue;
-                        }
-
-                        break;
-                    }
-                    while (true);
-                }
-                catch
-                {
-                    HadError = true;
-                    throw;
-                }
-            }
-
-
-            public override async ValueTask DisposeAsync()
-            {
-                //If write error occured, then do not write the last chunk
-                if (HadError)
-                {
-                    return;
-                }
-
-                //Complete the last chunk
-                Memory<byte> chunkData = ChunckAccumulator.GetFinalChunkData();
-
-                //Reset the accumulator
-                ChunckAccumulator.Reset();
-                
-                //Write remaining data to stream
-                await TransportStream!.WriteAsync(chunkData, CancellationToken.None);             
-
-                //Flush base stream
-                await TransportStream!.FlushAsync(CancellationToken.None);
-            }
-
-            protected override void Dispose(bool disposing) => Close();
-
-            public override void Close()
-            {
-                //If write error occured, then do not write the last chunk
-                if (HadError)
-                {
-                    return;
-                }
-
-                //Complete the last chunk
-                Memory<byte> chunkData = ChunckAccumulator.GetFinalChunkData();
-
-                //Reset the accumulator
-                ChunckAccumulator.Reset();
-
-                //Write chunk data
-                TransportStream!.Write(chunkData.Span);
-
-                //Flush base stream
-                TransportStream!.Flush();
-            }
-            
-                
-            #region Hooks
-
-            public void OnPrepare()
-            {
-                ChunckAccumulator.OnPrepare();
-            }
-
-            public void OnRelease()
-            {
-                ChunckAccumulator.OnRelease();
-            }
-
-            public void OnNewRequest()
-            {
-                ChunckAccumulator.OnNewRequest();
-                
-                //Get transport stream even if not used
-                TransportStream = ContextInfo.GetTransport();
-            }
-
-            public void OnComplete()
-            {
-                ChunckAccumulator.OnComplete();
-                TransportStream = null;
-                
-                //Clear error flag
-                HadError = false;
-            }
-
-            #endregion
+            //Init accumulator
+            ChunckAccumulator = new(buffer, context);
         }
+       
+        public override void Write(ReadOnlySpan<byte> chunk)
+        {
+            //Only write non-zero chunks
+            if (chunk.Length <= 0)
+            {
+                return;
+            }
+
+            //Init reader
+            ForwardOnlyReader<byte> reader = new(chunk);
+            try
+            {
+                do
+                {
+                    //try to accumulate the chunk data
+                    ERRNO written = ChunckAccumulator.TryBufferChunk(reader.Window);
+
+                    //Not all data was buffered
+                    if (written < reader.WindowSize)
+                    {
+                        //Advance reader
+                        reader.Advance(written);
+
+                        //Flush accumulator
+                        Memory<byte> accChunk = ChunckAccumulator.GetChunkData();
+
+                        //Reset the chunk accumulator
+                        ChunckAccumulator.Reset();
+
+                        //Write chunk data
+                        transport!.Write(accChunk.Span);
+
+                        //Continue to buffer / flush as needed
+                        continue;
+                    }
+                    break;
+                }
+                while (true);
+            }
+            catch
+            {
+                HadError = true;
+                throw;
+            }
+        }
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> chunk, CancellationToken cancellationToken = default)
+        {
+            //Only write non-zero chunks
+            if (chunk.Length <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                //Init reader
+                ForwardOnlyMemoryReader<byte> reader = new(chunk);
+
+                do
+                {
+                    //try to accumulate the chunk data
+                    ERRNO written = ChunckAccumulator.TryBufferChunk(reader.Window.Span);
+
+                    //Not all data was buffered
+                    if (written < reader.WindowSize)
+                    {
+                        //Advance reader
+                        reader.Advance(written);
+
+                        //Flush accumulator
+                        Memory<byte> accChunk = ChunckAccumulator.GetChunkData();
+
+                        //Reset the chunk accumulator
+                        ChunckAccumulator.Reset();
+
+                        //Flush accumulator async
+                        await transport!.WriteAsync(accChunk, cancellationToken);
+
+                        //Continue to buffer / flush as needed
+                        continue;
+                    }
+
+                    break;
+                }
+                while (true);
+            }
+            catch
+            {
+                HadError = true;
+                throw;
+            }
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            //If write error occured, then do not write the last chunk
+            if (HadError)
+            {
+                return;
+            }
+
+            //Complete the last chunk
+            Memory<byte> chunkData = ChunckAccumulator.GetFinalChunkData();
+
+            //Reset the accumulator
+            ChunckAccumulator.Reset();
+
+            //Write remaining data to stream
+            await transport!.WriteAsync(chunkData, CancellationToken.None);
+
+            //Flush base stream
+            await transport!.FlushAsync(CancellationToken.None);
+        }
+
+        public override void Close()
+        {
+            //If write error occured, then do not write the last chunk
+            if (HadError)
+            {
+                return;
+            }
+
+            //Complete the last chunk
+            Memory<byte> chunkData = ChunckAccumulator.GetFinalChunkData();
+
+            //Reset the accumulator
+            ChunckAccumulator.Reset();
+
+            //Write chunk data
+            transport!.Write(chunkData.Span);
+
+            //Flush base stream
+            transport!.Flush();
+        }
+
+        #region Hooks
+
+        public void OnNewRequest()
+        {
+            ChunckAccumulator.OnNewRequest();
+        }
+
+        public void OnComplete()
+        {
+            ChunckAccumulator.OnComplete();
+
+            //Clear error flag
+            HadError = false;
+        }
+
+        #endregion
     }
 }

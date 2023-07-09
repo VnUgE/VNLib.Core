@@ -31,9 +31,9 @@ namespace VNLib.Net.Http.Core
     internal interface IHttpContextInformation
     {
         /// <summary>
-        /// Local crlf characters
+        /// Gets pre-encoded binary segments for the current server's encoding
         /// </summary>
-        ReadOnlyMemory<byte> CrlfBytes { get; }
+        ServerPreEncodedSegments EncodedSegments { get; }
 
         /// <summary>
         /// The current connection's encoding

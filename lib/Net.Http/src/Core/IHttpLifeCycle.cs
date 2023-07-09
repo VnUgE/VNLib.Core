@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -58,5 +58,10 @@ namespace VNLib.Net.Http.Core
         /// method should not throw exceptions
         /// </remarks>
         void OnComplete();
+
+        /// <summary>
+        /// Raised when a new connection is established on the current context
+        /// </summary>
+        void OnNewConnection();
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -22,7 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace VNLib.Net.Http.Core
@@ -49,9 +48,14 @@ namespace VNLib.Net.Http.Core
         /// Sends any pending data associated with the request to the
         /// connection that begun the request
         /// </summary>
-        /// <param name="cancellationToken">A token to cancel the operation</param>
         /// <returns>A Task that completes when the response has completed</returns>
-        Task WriteResponseAsync(CancellationToken cancellationToken);
+        Task WriteResponseAsync();
+
+        /// <summary>
+        /// Flushes and pending data associated with the request to the transport
+        /// </summary>
+        /// <returns>A task that represents the flush operation</returns>
+        Task FlushTransportAsnc();
 
         /// <summary>
         /// Signals to the context that it will release any request specific

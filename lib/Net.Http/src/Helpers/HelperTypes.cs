@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -101,21 +101,21 @@ namespace VNLib.Net.Http
         /// </summary>
         None,
         /// <summary>
+        /// Http Version 0.9
+        /// </summary>
+        Http09 = 0x01,
+        /// <summary>
         /// Http Version 1
         /// </summary>
-        Http1 = 0x01, 
+        Http1 = 0x02, 
         /// <summary>
         /// Http Version 1.1
         /// </summary>
-        Http11 = 0x02, 
+        Http11 = 0x04, 
         /// <summary>
         /// Http Version 2.0
         /// </summary>
-        Http2 = 0x04, 
-        /// <summary>
-        /// Http Version 0.9
-        /// </summary>
-        Http09 = 0x08,
+        Http2 = 0x08, 
         /// <summary>
         /// Http Version 3.0
         /// </summary>

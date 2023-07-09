@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -24,12 +24,17 @@
 
 using System;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 
+using VNLib.Net.Http.Core.Compression;
 
 namespace VNLib.Net.Http.Core
 {
+    /*
+     * Optimization notes. The buffer parameters are undefined unless 
+     * the BufferRequired property is true. 
+     */
+
     /// <summary>
     /// Represents a rseponse entity body
     /// </summary>
@@ -47,27 +52,39 @@ namespace VNLib.Net.Http.Core
         bool BufferRequired { get; }
 
         /// <summary>
-        /// Writes internal response entity data to the destination stream
+        /// The length of the content. Length is a required property
         /// </summary>
-        /// <param name="dest">The response stream to write data to</param>
-        /// <param name="buffer">An optional buffer used to buffer responses</param>
-        /// <param name="count">The maximum length of the response data to write</param>
-        /// <param name="token">A token to cancel the operation</param>
-        /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync(Stream dest, long count, Memory<byte>? buffer, CancellationToken token);
+        long Length { get; }
 
         /// <summary>
         /// Writes internal response entity data to the destination stream
         /// </summary>
         /// <param name="dest">The response stream to write data to</param>
         /// <param name="buffer">An optional buffer used to buffer responses</param>
-        /// <param name="token">A token to cancel the operation</param>
+        /// <param name="count">The maximum length of the response data to write</param>
         /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync(Stream dest, Memory<byte>? buffer, CancellationToken token);
-        
+        Task WriteEntityAsync(Stream dest, long count, Memory<byte> buffer);
+
         /// <summary>
-        /// The length of the content
+        /// Writes internal response entity data to the destination stream
         /// </summary>
-        long Length { get; }
+        /// <param name="dest">The response compressor</param>
+        /// <param name="buffer">An optional buffer used to buffer responses</param>
+        /// <returns>A task that resolves when the response is completed</returns>
+        Task WriteEntityAsync(IResponseCompressor dest, Memory<byte> buffer);
+
+        /*
+         * Added to the response writing hot-paths optimize calls when compression
+         * is disabled and an explicit length is not required.
+         */
+
+        /// <summary>
+        /// Writes internal response entity data to the destination stream 
+        /// without compression
+        /// </summary>
+        /// <param name="dest">The response stream to write data to</param>
+        /// <param name="buffer">Optional buffer if required, used to buffer response data</param>
+        /// <returns>A task that resolves when the response is completed</returns>
+        Task WriteEntityAsync(Stream dest, Memory<byte> buffer);
     }
 }

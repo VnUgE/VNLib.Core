@@ -52,12 +52,6 @@ namespace VNLib.Net.Http.Core.Buffering
         Memory<byte> GetResponseDataBuffer();
 
         /// <summary>
-        /// Gets the independent buffer used to discard data request data
-        /// </summary>
-        /// <returns>The memory block used for discarding request data</returns>
-        Memory<byte> GetDiscardBuffer();
-
-        /// <summary>
         /// Gets a buffer used for buffering form-data
         /// </summary>
         /// <returns>The memory block</returns>

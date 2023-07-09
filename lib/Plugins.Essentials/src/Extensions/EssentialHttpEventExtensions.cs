@@ -35,7 +35,6 @@ using System.Runtime.CompilerServices;
 using VNLib.Net.Http;
 using VNLib.Hashing;
 using VNLib.Utils;
-using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
 using static VNLib.Plugins.Essentials.Statics;
 

@@ -61,11 +61,6 @@ namespace VNLib.Net.Http
         public readonly int ResponseHeaderBufferSize { get; init; } = 16 * 1024;
 
         /// <summary>
-        /// The size (in bytes) of the buffer to use to discard unread request entity bodies
-        /// </summary>
-        public readonly int DiscardBufferSize { get; init; } = 64 * 1024;
-
-        /// <summary>
         /// The size of the buffer to use when writing response data to the transport
         /// </summary>
         /// <remarks>

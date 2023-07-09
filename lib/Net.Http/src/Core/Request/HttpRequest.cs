@@ -86,14 +86,16 @@ namespace VNLib.Net.Http.Core
             //New reusable input stream
             InputStream = new(contextInfo);
             RequestBody = new();
-        }
-       
+        }       
 
-        public void OnPrepare()
-        {}
+        void IHttpLifeCycle.OnPrepare()
+        { }
 
-        public void OnRelease()
-        {}
+        void IHttpLifeCycle.OnRelease()
+        { }
+
+        void IHttpLifeCycle.OnNewConnection()
+        { }
 
         public void OnNewRequest()
         {
