@@ -369,3 +369,4 @@ MigrationBackup/
 *.filters
 *.ps1
 **/.task/*
+/lib/Net.Compression/vnlib_compress/build

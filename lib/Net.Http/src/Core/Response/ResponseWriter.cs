@@ -91,11 +91,12 @@ namespace VNLib.Net.Http.Core
 
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
+        ReadOnlyMemory<byte> _readSegment;
+
         ///<inheritdoc/>
         async Task IHttpResponseBody.WriteEntityAsync(Stream dest, long count, Memory<byte> buffer)
         {
             int remaining;
-            ReadOnlyMemory<byte> segment;
 
             //Write a sliding window response
             if (_memoryResponse != null)
@@ -107,16 +108,16 @@ namespace VNLib.Net.Http.Core
                 while (remaining > 0)
                 {
                     //Get remaining segment
-                    segment = _memoryResponse.GetRemainingConstrained(remaining);
+                    _readSegment = _memoryResponse.GetRemainingConstrained(remaining);
                     
                     //Write segment to output stream
-                    await dest.WriteAsync(segment);
+                    await dest.WriteAsync(_readSegment);
                   
                     //Advance by the written ammount
-                    _memoryResponse.Advance(segment.Length);
+                    _memoryResponse.Advance(_readSegment.Length);
 
                     //Update remaining
-                    remaining -= segment.Length;
+                    remaining -= _readSegment.Length;
                 }
             }
             else
@@ -135,8 +136,6 @@ namespace VNLib.Net.Http.Core
         ///<inheritdoc/>
         async Task IHttpResponseBody.WriteEntityAsync(Stream dest, Memory<byte> buffer)
         {
-            ReadOnlyMemory<byte> segment;
-
             //Write a sliding window response
             if (_memoryResponse != null)
             {
@@ -144,13 +143,13 @@ namespace VNLib.Net.Http.Core
                 while (_memoryResponse.Remaining > 0)
                 {
                     //Get remaining segment
-                    segment = _memoryResponse.GetMemory();
+                    _readSegment = _memoryResponse.GetMemory();
 
                     //Write segment to output stream
-                    await dest.WriteAsync(segment);
+                    await dest.WriteAsync(_readSegment);
 
                     //Advance by the written ammount
-                    _memoryResponse.Advance(segment.Length);
+                    _memoryResponse.Advance(_readSegment.Length);
                 }
             }
             else
@@ -172,7 +171,6 @@ namespace VNLib.Net.Http.Core
             //Locals
             bool remaining;
             int read;
-            ReadOnlyMemory<byte> segment;
 
             //Write a sliding window response
             if (_memoryResponse != null)
@@ -197,16 +195,16 @@ namespace VNLib.Net.Http.Core
                     //Write response body from memory
                     do
                     {
-                        segment = _memoryResponse.GetRemainingConstrained(dest.BlockSize);
+                        _readSegment = _memoryResponse.GetRemainingConstrained(dest.BlockSize);
 
                         //Advance by the trimmed segment length
-                        _memoryResponse.Advance(segment.Length);
+                        _memoryResponse.Advance(_readSegment.Length);
 
                         //Check if data is remaining after an advance
                         remaining = _memoryResponse.Remaining > 0;
 
                         //Compress the trimmed block
-                        await dest.CompressBlockAsync(segment, !remaining);
+                        await dest.CompressBlockAsync(_readSegment, !remaining);
 
                     } while (remaining);
                 }
@@ -214,16 +212,16 @@ namespace VNLib.Net.Http.Core
                 {
                     do
                     {
-                        segment = _memoryResponse.GetMemory();
+                        _readSegment = _memoryResponse.GetMemory();
 
                         //Advance by the segment length, this should be safe even if its zero
-                        _memoryResponse.Advance(segment.Length);
+                        _memoryResponse.Advance(_readSegment.Length);
 
                         //Check if data is remaining after an advance
                         remaining = _memoryResponse.Remaining > 0;
 
                         //Write to output 
-                        await dest.CompressBlockAsync(segment, !remaining);
+                        await dest.CompressBlockAsync(_readSegment, !remaining);
 
                     } while (remaining);
                 }
@@ -264,6 +262,13 @@ namespace VNLib.Net.Http.Core
                 //remove ref so its not disposed again
                 _streamResponse = null;
             }
+
+            //Continue flusing flushing the compressor if required
+            while(dest.IsFlushRequired())
+            {
+                //Flush the compressor
+                await dest.CompressBlockAsync(ReadOnlyMemory<byte>.Empty, true);
+            }
         }
 
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
@@ -274,6 +279,7 @@ namespace VNLib.Net.Http.Core
             //Clear has data flag
             HasData = false;
             Length = 0;
+            _readSegment = default;
 
             //Clear rseponse containers
             _streamResponse?.Dispose();

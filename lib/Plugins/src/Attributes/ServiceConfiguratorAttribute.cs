@@ -29,8 +29,8 @@ namespace VNLib.Plugins.Attributes
 {
     /// <summary>
     /// <para>
-    /// Set this attribute on an <see cref="IPlugin"/> instance method to define the service configuration
-    /// method. When declated, allows the plugin to expose shared types to the host
+    /// Declare this attribute on an <see cref="IPlugin"/> instance method to define the service configuration
+    /// method. When declared, allows the plugin to expose shared types to the host
     /// </para>
     /// <para>
     /// This method may be runtime dependant, it may not be called on all platforms, and it 
@@ -47,7 +47,7 @@ namespace VNLib.Plugins.Attributes
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public sealed class ServiceConfiguratorAttribute : Attribute
-    {}
+    { }
 
     /// <summary>
     /// A safe delegate that matches the signature of the <see cref="ServiceConfiguratorAttribute"/>

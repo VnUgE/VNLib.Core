@@ -50,10 +50,16 @@ namespace VNLib.Net.Http.Core.Compression
         /// </summary>
         /// <param name="compMethod">The compression mode to use</param>
         /// <param name="output">The stream to write compressed data to</param>
-        void Init(Stream output, CompressionMethod compMethod);      
+        void Init(Stream output, CompressionMethod compMethod);
 
         /// <summary>
-        /// Compresses a block of data and writes it to the output stream
+        /// Gets a value that indicates if the compressor requires more flushing to occur
+        /// </summary>
+        bool IsFlushRequired();
+
+        /// <summary>
+        /// Compresses a block of data and writes it to the output stream. If an empty flush is 
+        /// commited, then the input buffer will be empty. 
         /// </summary>
         /// <param name="buffer">The block of memory to write to compress</param>
         /// <param name="finalBlock">A value that indicates if this block is the final block</param>

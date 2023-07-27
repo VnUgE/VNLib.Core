@@ -72,6 +72,13 @@ namespace VNLib.Net.Http
         ReadOnlyMemory<byte> CompressBlock(object compressorState, ReadOnlyMemory<byte> input, bool finalBlock);
 
         /// <summary>
+        /// Flushes any stored compressor data that still needs to be sent to the client.
+        /// </summary>
+        /// <param name="compressorState">The compressor state instance</param>
+        /// <returns>The remaining data stored in the compressor state, may be empty if no data is pending</returns>
+        ReadOnlyMemory<byte> Flush(object compressorState);
+
+        /// <summary>
         /// Initializes the compressor state for a compression operation
         /// </summary>
         /// <param name="compressorState">The user-defined compression state</param>

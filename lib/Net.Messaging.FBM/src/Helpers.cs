@@ -58,6 +58,11 @@ namespace VNLib.Net.Messaging.FBM
         public static ReadOnlyMemory<byte> Termination { get; } = new byte[] { 0xFF, 0xF1 };
 
         /// <summary>
+        /// Allocates a random integer to use as a message id
+        /// </summary>
+        public static int RandomMessageId => RandomNumberGenerator.GetInt32(1, int.MaxValue);
+
+        /// <summary>
         /// Parses the header line for a message-id
         /// </summary>
         /// <param name="line">A sequence of bytes that make up a header line</param>
@@ -106,13 +111,7 @@ namespace VNLib.Net.Messaging.FBM
             accumulator.Append(buffer);
 
             WriteTermination(accumulator);
-        }
-       
-
-        /// <summary>
-        /// Alloctes a random integer to use as a message id
-        /// </summary>
-        public static int RandomMessageId => RandomNumberGenerator.GetInt32(1, int.MaxValue);
+        }       
 
         /// <summary>
         /// Gets the remaining data after the current position of the stream.
@@ -120,10 +119,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="response">The stream to segment</param>
         /// <returns>The remaining data segment</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ReadOnlySpan<byte> GetRemainingData(VnMemoryStream response)
-        {
-            return response.AsSpan()[(int)response.Position..];
-        }
+        public static ReadOnlySpan<byte> GetRemainingData(VnMemoryStream response) => response.AsSpan()[(int)response.Position..];
 
         /// <summary>
         /// Reads the next available line from the response message
@@ -212,10 +208,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="line"></param>
         /// <returns>The <see cref="HeaderCommand"/> enum value from hte first byte of the message</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static HeaderCommand GetHeaderCommand(ReadOnlySpan<byte> line)
-        {
-            return (HeaderCommand)line[0];
-        }
+        public static HeaderCommand GetHeaderCommand(ReadOnlySpan<byte> line) => (HeaderCommand)line[0];
 
         /// <summary>
         /// Gets the value of the header following the colon bytes in the specifed
@@ -239,8 +232,7 @@ namespace VNLib.Net.Messaging.FBM
             //Decode the characters and return the char count
             _ = encoding.GetChars(value, output);
             return charCount;
-        }
-      
+        }      
 
         /// <summary>
         /// Ends the header section of the request and appends the message body to 
@@ -257,7 +249,6 @@ namespace VNLib.Net.Messaging.FBM
             buffer.Append(body);
         }
 
-
         /// <summary>
         /// Rounds the requested byte size up to the 1kb 
         /// number of bytes
@@ -273,7 +264,6 @@ namespace VNLib.Net.Messaging.FBM
             //Multiply back to page sizes
             return kbs * 1024;
         }
-
 
         /// <summary>
         /// Writes a line termination to the message buffer
@@ -292,6 +282,11 @@ namespace VNLib.Net.Messaging.FBM
         /// <exception cref="ArgumentException"></exception>
         public static void WriteHeader(IDataAccumulator<byte> buffer, byte header, ReadOnlySpan<char> value, Encoding encoding)
         {
+            if(header == 0)
+            {
+                throw new ArgumentException("A header command of 0 is illegal", nameof(header));
+            }
+
             //Write header command enum value
             buffer.Append(header);
             //Convert the characters to binary and write to the buffer

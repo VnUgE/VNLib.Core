@@ -29,7 +29,6 @@ using System.Threading.Tasks;
 
 namespace VNLib.Net.Http.Core.Compression
 {
-
     internal sealed class ManagedHttpCompressor : IResponseCompressor
     {
         //Store the compressor
@@ -49,13 +48,31 @@ namespace VNLib.Net.Http.Core.Compression
 
         private object? _compressor;
         private Stream? _stream;
+        private ReadOnlyMemory<byte> _lastFlush;
+        private bool initialized;
 
         ///<inheritdoc/>
         public int BlockSize { get; private set; }
 
+        public bool IsFlushRequired()
+        {
+            //See if a flush is required
+            _lastFlush = _provider.Flush(_compressor!);
+            return _lastFlush.Length > 0;
+        }
+
         ///<inheritdoc/>
         public ValueTask CompressBlockAsync(ReadOnlyMemory<byte> buffer, bool finalBlock)
         {
+            /*
+             * If input buffer is empty and flush data is available, 
+             * write the last flush data to the stream
+             */
+            if(buffer.Length == 0 && _lastFlush.Length > 0)
+            {
+                return _stream!.WriteAsync(_lastFlush);
+            }
+
             //Compress the block
             ReadOnlyMemory<byte> result = _provider.CompressBlock(_compressor!, buffer, finalBlock);
 
@@ -68,7 +85,14 @@ namespace VNLib.Net.Http.Core.Compression
         {
             //Remove stream ref and de-init the compressor
             _stream = null;
-            _provider.DeinitCompressor(_compressor!);
+            _lastFlush = default;
+
+            //Deinit compressor if initialized
+            if (initialized)
+            {
+                _provider.DeinitCompressor(_compressor!);
+                initialized = false;
+            }
         }
 
         ///<inheritdoc/>
@@ -76,10 +100,12 @@ namespace VNLib.Net.Http.Core.Compression
         {
             //Defer alloc the compressor
             _compressor ??= _provider.AllocCompressor();
-
-            //Store the stream and init the compressor
-            _stream = output;
+            
+            //Init the compressor and get the block size
             BlockSize = _provider.InitCompressor(_compressor, compMethod);
+
+            _stream = output;
+            initialized = true;
         }
     }
 }

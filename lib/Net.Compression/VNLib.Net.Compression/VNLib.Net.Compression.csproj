@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>VNLib.Net.Compression</RootNamespace>
+    <AssemblyName>VNLib.Net.Compression</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    
+    <!--Enable dynamic loading for debugging-->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>VNLib.Net.Compression</PackageId>
+    <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <Product>VNLib Native Http Compression Provider</Product>
+    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Description>
+      .NET/6.0 dynamically loadable managed wrapper library for loading vnlib_compress native library. It provides
+      an implementation of the IHttpCompressorManager interface for use with the VNLib.Net.Http library and servers
+      wishing to support dynamic response compression.
+    </Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Compression</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Net.Http\src\VNLib.Net.Http.csproj" />
+    <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+</Project>
