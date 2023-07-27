@@ -363,10 +363,6 @@ MigrationBackup/
 #package config files
 **[Pp]ackages*
 
-#Do not include sln files for build process only
-*.sln
 
 *.filters
-*.ps1
-**/.task/*
 /lib/Net.Compression/vnlib_compress/build

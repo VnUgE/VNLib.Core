@@ -2,14 +2,14 @@
 
 A .NET 6 /C# library for common .NET operation and memory optimizations.  
 
+### Builds & Feeds
+Builds contain the individual components listed below packaged per-project, available for download on my website. Build packages will be tgz archives (except for nuget packages). You can obtain debug and release builds, along with per-project source code.  
+
+### Docs and Guides
+Docs and articles will be available from the docs link below. This library is quite large and will take time to develop docs. I heavily document all public APIs in XML so you can at-least get basic information when using this library.  
+
 ### License  
 The software in this repository is licensed under the GNU GPL version 2.0 (or any later version). See the LICENSE files for more information.  
-
-### Documentation
-Docs and articles will be available from the docs link below. This library is quite large and will take time to develop docs. I heavily document all public APIs in XML so you can at-least get basic information when using this library.
-
-### Builds & Feeds
-Builds contain the individual components listed below packaged per-project, available for download on my website. Build packages will be tgz archives (except for nuget packages). You can obtain debug and release builds, along with per-project source code.
 
 ### Links
 [Home Page](https://www.vaughnnugent.com) - Website home page  
