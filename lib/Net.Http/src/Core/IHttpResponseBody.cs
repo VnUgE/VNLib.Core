@@ -23,9 +23,9 @@
 */
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
+using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.Compression;
 
 namespace VNLib.Net.Http.Core
@@ -63,28 +63,15 @@ namespace VNLib.Net.Http.Core
         /// <param name="buffer">An optional buffer used to buffer responses</param>
         /// <param name="count">The maximum length of the response data to write</param>
         /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync(Stream dest, long count, Memory<byte> buffer);
+        Task WriteEntityAsync(IDirectResponsWriter dest, long count, Memory<byte> buffer);
 
         /// <summary>
         /// Writes internal response entity data to the destination stream
         /// </summary>
-        /// <param name="dest">The response compressor</param>
+        /// <param name="comp">The response compressor</param>
+        /// <param name="writer">The response output writer</param>
         /// <param name="buffer">An optional buffer used to buffer responses</param>
         /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync(IResponseCompressor dest, Memory<byte> buffer);
-
-        /*
-         * Added to the response writing hot-paths optimize calls when compression
-         * is disabled and an explicit length is not required.
-         */
-
-        /// <summary>
-        /// Writes internal response entity data to the destination stream 
-        /// without compression
-        /// </summary>
-        /// <param name="dest">The response stream to write data to</param>
-        /// <param name="buffer">Optional buffer if required, used to buffer response data</param>
-        /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync(Stream dest, Memory<byte> buffer);
+        Task WriteEntityAsync(IResponseCompressor comp, IResponseDataWriter writer, Memory<byte> buffer);
     }
 }

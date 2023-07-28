@@ -26,6 +26,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory;
@@ -49,6 +50,8 @@ namespace VNLib.Net.Http.Core
 
         public HttpInputStream(IHttpContextInformation contextInfo) => ContextInfo = contextInfo;
 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void OnComplete()
         {
             //Dispose the initial data buffer if set

@@ -190,59 +190,57 @@ namespace VNLib.Net.Http.Core
         }
 
         /// <summary>
-        /// Gets a stream for writing data of a specified length directly to the client
+        /// Flushes all available headers to the transport asynchronously
         /// </summary>
-        /// <param name="ContentLength"></param>
-        /// <returns>A <see cref="Stream"/> configured for writing data to client</returns>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="InvalidOperationException"></exception>
-        public ValueTask<Stream> GetStreamAsync(long ContentLength)
+        /// <param name="contentLength">The optional content length if set, <![CDATA[ < 0]]> for chunked responses</param>
+        /// <returns>A value task that completes when header data has been made available to the transport</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ValueTask CompleteHeadersAsync(long contentLength)
         {
             Check();
 
-            //Add content length header
-            Headers[HttpResponseHeader.ContentLength] = ContentLength.ToString();
+            if (contentLength < 0)
+            {
+                //Add chunked header
+                Headers[HttpResponseHeader.TransferEncoding] = "chunked";
+               
+            }
+            else
+            {
+                //Add content length header
+                Headers[HttpResponseHeader.ContentLength] = contentLength.ToString();
+            }
 
             //Flush headers
-            ValueTask flush = EndFlushHeadersAsync();
-
-            //Return the reusable stream
-            return flush.IsCompletedSuccessfully ?
-                ValueTask.FromResult<Stream>(ReusableDirectStream)
-                : GetStreamAsyncCore(flush, ReusableDirectStream);
+            return EndFlushHeadersAsync();
         }
 
         /// <summary>
-        /// Sets up the client for chuncked encoding and gets a stream that allows for chuncks to be sent. User must call dispose on stream when done writing data
+        /// Gets a response writer for writing directly to the transport stream
         /// </summary>
-        /// <returns><see cref="Stream"/> supporting chunked encoding</returns>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="InvalidOperationException"></exception>
-        public ValueTask<Stream> GetStreamAsync()
+        /// <returns>The <see cref="IDirectResponsWriter"/> instance for writing stream data to</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IDirectResponsWriter GetDirectStream()
+        {
+            //Headers must be sent before getting a direct stream
+            Debug.Assert(HeadersSent);
+            return ReusableDirectStream; 
+        }
+
+        /// <summary>
+        /// Gets a response writer for writing chunked data to the transport stream
+        /// </summary>
+        /// <returns>The <see cref="IResponseDataWriter"/> for buffering response chunks</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IResponseDataWriter GetChunkWriter()
         {
             //Chunking is only an http 1.1 feature (should never get called otherwise)
-            Debug.Assert(ContextInfo.CurrentVersion == HttpVersion.Http11);
+            Debug.Assert(ContextInfo.CurrentVersion == HttpVersion.Http11, "Chunked response handler was requested, but is not an HTTP/1.1 response");
+            Debug.Assert(HeadersSent, "Chunk write was requested but header data has not been sent");
 
-            Check();
-
-            //Set encoding type to chunked with user-defined compression
-            Headers[HttpResponseHeader.TransferEncoding] = "chunked";
-
-            //Flush headers
-            ValueTask flush = EndFlushHeadersAsync();
-
-            //Return the reusable stream
-            return flush.IsCompletedSuccessfully ? 
-                ValueTask.FromResult<Stream>(ReusableChunkedStream) 
-                : GetStreamAsyncCore(flush, ReusableChunkedStream);
+            return ReusableChunkedStream;
         }
-        
-        private static async ValueTask<Stream> GetStreamAsyncCore(ValueTask flush, Stream stream)
-        {
-            //Await the flush and get the stream
-            await flush.ConfigureAwait(false);
-            return stream;
-        }
+
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Check()
@@ -329,6 +327,7 @@ namespace VNLib.Net.Http.Core
         }
 
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnNewRequest()
         {
             //Default to okay status code
@@ -338,6 +337,7 @@ namespace VNLib.Net.Http.Core
         }
 
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnComplete()
         {
             //Clear headers and cookies

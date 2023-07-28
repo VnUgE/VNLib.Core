@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: DirectStream.cs 
+* File: CompressionResult.cs 
 *
-* DirectStream.cs is part of VNLib.Net.Http which is part of the larger 
-* VNLib collection of libraries and utilities.
+* CompressionResult.cs is part of VNLib.Net.Http which is part 
+* of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,18 +22,21 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
-using System.Threading.Tasks;
-
-namespace VNLib.Net.Http.Core.Response
+namespace VNLib.Net.Http
 {
-
-    internal sealed class DirectStream : ReusableResponseStream, IDirectResponsWriter
+    /// <summary>
+    /// Represents the result of a block compression operation
+    /// </summary>
+    public readonly ref struct CompressionResult
     {
-        ///<inheritdoc/>
-        public Task FlushAsync() => transport!.FlushAsync();
+        /// <summary>
+        /// The number of bytes read from the input buffer
+        /// </summary>
+        public readonly int BytesRead { get; init; }
 
-        ///<inheritdoc/>
-        public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer) => transport!.WriteAsync(buffer);
+        /// <summary>
+        /// The number of bytes availabe in the output buffer
+        /// </summary>
+        public readonly int BytesWritten { get; init; }
     }
 }

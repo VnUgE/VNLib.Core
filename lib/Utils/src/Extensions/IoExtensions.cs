@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -328,12 +328,11 @@ namespace VNLib.Utils.Extensions
              * bytes from the source
              */
             long total = 0;
-            int bufferSize = buffer.Length;
             int read;
             while (true)
             {
                 //get offset wrapper of the total buffer or remaining count
-                Memory<byte> offset = buffer[..(int)Math.Min(bufferSize, count - total)];
+                Memory<byte> offset = buffer[..(int)Math.Min(buffer.Length, count - total)];
                 //read
                 read = await source.ReadAsync(offset, token);
                 //Guard

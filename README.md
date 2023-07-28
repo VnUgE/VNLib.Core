@@ -37,6 +37,7 @@ Again, go to my website below, my email address is available, go ahead and send 
 - [Plugins.PluginBase](lib/Plugins.PluginBase/#) - Base library/api for plugin developers to build fully managed/supported runtime loaded plugins, without worrying about the plumbing, such as the IPlugin api, endpoint creation, and logging! This library is required if you wish to use most of the Plugin.Extensions libraries.
 - [Net.Messaging.FBM](lib/Net.Messaging.FBM/#) - Fixed Buffer Messaging protocol, high performance, request/response architecture, client & server library, built atop http and web-sockets. As implied, relies on fixed sized internal buffers that are negotiated to transfer data with minimal overhead for known messaging architectures.
 - [WinRpMalloc](lib/WinRpMalloc/#) - A Windows x64 dll project that exposes the rpmalloc memory allocator as a NativeHeap for .NET Utils library loading in the unmanned heap architecture.
+- [Net.Compression](lib/Net.Compression/#) - A cross platform IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
 - [Net.Rest.Client](lib/Net.Rest.Client/#) - A minimal library that provides a RestSharp client resource pool for concurrent usage with async support, along with an OAuth2 client credentials IAuthenticator implementation for use with Oauth2 plugins.
 
 ## Builds & Source

@@ -26,6 +26,7 @@ using System;
 using System.Net;
 using System.Collections.Generic;
 using System.Security.Authentication;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory;
@@ -97,6 +98,7 @@ namespace VNLib.Net.Http.Core
         void IHttpLifeCycle.OnNewConnection()
         { }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnNewRequest()
         {
             //Set to defaults
@@ -106,6 +108,7 @@ namespace VNLib.Net.Http.Core
             HttpVersion = HttpVersion.None;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnComplete()
         {
             //release the input stream

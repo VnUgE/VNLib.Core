@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 
 using VNLib.Utils.IO;
 using VNLib.Net.Http;
+using VNLib.Utils.Extensions;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -16,11 +17,11 @@ namespace VNLib.Net.Compression.Tests
     [TestClass()]
     public class CompressorManagerTests
     {
-        const string LIB_PATH = @"F:\Programming\VNLib\VNLib.Net.Compression\native\vnlib_compress\build\Debug\vnlib_compress.dll";
+        const string LIB_PATH = @"../../../../vnlib_compress/build/Debug/vnlib_compress.dll";
      
 
         [TestMethod()]
-        public void OnLoadTest()
+        public void CompressDataStreamTest()
         {
             CompressorManager manager = InitCompressorUnderTest();
 
@@ -141,32 +142,37 @@ namespace VNLib.Net.Compression.Tests
 
                 //Create a buffer to compress
                 byte[] buffer = new byte[4096];
+                byte[] output = new byte[4096];
 
                 //fill with random data
                 RandomNumberGenerator.Fill(buffer);
 
+                int read = 0;
+
                 //try to compress the data in chunks
-                for(int i = 0; i < 4; i++)
+                while(read < buffer.Length)
                 {
                     //Get 4th of a buffer
-                    ReadOnlyMemory<byte> chunk = buffer.AsMemory(i * 1024, 1024);
+                    ReadOnlyMemory<byte> chunk = buffer.AsMemory(read, 1024);
 
                     //Compress data
-                    ReadOnlyMemory<byte> output = manager.CompressBlock(compressor, chunk, i == 3);
+                    CompressionResult result = manager.CompressBlock(compressor, chunk, output);
 
                     //Write the compressed data to the output stream
-                    outputStream.Write(output.Span);
+                    outputStream.Write(output.Slice(0, result.BytesWritten));
+
+                    //Increment the read position
+                    read += result.BytesRead;
                 }
 
-                //flush the compressor
-                while(true)
-                {
-                    ReadOnlyMemory<byte> output = manager.Flush(compressor);
-                    if(output.IsEmpty)
-                    {
-                        break;
-                    }
-                    outputStream.Write(output.Span);
+                //Flush
+                int flushed = 100;
+                while(flushed > 0)
+                { 
+                    flushed = manager.Flush(compressor, output);
+
+                    //Write the compressed data to the output stream
+                    outputStream.Write(output.AsSpan()[0..flushed]);
                 }
 
                 //Verify the data

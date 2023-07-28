@@ -23,9 +23,6 @@
 */
 
 using System;
-using System.IO;
-using System.Threading.Tasks;
-
 
 namespace VNLib.Net.Http.Core.Compression
 {
@@ -47,65 +44,45 @@ namespace VNLib.Net.Http.Core.Compression
          */
 
         private object? _compressor;
-        private Stream? _stream;
-        private ReadOnlyMemory<byte> _lastFlush;
         private bool initialized;
 
         ///<inheritdoc/>
         public int BlockSize { get; private set; }
 
-        public bool IsFlushRequired()
+        ///<inheritdoc/>
+        public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output)
         {
-            //See if a flush is required
-            _lastFlush = _provider.Flush(_compressor!);
-            return _lastFlush.Length > 0;
+            //Compress the block
+            return _provider.CompressBlock(_compressor!, input, output);
         }
 
         ///<inheritdoc/>
-        public ValueTask CompressBlockAsync(ReadOnlyMemory<byte> buffer, bool finalBlock)
+        public int Flush(Memory<byte> output)
         {
-            /*
-             * If input buffer is empty and flush data is available, 
-             * write the last flush data to the stream
-             */
-            if(buffer.Length == 0 && _lastFlush.Length > 0)
-            {
-                return _stream!.WriteAsync(_lastFlush);
-            }
+            return _provider.Flush(_compressor!, output);
+        }
 
-            //Compress the block
-            ReadOnlyMemory<byte> result = _provider.CompressBlock(_compressor!, buffer, finalBlock);
+        ///<inheritdoc/>
+        public void Init(CompressionMethod compMethod)
+        {
+            //Defer alloc the compressor
+            _compressor ??= _provider.AllocCompressor();
 
-            //Write the compressed block to the stream
-            return _stream!.WriteAsync(result);
+            //Init the compressor and get the block size
+            BlockSize = _provider.InitCompressor(_compressor, compMethod);
+
+            initialized = true;
         }
 
         ///<inheritdoc/>
         public void Free()
         {
-            //Remove stream ref and de-init the compressor
-            _stream = null;
-            _lastFlush = default;
-
             //Deinit compressor if initialized
             if (initialized)
             {
                 _provider.DeinitCompressor(_compressor!);
                 initialized = false;
             }
-        }
-
-        ///<inheritdoc/>
-        public void Init(Stream output, CompressionMethod compMethod)
-        {
-            //Defer alloc the compressor
-            _compressor ??= _provider.AllocCompressor();
-            
-            //Init the compressor and get the block size
-            BlockSize = _provider.InitCompressor(_compressor, compMethod);
-
-            _stream = output;
-            initialized = true;
         }
     }
 }

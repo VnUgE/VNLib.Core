@@ -23,10 +23,11 @@
 */
 
 using System;
-using System.IO;
 using System.Net;
 using System.Diagnostics;
 using System.Threading.Tasks;
+
+using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http.Core
 {
@@ -161,49 +162,36 @@ namespace VNLib.Net.Http.Core
       
         private async Task WriteEntityDataAsync(long length, CompressionMethod compMethod, bool hasExplicitLength)
         {
-            //Get output stream, and always dispose it
-            await using Stream outputStream = await GetOutputStreamAsync(length, compMethod);
-
             //Determine if buffer is required
             Memory<byte> buffer = ResponseBody.BufferRequired ? Buffers.GetResponseDataBuffer() : Memory<byte>.Empty;
 
-            /*
-             * Using compression, we must initialize a compressor, and write the response
-             * with the locked compressor
-             */
-            if (compMethod != CompressionMethod.None)
+            //We need to flush header before we can write to the transport
+            await Response.CompleteHeadersAsync(compMethod == CompressionMethod.None ? length : -1);
+
+            if (compMethod == CompressionMethod.None)
+            {
+                //Setup a direct stream to write to
+                IDirectResponsWriter output = Response.GetDirectStream();
+
+                //Write response with optional forced length
+                await ResponseBody.WriteEntityAsync(output, hasExplicitLength ? length : -1, buffer);
+            }
+            else
             {
                 //Compressor must never be null at this point
                 Debug.Assert(_compressor != null, "Compression was allowed but the compressor was not initialized");
 
+                //Get the chunked response writer
+                IResponseDataWriter output = Response.GetChunkWriter();
+
                 //Init compressor (Deinint is deferred to the end of the request)
-                _compressor.Init(outputStream, compMethod);
+                _compressor.Init(compMethod);
 
                 //Write response
-                await ResponseBody.WriteEntityAsync(_compressor, buffer);
-
-            }
-            /*
-             * Explicit length may be set when the response may have more data than requested
-             * by the client. IE: when a range is set, we need to make sure we sent exactly the 
-             * correct data, otherwise the client will drop the connection.
-             */
-            else if(hasExplicitLength)
-            {
-                //Write response with explicit length
-                await ResponseBody.WriteEntityAsync(outputStream, length, buffer);
-               
-            }
-            else
-            {                
-                 await ResponseBody.WriteEntityAsync(outputStream, buffer);
+                await ResponseBody.WriteEntityAsync(_compressor, output, buffer);
             }
         }
 
-        private ValueTask<Stream> GetOutputStreamAsync(long length, CompressionMethod compMethod)
-        {
-            return compMethod == CompressionMethod.None ? Response.GetStreamAsync(length) : Response.GetStreamAsync();
-        }
 
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
 

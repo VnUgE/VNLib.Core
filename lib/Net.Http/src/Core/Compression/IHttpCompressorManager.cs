@@ -26,6 +26,7 @@ using System;
 
 namespace VNLib.Net.Http
 {
+
     /// <summary>
     /// Represents an http compressor manager that creates compressor state instances and processes
     /// compression operations.
@@ -54,29 +55,22 @@ namespace VNLib.Net.Http
 
         /// <summary>
         /// Compresses a block of data using the compressor state. The input block size is 
-        /// guarunteed to the the block size returned by <see cref="InitCompressor(object, CompressionMethod)"/>
+        /// guarunteed to be smaller than the block size returned by <see cref="InitCompressor(object, CompressionMethod)"/>
         /// or smaller.
-        /// <para>
-        /// This method may be called with an empty input block to flush the compressor state.
-        /// </para>
         /// </summary>
         /// <param name="compressorState">The compressor state instance</param>
         /// <param name="input">The input buffer to compress</param>
-        /// <param name="finalBlock">A value that indicates if this block is the final block</param>
-        /// <returns>The compressed block to send to the client</returns>
-        /// <remarks>
-        /// The returned memory block should belong to the individual compressor state, and be valid until the
-        /// call to deinit. The result of the block should remain valid 
-        /// until the next call to compress or deinit.
-        /// </remarks>
-        ReadOnlyMemory<byte> CompressBlock(object compressorState, ReadOnlyMemory<byte> input, bool finalBlock);
+        /// <param name="output">The output buffer to write the compressed data to</param>
+        /// <returns>The result of the stream operation</returns>
+        CompressionResult CompressBlock(object compressorState, ReadOnlyMemory<byte> input, Memory<byte> output);
 
         /// <summary>
         /// Flushes any stored compressor data that still needs to be sent to the client.
         /// </summary>
         /// <param name="compressorState">The compressor state instance</param>
-        /// <returns>The remaining data stored in the compressor state, may be empty if no data is pending</returns>
-        ReadOnlyMemory<byte> Flush(object compressorState);
+        /// <param name="output">The output buffer</param>
+        /// <returns>The number of bytes flushed to the output buffer</returns>
+        int Flush(object compressorState, Memory<byte> output);
 
         /// <summary>
         /// Initializes the compressor state for a compression operation

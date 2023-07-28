@@ -42,7 +42,6 @@ using System.Text.Json;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
-using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 
 namespace VNLib.Net.Compression
@@ -50,21 +49,18 @@ namespace VNLib.Net.Compression
     public sealed class CompressorManager : IHttpCompressorManager
     {
         const string NATIVE_LIB_NAME = "vnlib_compress.dll";
-        const int MIN_BUF_SIZE_DEFAULT = 8192;
 
         private LibraryWrapper? _nativeLib;
         private CompressionLevel _compLevel;
-        private int minOutBufferSize;
 
         /// <summary>
         /// Called by the VNLib.Webserver during startup to initiialize the compressor.
         /// </summary>
         /// <param name="log">The application log provider</param>
-        /// <param name="configJsonString">The raw json configuration data</param>
+        /// <param name="config">The json configuration element</param>
         public void OnLoad(ILogProvider? log, JsonElement? config)
         {
             _compLevel = CompressionLevel.Optimal;
-            minOutBufferSize = MIN_BUF_SIZE_DEFAULT;
             string libPath = NATIVE_LIB_NAME;
 
             if(config.HasValue)
@@ -82,11 +78,6 @@ namespace VNLib.Net.Compression
                     if(compEl.TryGetProperty("lib_path", out JsonElement libEl))
                     {
                         libPath = libEl.GetString() ?? NATIVE_LIB_NAME;
-                    }
-
-                    if(compEl.TryGetProperty("min_out_buf_size", out JsonElement minBufEl))
-                    {
-                        minOutBufferSize = minBufEl.GetInt32();
                     }
                 }
             }
@@ -128,7 +119,7 @@ namespace VNLib.Net.Compression
             Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
 
             //Instance should be null during initialization calls
-            Debug.Assert(compressor.Instance == IntPtr.Zero);
+            Debug.Assert(compressor.Instance == IntPtr.Zero, "Init was called but and old compressor instance was not properly freed");
 
             //Alloc the compressor
             compressor.Instance = _nativeLib!.AllocateCompressor(compMethod, _compLevel);
@@ -147,13 +138,6 @@ namespace VNLib.Net.Compression
                 throw new InvalidOperationException("This compressor instance has not been initialized, cannot free compressor");
             }
 
-            //Free the output buffer
-            if(compressor.OutputBuffer != null)
-            {
-                ArrayPool<byte>.Shared.Return(compressor.OutputBuffer, true);
-                compressor.OutputBuffer = null;
-            }
-
             //Free compressor instance
             _nativeLib!.FreeCompressor(compressor.Instance);
 
@@ -162,7 +146,7 @@ namespace VNLib.Net.Compression
         }
 
         ///<inheritdoc/>
-        public ReadOnlyMemory<byte> Flush(object compressorState)
+        public int Flush(object compressorState, Memory<byte> output)
         {
             Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
 
@@ -171,17 +155,13 @@ namespace VNLib.Net.Compression
                 throw new InvalidOperationException("This compressor instance has not been initialized, cannot free compressor");
             }
 
-            //rent a new buffer of the minimum size if not already allocated
-            compressor.OutputBuffer ??= ArrayPool<byte>.Shared.Rent(minOutBufferSize);
-
             //Force a flush until no more data is available
-            int bytesWritten = CompressBlock(compressor.Instance, compressor.OutputBuffer, default, true);
-
-            return compressor.OutputBuffer.AsMemory(0, bytesWritten);
+            CompressionResult result = CompressBlock(compressor.Instance, output, default, true);
+            return result.BytesWritten;
         }
 
         ///<inheritdoc/>
-        public ReadOnlyMemory<byte> CompressBlock(object compressorState, ReadOnlyMemory<byte> input, bool finalBlock)
+        public CompressionResult CompressBlock(object compressorState, ReadOnlyMemory<byte> input, Memory<byte> output)
         {
             Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
 
@@ -196,30 +176,16 @@ namespace VNLib.Net.Compression
              * as a reference for callers. If its too small it will just have to be flushed
              */
 
-            //See if the compressor has a buffer allocated
-            if (compressor.OutputBuffer == null)
-            {
-                //Determine the required buffer size
-                int bufferSize = _nativeLib!.GetOutputSize(compressor.Instance, input.Length, finalBlock ? 1 : 0);
-
-                //clamp the buffer size to the minimum output buffer size
-                bufferSize = Math.Max(bufferSize, minOutBufferSize);
-
-                //rent a new buffer
-                compressor.OutputBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-            }
 
             //Compress the block
-            int bytesWritten = CompressBlock(compressor.Instance, compressor.OutputBuffer, input, finalBlock);
-
-            return compressor.OutputBuffer.AsMemory(0, bytesWritten);
+            return CompressBlock(compressor.Instance, output, input, false);
         } 
         
-        private unsafe int CompressBlock(IntPtr comp, byte[] output, ReadOnlyMemory<byte> input, bool finalBlock)
+        private unsafe CompressionResult CompressBlock(IntPtr comp, ReadOnlyMemory<byte> output, ReadOnlyMemory<byte> input, bool finalBlock)
         {
             //get pointers to the input and output buffers
             using MemoryHandle inPtr = input.Pin();
-            using MemoryHandle outPtr = MemoryUtil.PinArrayAndGetHandle(output, 0);
+            using MemoryHandle outPtr = output.Pin();
 
             //Create the operation struct
             CompressionOperation operation;
@@ -240,7 +206,11 @@ namespace VNLib.Net.Compression
             _nativeLib!.CompressBlock(comp, &operation);
 
             //Return the number of bytes written
-            return op->bytesWritten;
+            return new()
+            {
+                BytesRead = op->bytesRead,
+                BytesWritten = op->bytesWritten
+            };
         }
        
 
@@ -250,8 +220,6 @@ namespace VNLib.Net.Compression
         private sealed class Compressor
         {
             public IntPtr Instance;
-
-            public byte[]? OutputBuffer;
         }
        
     }

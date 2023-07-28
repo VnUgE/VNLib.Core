@@ -23,8 +23,6 @@
 */
 
 using System;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace VNLib.Net.Http.Core.Compression
 {
@@ -49,21 +47,21 @@ namespace VNLib.Net.Http.Core.Compression
         /// Initializes the compressor for a compression operation
         /// </summary>
         /// <param name="compMethod">The compression mode to use</param>
-        /// <param name="output">The stream to write compressed data to</param>
-        void Init(Stream output, CompressionMethod compMethod);
+        void Init(CompressionMethod compMethod);
 
         /// <summary>
-        /// Gets a value that indicates if the compressor requires more flushing to occur
+        /// Compresses a block of input data and writes the result to the output buffer
         /// </summary>
-        bool IsFlushRequired();
+        /// <param name="input">The input data to compress</param>
+        /// <param name="output">The output buffer to write compressed data to</param>
+        /// <returns>The result of the compression operation</returns>
+        CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output);
 
         /// <summary>
-        /// Compresses a block of data and writes it to the output stream. If an empty flush is 
-        /// commited, then the input buffer will be empty. 
+        /// Writes any remaining data to the output buffer, flushing the compressor
         /// </summary>
-        /// <param name="buffer">The block of memory to write to compress</param>
-        /// <param name="finalBlock">A value that indicates if this block is the final block</param>
-        /// <returns>A task that represents the compression operation</returns>
-        ValueTask CompressBlockAsync(ReadOnlyMemory<byte> buffer, bool finalBlock);
+        /// <param name="output">The buffer to write output data to</param>
+        /// <returns>The number of bytes written to the output buffer</returns>
+        int Flush(Memory<byte> output);
     }
 }

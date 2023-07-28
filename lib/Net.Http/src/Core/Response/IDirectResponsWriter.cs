@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: ReusableResponseStream.cs 
+* File: IDirectResponsWriter.cs 
 *
-* ReusableResponseStream.cs is part of VNLib.Net.Http which is part 
-* of the larger VNLib collection of libraries and utilities.
+* IDirectResponsWriter.cs is part of VNLib.Net.Http which is part of 
+* the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,25 +22,28 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.IO;
+using System;
+using System.Threading.Tasks;
 
 namespace VNLib.Net.Http.Core.Response
 {
-
-    internal abstract class ReusableResponseStream 
+    /// <summary>
+    /// Represents a stream that can be written to directly (does not 
+    /// buffer response data)
+    /// </summary>
+    internal interface IDirectResponsWriter
     {
-        protected Stream? transport;
+        /// <summary>
+        /// Writes the given data buffer to the client
+        /// </summary>
+        /// <param name="buffer">The response data to write</param>
+        /// <returns>A value task that resolves when the write operation is complete</returns>
+        ValueTask WriteAsync(ReadOnlyMemory<byte> buffer);
 
         /// <summary>
-        /// Called when a new connection is established
+        /// Flushes any remaining data to the client
         /// </summary>
-        /// <param name="transport"></param>
-        public virtual void OnNewConnection(Stream transport) => this.transport = transport;
-
-        /// <summary>
-        /// Called when the connection is released
-        /// </summary>
-        public virtual void OnRelease() => transport = null;
-       
+        /// <returns>A task that resolves when the flush operationis complete</returns>
+        Task FlushAsync();
     }
 }
