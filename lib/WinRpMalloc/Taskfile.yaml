@@ -1,0 +1,73 @@
+﻿# https://taskfile.dev
+
+#Called by the vnbuild system to produce builds for my website
+#https://www.vaughnnugent.com/resources/software
+
+#This taskfile is called in this directory and is specific to the WinRpMalloc project
+#that handles the MSBuild outside of the solution file
+
+version: '3'
+
+vars:
+  RPMALLOC_LICENSE: 'https://raw.githubusercontent.com/mjansson/rpmalloc/develop/LICENSE'
+  INT_DIR: '{{.SCRATCH_DIR}}/obj/{{.MODULE_NAME}}/'
+  MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:IntermediateOutputPath="{{.INT_DIR}}" /p:UseCommonOutputDirectory=true /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
+
+tasks:
+  
+  build:
+    #build from the src directory  
+    dir: '{{.USER_WORKING_DIR}}/src'  
+    cmds:
+     #build in debug mode
+     - msbuild /p:Configuration=debug {{.BUILD_FLAGS}} {{.MS_ARGS}} 
+     #build in release
+     - msbuild /p:Configuration=release {{.BUILD_FLAGS}} {{.MS_ARGS}} 
+
+  postbuild_success:
+    vars:
+      TARGET: '{{.USER_WORKING_DIR}}/bin'
+
+    cmds:
+    #create the target directory
+     - powershell -Command "New-Item -Type Directory -Force -Path '{{.TARGET}}'" 
+
+     #remove uncessary files from outputs
+     - powershell -Command "Get-ChildItem -Recurse './src/x64/*' -Include *.log,*.recipe,*.CopyComplete,*.json,*.FileListAbsolute.txt | Remove-Item"
+     - powershell -Command "Get-ChildItem '*.tlog' -Recurse * | Remove-Item"
+
+     #run debug and release post
+     - task: postbuild
+       vars: { BUILD_MODE: debug }
+
+     - task: postbuild
+       vars: { BUILD_MODE: release }
+
+     #tar input and output
+     - cd ./src/x64/debug && tar -czf "{{.TARGET}}/debug.tgz" .
+   
+    #capture only dll, license, + readme files on release
+     - cd ./src/x64/release && tar  --include='*.dll' --include='license.txt' --include='readme.md' --include='rpmalloc_license.txt' -czf "{{.TARGET}}/release.tgz" *
+
+
+  postbuild:
+    vars:
+     TARGET: './src/x64/{{.BUILD_MODE}}'
+
+    cmds:
+     #add rpmalloc license to binary output
+     - powershell -Command "Invoke-WebRequest '{{.RPMALLOC_LICENSE}}' -Outfile '{{.TARGET}}/rpmalloc_license.txt'" 
+
+     #add my license file
+     - powershell -Command "Copy-Item -Path ./LICENSE.txt -Destination '{{.TARGET}}/license.txt'"
+
+     #add readme file
+     - powershell -Command "Copy-Item -Path ./build.readme.md -Destination '{{.TARGET}}/readme.md'"
+
+
+  clean:
+    cmds: 
+     - cmd: powershell -Command "Remove-Item -Recurse './src/x64' -ErrorAction SilentlyContinue"
+       ignore_error: true
+     - cmd: powershell -Command "Remove-Item -Recurse './src/bin' -ErrorAction SilentlyContinue"
+       ignore_error: true
