@@ -24,13 +24,11 @@
 
 using System;
 using System.Net;
-using System.Linq;
 using System.Text;
 using System.Collections.Generic;
 using System.Security.Authentication;
 
 using VNLib.Net.Http.Core;
-using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Http
 {
@@ -76,65 +74,16 @@ namespace VNLib.Net.Http
         ///<inheritdoc/>
         public IReadOnlyDictionary<string, string> RequestCookies => Context.Request.Cookies;
         ///<inheritdoc/>
-        public IEnumerable<string> Accept => Context.Request.Accept;
+        public IReadOnlyCollection<string> Accept => Context.Request.Accept;
         ///<inheritdoc/>
         public TransportSecurityInfo? TransportSecurity => Context.GetSecurityInfo();
 
         ///<inheritdoc/>
-        public bool Accepts(ContentType type)
-        {
-            //Get the content type string from he specified content type
-            string contentType = HttpHelpers.GetContentTypeString(type);
-            return Accepts(contentType);
-        }
-
-        ///<inheritdoc/>
-        public bool Accepts(string contentType)
-        {
-            if (AcceptsAny())
-            {
-                return true;
-            }
-
-            //If client accepts exact requested encoding 
-            if (Accept.Contains(contentType, StringComparer.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            //Search for the content-sub-type 
-
-            //Get prinary side of mime type
-            ReadOnlySpan<char> primary = contentType.AsSpan().SliceBeforeParam('/');
-
-            for (int i = 0; i < Context.Request.Accept.Count; i++)
-            {
-                //The the accept subtype
-                ReadOnlySpan<char> ctSubType = Context.Request.Accept[i].AsSpan().SliceBeforeParam('/');
-                
-                //See if accepts any subtype, or the primary sub-type matches
-                if(ctSubType[0] == '*' || ctSubType.Equals(primary, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        
-        /// <summary>
-        /// Determines if the connection accepts any content type
-        /// </summary>
-        /// <returns>true if the connection accepts any content typ, false otherwise</returns>
-        private bool AcceptsAny()
-        {
-            //Accept any if no accept header was present, or accept all value */*
-            return Context.Request.Accept.Count == 0 || Accept.Where(static t => t.StartsWith("*/*", StringComparison.OrdinalIgnoreCase)).Any();
-        }
-
-        ///<inheritdoc/>
         public void SetCookie(string name, string value, string? domain, string? path, TimeSpan Expires, CookieSameSite sameSite, bool httpOnly, bool secure)
         {
+            //name MUST not be null
+            _ = name ?? throw new ArgumentNullException(nameof(name));
+
             //Create the new cookie
             HttpCookie cookie = new(name)
             {

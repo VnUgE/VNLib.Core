@@ -40,8 +40,6 @@
 
 #include "util.h"
 #include <stdint.h>
-#include <stddef.h>
-#include <stdlib.h>
 
 #define ERR_COMP_TYPE_NOT_SUPPORTED -9
 #define ERR_COMP_LEVEL_NOT_SUPPORTED -10
@@ -140,13 +138,13 @@ typedef struct CompressionOperationStruct {
 	/*
 	* Input stream data
 	*/
-	const uint8_t* bytesIn;
+	const void* bytesIn;
 	const int bytesInLength;
 
 	/*
 	* Output buffer/data stream
 	*/
-	uint8_t* bytesOut;
+	void* bytesOut;
 	const int bytesOutLength;
 
 	/*

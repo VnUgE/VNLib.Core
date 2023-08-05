@@ -24,6 +24,8 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#include <stdlib.h>
+
 /*
 * Stub missing types and constants for GCC
 */
@@ -45,6 +47,11 @@
 #ifndef NULL
 #define NULL 0
 #endif /* !NULL */
+
+#ifndef _In_
+#define _In_
+#endif // !_In_
+
 
 /*
 * Stub method for malloc. All calls to vnmalloc should be freed with vnfree.

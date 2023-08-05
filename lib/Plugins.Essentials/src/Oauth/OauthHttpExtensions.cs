@@ -134,15 +134,15 @@ namespace VNLib.Plugins.Essentials.Oauth
                 //Set the error result in the header
                 ev.Server.Headers[HttpResponseHeader.WwwAuthenticate] = error switch
                 {
-                    ErrorType.InvalidRequest => $"Bearer error=\"invalid_request\"",
-                    ErrorType.UnauthorizedClient => $"Bearer error=\"unauthorized_client\"",
-                    ErrorType.UnsupportedResponseType => $"Bearer error=\"unsupported_response_type\"",
-                    ErrorType.InvalidScope => $"Bearer error=\"invalid_scope\"",
-                    ErrorType.ServerError => $"Bearer error=\"server_error\"",
-                    ErrorType.TemporarilyUnabavailable => $"Bearer error=\"temporarily_unavailable\"",
-                    ErrorType.InvalidClient => $"Bearer error=\"invalid_client\"",
-                    ErrorType.InvalidToken => $"Bearer error=\"invalid_token\"",
-                    _ => $"Bearer error=\"error\"",
+                    ErrorType.InvalidRequest => "Bearer error=\"invalid_request\"",
+                    ErrorType.UnauthorizedClient => "Bearer error=\"unauthorized_client\"",
+                    ErrorType.UnsupportedResponseType => "Bearer error=\"unsupported_response_type\"",
+                    ErrorType.InvalidScope => "Bearer error=\"invalid_scope\"",
+                    ErrorType.ServerError => "Bearer error=\"server_error\"",
+                    ErrorType.TemporarilyUnabavailable => "Bearer error=\"temporarily_unavailable\"",
+                    ErrorType.InvalidClient => "Bearer error=\"invalid_client\"",
+                    ErrorType.InvalidToken => "Bearer error=\"invalid_token\"",
+                    _ => "Bearer error=\"error\"",
                 };
                 //Close the response with the status code
                 ev.CloseResponse(code);

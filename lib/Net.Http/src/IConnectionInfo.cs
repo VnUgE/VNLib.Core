@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -113,25 +113,12 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Gets an <see cref="IEnumerator{T}"/> for the parsed accept header values
         /// </summary>
-        IEnumerable<string> Accept { get; }
+        IReadOnlyCollection<string> Accept { get; }
         /// <summary>
         /// Gets the underlying transport security information for the current connection
         /// </summary>
         TransportSecurityInfo? TransportSecurity { get; }
-
-        /// <summary>
-        /// Determines if the client accepts the response content type
-        /// </summary>
-        /// <param name="type">The desired content type</param>
-        /// <returns>True if the client accepts the content type, false otherwise</returns>
-        bool Accepts(ContentType type);
-
-        /// <summary>
-        /// Determines if the client accepts the response content type
-        /// </summary>
-        /// <param name="contentType">The desired content type</param>
-        /// <returns>True if the client accepts the content type, false otherwise</returns>
-        bool Accepts(string contentType);
+       
 
         /// <summary>
         /// Adds a new cookie to the response. If a cookie with the same name and value

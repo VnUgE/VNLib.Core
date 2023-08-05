@@ -36,9 +36,9 @@
 
 using System;
 using System.Buffers;
+using System.Text.Json;
 using System.Diagnostics;
 using System.IO.Compression;
-using System.Text.Json;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
@@ -169,13 +169,6 @@ namespace VNLib.Net.Compression
             {
                 throw new InvalidOperationException("This compressor instance has not been initialized, cannot free compressor");
             }
-
-            /*
-             * We only alloc the buffer on the first call because we can assume this is the 
-             * largest input data the compressor will see, and the block size should be used
-             * as a reference for callers. If its too small it will just have to be flushed
-             */
-
 
             //Compress the block
             return CompressBlock(compressor.Instance, output, input, false);

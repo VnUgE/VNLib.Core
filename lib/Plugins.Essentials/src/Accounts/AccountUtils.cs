@@ -320,7 +320,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             //Get the "local" account flag from the user object
             bool localAccount = user.IsLocalAccount();
 
-            //Set local account flag
+            //Set local account flag on the session
             entity.Session.HasLocalAccount(localAccount);
 
             //Return the client encrypted data

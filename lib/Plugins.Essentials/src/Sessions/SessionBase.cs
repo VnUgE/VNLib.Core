@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -31,7 +31,7 @@ using VNLib.Utils;
 namespace VNLib.Plugins.Essentials.Sessions
 {
     /// <summary>
-    /// Provides a base class for the <see cref="ISession"/> interface for exclusive use within a multithreaded
+    /// Provides a base class for the <see cref="ISession"/> interface that handles basic housekeeping
     /// context
     /// </summary>
     public abstract class SessionBase : ISession

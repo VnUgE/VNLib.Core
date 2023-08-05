@@ -63,11 +63,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void);
 
-VNLIB_EXPORT int VNLIB_CC GetCompressorBlockSize(void* compressor);
+VNLIB_EXPORT int VNLIB_CC GetCompressorBlockSize(_In_ void* compressor);
 
-VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(void* compressor);
+VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ void* compressor);
 
-VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(void* compressor);
+VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ void* compressor);
 
 VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionLevel level);
 
@@ -106,7 +106,7 @@ VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void)
 	return supported;
 }
 
-VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(void* compressor)
+VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ void* compressor)
 {
 	if (!compressor)
 	{
@@ -116,7 +116,7 @@ VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(void* compressor)
 	return ((CompressorState*)compressor)->type;
 }
 
-VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(void* compressor)
+VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ void* compressor)
 {
 	if (!compressor)
 	{
@@ -126,7 +126,7 @@ VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(void* compressor)
 	return ((CompressorState*)compressor)->level;
 }
 
-VNLIB_EXPORT int VNLIB_CC GetCompressorBlockSize(void* compressor)
+VNLIB_EXPORT int VNLIB_CC GetCompressorBlockSize(_In_ void* compressor)
 {
 	if (!compressor)
 	{
@@ -194,7 +194,6 @@ VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionL
 			break;
 	}
 	
-
 
 	/*
 		If result was successfull return the context pointer, if
@@ -290,7 +289,7 @@ VNLIB_EXPORT int VNLIB_CC FreeCompressor(void* compressor)
 	return errorCode;
 }
 
-VNLIB_EXPORT int VNLIB_CC GetCompressedSize(void* compressor, int inputLength, int flush)
+VNLIB_EXPORT int VNLIB_CC GetCompressedSize(_In_ void* compressor, int inputLength, int flush)
 {
 	CompressorState* comp;
 	int result;
@@ -343,7 +342,7 @@ VNLIB_EXPORT int VNLIB_CC GetCompressedSize(void* compressor, int inputLength, i
 * indicate failure.
 * @param compressor 
 */
-VNLIB_EXPORT int VNLIB_CC CompressBlock(void* compressor, CompressionOperation* operation)
+VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ void* compressor, CompressionOperation* operation)
 {
 	int result;
 	CompressorState* comp;

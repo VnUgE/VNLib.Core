@@ -35,10 +35,10 @@ using VNLib.Net.Http;
 using VNLib.Utils.IO;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Resources;
+using VNLib.Plugins.Essentials.Accounts;
 using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
-using VNLib.Plugins.Essentials.Accounts;
 
 #nullable enable
 
@@ -163,12 +163,10 @@ namespace VNLib.Plugins.Essentials
          * Wrapper class for converting IHttpEvent endpoints to 
          * httpEntityEndpoints
          */
-        private sealed class EvEndpointWrapper : IVirtualEndpoint<HttpEntity>
+        private sealed record class EvEndpointWrapper(IVirtualEndpoint<IHttpEvent> Wrapped) : IVirtualEndpoint<HttpEntity>
         {
-            private readonly IVirtualEndpoint<IHttpEvent> _wrapped;
-            public EvEndpointWrapper(IVirtualEndpoint<IHttpEvent> wrapping) => _wrapped = wrapping;
-            string IEndpoint.Path => _wrapped.Path;
-            ValueTask<VfReturnType> IVirtualEndpoint<HttpEntity>.Process(HttpEntity entity) => _wrapped.Process(entity);
+            string IEndpoint.Path => Wrapped.Path;
+            ValueTask<VfReturnType> IVirtualEndpoint<HttpEntity>.Process(HttpEntity entity) => Wrapped.Process(entity);
         }
 
 
@@ -318,6 +316,8 @@ namespace VNLib.Plugins.Essentials
             //Start cancellation token
             CancellationTokenSource timeout = new(Options.ExecutionTimeout);
 
+            FileProcessArgs args;
+
             try
             {
                 //Session handle, default to the shared empty session
@@ -341,24 +341,35 @@ namespace VNLib.Plugins.Essentials
                     HttpEntity entity = new(httpEvent, this, in sessionHandle, timeout.Token);
 
                     //Pre-process entity
-                    FileProcessArgs preProc = await PreProcessEntityAsync(entity);
+                    args = await PreProcessEntityAsync(entity);
 
                     //If preprocess returned a value, exit
-                    if (preProc != FileProcessArgs.Continue)
+                    if (args != FileProcessArgs.Continue)
                     {
-                        ProcessFile(httpEvent, in preProc);
+                        ProcessFile(httpEvent, in args);
                         return;
                     }
 
                     if (VirtualEndpoints.Count > 0)
                     {
-                        //Process a virtual file
-                        FileProcessArgs virtualArgs = await ProcessVirtualAsync(entity);
+                        //See if the virtual file is servicable
+                        if (!VirtualEndpoints.TryGetValue(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
+                        {
+                            args = FileProcessArgs.Continue;
+                        }
+                        else
+                        {
+                            //Invoke the page handler process method
+                            VfReturnType rt = await vf.Process(entity);
+
+                            //Process a virtual file
+                            args = GetArgsFromReturn(entity, rt);
+                        }                      
 
                         //If the entity was processed, exit
-                        if (virtualArgs != FileProcessArgs.Continue)
+                        if (args != FileProcessArgs.Continue)
                         {
-                            ProcessFile(httpEvent, in virtualArgs);
+                            ProcessFile(httpEvent, in args);
                             return;
                         }
                     }
@@ -371,7 +382,7 @@ namespace VNLib.Plugins.Essentials
                     }
 
                     //Finally process as file
-                    FileProcessArgs args = await RouteFileAsync(entity);
+                    args = await RouteFileAsync(entity);
 
                     //Finally process the file
                     ProcessFile(httpEvent, in args);
@@ -582,38 +593,29 @@ namespace VNLib.Plugins.Essentials
             }
         }
       
-
         /// <summary>
-        /// If virtual endpoints are enabled, checks for the existance of an 
-        /// endpoint and attmepts to process that endpoint.
+        /// Gets the <see cref="FileProcessArgs"/> that will finalize the response from the 
+        /// given <see cref="VfReturnType"/>
         /// </summary>
-        /// <param name="entity">The http entity to proccess</param>
-        /// <returns>The results to return to the file processor, or null of the entity requires further processing</returns>
-        protected virtual async ValueTask<FileProcessArgs> ProcessVirtualAsync(HttpEntity entity)
+        /// <param name="entity">The entity to be processed</param>
+        /// <param name="returnType">The virtual file processor return type</param>
+        /// <returns>The process args to end processing for the virtual endpoint</returns>
+        protected virtual FileProcessArgs GetArgsFromReturn(HttpEntity entity, VfReturnType returnType)
         {
-            //See if the virtual file is servicable
-            if (!VirtualEndpoints.TryGetValue(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
-            {
-                return FileProcessArgs.Continue;
-            }
-            
-            //Invoke the page handler process method
-            VfReturnType rt = await vf.Process(entity);
-            
-            if (rt == VfReturnType.VirtualSkip)
+            if (returnType == VfReturnType.VirtualSkip)
             {
                 //Virtual file was handled by the handler
                 return FileProcessArgs.VirtualSkip;
             }
-            else if(rt == VfReturnType.ProcessAsFile)
+            else if (returnType == VfReturnType.ProcessAsFile)
             {
                 return FileProcessArgs.Continue;
             }
-            
+
             //If not a get request, process it directly
             if (entity.Server.Method == HttpMethod.GET)
             {
-                switch (rt)
+                switch (returnType)
                 {
                     case VfReturnType.Forbidden:
                         return FileProcessArgs.Deny;
@@ -625,8 +627,8 @@ namespace VNLib.Plugins.Essentials
                         break;
                 }
             }
-            
-            switch (rt)
+
+            switch (returnType)
             {
                 case VfReturnType.Forbidden:
                     entity.CloseResponse(HttpStatusCode.Forbidden);
@@ -642,7 +644,7 @@ namespace VNLib.Plugins.Essentials
                     entity.CloseResponse(HttpStatusCode.NotFound);
                     break;
             }
-            
+
             return FileProcessArgs.VirtualSkip;
         }
       
@@ -654,9 +656,9 @@ namespace VNLib.Plugins.Essentials
         /// <returns>The results to return to the file processor, this method must return an argument</returns>
         protected virtual async ValueTask<FileProcessArgs> RouteFileAsync(HttpEntity entity)
         {
-            //Read local copy of the router
-            
+            //Read local copy of the router            
             IPageRouter? router = Router;
+
             //Make sure router is set
             if (router == null)
             {
@@ -668,8 +670,7 @@ namespace VNLib.Plugins.Essentials
             PostProcessFile(entity, in routine);
             //Return the routine
             return routine;
-        }
-      
+        }      
 
         /// <summary>
         /// Finds the file specified by the request and the server root the user has requested.

@@ -242,7 +242,7 @@ namespace VNLib.Net.Http.Core
                     }
 
                     //Compress the buffered data and flush if required
-                    if(CompressNextSegment(buffer, comp, writer))
+                    if (CompressNextSegment(buffer, read, comp, writer))
                     {
                         //Time to flush
                         await writer.FlushAsync(false);
@@ -309,13 +309,13 @@ namespace VNLib.Net.Http.Core
             return writer.Advance(res.BytesWritten) == 0;
         }
 
-        private static bool CompressNextSegment(Memory<byte> readSegment, IResponseCompressor comp, IResponseDataWriter writer)
+        private static bool CompressNextSegment(Memory<byte> readSegment, int read, IResponseCompressor comp, IResponseDataWriter writer)
         {
             //Get output buffer
             Memory<byte> output = writer.GetMemory();
 
             //Compress the trimmed block
-            CompressionResult res = comp.CompressBlock(readSegment, output);
+            CompressionResult res = comp.CompressBlock(readSegment[..read], output);
 
             return writer.Advance(res.BytesWritten) == 0;
         }

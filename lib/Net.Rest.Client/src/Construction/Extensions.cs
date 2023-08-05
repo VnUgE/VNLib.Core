@@ -153,6 +153,21 @@ namespace VNLib.Net.Rest.Client.Construction
         }
 
         /// <summary>
+        /// Sets a callback that will create a query string argument value
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="value">The constant query value</param>
+        /// <param name="parameter">The name of the query paramter to set</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithQuery<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, string value)
+        {
+            //Get a query item string value from the callback and sets the query paremter
+            builder.WithModifier((m, r) => r.AddQueryParameter(parameter, value));
+            return builder;
+        }
+
+        /// <summary>
         /// Specifies a model that will handle its own request body builder
         /// </summary>
         /// <typeparam name="TModel"></typeparam>
@@ -182,6 +197,18 @@ namespace VNLib.Net.Rest.Client.Construction
         }
 
         /// <summary>
+        /// Allows building of a single endpoint from an <see cref="IRestEndpointDefinition"/> and stores it in the
+        /// adapter store.
+        /// </summary>
+        /// <param name="site"></param>
+        /// <returns>A chainable <see cref="IRestEndpointBuilder"/> to build the endpoint</returns>
+        public static IRestEndpointBuilder DefineSingleEndpoint(this IRestSiteEndpointStore site)
+        {
+            EndpointAdapterBuilder builder = new(site);
+            return builder;
+        }
+
+        /// <summary>
         /// Sets the uri for all new request messages
         /// </summary>
         /// <typeparam name="TModel">The request entity type</typeparam>
@@ -192,6 +219,35 @@ namespace VNLib.Net.Rest.Client.Construction
         {
             //Use the supplied method to convert the uri to a string
             builder.WithUrl((m) => withUri(m).ToString());
+            return builder;
+        }
+
+
+        /// <summary>
+        /// Sets the uri for all new request messages
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="uri">Specifies the uri for the request builder</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithUrl<TModel>(this IRestRequestBuilder<TModel> builder, Uri uri)
+        {
+            //Use the supplied method to convert the uri to a string
+            builder.WithUrl((m) => uri.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Sets the uri for all new request messages
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="url">Specifies the uri for the request builder</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithUrl<TModel>(this IRestRequestBuilder<TModel> builder, string url)
+        {
+            //Use the supplied method to convert the uri to a string
+            builder.WithUrl((m) => url);
             return builder;
         }
 
@@ -224,6 +280,37 @@ namespace VNLib.Net.Rest.Client.Construction
             builder.WithModifier((m, req) => req.AddHeader(header, value));
             return builder;
         }
+
+        /// <summary>
+        /// Sets a callback that will create a parameter string argument value
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="callback">The callback method that gets the query value</param>
+        /// <param name="parameter">The body paramter value to set</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithParameter<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, Func<TModel, string> callback)
+        {
+            //Get a query item string value from the callback and sets the query paremter
+            builder.WithModifier((m, r) => r.AddParameter(parameter, callback(m), ParameterType.GetOrPost));
+            return builder;
+        }
+
+        /// <summary>
+        /// Sets a constant parameter string argument value
+        /// </summary>
+        /// <typeparam name="TModel">The request entity type</typeparam>
+        /// <param name="builder"></param>
+        /// <param name="value">The constant value</param>
+        /// <param name="parameter">The query paramter value to set</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithParameter<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, string value)
+        {
+            //Get a query item string value from the callback and sets the query paremter
+            builder.WithModifier((m, r) => r.AddParameter(parameter, value, ParameterType.GetOrPost));
+            return builder;
+        }
+
 
         /// <summary>
         /// Converts a task that resolves a <see cref="RestResponse"/> to a task that deserializes 

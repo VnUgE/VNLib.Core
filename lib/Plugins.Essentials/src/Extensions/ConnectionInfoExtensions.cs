@@ -24,10 +24,12 @@
 
 using System;
 using System.Net;
+using System.Linq;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
+using VNLib.Utils.Extensions;
 
 #nullable enable
 
@@ -52,6 +54,69 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Cache-Control header value for disabling cache
         /// </summary>
         public static readonly string NO_CACHE_RESPONSE_HEADER_VALUE = HttpHelpers.GetCacheString(CacheType.NoCache | CacheType.NoStore | CacheType.Revalidate);
+    
+
+        /// <summary>
+        /// Determines if the client accepts the response content type
+        /// </summary>
+        /// <param name="server"></param>
+        /// <param name="type">The desired content type</param>
+        /// <returns>True if the client accepts the content type, false otherwise</returns>
+        public static bool Accepts(this IConnectionInfo server, ContentType type)
+        {
+            //Get the content type string from he specified content type
+            string contentType = HttpHelpers.GetContentTypeString(type);
+            return Accepts(server, contentType);
+        }
+
+        /// <summary>
+        /// Determines if the client accepts the response content type
+        /// </summary>
+        /// <param name="server"></param>
+        /// <param name="contentType">The desired content type</param>
+        /// <returns>True if the client accepts the content type, false otherwise</returns>
+        public static bool Accepts(this IConnectionInfo server, string contentType)
+        {
+            if (AcceptsAny(server))
+            {
+                return true;
+            }
+
+            //If client accepts exact requested encoding 
+            if (server.Accept.Contains(contentType, StringComparer.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            //Search for the content-sub-type 
+
+            //Get prinary side of mime type
+            ReadOnlySpan<char> primary = contentType.AsSpan().SliceBeforeParam('/');
+
+            foreach(string accept in server.Accept)
+            {
+                //The the accept subtype
+                ReadOnlySpan<char> ctSubType = accept.AsSpan().SliceBeforeParam('/');
+
+                //See if accepts any subtype, or the primary sub-type matches
+                if (ctSubType[0] == '*' || ctSubType.Equals(primary, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines if the connection accepts any content type
+        /// </summary>
+        /// <returns>true if the connection accepts any content typ, false otherwise</returns>
+        private static bool AcceptsAny(this IConnectionInfo server)
+        {
+            //Accept any if no accept header was present, or accept all value */*
+            return server.Accept.Count == 0 || server.Accept.Where(static t => t.StartsWith("*/*", StringComparison.OrdinalIgnoreCase)).Any();
+        }
 
         /// <summary>
         /// Gets the <see cref="HttpRequestHeader.IfModifiedSince"/> header value and converts its value to a datetime value
