@@ -174,7 +174,7 @@ namespace VNLib.Net.Compression
             return CompressBlock(compressor.Instance, output, input, false);
         } 
         
-        private unsafe CompressionResult CompressBlock(IntPtr comp, ReadOnlyMemory<byte> output, ReadOnlyMemory<byte> input, bool finalBlock)
+        private unsafe CompressionResult CompressBlock(IntPtr comp, Memory<byte> output, ReadOnlyMemory<byte> input, bool finalBlock)
         {
             //get pointers to the input and output buffers
             using MemoryHandle inPtr = input.Pin();

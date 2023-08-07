@@ -131,7 +131,7 @@ int BrCompressBlock(CompressorState* state, CompressionOperation* operation)
 
 	if (operation->flush) 
 	{
-		brOperation = BROTLI_OPERATION_FLUSH;
+		brOperation = BROTLI_OPERATION_FINISH;
 	}
 	else
 	{

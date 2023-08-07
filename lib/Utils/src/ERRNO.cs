@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -44,51 +44,117 @@ namespace VNLib.Utils
         public static readonly ERRNO E_FAIL = false;
         
         private readonly nint ErrorCode;
+
         /// <summary>
         /// Creates a new <see cref="ERRNO"/> from the specified error value
         /// </summary>
         /// <param name="errno">The value of the error to represent</param>
         public ERRNO(nint errno) => ErrorCode = errno;
+
         /// <summary>
         /// Creates a new <see cref="ERRNO"/> from an <see cref="int"/> error code. null = 0 = false
         /// </summary>
         /// <param name="errorVal">Error code</param>
         public static implicit operator ERRNO(int errorVal) => new (errorVal);
+
         /// <summary>
         /// Creates a new <see cref="ERRNO"/> from an <see cref="int"/> error code. null = 0 = false
         /// </summary>
         /// <param name="errorVal">Error code</param>
         public static explicit operator ERRNO(int? errorVal) => new(errorVal ?? 0);
+
         /// <summary>
         /// Creates a new <see cref="ERRNO"/> from a booleam, 1 if true, 0 if false
         /// </summary>
         /// <param name="errorVal"></param>
         public static implicit operator ERRNO(bool errorVal) => new(errorVal ? 1 : 0);
+
         /// <summary>
         /// Creates a new <see cref="ERRNO"/> from a pointer value
         /// </summary>
         /// <param name="errno">The pointer value representing an error code</param>
         public static implicit operator ERRNO(nint errno) => new(errno);
+
         /// <summary>
         /// Error value as integer. Value of supplied error code or if cast from boolean 1 if true, 0 if false
         /// </summary>
         /// <param name="errorVal"><see cref="ERRNO"/> to get error code from</param>
         public static implicit operator int(ERRNO errorVal) => (int)errorVal.ErrorCode;
+
         /// <summary>
         /// C style boolean conversion. false if 0, true otherwise 
         /// </summary>
         /// <param name="errorVal"></param>
-        public static implicit operator bool(ERRNO errorVal) => errorVal != 0;       
+        public static implicit operator bool(ERRNO errorVal) => errorVal != 0;      
+        
         /// <summary>
         /// Creates a new <see cref="IntPtr"/> from the value if the stored (nint) error code 
         /// </summary>
         /// <param name="errno">The <see cref="ERRNO"/> contating the pointer value</param>
         public static implicit operator IntPtr(ERRNO errno) => new(errno.ErrorCode);
+
         /// <summary>
         /// Creates a new <c>nint</c> from the value if the stored error code 
         /// </summary>
         /// <param name="errno">The <see cref="ERRNO"/> contating the pointer value</param>
         public static implicit operator nint(ERRNO errno) => errno.ErrorCode;
+
+        /// <summary>
+        /// Compares the value of this error code to another and returns true if they are equal
+        /// </summary>
+        /// <param name="other">The value to compare</param>
+        /// <returns>True if the ERRNO value is equal to the current value</returns>
+        public readonly bool Equals(ERRNO other) => ErrorCode == other.ErrorCode;
+
+        /// <summary>
+        /// Compares the value of this error code to another and returns true if they are equal. 
+        /// You should avoid this overload as it will box the value type.
+        /// </summary>
+        /// <param name="obj">The instance to compare</param>
+        /// <returns>True if the ERRNO value is equal to the current value</returns>
+        public readonly override bool Equals(object? obj) => obj is ERRNO other && Equals(other);
+
+        /// <summary>
+        /// Returns the hash code of the underlying value
+        /// </summary>
+        /// <returns>The hashcode of the current value</returns>
+        public readonly override int GetHashCode() => ErrorCode.GetHashCode();
+
+        /// <summary>
+        /// Attempts to parse the value of the character sequence as a new error code
+        /// </summary>
+        /// <param name="value">The character sequence value to parse</param>
+        /// <param name="result">The value </param>
+        /// <returns>True if the value was successfully parsed, false othwerwise</returns>
+        public static bool TryParse(ReadOnlySpan<char> value, out ERRNO result)
+        {
+            result = 0;
+            if (nint.TryParse(value, out nint res))
+            {
+                result = new ERRNO(res);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The integer error value of the current instance in radix 10
+        /// </summary>
+        /// <returns>The radix 10 formatted error code</returns>
+        public readonly override string ToString() => ErrorCode.ToString();
+
+        /// <summary>
+        /// Formats the internal nint error code as a string in specified format
+        /// </summary>
+        /// <param name="format">The format to use</param>
+        /// <returns>The formatted error code</returns>
+        public readonly string ToString(string format) => ErrorCode.ToString(format);
+
+        ///<inheritdoc/>
+        public readonly bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) => ErrorCode.TryFormat(destination, out charsWritten, format, provider);
+
+        ///<inheritdoc/>
+        public readonly string ToString(string format, IFormatProvider? formatProvider) => ErrorCode.ToString(format, formatProvider);
 
         public static ERRNO operator +(ERRNO err, int add) => new(err.ErrorCode + add);
         public static ERRNO operator +(ERRNO err, nint add) => new(err.ErrorCode + add);
@@ -119,57 +185,6 @@ namespace VNLib.Utils
         public static bool operator ==(ERRNO err, nint other) => err.ErrorCode == other;
         public static bool operator !=(ERRNO err, nint other) => err.ErrorCode != other;
 
-        public readonly bool Equals(ERRNO other) => ErrorCode == other.ErrorCode;
-        public readonly override bool Equals(object? obj) => obj is ERRNO other && Equals(other);
-        public readonly override int GetHashCode() => ErrorCode.GetHashCode();
-
-        /// <summary>
-        /// Attempts to parse the value of the character sequence as a new error code
-        /// </summary>
-        /// <param name="value">The character sequence value to parse</param>
-        /// <param name="result">The value </param>
-        /// <returns>True if the value was successfully parsed, false othwerwise</returns>
-        public static bool TryParse(ReadOnlySpan<char> value, out ERRNO result)
-        {
-            result = 0;
-            if (nint.TryParse(value, out nint res))
-            {
-                result = new ERRNO(res);
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// The integer error value of the current instance in radix 10
-        /// </summary>
-        /// <returns>The radix 10 formatted error code</returns>
-        public readonly override string ToString()
-        {
-            //Return the string of the error code number
-            return ErrorCode.ToString();
-        }
-        /// <summary>
-        /// Formats the internal nint error code as a string in specified format
-        /// </summary>
-        /// <param name="format">The format to use</param>
-        /// <returns>The formatted error code</returns>
-        public readonly string ToString(string format)
-        {
-            //Return the string of the error code number
-            return ErrorCode.ToString(format);
-        }
-
-        ///<inheritdoc/>
-        public readonly bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider provider)
-        {
-            return ErrorCode.TryFormat(destination, out charsWritten, format, provider);
-        }
         
-        ///<inheritdoc/>
-        public readonly string ToString(string format, IFormatProvider formatProvider)
-        {
-            return ErrorCode.ToString(format, formatProvider);
-        }
     }
 }

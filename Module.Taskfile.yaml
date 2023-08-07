@@ -23,14 +23,13 @@ tasks:
      - git remote update
      - git reset --hard  
      - git pull origin {{.BRANCH_NAME}} --verify-signatures 
+     #re-write semver after hard reset
+     - dotnet-gitversion.exe /updateprojectfiles
 
 #called by build pipeline to build module
   build:
     cmds:
      - echo "building module {{.MODULE_NAME}}" 
-
-    #re-write semver after hard reset, before build
-     - dotnet-gitversion.exe /updateprojectfiles
      
      #build debug mode first
      - task: build_debug

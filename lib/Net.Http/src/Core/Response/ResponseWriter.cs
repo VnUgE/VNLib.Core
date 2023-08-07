@@ -35,6 +35,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils.IO;
+using VNLib.Utils.Memory;
 using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.Compression;
 
@@ -200,6 +202,8 @@ namespace VNLib.Net.Http.Core
             }
         }
 
+        ForwardOnlyMemoryReader<byte> _streamReader;
+
         ///<inheritdoc/>        
         async Task IHttpResponseBody.WriteEntityAsync(IResponseCompressor comp, IResponseDataWriter writer, Memory<byte> buffer)
         {
@@ -229,7 +233,7 @@ namespace VNLib.Net.Http.Core
                     buffer = buffer[..comp.BlockSize];
                 }
 
-                //Read in loop
+                //Process in loop
                 do
                 {
                     //read
@@ -241,12 +245,19 @@ namespace VNLib.Net.Http.Core
                         break;
                     }
 
-                    //Compress the buffered data and flush if required
-                    if (CompressNextSegment(buffer, read, comp, writer))
+                    //Track read bytes and loop uil all bytes are read
+                    _streamReader = new(buffer[..read]);
+                  
+                    do
                     {
-                        //Time to flush
-                        await writer.FlushAsync(false);
-                    }
+                        //Compress the buffered data and flush if required
+                        if (CompressNextSegment(ref _streamReader, comp, writer))
+                        {
+                            //Time to flush
+                            await writer.FlushAsync(false);
+                        }
+
+                    } while (_streamReader.WindowSize > 0);
 
                 } while (true);
 
@@ -309,13 +320,16 @@ namespace VNLib.Net.Http.Core
             return writer.Advance(res.BytesWritten) == 0;
         }
 
-        private static bool CompressNextSegment(Memory<byte> readSegment, int read, IResponseCompressor comp, IResponseDataWriter writer)
+        private static bool CompressNextSegment(ref ForwardOnlyMemoryReader<byte> reader, IResponseCompressor comp, IResponseDataWriter writer)
         {
             //Get output buffer
             Memory<byte> output = writer.GetMemory();
 
             //Compress the trimmed block
-            CompressionResult res = comp.CompressBlock(readSegment[..read], output);
+            CompressionResult res = comp.CompressBlock(reader.Window, output);
+
+            //Commit input bytes
+            reader.Advance(res.BytesRead);
 
             return writer.Advance(res.BytesWritten) == 0;
         }
@@ -329,6 +343,7 @@ namespace VNLib.Net.Http.Core
             HasData = false;
             Length = 0;
             _readSegment = default;
+            _streamReader = default;
 
             //Clear rseponse containers
             _streamResponse?.Dispose();

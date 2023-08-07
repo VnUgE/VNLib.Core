@@ -232,14 +232,11 @@ namespace VNLib.Utils.Memory
             }
             
             uint byteSize = ByteCount<T>((uint)block.Length);
-            
-            checked
+
+            fixed (void* ptr = &MemoryMarshal.GetReference(block))
             {
-                fixed (void* ptr = &MemoryMarshal.GetReference(block))
-                {
-                    //Calls memset
-                    Unsafe.InitBlock(ptr, 0, byteSize);
-                }
+                //Calls memset
+                Unsafe.InitBlock(ptr, 0, byteSize);
             }
         }
 
@@ -257,14 +254,11 @@ namespace VNLib.Utils.Memory
             }
             
             uint byteSize = ByteCount<T>((uint)block.Length);
-            
-            checked
-            {
-                //Pin memory and get pointer
-                using MemoryHandle handle = block.Pin();
-                //Calls memset
-                Unsafe.InitBlock(handle.Pointer, 0, byteSize);
-            }
+
+            //Pin memory and get pointer
+            using MemoryHandle handle = block.Pin();
+            //Calls memset
+            Unsafe.InitBlock(handle.Pointer, 0, byteSize);
         }
 
         /*
@@ -341,12 +335,9 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="structPtr">The pointer to the allocated structure</param>
-        public static void ZeroStruct<T>(T* structPtr) where T : unmanaged
-        {
-            //Zero block
-            Unsafe.InitBlock(structPtr, 0, (uint)sizeof(T));
-        }
-     
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ZeroStruct<T>(T* structPtr) where T : unmanaged => Unsafe.InitBlock(structPtr, 0, (uint)sizeof(T));
+
         #endregion
 
         #region Copy

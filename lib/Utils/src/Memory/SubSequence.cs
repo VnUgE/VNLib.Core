@@ -77,6 +77,8 @@ namespace VNLib.Utils.Memory
         /// <param name="offset">The relative offset from the current window offset</param>
         /// <param name="size">The size of the block</param>
         /// <returns>A <see cref="SubSequence{T}"/> of the current sequence</returns>
+        /// <exception cref="OverflowException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public readonly SubSequence<T> Slice(nuint offset, int size)
         {
             //Calc offset
