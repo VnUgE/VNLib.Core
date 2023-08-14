@@ -35,10 +35,10 @@
  */
 
 using System;
-using System.Buffers;
 using System.Text.Json;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
@@ -46,6 +46,10 @@ using VNLib.Utils.Logging;
 
 namespace VNLib.Net.Compression
 {
+
+    /// <summary>
+    /// A compressor manager that implements the IHttpCompressorManager interface, for runtime loading.
+    /// </summary>
     public sealed class CompressorManager : IHttpCompressorManager
     {
         const string NATIVE_LIB_NAME = "vnlib_compress.dll";
@@ -85,7 +89,7 @@ namespace VNLib.Net.Compression
             log?.Debug("Attempting to load native compression library from: {lib}", libPath);
 
             //Load the native library
-            _nativeLib = LibraryWrapper.LoadLibrary(libPath);
+            _nativeLib = LibraryWrapper.LoadLibrary(libPath, DllImportSearchPath.SafeDirectories);
 
             log?.Debug("Loaded native compression library with compression level {l}", _compLevel.ToString());
         }
@@ -102,26 +106,17 @@ namespace VNLib.Net.Compression
         }
 
         ///<inheritdoc/>
-        public object AllocCompressor()
-        {
-            return new Compressor();
-        }
+        public object AllocCompressor() => new Compressor();
 
         ///<inheritdoc/>
         public int InitCompressor(object compressorState, CompressionMethod compMethod)
         {
-            //For now do not allow empty compression methods, later we should allow this to be used as a passthrough
-            if(compMethod == CompressionMethod.None)
-            {
-                throw new ArgumentException("Compression method cannot be None", nameof(compMethod));
-            }
-
             Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
 
             //Instance should be null during initialization calls
             Debug.Assert(compressor.Instance == IntPtr.Zero, "Init was called but and old compressor instance was not properly freed");
 
-            //Alloc the compressor
+            //Alloc the compressor, let native lib raise exception for supported methods
             compressor.Instance = _nativeLib!.AllocateCompressor(compMethod, _compLevel);
 
             //Return the compressor block size
@@ -156,7 +151,7 @@ namespace VNLib.Net.Compression
             }
 
             //Force a flush until no more data is available
-            CompressionResult result = CompressBlock(compressor.Instance, output, default, true);
+            CompressionResult result = _nativeLib.CompressBlock(compressor.Instance, output, default, true);
             return result.BytesWritten;
         }
 
@@ -171,41 +166,9 @@ namespace VNLib.Net.Compression
             }
 
             //Compress the block
-            return CompressBlock(compressor.Instance, output, input, false);
+            return _nativeLib.CompressBlock(compressor.Instance, output, input, false);
         } 
-        
-        private unsafe CompressionResult CompressBlock(IntPtr comp, Memory<byte> output, ReadOnlyMemory<byte> input, bool finalBlock)
-        {
-            //get pointers to the input and output buffers
-            using MemoryHandle inPtr = input.Pin();
-            using MemoryHandle outPtr = output.Pin();
-
-            //Create the operation struct
-            CompressionOperation operation;
-            CompressionOperation* op = &operation;
-
-            op->flush = finalBlock ? 1 : 0;
-            op->bytesRead = 0;
-            op->bytesWritten = 0;
-
-            //Configure the input and output buffers
-            op->inputBuffer = inPtr.Pointer;
-            op->inputSize = input.Length;
-
-            op->outputBuffer = outPtr.Pointer;
-            op->outputSize = output.Length;
-
-            //Call the native compress function
-            _nativeLib!.CompressBlock(comp, &operation);
-
-            //Return the number of bytes written
-            return new()
-            {
-                BytesRead = op->bytesRead,
-                BytesWritten = op->bytesWritten
-            };
-        }
-       
+     
 
         /*
          * A class to contain the compressor state

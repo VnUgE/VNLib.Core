@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 
 using VNLib.Utils.IO;
+using VNLib.Utils.Memory;
 using VNLib.Net.Http;
 using VNLib.Utils.Extensions;
 
@@ -18,66 +19,42 @@ namespace VNLib.Net.Compression.Tests
     public class CompressorManagerTests
     {
         const string LIB_PATH = @"../../../../vnlib_compress/build/Debug/vnlib_compress.dll";
-     
 
-        [TestMethod()]
-        public void CompressDataStreamTest()
+        [TestMethod]
+        public void NativeLibApiTest()
         {
-            CompressorManager manager = InitCompressorUnderTest();
+            //Load library
+            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories);
 
-            //Allocate a compressor instance
-            object? compressor = manager.AllocCompressor();
+            LibTestComp cp = new(lib, CompressionLevel.Fastest);
 
-            Assert.IsNotNull(compressor);
+            TestSupportedMethods(cp);
 
-            //Test all 3 compression methods
-            TestCompressorMethod(manager, compressor, CompressionMethod.Brotli);
-            TestCompressorMethod(manager, compressor, CompressionMethod.Gzip);
-            TestCompressorMethod(manager, compressor, CompressionMethod.Deflate);
-        }
+            //Test for supported methods
+            TestCompressionForSupportedMethods(cp);
+        }       
 
         [TestMethod()]
         public void InitCompressorTest()
         {
             CompressorManager manager = InitCompressorUnderTest();
 
+            Assert.ThrowsException<ArgumentNullException>(() => manager.InitCompressor(null!, CompressionMethod.Deflate));
+            Assert.ThrowsException<ArgumentNullException>(() => manager.DeinitCompressor(null!));
+
             //Allocate a compressor instance
             object compressor = manager.AllocCompressor();
 
             Assert.IsNotNull(compressor);
 
-            Assert.ThrowsException<ArgumentNullException>(() => manager.InitCompressor(null!, CompressionMethod.Deflate));
-            Assert.ThrowsException<ArgumentNullException>(() => manager.DeinitCompressor(null!));
+            //Create a new testing wrapper
+            ManagerTestComp cp = new(compressor, manager);
 
-            //Make sure error occurs with non-supported comp
-            Assert.ThrowsException<ArgumentException>(() => { manager.InitCompressor(compressor, CompressionMethod.None); });
+            //Test supported methods
+            TestSupportedMethods(cp);
 
-            //test out of range, this should be a native lib error
-            Assert.ThrowsException<NotSupportedException>(() => { manager.InitCompressor(compressor, (CompressionMethod)24); });
-
-            //Test all 3 compression methods
-            CompressionMethod supported = manager.GetSupportedMethods();
-
-            if ((supported & CompressionMethod.Gzip) > 0)
-            {
-                //Make sure no error occurs with supported comp
-                manager.InitCompressor(compressor, CompressionMethod.Gzip);
-                manager.DeinitCompressor(compressor);
-            }
-
-            if((supported & CompressionMethod.Brotli) > 0)
-            {
-                //Make sure no error occurs with supported comp
-                manager.InitCompressor(compressor, CompressionMethod.Brotli);
-                manager.DeinitCompressor(compressor);
-            }
-
-            if((supported & CompressionMethod.Deflate) > 0)
-            {
-                //Make sure no error occurs with supported comp
-                manager.InitCompressor(compressor, CompressionMethod.Deflate);
-                manager.DeinitCompressor(compressor);
-            }
+            //Test for supported methods
+            TestCompressionForSupportedMethods(cp);
         }
 
         private static CompressorManager InitCompressorUnderTest()
@@ -91,12 +68,6 @@ namespace VNLib.Net.Compression.Tests
 
             //Attempt to load the native library
             manager.OnLoad(null, doc.RootElement);
-
-            //Get supported methods
-            CompressionMethod methods = manager.GetSupportedMethods();
-
-            //Verify that at least one method is supported
-            Assert.IsFalse(methods == CompressionMethod.None);
 
             return manager;
         }
@@ -119,8 +90,69 @@ namespace VNLib.Net.Compression.Tests
 
             return Encoding.UTF8.GetString(ms.AsSpan());
         }
+       
 
-        private static void TestCompressorMethod(CompressorManager manager, object compressor, CompressionMethod method)
+        private static void TestCompressionForSupportedMethods(ITestCompressor testCompressor)
+        {
+            //Get the compressor's supported methods
+            CompressionMethod methods = testCompressor.GetSupportedMethods();
+
+            //Make sure at least on method is supported by the native lib
+            Assert.IsFalse(methods == CompressionMethod.None);
+
+            //Test for brotli support
+            if ((methods & CompressionMethod.Brotli) > 0)
+            {
+                TestCompressorMethod(testCompressor, CompressionMethod.Brotli);
+            }
+
+            //Test for deflate support
+            if ((methods & CompressionMethod.Deflate) > 0)
+            {
+                TestCompressorMethod(testCompressor, CompressionMethod.Deflate);
+            }
+
+            //Test for gzip support
+            if ((methods & CompressionMethod.Gzip) > 0)
+            {
+                TestCompressorMethod(testCompressor, CompressionMethod.Gzip);
+            }
+        }
+
+        private static void TestSupportedMethods(ITestCompressor compressor)
+        {
+            //Make sure error occurs with non-supported comp
+            Assert.ThrowsException<NotSupportedException>(() => { compressor.InitCompressor(CompressionMethod.None); });
+
+            //test out of range, this should be a native lib error
+            Assert.ThrowsException<NotSupportedException>(() => { compressor.InitCompressor((CompressionMethod)24); });
+
+            //Test all 3 compression methods
+            CompressionMethod supported = compressor.GetSupportedMethods();
+
+            if ((supported & CompressionMethod.Gzip) > 0)
+            {
+                //Make sure no error occurs with supported comp
+                compressor.InitCompressor(CompressionMethod.Gzip);
+                compressor.DeinitCompressor();
+            }
+
+            if ((supported & CompressionMethod.Brotli) > 0)
+            {
+                //Make sure no error occurs with supported comp
+                compressor.InitCompressor(CompressionMethod.Brotli);
+                compressor.DeinitCompressor();
+            }
+
+            if ((supported & CompressionMethod.Deflate) > 0)
+            {
+                //Make sure no error occurs with supported comp
+                compressor.InitCompressor(CompressionMethod.Deflate);
+                compressor.DeinitCompressor();
+            }
+        }
+
+        private static void TestCompressorMethod(ITestCompressor compressor, CompressionMethod method)
         {
             /*
              * This test method initalizes a new compressor instance of the desired type
@@ -132,8 +164,12 @@ namespace VNLib.Net.Compression.Tests
              */
 
             //Time to initialize the compressor
-            int blockSize = manager.InitCompressor(compressor, method);
+            int blockSize = compressor.InitCompressor(method);
 
+            /*
+             * Currently not worrying about block size in the native lib, so this 
+             * should cause tests to fail when block size is supported later on
+             */
             Assert.IsTrue(blockSize == 0);
 
             try
@@ -141,35 +177,32 @@ namespace VNLib.Net.Compression.Tests
                 using VnMemoryStream outputStream = new();
 
                 //Create a buffer to compress
-                byte[] buffer = new byte[4096];
+                byte[] buffer = new byte[1024000];
                 byte[] output = new byte[4096];
 
                 //fill with random data
                 RandomNumberGenerator.Fill(buffer);
 
-                int read = 0;
+                ForwardOnlyMemoryReader<byte> reader = new(buffer);
 
                 //try to compress the data in chunks
-                while(read < buffer.Length)
+                while(reader.WindowSize > 0)
                 {
-                    //Get 4th of a buffer
-                    ReadOnlyMemory<byte> chunk = buffer.AsMemory(read, 1024);
-
                     //Compress data
-                    CompressionResult result = manager.CompressBlock(compressor, chunk, output);
+                    CompressionResult result = compressor.CompressBlock(reader.Window, output);
 
                     //Write the compressed data to the output stream
-                    outputStream.Write(output.Slice(0, result.BytesWritten));
+                    outputStream.Write(output, 0, result.BytesWritten);
 
-                    //Increment the read position
-                    read += result.BytesRead;
+                    //Advance reader
+                    reader.Advance(result.BytesRead);
                 }
 
                 //Flush
                 int flushed = 100;
                 while(flushed > 0)
                 { 
-                    flushed = manager.Flush(compressor, output);
+                    flushed = compressor.Flush(output);
 
                     //Write the compressed data to the output stream
                     outputStream.Write(output.AsSpan()[0..flushed]);
@@ -183,10 +216,9 @@ namespace VNLib.Net.Compression.Tests
             finally
             {
                 //Always deinitialize the compressor when done
-                manager.DeinitCompressor(compressor);
+                compressor.DeinitCompressor();
             }
         }
-
 
         private static byte[] DecompressData(VnMemoryStream inputStream, CompressionMethod method)
         {
@@ -213,6 +245,56 @@ namespace VNLib.Net.Compression.Tests
                 CompressionMethod.Brotli => new BrotliStream(input, CompressionMode.Decompress, true),
                 _ => throw new ArgumentException("Unsupported compression method", nameof(method)),
             };
+        }
+
+        interface ITestCompressor
+        {
+            int InitCompressor(CompressionMethod method);
+
+            void DeinitCompressor();
+
+            CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output);
+
+            int Flush(Memory<byte> buffer);
+
+            CompressionMethod GetSupportedMethods();
+        }
+
+        sealed record class ManagerTestComp(object Compressor, CompressorManager Manager) : ITestCompressor
+        {
+            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) => Manager.CompressBlock(Compressor, input, output);
+
+            public void DeinitCompressor() => Manager.DeinitCompressor(Compressor);
+
+            public int Flush(Memory<byte> buffer) => Manager.Flush(Compressor, buffer);
+
+            public CompressionMethod GetSupportedMethods() => Manager.GetSupportedMethods();
+
+            public int InitCompressor(CompressionMethod level) => Manager.InitCompressor(Compressor, level);
+
+        }
+
+        sealed record class LibTestComp(NativeCompressionLib Library, CompressionLevel level) : ITestCompressor
+        {
+            private INativeCompressor? _comp;
+
+            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) => _comp!.Compress(input, output);
+
+            public void DeinitCompressor()
+            {
+                _comp!.Dispose();
+                _comp = null;
+            }
+
+            public int Flush(Memory<byte> buffer) => _comp!.Flush(buffer);
+
+            public CompressionMethod GetSupportedMethods() => Library.GetSupportedMethods();
+
+            public int InitCompressor(CompressionMethod method)
+            {
+                _comp = Library.AllocCompressor(method, level);
+                return _comp.GetBlockSize();
+            }
         }
     }
 }

@@ -24,7 +24,7 @@
 
 /*
  * This file handles response entity processing. It handles in-memory response
- * processing, as well as stream response processing. It handles contraints
+ * processing, as well as stream response processing. It handles constraints
  * such as content-range limits. I tried to eliminate or reduce the amount of
  * memory copying required to process the response entity.
  */
@@ -35,7 +35,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
-using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.Compression;

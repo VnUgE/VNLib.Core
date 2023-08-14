@@ -17,7 +17,7 @@ tasks:
   
   build:
     #build from the src directory  
-    dir: '{{.USER_WORKING_DIR}}/src'  
+    dir: '{{.USER_WORKING_DIR}}'  
     cmds:
      #build in debug mode
      - msbuild /p:Configuration=debug {{.BUILD_FLAGS}} {{.MS_ARGS}} 

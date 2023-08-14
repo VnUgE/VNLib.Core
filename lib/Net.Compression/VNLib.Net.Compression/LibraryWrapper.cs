@@ -85,10 +85,10 @@ namespace VNLib.Net.Compression
     /// and used for the lifetime of the application.
     /// </para>
     /// </summary>
-    internal sealed class LibraryWrapper
+    internal sealed class LibraryWrapper 
     {
         private readonly SafeLibraryHandle _lib;
-        private readonly MethodTable _methodTable;
+        private MethodTable _methodTable;
 
         public string LibFilePath { get; }
 
@@ -104,10 +104,10 @@ namespace VNLib.Net.Compression
         /// </summary>
         /// <param name="filePath">The path to the native library to load</param>
         /// <returns>The native library wrapper</returns>
-        public static LibraryWrapper LoadLibrary(string filePath)
+        public static LibraryWrapper LoadLibrary(string filePath, DllImportSearchPath searchType)
         {
             //Load the library into the current process
-            SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(filePath, DllImportSearchPath.SafeDirectories);
+            SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(filePath, searchType);
             
             try
             {
@@ -223,6 +223,14 @@ namespace VNLib.Net.Compression
         }
 
         /// <summary>
+        /// Frees the specified compressor instance without raising exceptions
+        /// </summary>
+        /// <param name="compressor">A pointer to the valid compressor instance to free</param>
+        /// <returns>A value indicating the result of the free operation</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int FreeSafeCompressor(IntPtr compressor) => _methodTable.Free(compressor);
+
+        /// <summary>
         /// Determines the output size of a given input size and flush mode for the specified compressor
         /// </summary>
         /// <param name="compressor">A pointer to the compressor instance</param>
@@ -253,6 +261,23 @@ namespace VNLib.Net.Compression
             int result = _methodTable.Compress(compressor, operation);
             ThrowHelper.ThrowIfError(result);
             return result;
+        }
+
+        ///<inheritdoc/>
+        ~LibraryWrapper()
+        {
+            _methodTable = default;
+            _lib.Dispose();
+        }
+
+        /// <summary>
+        /// Manually releases the library
+        /// </summary>
+        internal void ManualRelease()
+        {
+            _methodTable = default;
+            _lib.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         private readonly struct MethodTable

@@ -220,10 +220,10 @@ VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionL
 		return (void*)result;
 #pragma GCC diagnostic pop
 #elif defined(_MSC_VER)
-		#pragma warning(push)
-		#pragma warning(disable: 4312)
+#pragma warning(push)
+#pragma warning(disable: 4312)
 		return (void*)result;
-		#pragma warning(pop)
+#pragma warning(pop)
 #else 
 		return (void*)result;
 #endif 
