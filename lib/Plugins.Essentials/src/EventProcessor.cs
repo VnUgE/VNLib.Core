@@ -25,7 +25,6 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -39,12 +38,12 @@ using VNLib.Plugins.Essentials.Accounts;
 using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
+using VNLib.Plugins.Essentials.Middleware;
 
 #nullable enable
 
 namespace VNLib.Plugins.Essentials
 {
-  
 
     /// <summary>
     /// Provides an abstract base implementation of <see cref="IWebRoot"/>
@@ -64,6 +63,7 @@ namespace VNLib.Plugins.Essentials
         /// The filesystem entrypoint path for the site
         /// </summary>
         public abstract string Directory { get; }
+
         ///<inheritdoc/>
         public abstract string Hostname { get; }
 
@@ -92,6 +92,7 @@ namespace VNLib.Plugins.Essentials
         /// <param name="requestPath">The path requested by the request </param>
         /// <returns>The translated and filtered filesystem path used to identify the file resource</returns>
         public abstract string TranslateResourcePath(string requestPath);
+
         /// <summary>
         /// <para>
         /// When an error occurs and is handled by the library, this event is invoked 
@@ -104,12 +105,14 @@ namespace VNLib.Plugins.Essentials
         /// <param name="entity">The active IHttpEvent representing the faulted request</param>
         /// <returns>A value indicating if the entity was proccsed by this call</returns>
         public abstract bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity);
+
         /// <summary>
         /// For pre-processing a request entity before all endpoint lookups are performed
         /// </summary>
         /// <param name="entity">The http entity to process</param>
         /// <returns>The results to return to the file processor, or null of the entity requires further processing</returns>
         public abstract ValueTask<FileProcessArgs> PreProcessEntityAsync(HttpEntity entity);
+
         /// <summary>
         /// Allows for post processing of a selected <see cref="FileProcessArgs"/> for the given entity
         /// </summary>
@@ -117,14 +120,25 @@ namespace VNLib.Plugins.Essentials
         /// <param name="chosenRoutine">The selected file processing routine for the given request</param>
         public abstract void PostProcessFile(HttpEntity entity, in FileProcessArgs chosenRoutine);
 
-        #region security
-
         ///<inheritdoc/>
         public abstract IAccountSecurityProvider AccountSecurity { get; }
 
-        #endregion
+        /// <summary>
+        /// The table of virtual endpoints that will be used to process requests
+        /// </summary>
+        /// <remarks>
+        /// May be overriden to provide a custom endpoint table
+        /// </remarks>
+        public virtual IVirtualEndpointTable EndpointTable { get; } = new SemiConsistentVeTable();
 
-        #region sessions
+        /// <summary>
+        /// The middleware chain that will be used to process requests
+        /// </summary>
+        /// <remarks>
+        /// If derrieved, may be overriden to provide a custom middleware chain
+        /// </remarks>
+        public virtual IHttpMiddlewareChain MiddlewareChain { get; } = new SemiConistentMiddlewareChain();
+
 
         /// <summary>
         /// An <see cref="ISessionProvider"/> that connects stateful sessions to 
@@ -138,10 +152,7 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="sp">The new <see cref="ISessionProvider"/></param>
         public void SetSessionProvider(ISessionProvider? sp) => _ = Interlocked.Exchange(ref Sessions, sp);
-        
-        #endregion
 
-        #region router
 
         /// <summary>
         /// An <see cref="IPageRouter"/> to route files to be processed
@@ -154,156 +165,9 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="router"><see cref="IPageRouter"/> to route incomming connections</param>
         public void SetPageRouter(IPageRouter? router) => _ = Interlocked.Exchange(ref Router, router);
+    
+   
 
-        #endregion
-
-        #region Virtual Endpoints
-
-        /* 
-         * Wrapper class for converting IHttpEvent endpoints to 
-         * httpEntityEndpoints
-         */
-        private sealed record class EvEndpointWrapper(IVirtualEndpoint<IHttpEvent> Wrapped) : IVirtualEndpoint<HttpEntity>
-        {
-            string IEndpoint.Path => Wrapped.Path;
-            ValueTask<VfReturnType> IVirtualEndpoint<HttpEntity>.Process(HttpEntity entity) => Wrapped.Process(entity);
-        }
-
-
-        /*
-         * The VE table is read-only for the processor and my only 
-         * be updated by the application via the methods below
-         * 
-         * Since it would be very inefficient to track endpoint users
-         * using locks, we can assume any endpoint that is currently 
-         * processing requests cannot be stopped, so we just focus on
-         * swapping the table when updates need to be made.
-         * 
-         * This means calls to modify the table will read the table 
-         * (clone it), modify the local copy, then exhange it for 
-         * the active table so new requests will be processed on the 
-         * new table.
-         * 
-         * To make the calls to modify the table thread safe, a lock is 
-         * held while modification operations run, then the updated
-         * copy is published. Any threads reading the old table
-         * will continue to use a stale endpoint. 
-         */
-
-        /// <summary>
-        /// A "lookup table" that represents virtual endpoints to be processed when an
-        /// incomming connection matches its path parameter
-        /// </summary>
-        private IReadOnlyDictionary<string, IVirtualEndpoint<HttpEntity>> VirtualEndpoints = new Dictionary<string, IVirtualEndpoint<HttpEntity>>();
-
-
-        /*
-         * A lock that is held by callers that intend to 
-         * modify the vep table at the same time
-         */
-        private readonly object VeUpdateLock = new();
-
-      
-        /// <summary>
-        /// Determines the endpoint type(s) and adds them to the endpoint store(s) as necessary
-        /// </summary>
-        /// <param name="endpoints">Params array of endpoints to add to the store</param>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
-        public void AddEndpoint(params IEndpoint[] endpoints)
-        {
-            //Check
-            _ = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
-            //Make sure all endpoints specify a path
-            if(endpoints.Any(static e => string.IsNullOrWhiteSpace(e?.Path)))
-            {
-                throw new ArgumentException("Endpoints array contains one or more empty endpoints");
-            }
-            
-            if (endpoints.Length == 0)
-            {
-                return;
-            }
-            
-            //Get virtual endpoints
-            IEnumerable<IVirtualEndpoint<HttpEntity>> eps = endpoints
-                                        .Where(static e => e is IVirtualEndpoint<HttpEntity>)
-                                        .Select(static e => (IVirtualEndpoint<HttpEntity>)e);
-            
-            //Get http event endpoints and create wrapper classes for conversion
-            IEnumerable<IVirtualEndpoint<HttpEntity>> evs = endpoints
-                                        .Where(static e => e is IVirtualEndpoint<IHttpEvent>)
-                                        .Select(static e => new EvEndpointWrapper((e as IVirtualEndpoint<IHttpEvent>)!));
-
-            //Uinion endpoints by their paths to combine them
-            IEnumerable<IVirtualEndpoint<HttpEntity>> allEndpoints = eps.UnionBy(evs, static s => s.Path);
-
-            lock (VeUpdateLock)
-            {
-                //Clone the current dictonary
-                Dictionary<string, IVirtualEndpoint<HttpEntity>> newTable = new(VirtualEndpoints, StringComparer.OrdinalIgnoreCase);
-                //Insert the new eps, and/or overwrite old eps
-                foreach(IVirtualEndpoint<HttpEntity> ep in allEndpoints)
-                {
-                    newTable.Add(ep.Path, ep);
-                }
-                
-                //Store the new table
-                _ = Interlocked.Exchange(ref VirtualEndpoints, newTable);
-            }
-        }
-        
-        /// <summary>
-        /// Removes the specified endpoint from the virtual endpoint store
-        /// </summary>
-        /// <param name="eps">A collection of endpoints to remove from the table</param>
-        public void RemoveEndpoint(params IEndpoint[] eps)
-        {
-            _ = eps ?? throw new ArgumentNullException(nameof(eps));
-            //Call remove on path
-            RemoveEndpoint(eps.Select(static s => s.Path).ToArray());
-        }
-
-        /// <summary>
-        /// Stops listening for connections to the specified <see cref="IVirtualEndpoint{T}"/> identified by its path
-        /// </summary>
-        /// <param name="paths">An array of endpoint paths to remove from the table</param>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="InvalidOperationException"></exception>
-        public void RemoveEndpoint(params string[] paths)
-        {
-            _ = paths ?? throw new ArgumentNullException(nameof(paths));
-
-            //Make sure all endpoints specify a path
-            if (paths.Any(static e => string.IsNullOrWhiteSpace(e)))
-            {
-                throw new ArgumentException("Paths array contains one or more empty strings");
-            }
-            
-            if(paths.Length == 0)
-            {
-                return;
-            }
-            
-            //take update lock
-            lock (VeUpdateLock)
-            {
-                //Clone the current dictonary
-                Dictionary<string, IVirtualEndpoint<HttpEntity>> newTable = new(VirtualEndpoints, StringComparer.OrdinalIgnoreCase);
-
-                foreach(string eps in paths)
-                {
-                    _ = newTable.Remove(eps);
-                }
-
-                //Store the new table
-                _ = Interlocked.Exchange(ref VirtualEndpoints, newTable);
-            }
-        }
-
-        #endregion
-      
         ///<inheritdoc/>
         public virtual async ValueTask ClientConnectedAsync(IHttpEvent httpEvent)
         {
@@ -350,10 +214,32 @@ namespace VNLib.Plugins.Essentials
                         return;
                     }
 
-                    if (VirtualEndpoints.Count > 0)
+                    //Handle middleware before file processing
+                    LinkedListNode<IHttpMiddleware>? mwNode = MiddlewareChain.GetCurrentHead();
+
+                    //Loop though nodes
+                    while(mwNode != null)
+                    {
+                        //Process
+                        HttpMiddlewareResult result = await mwNode.ValueRef.ProcessAsync(entity);
+                        
+                        switch (result)
+                        {
+                            //move next
+                            case HttpMiddlewareResult.Continue:
+                                mwNode = mwNode.Next;
+                                break;
+
+                            //Middleware completed the connection, time to exit
+                            case HttpMiddlewareResult.Complete:
+                                return;
+                        }
+                    }                
+
+                    if (!EndpointTable.IsEmpty)
                     {
                         //See if the virtual file is servicable
-                        if (!VirtualEndpoints.TryGetValue(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
+                        if (!EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
                         {
                             args = FileProcessArgs.Continue;
                         }

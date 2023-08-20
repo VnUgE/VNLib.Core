@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -44,17 +44,30 @@ namespace VNLib.Plugins.Essentials
     /// will be closed and the session disposed
     /// </returns>
 
-    public delegate Task WebsocketAcceptedCallback(WebSocketSession session);
+    public delegate Task WebSocketAcceptedCallback(WebSocketSession session);
+
+    /// <summary>
+    /// A callback method to invoke when an HTTP service successfully transfers protocols to 
+    /// the WebSocket protocol and the socket is ready to be used
+    /// </summary>
+    /// <typeparam name="T">The type of the user state object</typeparam>
+    /// <param name="session">The open websocket session instance</param>
+    /// <returns>
+    /// A <see cref="Task"/> that will be awaited by the HTTP layer. When the task completes, the transport 
+    /// will be closed and the session disposed
+    /// </returns>
+
+    public delegate Task WebSocketAcceptedCallback<T>(WebSocketSession<T> session);
 
     /// <summary>
     /// Represents a <see cref="WebSocket"/> wrapper to manage the lifetime of the captured
     /// connection context and the underlying transport. This session is managed by the parent
     /// <see cref="HttpServer"/> that it was created on.
     /// </summary>
-    public sealed class WebSocketSession : AlternateProtocolBase
+    public class WebSocketSession : AlternateProtocolBase
     {
-        private WebSocket? WsHandle;
-        private readonly WebsocketAcceptedCallback AcceptedCallback;
+        internal WebSocket? WsHandle;
+        internal readonly WebSocketAcceptedCallback AcceptedCallback;
 
         /// <summary>
         /// A cancellation token that can be monitored to reflect the state 
@@ -70,21 +83,16 @@ namespace VNLib.Plugins.Essentials
         /// <summary>
         /// Negotiated sub-protocol
         /// </summary>
-        public string? SubProtocol { get; }
-        
+        public string? SubProtocol { get; internal init; }        
+       
         /// <summary>
-        /// A user-defined state object passed during socket accept handshake
+        /// The websocket keep-alive interval
         /// </summary>
-        public object? UserState { get; internal set; }
-
-        internal WebSocketSession(string? subProtocol, WebsocketAcceptedCallback callback) 
-            : this(Guid.NewGuid().ToString("N"), subProtocol, callback)
-        { }
+        internal TimeSpan KeepAlive { get; init; }
         
-        internal WebSocketSession(string socketId, string? subProtocol, WebsocketAcceptedCallback callback)
+        internal WebSocketSession(string socketId, WebSocketAcceptedCallback callback)
         {
             SocketID = socketId;
-            SubProtocol = subProtocol;
             //Store the callback function
             AcceptedCallback = callback;
         }
@@ -101,7 +109,7 @@ namespace VNLib.Plugins.Essentials
                 WebSocketCreationOptions ce = new()
                 {
                     IsServer = true,
-                    KeepAliveInterval = TimeSpan.FromSeconds(30),
+                    KeepAliveInterval = KeepAlive,
                     SubProtocol = SubProtocol,
                 };
                 
@@ -117,7 +125,6 @@ namespace VNLib.Plugins.Essentials
             finally
             {
                 WsHandle?.Dispose();
-                UserState = null;
             }
         }
 
@@ -158,7 +165,8 @@ namespace VNLib.Plugins.Essentials
             //Create a send request with 
             return WsHandle!.SendAsync(buffer, type, endOfMessage, CancellationToken.None);
         }
-        
+     
+
         /// <summary>
         /// Asynchronously sends the specified buffer to the client of the specified type
         /// </summary>
@@ -170,7 +178,21 @@ namespace VNLib.Plugins.Essentials
         public ValueTask SendAsync(ReadOnlyMemory<byte> buffer, WebSocketMessageType type, bool endOfMessage)
         {
             //Begin receive operation only with the internal token
-            return WsHandle!.SendAsync(buffer, type, endOfMessage, CancellationToken.None);
+            return SendAsync(buffer, type, endOfMessage ? WebSocketMessageFlags.EndOfMessage : WebSocketMessageFlags.None);
+        }
+
+        /// <summary>
+        /// Asynchronously sends the specified buffer to the client of the specified type
+        /// </summary>
+        /// <param name="buffer">The buffer containing data to send</param>
+        /// <param name="type">The message/data type of the packet to send</param>
+        /// <param name="flags">Websocket message flags</param>
+        /// <returns></returns>
+        /// <exception cref="OperationCanceledException"></exception>
+        public ValueTask SendAsync(ReadOnlyMemory<byte> buffer, WebSocketMessageType type, WebSocketMessageFlags flags)
+        {
+            //Create a send request with 
+            return WsHandle!.SendAsync(buffer, type, flags, CancellationToken.None);
         }
 
 
@@ -199,6 +221,29 @@ namespace VNLib.Plugins.Essentials
                 return WsHandle.CloseOutputAsync(status, reason, cancellation);
             }
             return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <typeparam name="T">The user-state type</typeparam>
+    public sealed class WebSocketSession<T> : WebSocketSession
+    {
+
+#nullable disable
+        
+        /// <summary>
+        /// A user-defined state object passed during socket accept handshake
+        /// </summary>
+        public T UserState { get; internal init; }
+
+#nullable enable
+
+        internal WebSocketSession(string sessionId, WebSocketAcceptedCallback<T> callback)
+          : base(sessionId, (ses) => callback((ses as WebSocketSession<T>)!))
+        {
+            UserState = default;
         }
     }
 }

@@ -3,7 +3,7 @@
 *A Mono-repo for "core" VNLib projects for simplicity.*
 
 ### What is VNLib.Core?
-VNLib is a collection of .NET/C# (mostly) libraries that I maintain for many private and public projects. VNLib.Core is a subset of the larger collection of projects I have named VNLib. This repo contains libraries I consider to be utility only, or building blocks that are individually useful for other projects. You will likely see many or most of them used across may other VNLib type projects. These libraries are meant to be stand-alone, meaning that there are no required* external dependencies (except the [mscorelib](https://github.com/dotnet/runtime)). For example the [VNLib.Utils](lib/Utils/#) library is a standalone, 0 required dependency library that is useful for, logging, common extensions, and a significant collection of memory related utilities. 
+VNLib is a collection of cross platform .NET/C#/C libraries that I maintain for many private and public projects. VNLib.Core is a subset of the larger collection of projects I have named VNLib. This repo contains libraries I consider to be utility only, or building blocks that are individually useful for other projects. You will likely see many or most of them used across may other VNLib type projects. These libraries are meant to be stand-alone, meaning that there are no required* external dependencies (except the [mscorelib](https://github.com/dotnet/runtime)). For example the [VNLib.Utils](lib/Utils/#) library is a standalone, 0 required dependency library that is useful for, logging, common extensions, and a significant collection of memory related utilities. 
 
 ### Dependencies 
 Any libraries in this repository that contain external dependencies will be mentioned explicitly in the library's readme. I intend to limit this behavior, as it is the reason this repository exists.
@@ -18,7 +18,7 @@ Docs and articles will be available from the docs link below . There are docs pe
 Again, go to my website below, my email address is available, go ahead and send me a message. Or use the email address from my profile to send me an email (via proton mail for now)
 
 ### Links
-[Home Page](https://www.vaughnnugent.com)- Website home page  
+[Home Page](https://www.vaughnnugent.com) - Website home page  
 [Documentation](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Core) - Docs and articles for this module  
 [Builds for VNLib.Core](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core) - Per-project build artifacts  
 [Links for Nuget Feeds](https://www.vaughnnugent.com/resources/software/modules) - Get my NuGet feed links  
@@ -37,7 +37,7 @@ Again, go to my website below, my email address is available, go ahead and send 
 - [Plugins.PluginBase](lib/Plugins.PluginBase/#) - Base library/api for plugin developers to build fully managed/supported runtime loaded plugins, without worrying about the plumbing, such as the IPlugin api, endpoint creation, and logging! This library is required if you wish to use most of the Plugin.Extensions libraries.
 - [Net.Messaging.FBM](lib/Net.Messaging.FBM/#) - Fixed Buffer Messaging protocol, high performance, request/response architecture, client & server library, built atop http and web-sockets. As implied, relies on fixed sized internal buffers that are negotiated to transfer data with minimal overhead for known messaging architectures.
 - [WinRpMalloc](lib/WinRpMalloc/#) - A Windows x64 dll project that exposes the rpmalloc memory allocator as a NativeHeap for .NET Utils library loading in the unmanned heap architecture.
-- [Net.Compression](lib/Net.Compression/#) - A cross platform IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
+- [Net.Compression](lib/Net.Compression/#) - A cross platform native compression provider and IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
 - [Net.Rest.Client](lib/Net.Rest.Client/#) - A minimal library that provides a RestSharp client resource pool for concurrent usage with async support, along with an OAuth2 client credentials IAuthenticator implementation for use with Oauth2 plugins.
 
 ## Builds & Source

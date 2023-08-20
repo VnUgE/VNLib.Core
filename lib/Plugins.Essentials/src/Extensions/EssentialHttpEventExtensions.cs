@@ -792,27 +792,102 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string ContentTypeString(this in FileUpload upload) => HttpHelpers.GetContentTypeString(upload.ContentType);
 
-      
+
         /// <summary>
-        /// Attemts to upgrade the connection to a websocket, if the setup fails, it sets up the response to the client accordingly.
+        /// Attempts to upgrade the connection to a websocket, if the setup fails, it sets up the response to the client accordingly.
         /// </summary>
         /// <param name="entity"></param>
-        /// <param name="socketOpenedcallback">A delegate that will be invoked when the websocket has been opened by the framework</param>
+        /// <param name="socketOpenedCallback">A delegate that will be invoked when the websocket has been opened by the framework</param>
         /// <param name="subProtocol">The sub-protocol to use on the current websocket</param>
-        /// <param name="userState">An object to store in the <see cref="WebSocketSession.UserState"/> property when the websocket has been accepted</param>
+        /// <param name="userState">An object to store in the <see cref="WebSocketSession{T}.UserState"/> property when the websocket has been accepted</param>
+        /// <param name="keepAlive">An optional, explicit web-socket keep-alive interval</param>
         /// <returns>True if operation succeeds.</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public static bool AcceptWebSocket(this IHttpEvent entity, WebsocketAcceptedCallback socketOpenedcallback, object? userState, string? subProtocol = null)
+        public static bool AcceptWebSocket<T>(this IHttpEvent entity, 
+            WebSocketAcceptedCallback<T> socketOpenedCallback, 
+            T userState, 
+            string? subProtocol = null, 
+            TimeSpan keepAlive = default
+            )
+        {
+            //Must define an accept callback
+            _ = socketOpenedCallback ?? throw new ArgumentNullException(nameof(socketOpenedCallback));
+
+            bool success = PrepWebSocket(entity, subProtocol);
+            
+            if (success)
+            {
+                //Set a default keep alive if none was specified
+                if (keepAlive == default)
+                {
+                    keepAlive = TimeSpan.FromSeconds(30);
+                }
+
+                IAlternateProtocol ws = new WebSocketSession<T>(GetNewSocketId(), socketOpenedCallback)
+                {
+                    SubProtocol = subProtocol,
+                    IsSecure = entity.Server.IsSecure(),
+                    UserState = userState,
+                    KeepAlive = keepAlive,
+                };
+
+                //Setup a new websocket session with a new session id
+                entity.DangerousChangeProtocol(ws);
+            }
+            //Set the client up for a bad request response, nod a valid websocket request
+            entity.CloseResponse(HttpStatusCode.BadRequest);
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to upgrade the connection to a websocket, if the setup fails, it sets up the response to the client accordingly.
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="socketOpenedCallback">A delegate that will be invoked when the websocket has been opened by the framework</param>
+        /// <param name="subProtocol">The sub-protocol to use on the current websocket</param>
+        /// <param name="keepAlive">An optional, explicit web-socket keep-alive interval</param>
+        /// <returns>True if operation succeeds.</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static bool AcceptWebSocket(this IHttpEvent entity, WebSocketAcceptedCallback socketOpenedCallback, string? subProtocol = null, TimeSpan keepAlive = default)
+        {
+            //Must define an accept callback
+            _ = socketOpenedCallback ?? throw new ArgumentNullException(nameof(socketOpenedCallback));
+
+            bool success = PrepWebSocket(entity, subProtocol);
+
+            if(success)
+            {
+                //Set a default keep alive if none was specified
+                if (keepAlive == default)
+                {
+                    keepAlive = TimeSpan.FromSeconds(30);
+                }
+
+                IAlternateProtocol ws = new WebSocketSession(GetNewSocketId(), socketOpenedCallback)
+                {
+                    SubProtocol = subProtocol,
+                    IsSecure = entity.Server.IsSecure(),
+                    KeepAlive = keepAlive,
+                };
+
+                //Setup a new websocket session with a new session id
+                entity.DangerousChangeProtocol(ws);
+            }
+
+            return success;
+        }
+
+        private static string GetNewSocketId() => Guid.NewGuid().ToString("N");
+
+        private static bool PrepWebSocket(this IHttpEvent entity, string? subProtocol = null)
         {
             //Make sure this is a websocket request
             if (!entity.Server.IsWebSocketRequest)
             {
                 throw new InvalidOperationException("Connection is not a websocket request");
             }
-
-            //Must define an accept callback
-            _ = socketOpenedcallback ?? throw new ArgumentNullException(nameof(socketOpenedcallback));
 
             string? version = entity.Server.Headers["Sec-WebSocket-Version"];
 
@@ -835,13 +910,6 @@ namespace VNLib.Plugins.Essentials.Extensions
                     {
                         entity.Server.Headers["Sec-WebSocket-Protocol"] = subProtocol;
                     }
-
-                    //Setup a new websocket session with a new session id
-                    entity.DangerousChangeProtocol(new WebSocketSession(subProtocol, socketOpenedcallback)
-                    {
-                        IsSecure = entity.Server.IsSecure(),
-                        UserState = userState
-                    });
 
                     return true;
                 }
