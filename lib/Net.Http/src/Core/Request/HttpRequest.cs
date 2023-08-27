@@ -60,6 +60,7 @@ namespace VNLib.Net.Http.Core
         public IPEndPoint LocalEndPoint { get; set; }
         public SslProtocols EncryptionVersion { get; set; }
         public Tuple<long, long>? Range { get; set; }
+
         /// <summary>
         /// A value indicating whether the connection contained a request entity body.
         /// </summary>
@@ -80,10 +81,10 @@ namespace VNLib.Net.Http.Core
             //Create new collection for headers
             Headers = new();
             //Create new collection for request cookies
-            Cookies = new(StringComparer.OrdinalIgnoreCase);
+            Cookies = new(5, StringComparer.OrdinalIgnoreCase);
             //New list for accept
-            Accept = new();
-            AcceptLanguage = new();
+            Accept = new(10);
+            AcceptLanguage = new(10);
             //New reusable input stream
             InputStream = new(contextInfo);
             RequestBody = new();
