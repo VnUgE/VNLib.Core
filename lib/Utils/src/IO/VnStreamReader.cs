@@ -107,28 +107,12 @@ namespace VNLib.Utils.IO
         ///<inheritdoc/>
         public override async Task<string?> ReadLineAsync()
         {
+            string? result = null;
+
             //If buffered data is available, check for line termination
-            if (Available > 0)
+            if (Available > 0 && GetStringFromBuffer(ref result))
             {
-                //Get current buffer window
-                Memory<byte> buffered = _buffer.AccumulatedBuffer;
-
-                //search for line termination in current buffer
-                int term = buffered.IndexOf(LineTermination);
-
-                //Termination found in buffer window
-                if (term > -1)
-                {
-                    //Capture the line from the begining of the window to the termination
-                    Memory<byte> line = buffered[..term];
-
-                    //Shift the window to the end of the line (excluding the termination)
-                    _buffer.AdvanceStart(term + LineTermination.Length);
-
-                    //Decode the line to a string
-                    return Encoding.GetString(line.Span);
-                }
-                //Termination not found
+                return result;
             }
 
             //Compact the buffer window and see if space is avialble to buffer more data
@@ -143,24 +127,11 @@ namespace VNLib.Utils.IO
                     //No string found
                     return null;
                 }
-
-                //Get current buffer window
-                Memory<byte> buffered = _buffer.AccumulatedBuffer;
-
-                //search for line termination in current buffer
-                int term = buffered.IndexOf(LineTermination);
-
-                //Termination found in buffer window
-                if (term > -1)
+               
+                //Termination not found
+                if (GetStringFromBuffer(ref result))
                 {
-                    //Capture the line from the begining of the window to the termination
-                    Memory<byte> line = buffered[..term];
-
-                    //Shift the window to the end of the line (excluding the termination)
-                    _buffer.AdvanceStart(term + LineTermination.Length);
-
-                    //Decode the line to a string
-                    return Encoding.GetString(line.Span);
+                    return result;
                 }
             }
             //Termination not found within the entire buffer, so buffer space has been exhausted
@@ -169,6 +140,31 @@ namespace VNLib.Utils.IO
 #pragma warning disable CA2201 // Do not raise reserved exception types
             throw new OutOfMemoryException("A line termination was not found within the buffer");
 #pragma warning restore CA2201 // Do not raise reserved exception types
+        }
+
+        private bool GetStringFromBuffer(ref string? result)
+        {
+            //Get current buffer window
+            Memory<byte> buffered = _buffer.AccumulatedBuffer;
+
+            //search for line termination in current buffer
+            int term = buffered.IndexOf(LineTermination);
+
+            //Termination found in buffer window
+            if (term > -1)
+            {
+                //Capture the line from the begining of the window to the termination
+                Memory<byte> line = buffered[..term];
+
+                //Shift the window to the end of the line (excluding the termination)
+                _buffer.AdvanceStart(term + LineTermination.Length);
+
+                //Decode the line to a string
+                result = Encoding.GetString(line.Span);
+                return true;
+            }
+
+            return false;
         }
        
         ///<inheritdoc/>

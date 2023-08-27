@@ -126,9 +126,13 @@ namespace VNLib.Utils.IO
             Storage.DeleteDirectory(this.DirectoryPath);
         }
 
+        ///<inheritdoc/>
         public override long AvailableFreeSpace => Storage.AvailableFreeSpace;
+        ///<inheritdoc/>
         public override long Quota => Storage.Quota;
+        ///<inheritdoc/>
         public override long UsedSize => Storage.UsedSize;
+        ///<inheritdoc/>
         public override bool IncreaseQuotaTo(long newQuotaSize) => Storage.IncreaseQuotaTo(newQuotaSize);
 
         /// <summary>

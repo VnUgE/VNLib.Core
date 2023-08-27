@@ -1,0 +1,27 @@
+# https://taskfile.dev
+
+#Called by the vnbuild system to produce builds for my website
+#https://www.vaughnnugent.com/resources/software
+
+#This taskfile is specific to this project, since it must be compiled on the target platform
+#this simply packs the source code into a tgz file for download
+
+version: '3'
+
+tasks:
+  
+  #when build succeeds, archive the output into a tgz 
+  postbuild_success:
+    cmds:
+     - cmd: powershell mkdir -Force './bin'
+     #copy source code to target
+     - powershell -Command "Get-ChildItem -Include *.c,*.h,*.txt -Path * | Resolve-Path -Relative | tar --files-from - -czf 'bin/src.tgz'"
+
+  postbuild_failed:
+    cmds: []
+
+#Remove the output dirs on clean
+  clean:
+    ignore_error: true
+    cmds:
+     - cmd: powershell Remove-Item -Recurse './bin'

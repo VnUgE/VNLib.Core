@@ -1,0 +1,10 @@
+{
+  "name": "vnlib_compress",
+  "version": "0.1.0",
+  "author": "Vaughn Nugent",
+  "description": "A CMake cross platform native data compression library, provides brotli and zlib compressors in a single stream api",
+  "copyright": "Copyright \u00A9 2023 Vaughn Nugent",
+  "company": "Vaughn Nugent",
+  "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Compression/vnlib_compress",
+  "output_dir": "bin"
+}

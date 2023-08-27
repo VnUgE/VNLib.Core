@@ -95,8 +95,11 @@ namespace VNLib.Plugins.Essentials.Sessions
         ///<inheritdoc/>
         public virtual SessionType SessionType
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Enum.Parse<SessionType>(this[SESSION_TYPE_ENTRY]);
-            protected set => this[SESSION_TYPE_ENTRY] = ((byte)value).ToString();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            protected set => this[SESSION_TYPE_ENTRY] = value.ToString();
         }
      
         ///<inheritdoc/>

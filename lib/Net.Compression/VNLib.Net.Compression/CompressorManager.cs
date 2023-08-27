@@ -64,7 +64,7 @@ namespace VNLib.Net.Compression
         /// <param name="config">The json configuration element</param>
         public void OnLoad(ILogProvider? log, JsonElement? config)
         {
-            _compLevel = CompressionLevel.Optimal;
+            _compLevel = CompressionLevel.Fastest;
             string libPath = NATIVE_LIB_NAME;
 
             if(config.HasValue)

@@ -76,6 +76,45 @@ namespace VNLib.Net.Rest.Client.Construction
         }
 
         /// <summary>
+        /// Executes a request against the site by sending the request model parameter. An <see cref="IRestEndpointAdapter{TModel}"/> must be 
+        /// defined to handle requests of the given model type.
+        /// </summary>
+        /// <typeparam name="TModel"></typeparam>
+        /// <typeparam name="TJson">The response entity type</typeparam>
+        /// <param name="site"></param>
+        /// <param name="entity">The request entity model to send to the server</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>A task that resolves the response message with json resonse support</returns>
+        public static async Task<RestResponse<TJson>> ExecuteAsync<TModel, TJson>(this IRestSiteAdapter site, TModel entity, CancellationToken cancellation = default)
+        {
+            //Get the adapter for the model
+            IRestEndpointAdapter<TModel> adapter = site.GetAdapter<TModel>();
+
+            //Get new request on adapter
+            RestRequest request = adapter.GetRequest(entity);
+
+            //Wait to exec operations if needed
+            await site.WaitAsync(cancellation);
+
+            RestResponse<TJson> response;
+
+            //Get rest client
+            using (ClientContract contract = site.GetClient())
+            {
+                //Exec response
+                response = await contract.Resource.ExecuteAsync<TJson>(request, cancellation);
+            }
+
+            //Site handler should not cause an exception
+            site.OnResponse(response);
+
+            //invoke response handlers
+            adapter.OnResponse(entity, response);
+
+            return response;
+        }
+
+        /// <summary>
         /// Executes a request using a model that defines its own endpoint information, on the current site and returns the response
         /// </summary>
         /// <typeparam name="TModel">The request model type</typeparam>

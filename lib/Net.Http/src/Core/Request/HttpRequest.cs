@@ -80,7 +80,7 @@ namespace VNLib.Net.Http.Core
             //Create new collection for headers
             Headers = new();
             //Create new collection for request cookies
-            Cookies = new();
+            Cookies = new(StringComparer.OrdinalIgnoreCase);
             //New list for accept
             Accept = new();
             AcceptLanguage = new();

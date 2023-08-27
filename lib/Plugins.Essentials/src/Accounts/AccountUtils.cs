@@ -468,12 +468,12 @@ namespace VNLib.Plugins.Essentials.Accounts
 
         #endregion
 
-        #region Privilage Extensions
+        #region Privilege Extensions
         /// <summary>
-        /// Compares the users privilage level against the specified level
+        /// Compares the users privilege level against the specified level
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="level">64bit privilage level to compare</param>
+        /// <param name="level">64bit privilege level to compare</param>
         /// <returns>true if the current user has at least the specified level or higher</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool HasLevel(this in SessionInfo session, byte level) => (session.Privilages & LEVEL_MSK) >= (((ulong)level << LEVEL_MSK_OFFSET) & LEVEL_MSK);
