@@ -371,6 +371,7 @@ namespace VNLib.Utils.Extensions
             string fullPath = Path.Combine(dir.FullName, fileName);
             return new FileStream(fullPath, mode, access, share, bufferSize, options);
         }
+       
         /// <summary>
         /// Deletes the speicifed file from the current directory
         /// </summary>
@@ -383,6 +384,7 @@ namespace VNLib.Utils.Extensions
             string fullPath = Path.Combine(dir.FullName, fileName);
             File.Delete(fullPath);
         }
+        
         /// <summary>
         /// Determines if a file exists within the current directory
         /// </summary>
@@ -395,6 +397,48 @@ namespace VNLib.Utils.Extensions
             _ = dir ?? throw new ArgumentNullException(nameof(dir));
             string fullPath = Path.Combine(dir.FullName, fileName);
             return FileOperations.FileExists(fullPath);
+        }
+
+
+        /// <summary>
+        /// Creates a new scope for the given filesystem. All operations will be offset by the given path
+        /// within the parent filesystem.
+        /// </summary>
+        /// <param name="fs"></param>
+        /// <param name="offsetPath">The base path to prepend to all requests</param>
+        /// <returns>A new <see cref="ISimpleFilesystem"/> with a new filesystem directory scope</returns>
+        public static ISimpleFilesystem CreateNewScope(this ISimpleFilesystem fs, string offsetPath) => new FsScope(fs, offsetPath);
+
+        private sealed record class FsScope(ISimpleFilesystem Parent, string OffsetPath) : ISimpleFilesystem
+        {
+
+            ///<inheritdoc/>
+            public Task DeleteFileAsync(string filePath, CancellationToken cancellation)
+            {
+                string path = Path.Combine(OffsetPath, filePath);
+                return Parent.DeleteFileAsync(path, cancellation);
+            }
+
+            ///<inheritdoc/>
+            public string GetExternalFilePath(string filePath)
+            {
+                string path = Path.Combine(OffsetPath, filePath);
+                return Parent.GetExternalFilePath(path);
+            }
+
+            ///<inheritdoc/>
+            public Task<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation)
+            {
+                string path = Path.Combine(OffsetPath, filePath);
+                return Parent.ReadFileAsync(path, output, cancellation);
+            }
+
+            ///<inheritdoc/>
+            public Task WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation)
+            {
+                string path = Path.Combine(OffsetPath, filePath);
+                return Parent.WriteFileAsync(path, data, contentType, cancellation);
+            }
         }
     }
 }
