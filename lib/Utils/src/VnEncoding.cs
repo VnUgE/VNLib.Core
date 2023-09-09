@@ -471,7 +471,8 @@ namespace VNLib.Utils
                 }
             }
             return value;
-        }      
+        }     
+        
         /// <summary>
         /// Converts the base32 character buffer to its structure representation
         /// </summary>
@@ -485,7 +486,7 @@ namespace VNLib.Utils
             //calc size of bin buffer
             int size = base32.Length;
             //Rent a bin buffer
-            using UnsafeMemoryHandle<byte> binBuffer = Memory.MemoryUtil.UnsafeAlloc(size);
+            using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAlloc(size);
             //Try to decode the data
             ERRNO decoded = TryFromBase32Chars(base32, binBuffer.Span);
             //Marshal back to a struct 
@@ -505,7 +506,7 @@ namespace VNLib.Utils
                 return null;
             }
             //Buffer size of the base32 string will always be enough buffer space
-            using UnsafeMemoryHandle<byte> tempBuffer = Memory.MemoryUtil.UnsafeAlloc(base32.Length);
+            using UnsafeMemoryHandle<byte> tempBuffer = MemoryUtil.UnsafeAlloc(base32.Length);
             //Try to decode the data
             ERRNO decoded = TryFromBase32Chars(base32, tempBuffer.Span);
             
@@ -704,6 +705,7 @@ namespace VNLib.Utils
         {
             return Convert.TryFromBase64Chars(base64, buffer, out int bytesWritten) ? bytesWritten : ERRNO.E_FAIL;
         }
+
         /// <summary>
         /// Tries to convert the 8-bit unsigned integers inside the specified read-only span
         /// into their equivalent string representation that is encoded with base-64 digits.

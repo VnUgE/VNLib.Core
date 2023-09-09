@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -30,78 +30,82 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Hashing
 {
 
-    public static unsafe partial class VnArgon2
+    internal readonly ref struct Argon2PasswordEntry
     {
-        private readonly ref struct Argon2PasswordEntry
+        private readonly ReadOnlySpan<char> _window;
+
+        public readonly Argon2Version Version;
+        public readonly ReadOnlySpan<char> Salt;
+        public readonly ReadOnlySpan<char> Hash;
+
+        private static Argon2Version ParseVersion(ReadOnlySpan<char> window)
         {
-            public readonly uint TimeCost;
-            public readonly uint MemoryCost;
-            public readonly Argon2_version Version;
-            public readonly uint Parallelism;
-            public readonly ReadOnlySpan<char> Salt;
-            public readonly ReadOnlySpan<char> Hash;            
+            //Version comes after the v= prefix
+            ReadOnlySpan<char> v = window.SliceAfterParam("v=");
+            v = v.SliceBeforeParam(',');
+            //Parse the version as an enum value
+            return Enum.Parse<Argon2Version>(v);
+        }
 
-            private static Argon2_version ParseVersion(ReadOnlySpan<char> window)
-            {
-                //Version comes after the v= prefix
-                ReadOnlySpan<char> v = window.SliceAfterParam("v=");
-                v = v.SliceBeforeParam(',');
-                //Parse the version as an enum value
-                return Enum.Parse<Argon2_version>(v);
-            }
+        private static uint ParseTimeCost(ReadOnlySpan<char> window)
+        {
+            //TimeCost comes after the t= prefix
+            ReadOnlySpan<char> t = window.SliceAfterParam("t=");
+            t = t.SliceBeforeParam(',');
+            //Parse the time cost as an unsigned integer
+            return uint.Parse(t, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        }
 
-            private static uint ParseTimeCost(ReadOnlySpan<char> window)
-            {
-                //TimeCost comes after the t= prefix
-                ReadOnlySpan<char> t = window.SliceAfterParam("t=");
-                t = t.SliceBeforeParam(',');
-                //Parse the time cost as an unsigned integer
-                return uint.Parse(t, NumberStyles.Integer, CultureInfo.InvariantCulture);
-            }
+        private static uint ParseMemoryCost(ReadOnlySpan<char> window)
+        {
+            //MemoryCost comes after the m= prefix
+            ReadOnlySpan<char> m = window.SliceAfterParam("m=");
+            m = m.SliceBeforeParam(',');
+            //Parse the memory cost as an unsigned integer
+            return uint.Parse(m, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        }
 
-            private static uint ParseMemoryCost(ReadOnlySpan<char> window)
-            {
-                //MemoryCost comes after the m= prefix
-                ReadOnlySpan<char> m = window.SliceAfterParam("m=");
-                m = m.SliceBeforeParam(',');
-                //Parse the memory cost as an unsigned integer
-                return uint.Parse(m, NumberStyles.Integer, CultureInfo.InvariantCulture);
-            }
+        private static uint ParseParallelism(ReadOnlySpan<char> window)
+        {
+            //Parallelism comes after the p= prefix
+            ReadOnlySpan<char> p = window.SliceAfterParam("p=");
+            p = p.SliceBeforeParam(',');
+            //Parse the parallelism as an unsigned integer
+            return uint.Parse(p, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        }
 
-            private static uint ParseParallelism(ReadOnlySpan<char> window)
-            {
-                //Parallelism comes after the p= prefix
-                ReadOnlySpan<char> p = window.SliceAfterParam("p=");
-                p = p.SliceBeforeParam(',');
-                //Parse the parallelism as an unsigned integer
-                return uint.Parse(p, NumberStyles.Integer, CultureInfo.InvariantCulture);
-            }
+        private static ReadOnlySpan<char> ParseSalt(ReadOnlySpan<char> window)
+        {
+            //Salt comes after the s= prefix
+            ReadOnlySpan<char> s = window.SliceAfterParam("s=");
+            s = s.SliceBeforeParam('$');
+            //Parse the salt as a string
+            return s;
+        }
 
-            private static ReadOnlySpan<char> ParseSalt(ReadOnlySpan<char> window)
-            {
-                //Salt comes after the s= prefix
-                ReadOnlySpan<char> s = window.SliceAfterParam("s=");
-                s = s.SliceBeforeParam('$');
-                //Parse the salt as a string
-                return s;
-            }
+        private static ReadOnlySpan<char> ParseHash(ReadOnlySpan<char> window)
+        {
+            //Get last index of dollar sign for the start of the password hash
+            int start = window.LastIndexOf('$');
+            return window[(start + 1)..];
+        }
 
-            private static ReadOnlySpan<char> ParseHash(ReadOnlySpan<char> window)
-            {
-                //Get last index of dollar sign for the start of the password hash
-                int start = window.LastIndexOf('$');
-                return window[(start + 1)..];
-            }
+        public Argon2PasswordEntry(ReadOnlySpan<char> str)
+        {
+            _window = str;
+            Version = ParseVersion(str);
+            Salt = ParseSalt(str);
+            Hash = ParseHash(str);
+        }
 
-            public Argon2PasswordEntry(ReadOnlySpan<char> str)
+        public readonly Argon2CostParams GetCostParams()
+        {
+            return new()
             {
-                Version = ParseVersion(str);
-                TimeCost = ParseTimeCost(str);
-                MemoryCost = ParseMemoryCost(str);
-                Parallelism = ParseParallelism(str);
-                Salt = ParseSalt(str);
-                Hash = ParseHash(str);
-            }
+                MemoryCost = ParseMemoryCost(_window),
+                TimeCost = ParseTimeCost(_window),
+                Parallelism = ParseParallelism(_window)
+            };
         }
     }
 }

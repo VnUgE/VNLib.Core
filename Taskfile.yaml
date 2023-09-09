@@ -68,8 +68,7 @@ tasks:
 #Remove the output dirs on clean
   clean:
     dir: '{{.USER_WORKING_DIR}}'
+    ignore_error: true
     cmds:
      - cmd: powershell Remove-Item -Recurse './bin'
-       ignore_error: true
      - cmd: powershell Remove-Item -Recurse './obj'
-       ignore_error: true

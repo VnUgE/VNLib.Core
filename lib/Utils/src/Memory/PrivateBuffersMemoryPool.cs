@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -28,19 +28,22 @@ using System.Buffers;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Provides a <see cref="MemoryPool{T}"/> wrapper for using unmanged <see cref="Win32PrivateHeap"/>s
+    /// Provides a <see cref="MemoryPool{T}"/> wrapper for using an <see cref="IUnmangedHeap"/>s
     /// </summary>
     /// <typeparam name="T">Unamanged memory type to provide data memory instances from</typeparam>
     public sealed class PrivateBuffersMemoryPool<T> : MemoryPool<T> where T : unmanaged
     {
         private readonly IUnmangedHeap Heap;
 
-        internal PrivateBuffersMemoryPool(IUnmangedHeap heap):base()
+        internal PrivateBuffersMemoryPool(IUnmangedHeap heap, int maxSize)
         {
-            this.Heap = heap;
+            Heap = heap;
+            MaxBufferSize = maxSize;
         }
+
         ///<inheritdoc/>
-        public override int MaxBufferSize => int.MaxValue;
+        public override int MaxBufferSize { get; }
+
         ///<inheritdoc/>
         ///<exception cref="OutOfMemoryException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
@@ -53,10 +56,8 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="TDifType">The unmanaged data type to allocate for</typeparam>
         /// <param name="minBufferSize">Minumum size of the buffer</param>
         /// <returns>The memory owner of a different data type</returns>
-        public IMemoryOwner<TDifType> Rent<TDifType>(int minBufferSize = 0) where TDifType : unmanaged
-        {
-            return new SysBufferMemoryManager<TDifType>(Heap, (uint)minBufferSize, false);
-        }
+        public IMemoryOwner<TDifType> Rent<TDifType>(int minBufferSize = 0) where TDifType : unmanaged => new SysBufferMemoryManager<TDifType>(Heap, (uint)minBufferSize, false);
+
         ///<inheritdoc/>
         protected override void Dispose(bool disposing)
         {

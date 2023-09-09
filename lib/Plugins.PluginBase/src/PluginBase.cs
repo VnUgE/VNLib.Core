@@ -32,6 +32,7 @@ using System.Collections.Generic;
 
 using Serilog;
 
+using VNLib.Utils;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Attributes;
@@ -126,17 +127,16 @@ namespace VNLib.Plugins
         [LogInitializer]
         public virtual void InitLog(string[] cmdArgs)
         {
-            //Get the procce's command ling args to check for logging verbosity
-            List<string> args = new(cmdArgs);
+            ArgumentList args = new(cmdArgs);
             //Open new logger config
             LoggerConfiguration logConfig = new();
             //Check for verbose
-            if (args.Contains("-v"))
+            if (args.HasArgument("-v"))
             {
                 logConfig.MinimumLevel.Verbose();
             }
             //Check for debug mode
-            else if (args.Contains("-d"))
+            else if (args.HasArgument("-d"))
             {
                 logConfig.MinimumLevel.Debug();
             }
@@ -147,7 +147,7 @@ namespace VNLib.Plugins
             }
 
             //Init console log
-            InitConsoleLog(cmdArgs, logConfig);
+            InitConsoleLog(args, logConfig);
 
             //Init file log
             InitFileLog(logConfig);
@@ -156,10 +156,10 @@ namespace VNLib.Plugins
             Log = new VLogProvider(logConfig);
         }
 
-        private void InitConsoleLog(string[] args, LoggerConfiguration logConfig)
+        private void InitConsoleLog(ArgumentList args, LoggerConfiguration logConfig)
         {
             //If silent arg is not specified, open log to console
-            if (!(args.Contains("--silent") || args.Contains("-s")))
+            if (!(args.HasArgument("--silent") || args.HasArgument("-s")))
             {
                 _ = logConfig.WriteTo.Console(outputTemplate: LogTemplate, formatProvider:null);
             }

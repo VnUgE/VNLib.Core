@@ -334,9 +334,9 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T">The unmanged data type to provide allocations from</typeparam>
         /// <returns>The new <see cref="MemoryPool{T}"/> heap wrapper.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryPool<T> ToPool<T>(this IUnmangedHeap heap) where T : unmanaged
+        public static MemoryPool<T> ToPool<T>(this IUnmangedHeap heap, int maxBufferSize = int.MaxValue) where T : unmanaged
         {
-            return new PrivateBuffersMemoryPool<T>(heap);
+            return new PrivateBuffersMemoryPool<T>(heap, maxBufferSize);
         }
 
         /// <summary>
@@ -388,6 +388,7 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe MemoryHandle<T> Alloc<T>(this IUnmangedHeap heap, nuint elements, bool zero = false) where T : unmanaged
         {
+            _ = heap ?? throw new ArgumentNullException(nameof(heap));
             //Minimum of one element
             elements = Math.Max(elements, 1);
             //Get element size

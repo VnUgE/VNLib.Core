@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -22,7 +22,9 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
+using System.Threading;
 using System.Threading.Tasks;
+
 using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.Async
@@ -35,6 +37,6 @@ namespace VNLib.Utils.Async
         /// <summary>
         /// Releases the resource from use. Called when a <see cref="ExclusiveResourceHandle{T}"/> is disposed
         /// </summary>
-        ValueTask ReleaseAsync();
+        ValueTask ReleaseAsync(CancellationToken cancellation = default);
     }
 }

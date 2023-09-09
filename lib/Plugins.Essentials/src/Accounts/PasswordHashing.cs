@@ -38,43 +38,48 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// </summary>
     public sealed class PasswordHashing : IPasswordHashingProvider
     {
-        private const int STACK_MAX_BUFF_SIZE = 64;
+        private const int STACK_MAX_BUFF_SIZE = 128;
 
         private readonly ISecretProvider _secret;
-
-        private readonly uint TimeCost;
-        private readonly uint MemoryCost;
-        private readonly uint HashLen;
-        private readonly int SaltLen;
-        private readonly uint Parallelism;
-
-        /// <summary>
-        /// Initalizes the <see cref="PasswordHashing"/> class
-        /// </summary>
-        /// <param name="secret">The password secret provider</param>
-        /// <param name="saltLen">A positive integer for the size of the random salt used during the hashing proccess</param>
-        /// <param name="timeCost">The Argon2 time cost parameter</param>
-        /// <param name="memoryCost">The Argon2 memory cost parameter</param>
-        /// <param name="hashLen">The size of the hash to produce during hashing operations</param>
-        /// <param name="parallism">
-        /// The Argon2 parallelism parameter (the number of threads to use for hasing) 
-        /// (default = 0 - defaults to the number of logical processors)
-        /// </param>
-        /// <exception cref="ArgumentNullException"></exception> 
-        public PasswordHashing(ISecretProvider secret, int saltLen = 32, uint timeCost = 4, uint memoryCost = UInt16.MaxValue, uint parallism = 0, uint hashLen = 128)
+        private readonly IArgon2Library _argon2;
+        private readonly Argon2ConfigParams _config;
+        
+        private PasswordHashing(IArgon2Library library, ISecretProvider secret, in Argon2ConfigParams setup)
         {
             //Store getter
             _secret = secret ?? throw new ArgumentNullException(nameof(secret));
-            
-            //Store parameters
-            HashLen = hashLen;
-            //Store maginitude as a unit
-            MemoryCost = memoryCost;
-            TimeCost = timeCost;
-            SaltLen = saltLen;
-            Parallelism = parallism < 1 ? (uint)Environment.ProcessorCount : parallism;
+            _argon2 = library ?? throw new ArgumentNullException(nameof(library));
+            _config = setup;
         }
-        
+
+        /// <summary>
+        /// Creates a new <see cref="PasswordHashing"/> instance using the specified library.
+        /// </summary>
+        /// <param name="library">The library instance to use</param>
+        /// <param name="secret">The password secret provider</param>
+        /// <param name="setup">The configuration setup arguments</param>
+        /// <returns>The instance of the library to use</returns>
+        public static PasswordHashing Create(IArgon2Library library, ISecretProvider secret, in Argon2ConfigParams setup) => new (library, secret, setup);
+
+        /// <summary>
+        /// Creates a new <see cref="PasswordHashing"/> instance using the default 
+        /// <see cref="VnArgon2"/> library.
+        /// </summary>
+        /// <param name="secret">The password secret provider</param>
+        /// <param name="setup">The configuration setup arguments</param>
+        /// <returns>The instance of the library to use</returns>
+        /// <exception cref="DllNotFoundException"></exception>
+        public static PasswordHashing Create(ISecretProvider secret, in Argon2ConfigParams setup) => Create(VnArgon2.GetOrLoadSharedLib(), secret, in setup);
+
+        private Argon2CostParams GetCostParams()
+        {
+            return new Argon2CostParams
+            {
+                MemoryCost = _config.MemoryCost,
+                TimeCost = _config.TimeCost,
+                Parallelism = _config.Parallelism
+            };
+        }
         
         ///<inheritdoc/>
         ///<exception cref="VnArgon2Exception"></exception>
@@ -109,7 +114,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 //Get the secret from the callback
                 ERRNO count = _secret.GetSecret(secretBuffer);
                 //Verify
-                return VnArgon2.Verify2id(password, passHash, secretBuffer[..(int)count]);
+                return _argon2.Verify2id(password, passHash, secretBuffer[..(int)count]);
             }
             finally
             {
@@ -129,12 +134,27 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <remarks>Uses fixed time comparison from <see cref="CryptographicOperations"/> class</remarks>
         public bool Verify(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> password)
         {
-            //Alloc a buffer with the same size as the hash
-            using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc(hash.Length, true);
-            //Hash the password with the current config
-            Hash(password, salt, hashBuf.Span);
-            //Compare the hashed password to the specified hash and return results
-            return CryptographicOperations.FixedTimeEquals(hash, hashBuf.Span);
+            if (hash.Length < STACK_MAX_BUFF_SIZE)
+            {
+                //Alloc stack buffer
+                Span<byte> hashBuf = stackalloc byte[hash.Length];
+
+                //Hash the password with the current config
+                Hash(password, salt, hashBuf);
+
+                //Compare the hashed password to the specified hash and return results
+                return CryptographicOperations.FixedTimeEquals(hash, hashBuf);
+            }
+            else
+            {
+                using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc(hash.Length, true);
+
+                //Hash the password with the current config
+                Hash(password, salt, hashBuf.Span);
+
+                //Compare the hashed password to the specified hash and return results
+                return CryptographicOperations.FixedTimeEquals(hash, hashBuf.Span);
+            }
         }
         
         /// <inheritdoc/>
@@ -142,22 +162,25 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>A <see cref="PrivateString"/> of the hashed and encoded password</returns>
         public PrivateString Hash(ReadOnlySpan<char> password)
         {
+            Argon2CostParams costParams = GetCostParams();
+
             //Alloc shared buffer for the salt and secret buffer
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(SaltLen + _secret.BufferSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(_config.SaltLen + _secret.BufferSize, true);
+
+            //Split buffers
+            Span<byte> saltBuf = buffer.Span[.._config.SaltLen];
+            Span<byte> secretBuf = buffer.Span[_config.SaltLen..];
+
+            //Fill the buffer with random bytes
+            RandomHash.GetRandomBytes(saltBuf);
+
             try
             {
-                //Split buffers
-                Span<byte> saltBuf = buffer.Span[..SaltLen];
-                Span<byte> secretBuf = buffer.Span[SaltLen..];
-                
-                //Fill the buffer with random bytes
-                RandomHash.GetRandomBytes(saltBuf);
-                
                 //recover the secret
                 ERRNO count = _secret.GetSecret(secretBuf);
 
                 //Hashes a password, with the current parameters
-                return (PrivateString)VnArgon2.Hash2id(password, saltBuf, secretBuf[..(int)count], TimeCost, MemoryCost, Parallelism, HashLen);
+                return (PrivateString)_argon2.Hash2id(password, saltBuf, secretBuf[..(int)count], in costParams, _config.HashLen);
             }
             finally
             {
@@ -170,21 +193,24 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>A <see cref="PrivateString"/> of the hashed and encoded password</returns>
         public PrivateString Hash(ReadOnlySpan<byte> password)
         {
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(SaltLen + _secret.BufferSize, true);
+            Argon2CostParams costParams = GetCostParams();
+
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(_config.SaltLen + _secret.BufferSize, true);
+
+            //Split buffers
+            Span<byte> saltBuf = buffer.Span[.._config.SaltLen];
+            Span<byte> secretBuf = buffer.Span[_config.SaltLen..];
+
+            //Fill the buffer with random bytes
+            RandomHash.GetRandomBytes(saltBuf);
+
             try
             {
-                //Split buffers
-                Span<byte> saltBuf = buffer.Span[..SaltLen];
-                Span<byte> secretBuf = buffer.Span[SaltLen..];
-
-                //Fill the buffer with random bytes
-                RandomHash.GetRandomBytes(saltBuf);
-
                 //recover the secret
                 ERRNO count = _secret.GetSecret(secretBuf);
 
                 //Hashes a password, with the current parameters
-                return (PrivateString)VnArgon2.Hash2id(password, saltBuf, secretBuf[..(int)count], TimeCost, MemoryCost, Parallelism, HashLen);
+                return (PrivateString)_argon2.Hash2id(password, saltBuf, secretBuf[..(int)count], in costParams, _config.HashLen);
             }
             finally
             {
@@ -202,14 +228,16 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <exception cref="VnArgon2Exception"></exception>
         public void Hash(ReadOnlySpan<byte> password, ReadOnlySpan<byte> salt, Span<byte> hashOutput)
         {
+            Argon2CostParams costParams = GetCostParams();
+
             //alloc secret buffer
-            using UnsafeMemoryHandle<byte> secretBuffer = MemoryUtil.UnsafeAlloc(_secret.BufferSize, true);
+            using UnsafeMemoryHandle<byte> secretBuffer = MemoryUtil.UnsafeAllocNearestPage(_secret.BufferSize, true);
             try
             {
                 //Get the secret from the callback
                 ERRNO count = _secret.GetSecret(secretBuffer.Span);
                 //Hashes a password, with the current parameters
-                VnArgon2.Hash2id(password, salt, secretBuffer.Span[..(int)count], hashOutput, TimeCost, MemoryCost, Parallelism);
+                _argon2.Hash2id(password, salt, secretBuffer.Span[..(int)count], hashOutput, in costParams);
             }
             finally
             {
@@ -225,36 +253,36 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="passHash"></param>
         /// <param name="password"></param>
         /// <exception cref="NotSupportedException"></exception>
-        public bool Verify(ReadOnlySpan<byte> passHash, ReadOnlySpan<byte> password)
-        {
-            throw new NotSupportedException();
-        }
+        public bool Verify(ReadOnlySpan<byte> passHash, ReadOnlySpan<byte> password) => throw new NotSupportedException();
 
         ///<inheritdoc/>
         ///<exception cref="VnArgon2Exception"></exception>
         public ERRNO Hash(ReadOnlySpan<byte> password, Span<byte> hashOutput)
         {
             //Calc the min buffer size
-            int minBufferSize = SaltLen + _secret.BufferSize + (int)HashLen;
+            int minBufferSize = _config.SaltLen + _secret.BufferSize + (int)_config.HashLen;
+
+            Argon2CostParams costParams = GetCostParams();
 
             //Alloc heap buffer 
             using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage<byte>(minBufferSize, true);
+
+            //Segment the buffer
+            HashBufferSegments segments = new(buffer.Span, _secret.BufferSize, _config.SaltLen, (int)_config.HashLen);
+
+            //Fill the buffer with random bytes
+            RandomHash.GetRandomBytes(segments.SaltBuffer);
+
             try
             {
-                //Segment the buffer
-                HashBufferSegments segments = new(buffer.Span, _secret.BufferSize, SaltLen, (int)HashLen);
-
-                //Fill the buffer with random bytes
-                RandomHash.GetRandomBytes(segments.SaltBuffer);
-
                 //recover the secret
                 ERRNO count = _secret.GetSecret(segments.SecretBuffer);
 
                 //Hash the password in binary and write the secret to the binary buffer
-                VnArgon2.Hash2id(password, segments.SaltBuffer, segments.SecretBuffer[..(int)count], segments.HashBuffer, TimeCost, MemoryCost, Parallelism);
+                _argon2.Hash2id(password, segments.SaltBuffer, segments.SecretBuffer[..(int)count], segments.HashBuffer, in costParams);
 
                 //Hash size is the desired hash size
-                return new((int)HashLen);
+                return new((int)_config.HashLen);
             }
             finally
             {

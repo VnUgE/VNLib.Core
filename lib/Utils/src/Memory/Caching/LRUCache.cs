@@ -35,17 +35,20 @@ namespace VNLib.Utils.Memory.Caching
     public abstract class LRUCache<TKey, TValue> : LRUDataStore<TKey, TValue> where TKey : notnull
     {
         ///<inheritdoc/>
-        protected LRUCache()
-        {}
+        protected LRUCache(): base()
+        { }
+
         ///<inheritdoc/>
         protected LRUCache(int initialCapacity) : base(initialCapacity)
-        {}
+        { }
+
         ///<inheritdoc/>
         protected LRUCache(IEqualityComparer<TKey> keyComparer) : base(keyComparer)
-        {}
+        { }
+
         ///<inheritdoc/>
         protected LRUCache(int initialCapacity, IEqualityComparer<TKey> keyComparer) : base(initialCapacity, keyComparer)
-        {}
+        { }
 
         /// <summary>
         /// The maximum number of items to store in LRU cache
@@ -121,6 +124,7 @@ namespace VNLib.Utils.Memory.Caching
         /// </summary>
         /// <param name="evicted">The record that is being evicted</param>
         protected abstract void Evicted(ref KeyValuePair<TKey, TValue> evicted);
+
         /// <summary>
         /// Invoked when an entry was requested and was not found in cache.
         /// </summary>

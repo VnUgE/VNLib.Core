@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -39,33 +39,40 @@ namespace VNLib.Plugins.Essentials.Users
     public interface IUser : IAsyncExclusiveResource, IDisposable, IObjectStorage, IEnumerable<KeyValuePair<string, string>>, IIndexable<string, string>
     {
         /// <summary>
-        /// The user's privilage level 
+        /// The user's privilege level 
         /// </summary>
-        ulong Privilages { get; }
+        ulong Privileges { get; set; }
+
         /// <summary>
         /// The user's ID
         /// </summary>
         string UserID { get; }
+
         /// <summary>
         /// Date the user's account was created
         /// </summary>
         DateTimeOffset Created { get; }
+
         /// <summary>
         /// The user's password hash if retreived from the backing store, otherwise null
         /// </summary>
         PrivateString? PassHash { get; }
+
         /// <summary>
         /// Status of account
         /// </summary>
         UserStatus Status { get; set; }
+
         /// <summary>
         /// Is the account only usable from local network?
         /// </summary>
         bool LocalOnly { get; set; }
+
         /// <summary>
         /// The user's email address
         /// </summary>
         string EmailAddress { get; set; }
+
         /// <summary>
         /// Marks the user for deletion on release
         /// </summary>

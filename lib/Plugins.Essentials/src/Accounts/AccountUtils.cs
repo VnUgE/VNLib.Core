@@ -122,6 +122,28 @@ namespace VNLib.Plugins.Essentials.Accounts
             return await manager.UpdatePassAsync(user, passHash);
         }
        
+        /// <summary>
+        /// Creates a new user with a random user id and the specified email address and password.
+        /// If privileges are left null, the minimum privileges will be set.
+        /// </summary>
+        /// <param name="manager"></param>
+        /// <param name="emailAddress">The user's email address or secondary id</param>
+        /// <param name="password">The user's password</param>
+        /// <param name="privileges">Optional user privilage level</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>A task that resolves the new user</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="UserExistsException"></exception>
+        /// <exception cref="UserCreationFailedException"></exception>
+        public static Task<IUser> CreateUserAsync(this IUserManager manager, string emailAddress, PrivateString password, ulong? privileges, CancellationToken cancellation = default)
+        {
+            _ = manager ?? throw new ArgumentNullException(nameof(manager));
+            //Create a random user id
+            string randomId = GetRandomUserId();
+            //Set the default/minimum privileges
+            privileges ??= MINIMUM_LEVEL;
+            return manager.CreateUserAsync(randomId, emailAddress, privileges.Value, password, cancellation);
+        }
 
         /// <summary>
         /// Checks to see if the current user account was created
@@ -312,7 +334,7 @@ namespace VNLib.Plugins.Essentials.Accounts
 
             //Store variables
             entity.Session.UserID = user.UserID;
-            entity.Session.Privilages = user.Privilages;
+            entity.Session.Privilages = user.Privileges;
 
             //Store client id for later use
             entity.Session[BROWSER_ID_ENTRY] = secInfo.ClientId;

@@ -53,34 +53,42 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// A value specifying the type of the loaded session
         /// </summary>
         SessionType SessionType { get; }
+
         /// <summary>
         /// UTC time in when the session was created
         /// </summary>
         DateTimeOffset Created { get; }
+
         /// <summary>
         /// Privilages associated with user specified during login
         /// </summary>
         ulong Privilages { get; set; }
+
         /// <summary>
         /// Key that identifies the current session. (Identical to cookie::sessionid)
         /// </summary>
         string SessionID { get; }
+
         /// <summary>
         /// User ID associated with session
         /// </summary>
         string UserID { get; set; }
+
         /// <summary>
         /// Marks the session as invalid
         /// </summary>
         void Invalidate(bool all = false);
+
         /// <summary>
         /// Gets or sets the session's authorization token
         /// </summary>
         string Token { get; set; }
+
         /// <summary>
         /// The IP address belonging to the client
         /// </summary>
         IPAddress UserIP { get; }
+
         /// <summary>
         /// Sets the session ID to be regenerated if applicable
         /// </summary>
@@ -90,5 +98,11 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// A value that indicates this session was newly created
         /// </summary>
         bool IsNew { get; }
+
+        /// <summary>
+        /// This is a special function that requests the session to be detached from the current http connection
+        /// but allow it to remain available.
+        /// </summary>
+        void Detach();
     }
 }

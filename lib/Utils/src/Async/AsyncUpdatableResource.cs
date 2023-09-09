@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,28 +23,13 @@
 */
 
 using System;
-using System.IO;
-using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
-using VNLib.Utils.IO;
 using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.Async
 {
-    /// <summary>
-    /// A callback delegate used for updating a <see cref="AsyncUpdatableResource"/>
-    /// </summary>
-    /// <param name="source">The <see cref="AsyncUpdatableResource"/> to be updated</param>
-    /// <param name="data">The serialized data to be stored/updated</param>
-    /// <exception cref="ResourceUpdateFailedException"></exception>
-    public delegate Task AsyncUpdateCallback(object source, Stream data);
-    /// <summary>
-    /// A callback delegate invoked when a <see cref="AsyncUpdatableResource"/> delete is requested
-    /// </summary>
-    /// <param name="source">The <see cref="AsyncUpdatableResource"/> to be deleted</param>
-    /// <exception cref="ResourceDeleteFailedException"></exception>
-    public delegate Task AsyncDeleteCallback(object source);
 
     /// <summary>
     /// Implemented by a resource that is backed by an external data store, that when modified or deleted will 
@@ -52,8 +37,10 @@ namespace VNLib.Utils.Async
     /// </summary>
     public abstract class AsyncUpdatableResource : BackedResourceBase, IAsyncExclusiveResource
     {
-        protected abstract AsyncUpdateCallback UpdateCb { get; }
-        protected abstract AsyncDeleteCallback DeleteCb { get; }
+        /// <summary>
+        /// The resource update handler that will be invoked when the resource is modified
+        /// </summary>
+        protected abstract IAsyncResourceStateHandler AsyncHandler { get; }
 
         /// <summary>
         /// Releases the resource and flushes pending changes to its backing store.
@@ -62,7 +49,7 @@ namespace VNLib.Utils.Async
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ResourceDeleteFailedException"></exception>
         /// <exception cref="ResourceUpdateFailedException"></exception>
-        public virtual async ValueTask ReleaseAsync()
+        public virtual async ValueTask ReleaseAsync(CancellationToken cancellation = default)
         {
             //If resource has already been realeased, return
             if (IsReleased)
@@ -72,12 +59,12 @@ namespace VNLib.Utils.Async
             //If deleted flag is set, invoke the delete callback
             if (Deleted)
             {
-                await DeleteCb(this).ConfigureAwait(true);
+                await AsyncHandler.DeleteAsync(this, cancellation).ConfigureAwait(true);
             }
             //If the state has been modifed, flush changes to the store
             else if (Modified)
             {
-                await FlushPendingChangesAsync().ConfigureAwait(true);
+                await FlushPendingChangesAsync(cancellation).ConfigureAwait(true);
             }
             //Set the released value
             IsReleased = true;
@@ -92,18 +79,12 @@ namespace VNLib.Utils.Async
         /// Only call this method if your store supports multiple state updates
         /// </para>
         /// </summary>
-        protected virtual async Task FlushPendingChangesAsync()
+        protected virtual async Task FlushPendingChangesAsync(CancellationToken cancellation = default)
         {
             //Get the resource
             object resource = GetResource();
-            //Open a memory stream to store data in
-            using VnMemoryStream data = new();
-            //Serialize and write to stream
-            VnEncoding.JSONSerializeToBinary(resource, data, resource.GetType(), base.JSO);
-            //Reset stream to begining
-            _ = data.Seek(0, SeekOrigin.Begin);
             //Invoke update callback
-            await UpdateCb(this, data).ConfigureAwait(true);
+            await AsyncHandler.UpdateAsync(this, resource, cancellation).ConfigureAwait(true);
             //Clear modified flag
             Modified = false;
         }

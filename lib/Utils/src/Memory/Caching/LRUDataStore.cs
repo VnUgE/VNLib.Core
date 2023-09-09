@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -42,6 +42,7 @@ namespace VNLib.Utils.Memory.Caching
         /// A lookup table that provides O(1) access times for key-value lookups
         /// </summary>
         protected Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>> LookupTable { get; }
+
         /// <summary>
         /// A linked list that tracks the least recently used item. 
         /// New items (or recently accessed items) are moved to the end of the list.
@@ -52,11 +53,8 @@ namespace VNLib.Utils.Memory.Caching
         /// <summary>
         /// Initializes an empty <see cref="LRUDataStore{TKey, TValue}"/>
         /// </summary>
-        protected LRUDataStore()
-        {
-            LookupTable = new();
-            List = new();
-        }
+        protected LRUDataStore() : this(EqualityComparer<TKey>.Default)
+        { }
 
         /// <summary>
         /// Initializes an empty <see cref="LRUDataStore{TKey, TValue}"/> and sets
@@ -98,6 +96,7 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="key">The key identifying the value</param>
         /// <returns>The value stored at the given key</returns>
         /// <remarks>Items are promoted in the store when accessed</remarks>
+        /// <exception cref="KeyNotFoundException"></exception>
         public virtual TValue this[TKey key] 
         {
             get
@@ -115,7 +114,7 @@ namespace VNLib.Utils.Memory.Caching
                     List.Remove(oldNode);
 
                     //Reuse the node
-                    oldNode.ValueRef = new KeyValuePair<TKey, TValue>(key, value);
+                    oldNode.Value = new KeyValuePair<TKey, TValue>(key, value);
 
                     //Move the item to the back of the list
                     List.AddLast(oldNode);
@@ -135,8 +134,11 @@ namespace VNLib.Utils.Memory.Caching
         /// </summary>
         ///<exception cref="NotImplementedException"></exception>
         public virtual ICollection<TValue> Values => throw new NotSupportedException("Values are not stored in an independent collection, as they are not directly mutable");
+
         IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => LookupTable.Keys;
+
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => List.Select(static node => node.Value);
+
         IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator() => List.Select(static node => node.Value).GetEnumerator();
 
         /// <summary>
@@ -164,10 +166,13 @@ namespace VNLib.Utils.Memory.Caching
         public bool Remove(in KeyValuePair<TKey, TValue> item) => Remove(item.Key);
         ///<inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => List.GetEnumerator();
+
         ///<inheritdoc/>
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => List.CopyTo(array, arrayIndex);
+
         ///<inheritdoc/>
         public virtual bool ContainsKey(TKey key) => LookupTable.ContainsKey(key);
+
         ///<inheritdoc/>
         public virtual IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => List.GetEnumerator();
 
@@ -194,6 +199,7 @@ namespace VNLib.Utils.Memory.Caching
             LookupTable.Clear();
             List.Clear();
         }
+
         /// <summary>
         /// Determines if the <see cref="KeyValuePair{TKey, TValue}"/> exists in the store
         /// </summary>
@@ -207,6 +213,7 @@ namespace VNLib.Utils.Memory.Caching
             }
             return false;
         }
+
         ///<inheritdoc/>
         public virtual bool Remove(TKey key)
         {
@@ -219,6 +226,7 @@ namespace VNLib.Utils.Memory.Caching
             }
             return false;
         }
+
         /// <summary>
         /// Tries to get a value from the store with its key. Found items are promoted
         /// </summary>

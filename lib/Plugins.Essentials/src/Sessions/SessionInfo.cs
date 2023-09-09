@@ -224,21 +224,27 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// Flags the session as invalid. IMPORTANT: the user's session data is no longer valid, no data 
         /// will be saved to the session store when the session closes
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Invalidate(bool all = false) => UserSession.Invalidate(all);
+
         /// <summary>
         /// Marks the session ID to be regenerated during closing event
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RegenID() => UserSession.RegenID();
 
+        /// <summary>
+        /// Marks the session to be detached from the current connection.
+        /// </summary>
+        public void Detach() => UserSession.Detach();
+
+
 #nullable disable
+
         ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetObject<T>(string key) => JsonSerializer.Deserialize<T>(this[key], SR_OPTIONS);
+        
         ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetObject<T>(string key, T obj) => this[key] = obj == null ? null: JsonSerializer.Serialize(obj, SR_OPTIONS);
+
 #nullable enable
 
         /// <summary>

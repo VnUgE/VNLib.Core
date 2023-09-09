@@ -40,6 +40,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         protected const ulong IS_NEW_MSK =      0b0000000000000010UL;
         protected const ulong REGEN_ID_MSK =    0b0000000000000100UL;
         protected const ulong INVALID_MSK =     0b0000000000001000UL;
+        protected const ulong DETACHED_MSK =    0b0000000000010000UL;
         protected const ulong ALL_INVALID_MSK = 0b0000000000100000UL;
 
         protected const string USER_ID_ENTRY = "__.i.uid";
@@ -145,6 +146,10 @@ namespace VNLib.Plugins.Essentials.Sessions
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual void RegenID() => Flags.Set(REGEN_ID_MSK);
+
+        /// <inheritdoc/>
+        public virtual void Detach() => Flags.Set(DETACHED_MSK);
+
         /// <summary>
         /// Invoked when the indexer is is called to 
         /// </summary>

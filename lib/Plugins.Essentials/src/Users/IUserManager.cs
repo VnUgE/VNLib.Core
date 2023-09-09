@@ -74,7 +74,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// Creates a new user in the current user's table and if successful returns the new user object (without password)
         /// </summary>
         /// <param name="userid">The user id</param>
-        /// <param name="privilages">A number representing the privilage level of the account</param>
+        /// <param name="privileges">A number representing the privilage level of the account</param>
         /// <param name="passHash">Value to store in the password field</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <param name="emailAddress">The account email address</param>
@@ -82,7 +82,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <exception cref="UserExistsException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="UserCreationFailedException"></exception>
-        Task<IUser> CreateUserAsync(string userid, string emailAddress, ulong privilages, PrivateString passHash, CancellationToken cancellation = default);
+        Task<IUser> CreateUserAsync(string userid, string emailAddress, ulong privileges, PrivateString passHash, CancellationToken cancellation = default);
         /// <summary>
         /// Updates a password associated with the specified user. If the update fails, the transaction
         /// is rolled back.

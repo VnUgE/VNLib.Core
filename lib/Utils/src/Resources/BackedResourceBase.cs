@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Text.Json;
 using System.Runtime.CompilerServices;
 
 namespace VNLib.Utils.Resources
@@ -34,23 +33,36 @@ namespace VNLib.Utils.Resources
     /// </summary>
     public abstract class BackedResourceBase : IResource
     {
-        ///<inheritdoc/>
-        public bool IsReleased { get; protected set; }
+        const int IsReleasedFlag = 1 << 0;
+        const int IsDeletedFlag = 1 << 2;
+        const int IsModifiedFlag = 1 << 3;
 
-        /// <summary>
-        /// Optional <see cref="JsonSerializerOptions"/> to be used when serializing
-        /// the resource
-        /// </summary>
-        internal protected virtual JsonSerializerOptions? JSO { get; }
+        private uint _flags;
+
+        ///<inheritdoc/>
+        public bool IsReleased
+        {
+            get => (_flags & IsReleasedFlag) == IsReleasedFlag; 
+            protected set => _flags |= IsReleasedFlag;
+        }
 
         /// <summary>
         /// A value indicating whether the instance should be deleted when released
         /// </summary>
-        protected bool Deleted { get; set; }
+        protected bool Deleted
+        {
+            get => (_flags & IsDeletedFlag) == IsDeletedFlag;
+            set => _flags |= IsDeletedFlag;
+        }
+
         /// <summary>
         /// A value indicating whether the instance should be updated when released
         /// </summary>
-        protected bool Modified { get; set; }
+        protected bool Modified
+        {
+            get => (_flags & IsModifiedFlag) == IsModifiedFlag;
+            set => _flags |= IsModifiedFlag;
+        }
 
         /// <summary>
         /// Checks if the resouce has been disposed and raises an exception if it is
@@ -61,7 +73,7 @@ namespace VNLib.Utils.Resources
         {
             if (IsReleased)
             {
-                throw new ObjectDisposedException("The resource has been disposed");
+                throw new ObjectDisposedException(null, "The resource has been disposed");
             }
         }
 
@@ -74,6 +86,6 @@ namespace VNLib.Utils.Resources
         /// <summary>
         /// Marks the resource for deletion from backing store during closing events
         /// </summary>
-        public virtual void Delete() => Deleted = true;
+        public virtual void Delete() => _flags |= IsDeletedFlag;
     }
 }

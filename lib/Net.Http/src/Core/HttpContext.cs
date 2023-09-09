@@ -46,10 +46,12 @@ namespace VNLib.Net.Http.Core
         /// The reusable http request container
         /// </summary>
         public readonly HttpRequest Request;
+
         /// <summary>
         /// The reusable response controler
         /// </summary>
         public readonly HttpResponse Response;
+
         /// <summary>
         /// The http server that this context is bound to
         /// </summary>

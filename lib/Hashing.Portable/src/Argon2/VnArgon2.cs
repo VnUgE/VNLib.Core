@@ -22,13 +22,14 @@
 * along with VNLib.Hashing.Portable. If not, see http://www.gnu.org/licenses/.
 */
 
-
 using System;
 using System.Text;
 using System.Buffers;
 using System.Threading;
+using System.Diagnostics;
 using System.Buffers.Text;
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Native;
@@ -47,94 +48,80 @@ namespace VNLib.Hashing
         public const uint HASH_SIZE = 128;
         public const int MAX_SALT_SIZE = 100;
         public const string ID_MODE = "argon2id";
-        public const string ARGON2_CTX_SAFE_METHOD_NAME = "argon2id_ctx";
-        public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "ARGON2_DLL_PATH";
         public const string ARGON2_DEFUALT_LIB_NAME = "Argon2";
+        public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "ARGON2_DLL_PATH";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;
         private static readonly Lazy<IUnmangedHeap> _heap = new (MemoryUtil.InitializeNewHeapForProcess, LazyThreadSafetyMode.PublicationOnly);
-        private static readonly Lazy<Argon2NativeLibary> _nativeLibrary = new(LoadNativeLib, LazyThreadSafetyMode.PublicationOnly);
-     
+        private static readonly Lazy<SafeArgon2Library> _nativeLibrary = new(LoadSharedLibInternal, LazyThreadSafetyMode.PublicationOnly);
+
 
         //Private heap initialized to 10k size, and all allocated buffers will be zeroed when allocated
         private static IUnmangedHeap PwHeap => _heap.Value;
 
-        /* Argon2 primitive type */
-        private enum Argon2_type
-        {
-            Argon2_d, 
-            Argon2_i, 
-            Argon2_id
-        }
-
-        /* Version of the algorithm */
-        private enum Argon2_version
-        {
-            VERSION_10 = 0x10,
-            VERSION_13 = 0x13,
-            ARGON2_VERSION_NUMBER = VERSION_13
-        }
-        
         /*
          * The native library delegate method
          */
-        delegate int Argon2InvokeHash(Argon2_Context* context);
-        
-        /*
-         * Wrapper class that manages lifetime of the native library
-         * This should basically never get finalized, but if it does
-         * it will free the native lib
-         */
-        private sealed class Argon2NativeLibary
-        {
-            private readonly SafeMethodHandle<Argon2InvokeHash> _argon2id_ctx;
+        [SafeMethodName("argon2id_ctx")]
+        delegate int Argon2InvokeHash(IntPtr context);
 
-            public Argon2NativeLibary(SafeMethodHandle<Argon2InvokeHash> method) => _argon2id_ctx = method;
-
-            public int Argon2Hash(Argon2_Context* context) => _argon2id_ctx.Method!.Invoke(context);
-
-            ~Argon2NativeLibary()
-            {
-                //Dispose method handle which will release the native library
-                _argon2id_ctx.Dispose();
-            }
-        }
-
-        /// <summary>
-        /// Loads the native Argon2 libray into the process with env variable library path
-        /// </summary>
-        /// <returns></returns>
-        private static Argon2NativeLibary LoadNativeLib()
+        private static SafeArgon2Library LoadSharedLibInternal()
         {
             //Get the path to the argon2 library
             string? argon2EnvPath = Environment.GetEnvironmentVariable(ARGON2_LIB_ENVIRONMENT_VAR_NAME);
             //Default to the default library name
             argon2EnvPath ??= ARGON2_DEFUALT_LIB_NAME;
-            
-            //Try to load the libary and always dispose it so the native method handle will unload the library
-            using SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(argon2EnvPath);
 
-            //Get safe native method
-            SafeMethodHandle<Argon2InvokeHash> method = lib.GetMethod<Argon2InvokeHash>(ARGON2_CTX_SAFE_METHOD_NAME);
-            
-            return new Argon2NativeLibary(method);
+            Trace.WriteLine("Attempting to load global native Argon2 library from: " + argon2EnvPath, "VnArgon2");
+
+            SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(argon2EnvPath, DllImportSearchPath.SafeDirectories);
+            return new SafeArgon2Library(lib);
+        }
+
+
+        /// <summary>
+        /// Gets the sahred native library instance for the current process.
+        /// </summary>
+        /// <returns>The shared library instance</returns>
+        /// <exception cref="DllNotFoundException"></exception>
+        public static IArgon2Library GetOrLoadSharedLib() => _nativeLibrary.Value;
+
+        /// <summary>
+        /// Loads a native Argon2 shared library from the specified path 
+        /// and returns a <see cref="IArgon2Library"/> instance. wrapper
+        /// </summary>
+        /// <param name="dllPath">The path to the native shared library to load</param>
+        /// <param name="searchPath">The dll search path</param>
+        /// <returns>A handle for the library</returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="DllNotFoundException"></exception>
+        public static SafeArgon2Library LoadCustomLibrary(string dllPath, DllImportSearchPath searchPath)
+        {
+            //Try to load the libary and always dispose it so the native method handle will unload the library
+            SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(dllPath, searchPath);
+            return new SafeArgon2Library(lib);
         }
 
         /// <summary>
         /// Hashes a password with a salt and specified arguments
         /// </summary>
+        /// <param name="lib"></param>
         /// <param name="password">Span of characters containing the password to be hashed</param>
         /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
         /// <param name="secret">Optional secret to include in hash</param>
         /// <param name="hashLen">Size of the hash in bytes</param>
-        /// <param name="memCost">Memory cost</param>
-        /// <param name="parallelism">Degree of parallelism</param>
-        /// <param name="timeCost">Time cost of operation</param>
+        /// <param name="costParams">Argon2 cost parameters</param>
         /// <exception cref="VnArgon2Exception"></exception>
         /// <exception cref="InsufficientMemoryException"></exception>
         /// <returns>A <see cref="Encoding.Unicode"/> <see cref="string"/> containg the ready-to-store hash</returns>                
-        public static string Hash2id(ReadOnlySpan<char> password, ReadOnlySpan<char> salt, ReadOnlySpan<byte> secret,
-            uint timeCost = 2, uint memCost = 65535, uint parallelism = 4, uint hashLen = HASH_SIZE)
+        public static string Hash2id(
+            this IArgon2Library lib, 
+            ReadOnlySpan<char> password, 
+            ReadOnlySpan<char> salt, 
+            ReadOnlySpan<byte> secret,
+            in Argon2CostParams costParams, 
+            uint hashLen = HASH_SIZE
+        )
         {
             //Get bytes count
             int saltbytes = LocEncoding.GetByteCount(salt);
@@ -155,25 +142,29 @@ namespace VNLib.Hashing
             _ = LocEncoding.GetBytes(password, passBuffer);
             
             //Hash
-            return Hash2id(passBuffer, saltBuffer, secret, timeCost, memCost, parallelism, hashLen);
+            return Hash2id(lib, passBuffer, saltBuffer, secret, in costParams, hashLen);
         }
 
         /// <summary>
         /// Hashes a password with a salt and specified arguments
         /// </summary>
+        /// <param name="lib"></param>
         /// <param name="password">Span of characters containing the password to be hashed</param>
         /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
         /// <param name="secret">Optional secret to include in hash</param>
         /// <param name="hashLen">Size of the hash in bytes</param>
-        /// <param name="memCost">Memory cost</param>
-        /// <param name="parallelism">Degree of parallelism</param>
-        /// <param name="timeCost">Time cost of operation</param>
-        /// <exception cref="FormatException"></exception>
+        /// <param name="costParams">Argon2 cost parameters</param>
         /// <exception cref="VnArgon2Exception"></exception>
         /// <exception cref="InsufficientMemoryException"></exception>
         /// <returns>A <see cref="Encoding.Unicode"/> <see cref="string"/> containg the ready-to-store hash</returns>
-        public static string Hash2id(ReadOnlySpan<char> password, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> secret,
-            uint timeCost = 2, uint memCost = 65535, uint parallelism = 4, uint hashLen = HASH_SIZE)
+        public static string Hash2id(
+            this IArgon2Library lib,
+            ReadOnlySpan<char> password, 
+            ReadOnlySpan<byte> salt, 
+            ReadOnlySpan<byte> secret, 
+            in Argon2CostParams costParams, 
+            uint hashLen = HASH_SIZE
+        )
         {
             //Get bytes count
             int passBytes = LocEncoding.GetByteCount(password);
@@ -185,31 +176,36 @@ namespace VNLib.Hashing
             _ = LocEncoding.GetBytes(password, pwdHandle.Span);
             
             //Hash
-            return Hash2id(pwdHandle.Span, salt, secret, timeCost, memCost, parallelism, hashLen);
+            return Hash2id(lib, pwdHandle.Span, salt, secret, in costParams, hashLen);
         }
-      
+
         /// <summary>
         /// Hashes a password with a salt and specified arguments
         /// </summary>
+        /// <param name="lib"></param>
         /// <param name="password">Span of characters containing the password to be hashed</param>
         /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
         /// <param name="secret">Optional secret to include in hash</param>
         /// <param name="hashLen">Size of the hash in bytes</param>
-        /// <param name="memCost">Memory cost</param>
-        /// <param name="parallelism">Degree of parallelism</param>
-        /// <param name="timeCost">Time cost of operation</param>
+        /// <param name="costParams">Argon2 cost parameters</param>
         /// <exception cref="VnArgon2Exception"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <returns>A <see cref="Encoding.Unicode"/> <see cref="string"/>containg the ready-to-store hash</returns>                
-        public static string Hash2id(ReadOnlySpan<byte> password, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> secret,
-            uint timeCost = 2, uint memCost = 65535, uint parallelism = 4, uint hashLen = HASH_SIZE)
+        public static string Hash2id(
+            this IArgon2Library lib,
+            ReadOnlySpan<byte> password, 
+            ReadOnlySpan<byte> salt, 
+            ReadOnlySpan<byte> secret, 
+            in Argon2CostParams costParams,
+            uint hashLen = HASH_SIZE
+        )
         {
             string hash, salts;
             //Alloc data for hash output
             using IMemoryHandle<byte> hashHandle = PwHeap.Alloc<byte>(hashLen, true);
             
             //hash the password
-            Hash2id(password, salt, secret, hashHandle.Span, timeCost, memCost, parallelism);
+            Hash2id(lib, password, salt, secret, hashHandle.Span, in costParams);
 
             //Encode hash
             hash = Convert.ToBase64String(hashHandle.Span);
@@ -218,104 +214,47 @@ namespace VNLib.Hashing
             salts = Convert.ToBase64String(salt);
             
             //Encode salt in base64
-            return $"${ID_MODE}$v={(int)Argon2_version.VERSION_13},m={memCost},t={timeCost},p={parallelism},s={salts}${hash}";
+            return $"${ID_MODE}$v={(int)Argon2Version.Version13},m={costParams.MemoryCost},t={costParams.TimeCost},p={costParams.Parallelism},s={salts}${hash}";
         }
-     
+
 
         /// <summary>
         /// Exposes the raw Argon2-ID hashing api to C#, using spans (pins memory references)
         /// </summary>
+        /// <param name="lib"></param>
         /// <param name="password">Span of characters containing the password to be hashed</param>
         /// <param name="rawHashOutput">The output buffer to store the raw hash output</param>
         /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
         /// <param name="secret">Optional secret to include in hash</param>
-        /// <param name="memCost">Memory cost</param>
-        /// <param name="parallelism">Degree of parallelism</param>
-        /// <param name="timeCost">Time cost of operation</param>
+        /// <param name="costParams">Argon2 cost parameters</param>>
         /// <exception cref="VnArgon2Exception"></exception>
-        public static void Hash2id(ReadOnlySpan<byte> password, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> secret, Span<byte> rawHashOutput,
-            uint timeCost = 2, uint memCost = 65535, uint parallelism = 4)
+        public static void Hash2id(
+            this IArgon2Library lib,
+            ReadOnlySpan<byte> password,
+            ReadOnlySpan<byte> salt,
+            ReadOnlySpan<byte> secret,
+            Span<byte> rawHashOutput, 
+            in Argon2CostParams costParams
+        )
         {
             fixed (byte* pwd = password, slptr = salt, secretptr = secret, outPtr = rawHashOutput)
             {
                 //Setup context
-                Argon2_Context ctx;
+                Argon2Context ctx;
                 //Pointer
-                Argon2_Context* context = &ctx;
-                context->version = Argon2_version.VERSION_13;
-                context->t_cost = timeCost;
-                context->m_cost = memCost;
-                context->threads = parallelism;
-                context->lanes = parallelism;
+                Argon2Context* context = &ctx;
+                context->version = Argon2Version.Argon2DefaultVersion;
+                context->t_cost = costParams.TimeCost;
+                context->m_cost = costParams.MemoryCost;
+                context->threads = costParams.Parallelism;
+                context->lanes = costParams.Parallelism;
                 //Default flags
                 context->flags = ARGON2_DEFAULT_FLAGS;
                 context->allocate_cbk = null;
                 context->free_cbk = null;
                 //Password
                 context->pwd = pwd;
-                context->pwdlen = (UInt32)password.Length;
-                //Salt
-                context->salt = slptr;
-                context->saltlen = (UInt32)salt.Length;
-                //Secret
-                context->secret = secretptr;
-                context->secretlen = (UInt32)secret.Length;
-                //Output
-                context->outptr = outPtr;
-                context->outlen = (UInt32)rawHashOutput.Length;
-                //Hash
-                Argon2_ErrorCodes result = (Argon2_ErrorCodes)_nativeLibrary.Value.Argon2Hash(&ctx);
-                //Throw exceptions if error
-                ThrowOnArgonErr(result);
-            }
-        }
-
-
-        /// <summary>
-        /// Compares a raw password, with a salt to a raw hash
-        /// </summary>
-        /// <param name="rawPass">Password bytes</param>
-        /// <param name="salt">Salt bytes</param>
-        /// <param name="secret">Optional secret that was included in hash</param>
-        /// <param name="hashBytes">Raw hash bytes</param>
-        /// <param name="timeCost">Time cost</param>
-        /// <param name="memCost">Memory cost</param>
-        /// <param name="parallelism">Degree of parallelism</param>
-        /// <exception cref="OverflowException"></exception>
-        /// <exception cref="FormatException"></exception>
-        /// <exception cref="VnArgon2Exception"></exception>
-        /// <exception cref="InsufficientMemoryException"></exception>
-        /// <exception cref="VnArgon2PasswordFormatException"></exception>
-        /// <returns>True if hashes match</returns>
-        public static bool Verify2id(ReadOnlySpan<byte> rawPass, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> secret, ReadOnlySpan<byte> hashBytes,
-            uint timeCost = 2, uint memCost = 65535, uint parallelism = 4)
-        {
-            //Alloc data for hash output
-            using IMemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(hashBytes.Length, true);
-
-            //Pin to get the base pointer
-            using MemoryHandle outputPtr = outputHandle.Pin(0);
-            
-            //Get pointers
-            fixed (byte* secretptr = secret, pwd = rawPass, slptr = salt)
-            {
-                //Setup context
-                Argon2_Context ctx;
-                //Pointer
-                Argon2_Context* context = &ctx;
-                context->version = Argon2_version.VERSION_13;
-                context->m_cost = memCost;
-                context->t_cost = timeCost;
-                context->threads = parallelism;
-                context->lanes = parallelism;
-                //Default flags
-                context->flags = ARGON2_DEFAULT_FLAGS;
-                //Use default memory allocator
-                context->allocate_cbk = null;
-                context->free_cbk = null;
-                //Password
-                context->pwd = pwd;
-                context->pwdlen = (uint)rawPass.Length;
+                context->pwdlen = (uint)password.Length;
                 //Salt
                 context->salt = slptr;
                 context->saltlen = (uint)salt.Length;
@@ -323,20 +262,21 @@ namespace VNLib.Hashing
                 context->secret = secretptr;
                 context->secretlen = (uint)secret.Length;
                 //Output
-                context->outptr = outputPtr.Pointer;
-                context->outlen = (uint)outputHandle.Length;
+                context->outptr = outPtr;
+                context->outlen = (uint)rawHashOutput.Length;
                 //Hash
-                Argon2_ErrorCodes result = (Argon2_ErrorCodes)_nativeLibrary.Value.Argon2Hash(&ctx);
-                //Throw an excpetion if an error ocurred
+                Argon2_ErrorCodes result = (Argon2_ErrorCodes)lib.Argon2Hash((IntPtr)context);
+                //Throw exceptions if error
                 ThrowOnArgonErr(result);
             }
-            //Return the comparison
-            return CryptographicOperations.FixedTimeEquals(outputHandle.Span, hashBytes);
         }
+
+
 
         /// <summary>
         /// Compares a password to a previously hashed password from this library
         /// </summary>
+        /// <param name="lib"></param>
         /// <param name="rawPass">Password data</param>
         /// <param name="secret">Optional secret that was included in hash</param>
         /// <param name="hash">Full hash span</param>
@@ -346,7 +286,12 @@ namespace VNLib.Hashing
         /// <exception cref="InsufficientMemoryException"></exception>
         /// <exception cref="VnArgon2PasswordFormatException"></exception>
         /// <returns>True if the password matches the hash</returns>
-        public static bool Verify2id(ReadOnlySpan<char> rawPass, ReadOnlySpan<char> hash, ReadOnlySpan<byte> secret)
+        public static bool Verify2id(
+            this IArgon2Library lib,
+            ReadOnlySpan<char> rawPass, 
+            ReadOnlySpan<char> hash, 
+            ReadOnlySpan<byte> secret
+        )
         {
             if (!hash.Contains(ID_MODE, StringComparison.Ordinal))
             {
@@ -354,10 +299,12 @@ namespace VNLib.Hashing
             }
             
             Argon2PasswordEntry entry;
+            Argon2CostParams costParams;
             try
             {
                 //Init password breakout struct
                 entry = new(hash);
+                costParams = entry.GetCostParams();
             }
             catch (Exception ex)
             {
@@ -376,6 +323,7 @@ namespace VNLib.Hashing
             Span<byte> saltBuf = rawBufferHandle.Span[..saltBase64BufSize];
             Span<byte> passBuf = rawBufferHandle.AsSpan(saltBase64BufSize, passBase64BufSize);
             Span<byte> rawPassBuf = rawBufferHandle.AsSpan(saltBase64BufSize + passBase64BufSize, rawPassLen);
+
             {
                 //Decode salt
                 if (!Convert.TryFromBase64Chars(entry.Hash, passBuf, out int actualHashLen))
@@ -399,7 +347,75 @@ namespace VNLib.Hashing
             //encode password bytes
             rawPassLen = LocEncoding.GetBytes(rawPass, rawPassBuf);
             //Verify password
-            return Verify2id(rawPassBuf[..rawPassLen], saltBuf, secret, passBuf, entry.TimeCost, entry.MemoryCost, entry.Parallelism);
+            return Verify2id(lib, rawPassBuf[..rawPassLen], saltBuf, secret, passBuf, in costParams);
+        }
+
+        /// <summary>
+        /// Compares a raw password, with a salt to a raw hash
+        /// </summary>
+        /// <param name="lib"></param>
+        /// <param name="rawPass">Password bytes</param>
+        /// <param name="salt">Salt bytes</param>
+        /// <param name="secret">Optional secret that was included in hash</param>
+        /// <param name="hashBytes">Raw hash bytes</param>
+        /// <param name="costParams">Argon2 cost parameters</param>
+        /// <exception cref="OverflowException"></exception>
+        /// <exception cref="FormatException"></exception>
+        /// <exception cref="VnArgon2Exception"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="VnArgon2PasswordFormatException"></exception>
+        /// <returns>True if hashes match</returns>
+        public static bool Verify2id(
+            this IArgon2Library lib,
+            ReadOnlySpan<byte> rawPass,
+            ReadOnlySpan<byte> salt,
+            ReadOnlySpan<byte> secret,
+            ReadOnlySpan<byte> hashBytes,
+            in Argon2CostParams costParams
+        )
+        {
+            //Alloc data for hash output
+            using IMemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(hashBytes.Length, true);
+
+            //Pin to get the base pointer
+            using MemoryHandle outputPtr = outputHandle.Pin(0);
+
+            //Get pointers
+            fixed (byte* secretptr = secret, pwd = rawPass, slptr = salt)
+            {
+                //Setup context
+                Argon2Context ctx;
+                //Pointer
+                Argon2Context* context = &ctx;
+                context->version = Argon2Version.Argon2DefaultVersion;
+                context->t_cost = costParams.TimeCost;
+                context->m_cost = costParams.MemoryCost;
+                context->threads = costParams.Parallelism;
+                context->lanes = costParams.Parallelism;
+                //Default flags
+                context->flags = ARGON2_DEFAULT_FLAGS;
+                //Use default memory allocator
+                context->allocate_cbk = null;
+                context->free_cbk = null;
+                //Password
+                context->pwd = pwd;
+                context->pwdlen = (uint)rawPass.Length;
+                //Salt
+                context->salt = slptr;
+                context->saltlen = (uint)salt.Length;
+                //Secret
+                context->secret = secretptr;
+                context->secretlen = (uint)secret.Length;
+                //Output
+                context->outptr = outputPtr.Pointer;
+                context->outlen = (uint)outputHandle.Length;
+                //Hash
+                Argon2_ErrorCodes result = (Argon2_ErrorCodes)lib.Argon2Hash((IntPtr)context);
+                //Throw an excpetion if an error ocurred
+                ThrowOnArgonErr(result);
+            }
+            //Return the comparison
+            return CryptographicOperations.FixedTimeEquals(outputHandle.Span, hashBytes);
         }
 
         private static void ThrowOnArgonErr(Argon2_ErrorCodes result)

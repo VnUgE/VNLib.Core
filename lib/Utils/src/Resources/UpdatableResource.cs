@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,25 +23,9 @@
 */
 
 using System;
-using System.IO;
-
-using VNLib.Utils.IO;
 
 namespace VNLib.Utils.Resources
 {
-    /// <summary>
-    /// A callback delegate used for updating a <see cref="UpdatableResource"/>
-    /// </summary>
-    /// <param name="source">The <see cref="UpdatableResource"/> to be updated</param>
-    /// <param name="data">The serialized data to be stored/updated</param>
-    /// <exception cref="ResourceUpdateFailedException"></exception>
-    public delegate void UpdateCallback(object source, Stream data);
-    /// <summary>
-    /// A callback delegate invoked when a <see cref="UpdatableResource"/> delete is requested
-    /// </summary>
-    /// <param name="source">The <see cref="UpdatableResource"/> to be deleted</param>
-    /// <exception cref="ResourceDeleteFailedException"></exception>
-    public delegate void DeleteCallback(object source);
 
     /// <summary>
     /// Implemented by a resource that is backed by an external data store, that when modified or deleted will 
@@ -50,19 +34,11 @@ namespace VNLib.Utils.Resources
     public abstract class UpdatableResource : BackedResourceBase, IExclusiveResource
     {
         /// <summary>
-        /// The update callback method to invoke during a release operation
-        /// when the resource is updated.
+        /// Gets the <see cref="IResourceStateHandler"/> that will be invoked when the resource is released
         /// </summary>
-        protected abstract UpdateCallback UpdateCb { get; }
-        /// <summary>
-        /// The callback method to invoke during a realease operation
-        /// when the resource should be deleted
-        /// </summary>
-        protected abstract DeleteCallback DeleteCb { get; }
+        protected abstract IResourceStateHandler Handler { get; }
 
-        /// <summary>
         /// <inheritdoc/>
-        /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ResourceDeleteFailedException"></exception>
         /// <exception cref="ResourceUpdateFailedException"></exception>
@@ -76,7 +52,7 @@ namespace VNLib.Utils.Resources
             //If deleted flag is set, invoke the delete callback
             if (Deleted)
             {
-                DeleteCb(this);
+                Handler.Delete(this);
             }
             //If the state has been modifed, flush changes to the store
             else if (Modified)
@@ -88,24 +64,20 @@ namespace VNLib.Utils.Resources
         }
 
         /// <summary>
+        /// <para>
         /// Writes the current state of the the resource to the backing store
         /// immediatly by invoking the specified callback. 
-        /// <br></br>
-        /// <br></br>
+        /// </para>
+        /// <para>
         /// Only call this method if your store supports multiple state updates
+        /// </para>
         /// </summary>
         protected virtual void FlushPendingChanges()
         {
             //Get the resource
             object resource = GetResource();
-            //Open a memory stream to store data in
-            using VnMemoryStream data = new();
-            //Serialize and write to stream
-            VnEncoding.JSONSerializeToBinary(resource, data, resource.GetType(), JSO);
-            //Reset stream to begining
-            _ = data.Seek(0, SeekOrigin.Begin);
             //Invoke update callback
-            UpdateCb(this, data);
+            Handler.Update(this, resource);
             //Clear modified flag
             Modified = false;
         }
