@@ -50,7 +50,7 @@
 
 #ifndef _In_
 #define _In_
-#endif // !_In_
+#endif
 
 
 /*

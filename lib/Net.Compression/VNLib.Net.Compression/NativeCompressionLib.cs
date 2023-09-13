@@ -43,7 +43,7 @@ namespace VNLib.Net.Compression
         private NativeCompressionLib(LibraryWrapper nativeLib) => _library = nativeLib;
 
         ///<inheritdoc/>
-        protected override void Free() => _library.ManualRelease();
+        protected override void Free() => _library.Dispose();
 
         /// <summary>
         /// Loads the native compression DLL at the specified file path and search pattern
@@ -59,7 +59,11 @@ namespace VNLib.Net.Compression
 
         ///<inheritdoc/>
         ///<exception cref="NativeCompressionException"></exception>
-        public CompressionMethod GetSupportedMethods() => _library.GetSupportedMethods();
+        public CompressionMethod GetSupportedMethods()
+        {
+            Check();
+            return _library.GetSupportedMethods();
+        }
 
         ///<inheritdoc/>
         ///<exception cref="NativeCompressionException"></exception>
@@ -77,63 +81,64 @@ namespace VNLib.Net.Compression
         ///<exception cref="NativeCompressionException"></exception>
         public SafeHandle AllocSafeCompressorHandle(CompressionMethod method, CompressionLevel level)
         {
+            Check();
             //Alloc compressor then craete a safe handle
             IntPtr comp = _library.AllocateCompressor(method, level);
             return new SafeCompressorHandle(_library, comp);
         }
 
-        internal sealed record class Compressor(LibraryWrapper LibComp, SafeHandle Handle) : INativeCompressor
+        internal sealed record class Compressor(LibraryWrapper LibComp, SafeHandle CompressorHandle) : INativeCompressor
         {
 
             ///<inheritdoc/>
             public CompressionResult Compress(ReadOnlyMemory<byte> input, Memory<byte> output)
             {
-                Handle.ThrowIfClosed();
-                IntPtr compressor = Handle.DangerousGetHandle();
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
                 return LibComp.CompressBlock(compressor, output, input, false);
             }
 
             ///<inheritdoc/>
-            public void Dispose() => Handle.Dispose();
+            public void Dispose() => CompressorHandle.Dispose();
 
             ///<inheritdoc/>
             public int Flush(Memory<byte> buffer)
             {
-                Handle.ThrowIfClosed();
-                IntPtr compressor = Handle.DangerousGetHandle();
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
                 CompressionResult result = LibComp.CompressBlock(compressor, buffer, ReadOnlyMemory<byte>.Empty, true);
                 return result.BytesWritten;
             }
 
             ///<inheritdoc/>
-            public int GetBlockSize()
+            public uint GetBlockSize()
             {
-                Handle.ThrowIfClosed();
-                IntPtr compressor = Handle.DangerousGetHandle();
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
                 return LibComp.GetBlockSize(compressor);
             }
 
             ///<inheritdoc/>
-            public int GetCompressedSize(int size)
+            public uint GetCompressedSize(uint size)
             {
-                Handle.ThrowIfClosed();
-                IntPtr compressor = Handle.DangerousGetHandle();
-                return LibComp.GetOutputSize(compressor, size, 1);
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
+                return (uint)LibComp.GetOutputSize(compressor, size, 1);
             }
 
             ///<inheritdoc/>
             public CompressionLevel GetCompressionLevel()
             {
-                Handle.ThrowIfClosed();
-                IntPtr compressor = Handle.DangerousGetHandle();
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
                 return LibComp.GetCompressorLevel(compressor);
             }
 
             ///<inheritdoc/>
             public CompressionMethod GetCompressionMethod()
             {
-                Handle.ThrowIfClosed();
-                IntPtr compressor = Handle.DangerousGetHandle();
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
                 return LibComp.GetCompressorType(compressor);
             }
         }

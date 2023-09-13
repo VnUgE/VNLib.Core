@@ -3,13 +3,14 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
-using VNLib.Net.Http;
 using VNLib.Utils.Extensions;
+using VNLib.Net.Http;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -27,6 +28,8 @@ namespace VNLib.Net.Compression.Tests
             using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories);
 
             LibTestComp cp = new(lib, CompressionLevel.Fastest);
+
+            Debug.WriteLine("Loading library with compression level: Fastest");
 
             TestSupportedMethods(cp);
 
@@ -150,6 +153,8 @@ namespace VNLib.Net.Compression.Tests
                 compressor.InitCompressor(CompressionMethod.Deflate);
                 compressor.DeinitCompressor();
             }
+
+            Debug.WriteLine($"Compressor library supports {supported}");
         }
 
         private static void TestCompressorMethod(ITestCompressor compressor, CompressionMethod method)
@@ -212,6 +217,8 @@ namespace VNLib.Net.Compression.Tests
                 byte[] decompressed = DecompressData(outputStream, method);
 
                 Assert.IsTrue(buffer.SequenceEqual(decompressed));
+
+                Debug.WriteLine($"Compressor type {method} successfully compressed valid data");
             }
             finally
             {
@@ -293,7 +300,7 @@ namespace VNLib.Net.Compression.Tests
             public int InitCompressor(CompressionMethod method)
             {
                 _comp = Library.AllocCompressor(method, level);
-                return _comp.GetBlockSize();
+                return (int)_comp.GetBlockSize();
             }
         }
     }

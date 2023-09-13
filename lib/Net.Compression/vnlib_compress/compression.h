@@ -45,6 +45,8 @@
 #define ERR_COMP_LEVEL_NOT_SUPPORTED -10
 #define ERR_INVALID_INPUT_DATA -11
 #define ERR_INVALID_OUTPUT_DATA -12
+#define ERR_COMPRESSION_FAILED -13
+#define ERR_OVERFLOW -14
 
 /*
 * Enumerated list of supported compression types for user selection
@@ -95,6 +97,12 @@ typedef enum CompressorStatus {
 } CompressorStatus;
 
 typedef struct CompressorStateStruct{	
+
+	/*
+	  Pointer to the underlying compressor implementation.
+	*/
+	void* compressor;
+
 	/*
 		Indicates the type of underlying compressor.
 	*/
@@ -109,18 +117,8 @@ typedef struct CompressorStateStruct{
 	/*
 		Indicates the suggested block size for the underlying compressor.
 	*/
-	int blockSize;
+	uint32_t blockSize;
 
-	/*
-		Pointer to the underlying compressor implementation.
-	*/
-	void* compressor;
-
-	/*
-	 Counts the number of pending bytes since the last successful flush 
-	 operation.
-	*/
-	uint32_t pendingBytes;
 
 } CompressorState;
 
@@ -131,28 +129,28 @@ typedef struct CompressorStateStruct{
 typedef struct CompressionOperationStruct {
 
 	/*
+	 * Input stream data
+	 */
+	const void* bytesIn;
+	/*
+	 * Output buffer/data stream
+	 */
+	void* bytesOut;
+
+	/*
 	* If the operation is a flush operation
 	*/
-	const int flush;
+	const int32_t flush;
 
-	/*
-	* Input stream data
-	*/
-	const void* bytesIn;
-	const int bytesInLength;
-
-	/*
-	* Output buffer/data stream
-	*/
-	void* bytesOut;
-	const int bytesOutLength;
+	const uint32_t bytesInLength;	
+	const uint32_t bytesOutLength;
 
 	/*
 	* Results of the streaming operation
 	*/
 
-	int bytesRead;
-	int bytesWritten;
+	uint32_t bytesRead;
+	uint32_t bytesWritten;
 
 } CompressionOperation;
 

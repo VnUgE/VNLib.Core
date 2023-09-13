@@ -30,12 +30,21 @@
 int BrAllocCompressor(CompressorState* state)
 {
 	BrotliEncoderState* comp;
+
+	/*
+	* Never allow no compression, it is not supported by the br encoder
+	*/
+	
+	if (state->level == COMP_LEVEL_NO_COMPRESSION)
+	{
+		return ERR_COMP_LEVEL_NOT_SUPPORTED;
+	}
 	
 	comp = BrotliEncoderCreateInstance(0, 0, 0);
 
 	if (!comp)
 	{
-		return ERR_BR_INVALID_STATE;
+		return ERR_OUT_OF_MEMORY;
 	}
 	
 	state->compressor = comp;
@@ -49,7 +58,6 @@ int BrAllocCompressor(CompressorState* state)
 	
 	BrotliEncoderSetParameter(comp, BROTLI_PARAM_MODE, BROTLI_MODE_GENERIC);
 	BrotliEncoderSetParameter(comp, BROTLI_PARAM_LGWIN, BR_DEFAULT_WINDOW);
-
 	
 	/*
 	* Capture the block size as a size hint if it is greater than 0
@@ -78,10 +86,10 @@ int BrAllocCompressor(CompressorState* state)
 		BrotliEncoderSetParameter(comp, BROTLI_PARAM_QUALITY, BR_COMP_LEVEL_SMALLEST_SIZE);
 		break;
 
+	case COMP_LEVEL_NO_COMPRESSION:
 	default:
 		BrotliEncoderSetParameter(comp, BROTLI_PARAM_QUALITY, BR_COMP_LEVEL_DEFAULT);
 		break;
-
 	}
 
 	return TRUE;
@@ -163,28 +171,35 @@ int BrCompressBlock(CompressorState* state, CompressionOperation* operation)
 		&nextOut,
 		&totalOut
 	);
+	
+	/*
+	* check for possible overflow and retrun error
+	*/
+	if (availableIn > operation->bytesInLength || availableOut > operation->bytesOutLength)
+	{
+		return ERR_COMPRESSION_FAILED;
+	}
 
 	/*
-	* Regardless of the operation success we should return the 
-	* results to the caller. Br encoder sets the number of 
+	* Regardless of the operation success we should return the
+	* results to the caller. Br encoder sets the number of
 	* bytes remaining in the input/output spans
 	*/
-
-	operation->bytesRead = operation->bytesInLength - (int)availableIn;
-	operation->bytesWritten = operation->bytesOutLength - (int)availableOut;
+	operation->bytesRead = operation->bytesInLength - (uint32_t)availableIn;
+	operation->bytesWritten = operation->bytesOutLength - (uint32_t)availableOut;
 
 	return brResult;
 }
 
 
-int BrGetCompressedSize(CompressorState* state, int length)
+int64_t BrGetCompressedSize(CompressorState* state, uint64_t length)
 {
-	size_t compressedSize;
-
 	/*
 	* When the flush flag is set, the caller is requesting the
 	* entire size of the compressed data, which can include metadata
 	*/
+
+	size_t size;
 
 	validateCompState(state)
 
@@ -193,7 +208,12 @@ int BrGetCompressedSize(CompressorState* state, int length)
 		return 0;
 	}
 
-	compressedSize = BrotliEncoderMaxCompressedSize(length);
+	size = BrotliEncoderMaxCompressedSize(length);
 
-	return (int)compressedSize;
+	if (size > INT64_MAX) 
+	{
+		return ERR_OVERFLOW;
+	}
+
+	return (int64_t)size;
 }

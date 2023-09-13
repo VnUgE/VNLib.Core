@@ -31,8 +31,7 @@
 
 
 int DeflateAllocCompressor(CompressorState* state)
-{
-	
+{	
 	int result, compLevel;
 	z_stream* stream;
 
@@ -41,6 +40,11 @@ int DeflateAllocCompressor(CompressorState* state)
 	* store it in the compressor state
 	*/
 	stream = (z_stream*)vncalloc(1, sizeof(z_stream));
+
+	if (!stream) 
+	{
+		return ERR_OUT_OF_MEMORY;
+	}
 
 	stream->zalloc = Z_NULL;
 	stream->zfree = Z_NULL;
@@ -209,6 +213,20 @@ int DeflateCompressBlock(CompressorState* state, CompressionOperation* operation
 	result = deflate(stream, operation->flush ? Z_FINISH : Z_NO_FLUSH);
 
 	/*
+	 * Allways clear stream fields as they are assigned on every call
+	 */
+	stream->next_in = NULL;
+	stream->next_out = NULL;
+
+	/*
+	* check for result overflow and return the error code
+	*/
+	if (stream->avail_in > operation->bytesInLength || stream->avail_out > operation->bytesOutLength)
+	{
+		return ERR_COMPRESSION_FAILED;
+	}
+
+	/*
 	* Regardless of the return value, we should always update the
 	* the number of bytes read and written.
 	* 
@@ -218,17 +236,14 @@ int DeflateCompressBlock(CompressorState* state, CompressionOperation* operation
 
 	operation->bytesRead = operation->bytesInLength - stream->avail_in;
 	operation->bytesWritten = operation->bytesOutLength - stream->avail_out;
-
-	/*Clear all stream fields after checking results */
+	
 	stream->avail_in = 0;
-	stream->next_in = NULL;
 	stream->avail_out = 0;
-	stream->next_out = NULL;
 	
 	return result;
 }
 
-int DeflateGetCompressedSize(CompressorState* state, int length, int flush)
+int64_t DeflateGetCompressedSize(CompressorState* state, uint64_t length, int32_t flush)
 {
 	uint64_t compressedSize;
 
@@ -247,11 +262,11 @@ int DeflateGetCompressedSize(CompressorState* state, int length, int flush)
 	if(flush)
 	{
 		/*
-		* If the flush flag is set, we need to add the size of the
-		* pending data in the stream
+		* TODO: actualy determine the size of the compressed data
+		* when the flush flag is set.
 		*/
 
-		compressedSize = deflateBound(state->compressor, length + state->pendingBytes);
+		compressedSize = deflateBound(state->compressor, length);
 	}
 	else
 	{
@@ -259,10 +274,10 @@ int DeflateGetCompressedSize(CompressorState* state, int length, int flush)
 	}
 
 	/* Verify the results to make sure the value doesnt overflow */
-	if (compressedSize > INT32_MAX)
+	if (compressedSize > INT64_MAX)
 	{
 		return ERR_GZ_OVERFLOW;
 	}
 
-	return (int)compressedSize;
+	return (int64_t)compressedSize;
 }

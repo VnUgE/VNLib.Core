@@ -57,16 +57,14 @@ namespace VNLib.Net.Compression
         /// Compresses the input block and writes the compressed data to the output block
         /// </summary>
         /// <param name="input">The input buffer to compress</param>
-        /// <param name="bytesRead">The number of bytes read by the compressor</param>
         /// <param name="output">The output buffer to write compressed data to</param>
-        /// <param name="bytesWritten">The number of bytes written to the output buffer</param>
         CompressionResult Compress(ReadOnlyMemory<byte> input, Memory<byte> output);
 
         /// <summary>
         /// Gets the compressor block size if configured
         /// </summary>
         /// <returns>The ideal input buffer size for compressing blocks, or <![CDATA[<1]]> if block size is unlimited</returns>
-        int GetBlockSize();
+        uint GetBlockSize();
 
         /// <summary>
         /// Determines the maximum number of output bytes for the given number of input bytes 
@@ -74,6 +72,7 @@ namespace VNLib.Net.Compression
         /// </summary>
         /// <param name="size">The number of bytes to get the compressed size of</param>
         /// <returns>The maxium size of the compressed data</returns>
-        int GetCompressedSize(int size);
+        /// <exception cref="OverflowException"></exception>
+        uint GetCompressedSize(uint size);
     }
 }

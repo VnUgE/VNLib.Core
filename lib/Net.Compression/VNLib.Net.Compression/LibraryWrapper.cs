@@ -28,7 +28,6 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
-using VNLib.Utils;
 using VNLib.Utils.Native;
 using VNLib.Utils.Extensions;
 
@@ -49,7 +48,7 @@ namespace VNLib.Net.Compression
 
     [SafeMethodName("GetCompressorBlockSize")]
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    delegate int GetBlockSizeDelegate(IntPtr compressor);
+    delegate long GetBlockSizeDelegate(IntPtr compressor);
 
     [SafeMethodName("GetCompressorType")]
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -69,7 +68,7 @@ namespace VNLib.Net.Compression
 
     [SafeMethodName("GetCompressedSize")]
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    delegate int GetCompressedSizeDelegate(IntPtr compressor, int uncompressedSize, int flush);
+    delegate long GetCompressedSizeDelegate(IntPtr compressor, ulong uncompressedSize, int flush);
 
     [SafeMethodName("CompressBlock")]
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -85,7 +84,7 @@ namespace VNLib.Net.Compression
     /// and used for the lifetime of the application.
     /// </para>
     /// </summary>
-    internal sealed class LibraryWrapper 
+    internal sealed class LibraryWrapper : IDisposable
     {
         private readonly SafeLibraryHandle _lib;
         private MethodTable _methodTable;
@@ -103,6 +102,7 @@ namespace VNLib.Net.Compression
         /// Loads the native library at the specified path into the current process
         /// </summary>
         /// <param name="filePath">The path to the native library to load</param>
+        /// <param name="searchType"></param>
         /// <returns>The native library wrapper</returns>
         public static LibraryWrapper LoadLibrary(string filePath, DllImportSearchPath searchType)
         {
@@ -147,18 +147,24 @@ namespace VNLib.Net.Compression
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public CompressionMethod GetSupportedMethods() => _methodTable.GetMethods();
 
+        /*
+         * Block size is stored as a uint32 in the native library
+         * compressor struct
+         */
+
         /// <summary>
-        /// Gets the block size of the specified compressor
+        /// Gets the block size of the specified compressor or 0 if 
+        /// compressor does not hint it's optimal block size
         /// </summary>
         /// <param name="compressor">A pointer to the compressor instance </param>
         /// <returns>A integer value of the compressor block size</returns>
         /// <exception cref="NativeCompressionException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetBlockSize(IntPtr compressor)
+        public uint GetBlockSize(IntPtr compressor)
         {
-            int result = _methodTable.GetBlockSize(compressor);
-            ThrowHelper.ThrowIfError((ERRNO)result);
-            return result;
+            long result = _methodTable.GetBlockSize(compressor);
+            ThrowHelper.ThrowIfError(result);
+            return (uint)result;
         }
 
         /// <summary>
@@ -171,7 +177,7 @@ namespace VNLib.Net.Compression
         public CompressionMethod GetCompressorType(IntPtr compressor)
         {
             CompressionMethod result = _methodTable.GetCompType(compressor);
-            ThrowHelper.ThrowIfError((int)result);
+            ThrowHelper.ThrowIfError((long)result);
             return result;
         }
 
@@ -185,7 +191,7 @@ namespace VNLib.Net.Compression
         public CompressionLevel GetCompressorLevel(IntPtr compressor)
         {
             CompressionLevel result = _methodTable.GetCompLevel(compressor);
-            ThrowHelper.ThrowIfError((int)result);
+            ThrowHelper.ThrowIfError((long)result);
             return result;
         }
 
@@ -201,7 +207,7 @@ namespace VNLib.Net.Compression
         public IntPtr AllocateCompressor(CompressionMethod type, CompressionLevel level)
         {
             IntPtr result = _methodTable.Alloc(type, level);
-            ThrowHelper.ThrowIfError(result);
+            ThrowHelper.ThrowIfError(result.ToInt64());
             return result;
         }
 
@@ -237,14 +243,15 @@ namespace VNLib.Net.Compression
         /// <param name="inputSize">The size of the input block to compress</param>
         /// <param name="flush">A value that specifies a flush operation</param>
         /// <returns>Returns the size of the required output buffer</returns>
+        /// <permission cref="OverflowException"></permission>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="NativeCompressionException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetOutputSize(IntPtr compressor, int inputSize, int flush)
+        public ulong GetOutputSize(IntPtr compressor, ulong inputSize, int flush)
         {
-            int result = _methodTable.GetOutputSize(compressor, inputSize, flush);
+            long result = _methodTable.GetOutputSize(compressor, inputSize, flush);
             ThrowHelper.ThrowIfError(result);
-            return result;
+            return (ulong)result;
         }
 
         /// <summary>
@@ -253,6 +260,7 @@ namespace VNLib.Net.Compression
         /// <param name="compressor">The compressor instance used to compress data</param>
         /// <param name="operation">A pointer to the compression operation structure</param>
         /// <returns>The result of the operation</returns>
+        /// <exception cref="OverflowException"></exception>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="NativeLibraryException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -273,7 +281,7 @@ namespace VNLib.Net.Compression
         /// <summary>
         /// Manually releases the library
         /// </summary>
-        internal void ManualRelease()
+        public void Dispose()
         {
             _methodTable = default;
             _lib.Dispose();

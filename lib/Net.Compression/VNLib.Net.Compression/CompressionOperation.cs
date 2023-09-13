@@ -33,41 +33,42 @@ namespace VNLib.Net.Compression
     internal unsafe ref struct CompressionOperation
     {
         #region readonly
-        
-        /// <summary>
-        /// A value that indicates a flush operation, 0 for no flush, above 0 for flush
-        /// </summary>
-        public int flush;
 
         /// <summary>
         /// A pointer to the input buffer
         /// </summary>
         public void* inputBuffer;
-        /// <summary>
-        /// The size of the input buffer
-        /// </summary>
-        public int inputSize;
 
         /// <summary>
         /// A pointer to the output buffer
         /// </summary>
         public void* outputBuffer;
+
+        /// <summary>
+        /// A value that indicates a flush operation, 0 for no flush, above 0 for flush
+        /// </summary>
+        public int flush;
+       
+        /// <summary>
+        /// The size of the input buffer
+        /// </summary>
+        public uint inputSize;
+        
         /// <summary>
         /// The size of the output buffer
         /// </summary>
-        public int outputSize;
+        public uint outputSize;
         
         #endregion
-
 
         /// <summary>
         /// An output variable, the number of bytes read from the input buffer
         /// </summary>
-        public int bytesRead;
+        public uint bytesRead;
 
         /// <summary>
         /// An output variable, the number of bytes written to the output buffer
         /// </summary>
-        public int bytesWritten;
+        public uint bytesWritten;
     }
 }

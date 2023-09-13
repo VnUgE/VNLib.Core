@@ -120,7 +120,7 @@ namespace VNLib.Net.Compression
             compressor.Instance = _nativeLib!.AllocateCompressor(compMethod, _compLevel);
 
             //Return the compressor block size
-            return _nativeLib!.GetBlockSize(compressor.Instance);
+            return (int)_nativeLib!.GetBlockSize(compressor.Instance);
         }
 
         ///<inheritdoc/>

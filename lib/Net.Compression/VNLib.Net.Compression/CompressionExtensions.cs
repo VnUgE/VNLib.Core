@@ -42,6 +42,14 @@ namespace VNLib.Net.Compression
         /// <returns>The results of the compression operation</returns>
         public static unsafe CompressionResult CompressBlock(this LibraryWrapper nativeLib, IntPtr comp, Memory<byte> output, ReadOnlyMemory<byte> input, bool finalBlock)
         {
+            /*
+             * Since .NET only supports int32 size memory blocks
+             * we dont need to worry about integer overflow.
+             * 
+             * Output sizes can never be larger than input 
+             * sizes (read/written)
+             */
+
             //get pointers to the input and output buffers
             using MemoryHandle inPtr = input.Pin();
             using MemoryHandle outPtr = output.Pin();
@@ -56,10 +64,10 @@ namespace VNLib.Net.Compression
 
             //Configure the input and output buffers
             op->inputBuffer = inPtr.Pointer;
-            op->inputSize = input.Length;
+            op->inputSize = (uint)input.Length;
 
             op->outputBuffer = outPtr.Pointer;
-            op->outputSize = output.Length;
+            op->outputSize = (uint)output.Length;
 
             //Call the native compress function
             nativeLib!.CompressBlock(comp, &operation);
@@ -67,8 +75,8 @@ namespace VNLib.Net.Compression
             //Return the number of bytes written
             return new()
             {
-                BytesRead = op->bytesRead,
-                BytesWritten = op->bytesWritten
+                BytesRead = (int)op->bytesRead,
+                BytesWritten = (int)op->bytesWritten
             };
         }
     }

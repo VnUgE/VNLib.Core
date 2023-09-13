@@ -19,6 +19,15 @@
 * along with vnlib_compress. If not, see http://www.gnu.org/licenses/.
 */
 
+/*
+* Notes:
+* This api is desgined to be friendly to many types of callers
+* without needing to worry about the platform integer size. I would
+* like to return errors as negative values, and I am requiring block 
+* operations on block sizes under INT64_MAX. This allows 64bit support
+* while allowing negative error codes as return values. I think 
+* this is a good compromise.
+*/
 
 #include "compression.h"
 
@@ -31,39 +40,13 @@
 #include "feature_zlib.h"
 #endif /* VNLIB_COMPRESSOR_GZIP_ENABLED */
 
+
 /*
-* Configure DLLMAIN on Windows
+* Public API functions
 */
-
-#if false
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
-{
-	/*
-	* Taken from the malloc.c file for initializing the library.
-	* and thread events
-	*/
-	switch (ul_reason_for_call)
-	{
-	case DLL_PROCESS_ATTACH:
-		break;
-	case DLL_THREAD_ATTACH:
-		break;
-	case DLL_THREAD_DETACH:
-		break;
-	case DLL_PROCESS_DETACH:
-		break;
-	}
-	return TRUE;
-}
-
-#endif /* DLLMAIN */
-
 VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void);
 
-VNLIB_EXPORT int VNLIB_CC GetCompressorBlockSize(_In_ void* compressor);
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ void* compressor);
 
 VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ void* compressor);
 
@@ -71,11 +54,11 @@ VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ void* compressor)
 
 VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionLevel level);
 
-VNLIB_EXPORT int VNLIB_CC FreeCompressor(void* compressor);
+VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor);
 
-VNLIB_EXPORT int VNLIB_CC GetCompressedSize(void* compressor, int inputLength, int flush);
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ void* compressor, uint64_t inputLength, int32_t flush);
 
-VNLIB_EXPORT int VNLIB_CC CompressBlock(void* compressor, CompressionOperation* operation);
+VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ void* compressor, CompressionOperation* operation);
 
 /*
  Gets the supported compressors, this is defined at compile time and is a convenience method for
@@ -126,14 +109,14 @@ VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ void* compressor)
 	return ((CompressorState*)compressor)->level;
 }
 
-VNLIB_EXPORT int VNLIB_CC GetCompressorBlockSize(_In_ void* compressor)
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ void* compressor)
 {
 	if (!compressor)
 	{
 		return ERR_INVALID_PTR;
 	}
 	
-	return ((CompressorState*)compressor)->blockSize;
+	return (int64_t)((CompressorState*)compressor)->blockSize;
 }
 
 
@@ -189,6 +172,7 @@ VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionL
 		/*
 		* Unsupported compressor type allow error to propagate
 		*/
+		case COMP_TYPE_LZ4:
 		case COMP_TYPE_NONE:
 		default:
 			break;
@@ -230,7 +214,7 @@ VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionL
 	}
 }
 
-VNLIB_EXPORT int VNLIB_CC FreeCompressor(void* compressor)
+VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor)
 {	
 	CompressorState* comp;
 	int errorCode;
@@ -289,14 +273,19 @@ VNLIB_EXPORT int VNLIB_CC FreeCompressor(void* compressor)
 	return errorCode;
 }
 
-VNLIB_EXPORT int VNLIB_CC GetCompressedSize(_In_ void* compressor, int inputLength, int flush)
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ void* compressor, uint64_t inputLength, int32_t flush)
 {
 	CompressorState* comp;
-	int result;
+	int64_t result;
 
 	if (!compressor)
 	{
 		return ERR_INVALID_PTR;
+	}
+
+	if (inputLength > INT64_MAX)
+	{
+		return ERR_OVERFLOW;
 	}
 
 	comp = (CompressorState*)compressor;
@@ -321,10 +310,10 @@ VNLIB_EXPORT int VNLIB_CC GetCompressedSize(_In_ void* compressor, int inputLeng
 
 #endif
 
-		/*
-		* Set the result as an error code, since the compressor
-		* type is not supported.
-		*/
+	/*
+	* Set the result as an error code, since the compressor
+	* type is not supported.
+	*/
 	case COMP_TYPE_NONE:
 	case COMP_TYPE_LZ4:
 	default:
