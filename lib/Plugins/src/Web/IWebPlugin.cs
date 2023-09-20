@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
-* File: IPlugin.cs 
+* File: IWebPlugin.cs 
 *
-* IPlugin.cs is part of VNLib.Plugins which is part of the larger 
+* IWebPlugin.cs is part of VNLib.Plugins which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins is free software: you can redistribute it and/or modify 
@@ -22,26 +22,24 @@
 * along with VNLib.Plugins. If not, see http://www.gnu.org/licenses/.
 */
 
+using System.Collections.Generic;
+
 namespace VNLib.Plugins
 {
     /// <summary>
-    /// Allows for applications to define plugin capabilities
+    /// Represents a plugin that is expected to perform web application based operations
     /// </summary>
-    public interface IPlugin
+    public interface IWebPlugin : IPlugin
     {
         /// <summary>
-        /// The name of the plugin to referrence (may be used by the host to interact)
+        /// Returns all endpoints within the plugin to load into the current root
         /// </summary>
-        string PluginName { get; }
-
-        /// <summary>
-        /// Performs operations to prepare the plugin for use
-        /// </summary>
-        void Load();
-
-        /// <summary>
-        /// Invoked when the plugin is unloaded from the runtime
-        /// </summary>
-        void Unload();
+        /// <returns>An enumeration of endpoints to load</returns>
+        /// <remarks>
+        /// Lifecycle: Results returned from this method should be consistant (although its only
+        /// likely to be called once) anytime after the <see cref="IPlugin.Load"/> method, and undefined
+        /// after the <see cref="IPlugin.Unload"/> method is called.
+        /// </remarks>
+        IEnumerable<IEndpoint> GetEndpoints();
     }
 }

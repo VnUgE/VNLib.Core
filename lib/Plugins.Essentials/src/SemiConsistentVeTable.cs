@@ -29,6 +29,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
+using VNLib.Plugins.Essentials.Endpoints;
 
 #nullable enable
 

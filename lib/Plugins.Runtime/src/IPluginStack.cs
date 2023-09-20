@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: IPluginAssemblyLoader.cs 
+* File: IPluginStack.cs 
 *
-* IPluginAssemblyLoader.cs is part of VNLib.Plugins.Runtime which is 
-* part of the larger VNLib collection of libraries and utilities.
+* IPluginStack.cs is part of VNLib.Plugins.Runtime which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU General Public License as published
@@ -22,18 +22,26 @@
 * along with VNLib.Plugins.Runtime. If not, see http://www.gnu.org/licenses/.
 */
 
+using System;
+using System.Collections.Generic;
+
 namespace VNLib.Plugins.Runtime
 {
-
     /// <summary>
-    /// Represents the bare assembly loader that gets a main assembly for a plugin and handles
-    /// type resolution, while providing loading/unloading
+    /// Provides a container and functionality to manage an entire collection 
+    /// of plugins.
     /// </summary>
-    public interface IPluginAssemblyLoader : IAssemblyLoader
+    public interface IPluginStack : IDisposable
     {
         /// <summary>
-        /// Gets the plugin's configuration information
+        /// The collection of all plugin loaders
         /// </summary>
-        IPluginConfig Config { get; }
+        IReadOnlyCollection<RuntimePluginLoader> Plugins { get; }
+
+        /// <summary>
+        /// Discovers all plugins for the runtime and populates 
+        /// the <see cref="Plugins"/> collection.
+        /// </summary>
+        void BuildStack();
     }
 }

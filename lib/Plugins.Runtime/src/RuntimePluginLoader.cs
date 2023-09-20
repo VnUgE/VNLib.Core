@@ -24,7 +24,6 @@
 
 using System;
 using System.IO;
-using System.Text.Json;
 using System.Reflection;
 
 using VNLib.Utils;
@@ -42,7 +41,6 @@ namespace VNLib.Plugins.Runtime
         private static readonly IPluginAssemblyWatcher Watcher = new AssemblyWatcher();
        
         private readonly IPluginAssemblyLoader Loader;      
-        private readonly JsonDocument HostConfig;
         private readonly ILogProvider? Log;
 
         /// <summary>
@@ -54,11 +52,6 @@ namespace VNLib.Plugins.Runtime
         /// Gets the plugin lifecycle controller
         /// </summary>
         public PluginController Controller { get; }
-        
-        /// <summary>
-        /// The path of the plugin's configuration file. (Default = pluginPath.json)
-        /// </summary>
-        public string PluginConfigPath => Path.ChangeExtension(Config.AssemblyFile, ".json");
 
         /// <summary>
         /// Creates a new <see cref="RuntimePluginLoader"/> with the specified config and host config dom.
@@ -67,13 +60,10 @@ namespace VNLib.Plugins.Runtime
         /// <param name="hostConfig">The host/process configuration DOM</param>
         /// <param name="log">A log provider to write plugin unload log events to</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public RuntimePluginLoader(IPluginAssemblyLoader loader, JsonElement? hostConfig, ILogProvider? log)
+        public RuntimePluginLoader(IPluginAssemblyLoader loader, ILogProvider? log)
         {
             Log = log;
             Loader = loader ?? throw new ArgumentNullException(nameof(loader));
-
-            //Default to empty config if null, otherwise clone a copy of the host config element
-            HostConfig = hostConfig.HasValue ? Clone(hostConfig.Value) : JsonDocument.Parse("{}");
 
             //Configure watcher if requested
             if (loader.Config.WatchForReload)
@@ -94,39 +84,28 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="FileNotFoundException"></exception>
         public void InitializeController()
         {
-            JsonDocument? pluginConfig = null;
+            //Prep the assembly loader
+            Loader.Load();
 
-            try
-            {
-                //Prep the assembly loader
-                Loader.Load();
+            //Load the main assembly
+            Assembly PluginAsm = Loader.GetAssembly();
 
-                //Get the plugin's configuration file
-                if (FileOperations.FileExists(PluginConfigPath))
-                {
-                    pluginConfig = this.GetPluginConfig();
-                }
-                else
-                {
-                    //Set plugin config dom to an empty object if the file does not exist
-                    pluginConfig = JsonDocument.Parse("{}");
-                }
+            //Init container from the assembly
+            Controller.InitializePlugins(PluginAsm);
 
-                //Load the main assembly
-                Assembly PluginAsm = Loader.GetAssembly();
+            string[] cliArgs = Environment.GetCommandLineArgs();
 
-                //Init container from the assembly
-                Controller.InitializePlugins(PluginAsm);
+            //Write the config to binary to pass it to the plugin
+            using VnMemoryStream vms = new();
 
-                string[] cliArgs = Environment.GetCommandLineArgs();
+            //Read config data
+            Loader.Config.ReadConfigurationData(vms);
 
-                //Configure log/doms
-                Controller.ConfigurePlugins(HostConfig, pluginConfig, cliArgs);
-            }
-            finally
-            {
-                pluginConfig?.Dispose();
-            }
+            //Reset memstream
+            vms.Seek(0, SeekOrigin.Begin);
+
+            //Configure log/doms
+            Controller.ConfigurePlugins(vms, cliArgs);
         }
 
         /// <summary>
@@ -218,25 +197,7 @@ namespace VNLib.Plugins.Runtime
 
             //Cleanup
             Controller.Dispose();
-            HostConfig.Dispose();
             Loader.Dispose();
         }
-
-
-        private static JsonDocument Clone(JsonElement hostConfig)
-        {
-            //Crate ms to write the current doc data to
-            using VnMemoryStream ms = new();
-
-            using (Utf8JsonWriter writer = new(ms))
-            {
-                hostConfig.WriteTo(writer);
-            }
-
-            //Reset ms
-            ms.Seek(0, SeekOrigin.Begin);
-            
-            return JsonDocument.Parse(ms);
-        }       
     }
 }

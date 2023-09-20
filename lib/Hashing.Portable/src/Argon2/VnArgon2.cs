@@ -48,7 +48,7 @@ namespace VNLib.Hashing
         public const uint HASH_SIZE = 128;
         public const int MAX_SALT_SIZE = 100;
         public const string ID_MODE = "argon2id";
-        public const string ARGON2_DEFUALT_LIB_NAME = "Argon2";
+        public const string ARGON2_DEFUALT_LIB_NAME = "argon2";
         public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "ARGON2_DLL_PATH";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;

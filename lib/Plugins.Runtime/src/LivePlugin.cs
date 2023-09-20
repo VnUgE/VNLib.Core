@@ -25,10 +25,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Text.Json;
 
-using VNLib.Utils.IO;
-using VNLib.Utils.Extensions;
 using VNLib.Plugins.Attributes;
 
 namespace VNLib.Plugins.Runtime
@@ -97,9 +94,8 @@ namespace VNLib.Plugins.Runtime
         /// Sets the plugin's configuration if it defines a <see cref="ConfigurationInitalizerAttribute"/>
         /// on an instance method
         /// </summary>
-        /// <param name="hostConfig">The host configuration DOM</param>
-        /// <param name="pluginConf">The plugin local configuration DOM</param>
-        internal void InitConfig(JsonDocument hostConfig, JsonDocument pluginConf)
+        /// <param name="configData">The host configuration DOM</param>
+        internal void InitConfig(ReadOnlySpan<byte> configData)
         {
             //Get the console handler method from the plugin instance
             MethodInfo? confHan = PluginType.GetMethods().Where(static m => m.GetCustomAttribute<ConfigurationInitalizerAttribute>() != null)
@@ -109,23 +105,10 @@ namespace VNLib.Plugins.Runtime
             if (configInit == null)
             {
                 return;
-            }
-
-            //Merge configurations before passing to plugin
-            using JsonDocument merged = hostConfig.Merge(pluginConf, "host", PluginType.Name);
-
-            //Write the config to binary to pass it to the plugin
-            using VnMemoryStream vms = new();
-            using (Utf8JsonWriter writer = new(vms))
-            {
-                merged.WriteTo(writer);
-            }
-
-            //Reset memstream
-            vms.Seek(0, System.IO.SeekOrigin.Begin);
+            }          
 
             //Invoke
-            configInit.Invoke(vms.AsSpan());
+            configInit.Invoke(configData);
         }
         
         /// <summary>

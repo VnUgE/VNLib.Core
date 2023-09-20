@@ -478,7 +478,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="session"></param>
         /// <param name="value">True for a local account, false otherwise</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void HasLocalAccount(this in SessionInfo session, bool value) => session[LOCAL_ACCOUNT_ENTRY] = value ? "1" : null;
+        public static void HasLocalAccount(this in SessionInfo session, bool value) => session[LOCAL_ACCOUNT_ENTRY] = value ? "1" : null!;
         
         /// <summary>
         /// Gets a value indicating if the session belongs to a local user account

@@ -83,7 +83,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         internal void OnPluginLoaded(IManagedPlugin controller)
         {
             //Get all new endpoints for plugin
-            IEndpoint[] newEndpoints = controller.Controller.Plugins.SelectMany(static pl => pl.Plugin!.GetEndpoints()).ToArray();
+            IEndpoint[] newEndpoints = controller.Controller.GetOnlyWebPlugins().SelectMany(static pl => pl.Plugin!.GetEndpoints()).ToArray();
 
             //Add endpoints to dict
             _endpointsForPlugins.AddOrUpdate(controller, newEndpoints);

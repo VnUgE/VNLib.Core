@@ -26,7 +26,10 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Collections.Generic;
 
+using VNLib.Utils.IO;
+using VNLib.Utils.Extensions;
 
 namespace VNLib.Plugins.Runtime
 {
@@ -113,28 +116,7 @@ namespace VNLib.Plugins.Runtime
             reg.Register(listener, state);
             return new(reg, listener);
         }
-
-        /// <summary>
-        /// Loads the configuration file into its <see cref="JsonDocument"/> format 
-        /// for reading.
-        /// </summary>
-        /// <param name="loader"></param>
-        /// <returns>A new <see cref="JsonDocument"/> of the loaded configuration file</returns>
-        public static JsonDocument GetPluginConfig(this RuntimePluginLoader loader)
-        {
-            //Open and read the config file
-            using FileStream confStream = File.OpenRead(loader.PluginConfigPath);
-
-            JsonDocumentOptions jdo = new()
-            {
-                AllowTrailingCommas = true,
-                CommentHandling = JsonCommentHandling.Skip,
-            };
-
-            //parse the plugin config file
-            return JsonDocument.Parse(confStream, jdo);
-        }
-
+       
         /// <summary>
         /// Determines if the current <see cref="PluginController"/>
         /// exposes the desired type on is <see cref="IPlugin"/>
@@ -164,6 +146,202 @@ namespace VNLib.Plugins.Runtime
                 .SingleOrDefault();
 
             return plugin?.Plugin as T;
+        }
+
+        /// <summary>
+        /// Serially initialzies all plugin lifecycle controllers and configures 
+        /// plugin instances.
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void InitializeAll(this IPluginStack runtime)
+        {
+            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+
+            foreach(RuntimePluginLoader loader in runtime.Plugins)
+            {
+                loader.InitializeController();
+            }
+        }
+
+        /// <summary>
+        /// Invokes the load method for all plugin instances
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="AggregateException"></exception>
+        public static void InvokeLoad(this IPluginStack runtime)
+        {
+            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+
+            //try loading all plugins
+            runtime.Plugins.TryForeach(static p => p.LoadPlugins());
+        }
+
+        /// <summary>
+        /// Invokes the unload method for all plugin instances
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="AggregateException"></exception>
+        public static void InvokeUnload(this IPluginStack runtime)
+        {
+            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+
+            //try unloading all plugins
+            runtime.Plugins.TryForeach(static p => p.UnloadPlugins());
+        }
+
+        /// <summary>
+        /// Unloads all plugins and the plugin assembly loader
+        /// if unloading is supported.
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="AggregateException"></exception>
+        public static void UnloadAll(this IPluginStack runtime)
+        {
+            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+
+            //try unloading all plugins and their loaders
+            runtime.Plugins.TryForeach(static p => p.UnloadAll());
+        }
+
+        /// <summary>
+        /// Reloads all plugins and each assembly loader
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="AggregateException"></exception>
+        public static void ReloadAll(this IPluginStack runtime)
+        {
+            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+
+            //try reloading all plugins
+            runtime.Plugins.TryForeach(static p => p.ReloadPlugins());
+        }
+
+        /// <summary>
+        /// Registers a plugin event listener for all plugins
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <param name="listener">The event listener instance</param>
+        /// <param name="state">Optional state parameter</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void RegsiterListener(this IPluginStack runtime, IPluginEventListener listener, object? state = null)
+        {
+            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            _ = listener ?? throw new ArgumentNullException(nameof(listener));
+
+            //Register for all plugins
+            foreach (PluginController controller in runtime.Plugins.Select(static p => p.Controller))
+            {
+                controller.Register(listener, state);
+            }
+        }
+
+        /// <summary>
+        /// Unregisters a plugin event listener for all plugins
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <param name="listener">The listener instance to unregister</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void UnregsiterListener(this IPluginStack runtime, IPluginEventListener listener)
+        {
+            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            _ = listener ?? throw new ArgumentNullException(nameof(listener));
+
+            //Unregister for all plugins
+            foreach (PluginController controller in runtime.Plugins.Select(static p => p.Controller))
+            {
+                controller.Unregister(listener);
+            }
+        }
+
+        /// <summary>
+        /// Specify the host configuration data to pass to the plugin
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="hostConfig">A configuration element to pass to the plugin's host config element</param>
+        /// <returns>The current builder instance for chaining</returns>
+        public static PluginStackBuilder WithConfigurationData(this PluginStackBuilder builder, JsonElement hostConfig)
+        {
+            _ = builder ?? throw new ArgumentNullException(nameof(builder));
+
+            //Clone the host config into binary
+            using VnMemoryStream ms = new();
+            using (Utf8JsonWriter writer = new(ms))
+            {
+                hostConfig.WriteTo(writer);
+            }
+
+            //Store binary
+            return builder.WithConfigurationData(ms.AsSpan());
+        }
+
+        /// <summary>
+        /// Specifies the directory that the plugin loader will search for plugins in
+        /// </summary>
+        /// <param name="path">The search directory path</param>
+        /// <param name="builder"></param>
+        /// <returns>The current builder instance for chaining</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static PluginStackBuilder WithSearchDirectory(this PluginStackBuilder builder, string path) => WithSearchDirectory(builder, new DirectoryInfo(path));
+
+        /// <summary>
+        /// Specifies the directory that the plugin loader will search for plugins in
+        /// </summary>
+        /// <param name="dir">The search directory instance</param>
+        /// <param name="builder"></param>
+        /// <returns>The current builder instance for chaining</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static PluginStackBuilder WithSearchDirectory(this PluginStackBuilder builder, DirectoryInfo dir)
+        {
+            _ = builder ?? throw new ArgumentNullException(nameof(builder));
+            _ = dir ?? throw new ArgumentNullException(nameof(dir));
+
+            PluginDirectorySearcher dirSearcher = new (dir);
+            builder.WithDiscoveryManager(dirSearcher);
+            return builder;
+        }
+
+        /// <summary>
+        /// Gets the current collection of loaded plugins for the plugin stack
+        /// </summary>
+        /// <param name="stack"></param>
+        /// <returns>An enumeration of all <see cref="LivePlugin"/> wrappers</returns>
+        public static IEnumerable<LivePlugin> GetAllPlugins(this IPluginStack stack) => stack.Plugins.SelectMany(static p => p.Controller.Plugins);
+
+        private sealed record class PluginDirectorySearcher(DirectoryInfo Dir) : IPluginDiscoveryManager
+        {
+            private const string PLUGIN_FILE_EXTENSION = ".dll";
+
+            ///<inheritdoc/>
+            public string[] DiscoverPluginFiles()
+            {
+                //Enumerate all dll files within the seach directory
+                IEnumerable<DirectoryInfo> dirs = Dir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly);
+
+                //Search all directories for plugins and return the paths
+                return GetPluginPaths(dirs).ToArray();
+            }
+
+            private static IEnumerable<string> GetPluginPaths(IEnumerable<DirectoryInfo> dirs)
+            {
+                //Select only dirs with a dll that is named after the directory name
+                return dirs.Where(static pdir =>
+                {
+                    string compined = Path.Combine(pdir.FullName, pdir.Name);
+                    string FilePath = string.Concat(compined, PLUGIN_FILE_EXTENSION);
+                    return FileOperations.FileExists(FilePath);
+                })
+                //Return the name of the dll file to import
+                .Select(static pdir =>
+                {
+                    string compined = Path.Combine(pdir.FullName, pdir.Name);
+                    return string.Concat(compined, PLUGIN_FILE_EXTENSION);
+                });
+            }
         }
     }
 }

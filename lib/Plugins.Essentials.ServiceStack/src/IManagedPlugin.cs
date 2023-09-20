@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IPluginLoadConfiguration.cs 
+* File: IManagedPlugin.cs 
 *
-* IPluginLoadConfiguration.cs is part of VNLib.Plugins.Essentials.ServiceStack 
-* which is part of the larger VNLib collection of libraries and utilities.
+* IManagedPlugin.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,41 +22,34 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
-using System.Text.Json;
-
-using VNLib.Utils.Logging;
 using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
 
+
     /// <summary>
-    /// Plugin loading configuration variables
+    /// Represents a plugin managed by a <see cref="IHttpPluginManager"/> that includes dynamically loaded plugins
     /// </summary>
-    public interface IPluginLoadConfiguration
+    public interface IManagedPlugin
     {
         /// <summary>
-        /// The directory containing the dynamic plugin assemblies to load
+        /// Exposes the internal <see cref="PluginController"/> for the loaded plugin
         /// </summary>
-        string PluginDir { get; }
+        PluginController Controller { get; }
 
         /// <summary>
-        /// The optional host configuration file to merge with plugin config 
-        /// to pass to the loading plugin.
+        /// The file path to the loaded plugin
         /// </summary>
-        JsonElement? HostConfig { get; }
+        string PluginPath { get; }
 
         /// <summary>
-        /// Passed to the underlying <see cref="RuntimePluginLoader"/>
-        /// holding plugins
+        /// The exposed services the inernal plugin provides
         /// </summary>
-        ILogProvider? PluginErrorLog { get; }
-
-        /// <summary>
-        /// A factory instance the provides new <see cref="IPluginAssemblyLoader"/> instances
-        /// on demand from its plugin assembly path
-        /// </summary>
-        public IPluginAssemblyLoaderFactory AssemblyLoaderFactory { get; }
+        /// <remarks>
+        /// WARNING: Services exposed by the plugin will abide by the plugin lifecycle, so consumers 
+        /// must listen for plugin load/unload events to respect lifecycles properly.
+        /// </remarks>
+        IUnloadableServiceProvider Services { get; }
     }
 }

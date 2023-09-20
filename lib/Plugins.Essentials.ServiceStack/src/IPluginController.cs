@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IPluginManager.cs 
+* File: IHttpPluginManager.cs 
 *
-* IPluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
+* IHttpPluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
 * is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -25,29 +25,18 @@
 using System;
 using System.Collections.Generic;
 
-using VNLib.Utils.Logging;
-
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
     /// Represents a live plugin controller that manages all
     /// plugins loaded in a <see cref="ServiceDomain"/>
     /// </summary>
-    public interface IPluginManager
+    public interface IHttpPluginManager
     {
         /// <summary>
-        /// The the plugins managed by this <see cref="IPluginManager"/>
+        /// The the plugins managed by this <see cref="IHttpPluginManager"/>
         /// </summary>
         public IEnumerable<IManagedPlugin> Plugins { get; }
-
-        /// <summary>
-        /// Loads all plugins specified by the host config to the service manager,
-        /// or attempts to load plugins by the default
-        /// </summary>
-        /// <param name="config">The plugin loading configuration</param>
-        /// <param name="appLog">A log provider to write message and errors to</param>
-        /// <returns>A task that resolves when all plugins are loaded</returns>
-        void LoadPlugins(IPluginLoadConfiguration config, ILogProvider appLog);
 
         /// <summary>
         /// Sends a message to a plugin identified by it's name.

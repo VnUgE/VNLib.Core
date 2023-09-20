@@ -22,7 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +29,7 @@ using System.Collections.Generic;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
+using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -41,6 +41,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     {
         private readonly LinkedList<IHttpServer> _servers;
         private readonly ServiceDomain _serviceDomain;
+        private readonly PluginManager _plugins;
 
         private CancellationTokenSource? _cts;
         private Task WaitForAllTask;
@@ -51,19 +52,21 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         public IReadOnlyCollection<IHttpServer> Servers => _servers;
 
         /// <summary>
-        /// The service domain's plugin controller
+        /// Gets the internal <see cref="IHttpPluginManager"/> that manages plugins for the entire
+        /// <see cref="HttpServiceStack"/>
         /// </summary>
-        public IPluginManager PluginManager => _serviceDomain.PluginManager;
+        public IHttpPluginManager PluginManager => _plugins;        
 
         /// <summary>
         /// Initializes a new <see cref="HttpServiceStack"/> that will 
         /// generate servers to listen for services exposed by the 
         /// specified host context
         /// </summary>
-        internal HttpServiceStack(LinkedList<IHttpServer> servers, ServiceDomain serviceDomain)
+        internal HttpServiceStack(LinkedList<IHttpServer> servers, ServiceDomain serviceDomain, IPluginStack plugins)
         {
             _servers = servers;
             _serviceDomain = serviceDomain;
+            _plugins = new(serviceDomain, plugins);
             WaitForAllTask = Task.CompletedTask;
         }
 
@@ -94,9 +97,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         }
 
         /// <summary>
-        /// Stops listening on all configured servers
-        /// and returns a task that completes when the service 
-        /// host has stopped all servers and unloaded resources
+        /// Stops listening on all configured servers and returns a task that completes 
+        /// when the service host has stopped all servers and unloaded resources
         /// </summary>
         /// <returns>The task that completes when</returns>
         public Task StopAndWaitAsync()
@@ -109,6 +111,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         private void OnAllServerExit(Task allExit)
         {
+            //Unload plugins
+            _plugins.UnloadPlugins();
+
             //Unload the hosts
             _serviceDomain.TearDown();
         }
@@ -118,7 +123,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             _cts?.Dispose();
 
-            _serviceDomain.Dispose();
+            _plugins.Dispose();
             
             //remove all lists
             _servers.Clear();

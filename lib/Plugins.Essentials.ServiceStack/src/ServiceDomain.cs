@@ -27,7 +27,6 @@ using System.Net;
 using System.Linq;
 using System.Collections.Generic;
 
-using VNLib.Utils;
 using VNLib.Utils.Extensions;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
@@ -37,31 +36,19 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// Represents a domain of services and thier dynamically loaded plugins 
     /// that will be hosted by an application service stack
     /// </summary>
-    public sealed class ServiceDomain : VnDisposeable
+    public sealed class ServiceDomain
     {
         private readonly LinkedList<ServiceGroup> _serviceGroups;
-        private readonly PluginManager _plugins;       
-
+      
         /// <summary>
         /// Gets all service groups loaded in the service manager
         /// </summary>
         public IReadOnlyCollection<ServiceGroup> ServiceGroups => _serviceGroups;
 
         /// <summary>
-        /// Gets the internal <see cref="IPluginManager"/> that manages plugins for the entire
-        /// <see cref="ServiceDomain"/>
-        /// </summary>
-        public IPluginManager PluginManager => _plugins;
-
-        /// <summary>
         /// Initializes a new empty <see cref="ServiceDomain"/>
         /// </summary>
-        public ServiceDomain()
-        {
-            _serviceGroups = new();
-            //Init plugin manager and pass ref to service group collection
-            _plugins = new PluginManager(_serviceGroups);
-        }
+        public ServiceDomain() => _serviceGroups = new();
 
         /// <summary>
         /// Uses the supplied callback to get a collection of virtual hosts
@@ -69,11 +56,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="hostBuilder">The callback method to build virtual hosts</param>
         /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
-        /// <exception cref="ObjectDisposedException"></exception>
         public bool BuildDomain(Action<ICollection<IServiceHost>> hostBuilder)
         {
-            Check();
-
             //LL to store created hosts
             LinkedList<IServiceHost> hosts = new();
 
@@ -88,11 +72,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="hosts">The enumeration of virtual hosts</param>
         /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
-        /// <exception cref="ObjectDisposedException"></exception>
         public bool FromExisting(IEnumerable<IServiceHost> hosts)
         {
-            Check();
-
             //Get service groups and pass service group list
             CreateServiceGroups(_serviceGroups, hosts);
             return _serviceGroups.Any();
@@ -124,32 +105,14 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         }
 
         /// <summary>
-        /// Tears down the service domain by unloading all plugins (calling their event handlers)
-        /// and destroying all <see cref="ServiceGroup"/>s. This instance may be rebuilt if this 
-        /// method returns successfully.
+        /// Tears down the service domain by destroying all <see cref="ServiceGroup"/>s. This instance may be rebuilt 
+        /// if this method returns successfully.
         /// </summary>
-        internal void TearDown()
+        public void TearDown()
         {
-            Check();
-
-            /*
-             * Unloading plugins should trigger the OnPluginUnloading 
-             * hook which should cause all dependencies to unload linked
-             * types.
-             */
-            _plugins.UnloadPlugins();
-            
             //Manually cleanup if unload missed data
             _serviceGroups.TryForeach(static sg => sg.UnloadAll());
             //empty service groups
-            _serviceGroups.Clear();
-        }
-
-       
-        ///<inheritdoc/>
-        protected override void Free()
-        {
-            _plugins.Dispose();
             _serviceGroups.Clear();
         }
     }

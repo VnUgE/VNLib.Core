@@ -321,6 +321,10 @@ namespace VNLib.Net.Http
                     //Closing, exit loop
                     break;
                 }
+                catch(AuthenticationException ae) when(ae.HResult == INVALID_FRAME_HRESULT)
+                {
+                    Config.ServerLog.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
+                }
                 catch (AuthenticationException ae)
                 {
                     Config.ServerLog.Error(ae);
@@ -359,13 +363,13 @@ namespace VNLib.Net.Http
             {
                 //Ignore aborted messages
                 case SocketError.ConnectionAborted:
-                    return;
+                    break;
                 case SocketError.ConnectionReset:
                     Config.ServerLog.Debug("Connecion reset by client");
-                    return;
+                    break;
                 case SocketError.TimedOut:
                     Config.ServerLog.Debug("Socket operation timed out");
-                    return;
+                    break;
                 default:
                     Config.ServerLog.Information(se);
                     break;

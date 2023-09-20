@@ -29,9 +29,9 @@ using System.Linq;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
-using VNLib.Utils.IO;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Runtime;
@@ -43,128 +43,90 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// A sealed type that manages the plugin interaction layer. Manages the lifetime of plugin
     /// instances, exposes controls, and relays stateful plugin events.
     /// </summary>
-    internal sealed class PluginManager : VnDisposeable, IPluginManager, IPluginEventListener
+    internal sealed class PluginManager : VnDisposeable, IHttpPluginManager, IPluginEventListener
     {
-        private const string PLUGIN_FILE_EXTENSION = ".dll";
+        private readonly ConditionalWeakTable<PluginController, ManagedPlugin> _managedPlugins;
+        private readonly ServiceDomain _dependents;
+        private readonly IPluginStack _stack;       
 
-        private readonly List<ManagedPlugin> _plugins;
-        private readonly IReadOnlyCollection<ServiceGroup> _dependents;
-      
-
-        private IEnumerable<LivePlugin> _livePlugins => _plugins.SelectMany(static p => p.Controller.Plugins);
+        private IEnumerable<LivePlugin> _livePlugins => _managedPlugins.SelectMany(static p => p.Key.Plugins);
 
         /// <summary>
         /// The collection of internal controllers
         /// </summary>
-        public IEnumerable<IManagedPlugin> Plugins => _plugins;
+        public IEnumerable<IManagedPlugin> Plugins => _managedPlugins.Select(static p => p.Value);
 
-        public PluginManager(IReadOnlyCollection<ServiceGroup> dependents)
+        public PluginManager(ServiceDomain dependents, IPluginStack stack)
         {
-            _plugins = new();
             _dependents = dependents;
+            _stack = stack;
+            _managedPlugins = new();
         }
 
-        /// <inheritdoc/>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public void LoadPlugins(IPluginLoadConfiguration config, ILogProvider appLog)
+        /// <summary>
+        /// Configures the manager to capture and manage plugins within a plugin stack
+        /// </summary>
+        /// <param name="debugLog"></param>
+        public void LoadPlugins(ILogProvider debugLog)
         {
-            Check();            
+            _ = _stack ?? throw new InvalidOperationException("Plugin stack has not been set.");
 
-            //Load all virtual file assemblies withing the plugin folder
-            DirectoryInfo dir = new(config.PluginDir);
+            //Build the plugin stack
+            _stack.BuildStack();
 
-            if (!dir.Exists)
-            {
-                appLog.Warn("Plugin directory {dir} does not exist. No plugins were loaded", config.PluginDir);
-                return;
-            }
+            //Register for plugin events
+            _stack.RegsiterListener(this, this);
 
-            appLog.Information("Loading managed plugins");
+            //Create plugin wrappers from loaded plugins
+            ManagedPlugin[] wrapper = _stack.Plugins.Select(p => new ManagedPlugin(p)).ToArray();
 
-            //Enumerate all dll files within this dir
-            IEnumerable<DirectoryInfo> dirs = dir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly);
+            //Add all wrappers to the managed plugins table
+            Array.ForEach(wrapper, w => _managedPlugins.Add(w.Plugin.Controller, w));
 
-            //Select only dirs with a dll that is named after the directory name
-            IEnumerable<string> pluginPaths = GetPluginPaths(dirs);
-
-            IEnumerable<string> pluginFileNames = pluginPaths.Select(static s => $"{Path.GetFileName(s)}\n");
-
-            appLog.Debug("Found plugin files: \n{files}", string.Concat(pluginFileNames));
-
-            /*
-             * We need to get the assembly loader for the plugin file, then create its 
-             * RuntimePluginLoader which will be passed to the Managed plugin instance
-             */
-
-            ManagedPlugin[] wrappers = pluginPaths.Select(pw => config.AssemblyLoaderFactory.GetLoaderForPluginFile(pw))
-                                        .Select(l => new RuntimePluginLoader(l, config.HostConfig, config.PluginErrorLog))
-                                        .Select(loader => new ManagedPlugin(loader, this))
-                                        .ToArray();
-
-            //Add to loaded plugins
-            _plugins.AddRange(wrappers);
-
-            //Load plugins
-            InitiailzeAndLoad(appLog);
-        }
-
-        private static IEnumerable<string> GetPluginPaths(IEnumerable<DirectoryInfo> dirs)
-        {
-            //Select only dirs with a dll that is named after the directory name
-            return dirs.Where(static pdir =>
-            {
-                string compined = Path.Combine(pdir.FullName, pdir.Name);
-                string FilePath = string.Concat(compined, PLUGIN_FILE_EXTENSION);
-                return FileOperations.FileExists(FilePath);
-            })
-            //Return the name of the dll file to import
-            .Select(static pdir =>
-            {
-                string compined = Path.Combine(pdir.FullName, pdir.Name);
-                return string.Concat(compined, PLUGIN_FILE_EXTENSION);
-            });
-        }
-
-        private void InitiailzeAndLoad(ILogProvider debugLog) 
-        {
-            //Load all async
-            _plugins.ToArray().TryForeach(p => InitializePlugin(p, debugLog));           
+            //Init remaining controllers single-threaded
+            _managedPlugins.Select(p => p.Value).TryForeach(w => InitializePlugin(w.Plugin, debugLog));
 
             //Load stage, load all multithreaded
-            Parallel.ForEach(_plugins, p => LoadPlugin(p, debugLog));
+            Parallel.ForEach(wrapper, wp => LoadPlugin(wp.Plugin, debugLog));
 
             debugLog.Information("Plugin loading completed");
         }
 
-        private void InitializePlugin(ManagedPlugin plugin, ILogProvider debugLog)
+      
+        private void InitializePlugin(RuntimePluginLoader plugin, ILogProvider debugLog)
         {
-            void LogAndRemovePlugin(Exception ex)
-            {
-                debugLog.Error(ex, $"Exception raised during initialzation of {plugin.PluginFileName}. It has been removed from the collection\n{ex}");
+            string fileName = Path.GetFileName(plugin.Config.AssemblyFile);
 
-                //Remove the plugin from the list while locking it
-                lock (_plugins)
+            try
+            {
+                //Initialzie plugin wrapper
+                plugin.InitializeController();
+
+                /*
+                 * If the plugin assembly does not expose any plugin types or there is an issue loading the assembly, 
+                 * its types my not unify, then we should give the user feedback insead of a silent fail.
+                 */
+                if (!plugin.Controller.Plugins.Any())
                 {
-                    _plugins.Remove(plugin);
+                    debugLog.Warn("No plugin instances were exposed via {ams} assembly. This may be due to an assebmly mismatch", fileName);
                 }
+            }
+            catch (Exception ex)
+            {
+                debugLog.Error("Exception raised during initialzation of {asm}. It has been removed from the collection\n{ex}", fileName, ex);
+
+                //Remove the plugin from the table
+                _managedPlugins.Remove(plugin.Controller);
 
                 //Dispose the plugin
                 plugin.Dispose();
             }
-
-            try
-            {
-                //Load wrapper
-                plugin.InitializePlugins();
-            }
-            catch (Exception ex)
-            {
-                LogAndRemovePlugin(ex);
-            }
         }
 
-        private static void LoadPlugin(ManagedPlugin plugin, ILogProvider debugLog)
+        private static void LoadPlugin(RuntimePluginLoader plugin, ILogProvider debugLog)
         {
+            string fileName = Path.GetFileName(plugin.Config.AssemblyFile);
+           
             Stopwatch sw = new();
             try
             {
@@ -175,23 +137,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
                 sw.Stop();
 
-                /*
-                 * If the plugin assembly does not expose any plugin types or there is an issue loading the assembly, 
-                 * its types my not unify, then we should give the user feedback insead of a silent fail.
-                 */
-                if (!plugin.Controller.Plugins.Any())
-                {
-                    debugLog.Warn("No plugin instances were exposed via {ams} assembly. This may be due to an assebmly mismatch", plugin.PluginFileName);
-                }
-                else
-                {
-                    debugLog.Verbose("Loaded {pl} in {tm} ms", plugin.PluginFileName, sw.ElapsedMilliseconds);
-                }
-
+                debugLog.Verbose("Loaded {pl} in {tm} ms", fileName, sw.ElapsedMilliseconds);
             }
             catch (Exception ex) 
             {
-                debugLog.Error(ex, $"Exception raised during loading {plugin.PluginFileName}. Failed to load plugin \n{ex}");
+                debugLog.Error("Exception raised during loading {asf}. Failed to load plugin \n{ex}", fileName, ex);
             }
             finally
             {
@@ -214,48 +164,63 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// <inheritdoc/>
         public void ForceReloadAllPlugins()
         {
-            //Reload all plugin managers
-            _plugins.TryForeach(static p => p.ReloadPlugins());
+            Check();
+
+            //Reload all plugins, causing an event cascade
+            _stack.ReloadAll();
         }
 
         /// <inheritdoc/>
         public void UnloadPlugins()
         {
+            Check();
+
             //Unload all plugin controllers
-            _plugins.TryForeach(static p => p.UnloadPlugins());
+            _stack.UnloadAll();
 
             /*
              * All plugin instances must be destroyed because the 
              * only way they will be loaded is from their files 
              * again, so they must be released
              */
-            _plugins.TryForeach(static p => p.Dispose());
-            _plugins.Clear();
+            Free();
         }
 
         protected override void Free()
         {
-            //Cleanup on dispose if unload failed
-            _plugins.TryForeach(static p => p.Dispose());
-            _plugins.Clear();
+            //Dispose all managed plugins and clear the table
+            _managedPlugins.TryForeach(p => p.Value.Dispose());
+            _managedPlugins.Clear();
         }
 
         void IPluginEventListener.OnPluginLoaded(PluginController controller, object? state)
         {
+            //Handle service events
+            ManagedPlugin mp = _managedPlugins.GetValue(controller, (pc) => null!);
+
+            //Run onload method before invoking other handlers
+            mp.OnPluginLoaded();
+
             //Get event listeners at event time because deps may be modified by the domain
-            ServiceGroup[] deps = _dependents.Select(static d => d).ToArray();
+            ServiceGroup[] deps = _dependents.ServiceGroups.Select(static d => d).ToArray();
 
             //run onload method
-            deps.TryForeach(d => d.OnPluginLoaded((IManagedPlugin)state!));
+            deps.TryForeach(d => d.OnPluginLoaded(mp));
         }
 
         void IPluginEventListener.OnPluginUnloaded(PluginController controller, object? state)
         {
+            //Handle service events
+            ManagedPlugin mp = _managedPlugins.GetValue(controller, (pc) => null!);
+
+            //Run onload method before invoking other handlers
+            mp.OnPluginUnloaded();
+
             //Get event listeners at event time because deps may be modified by the domain
-            ServiceGroup[] deps = _dependents.Select(static d => d).ToArray();
+            ServiceGroup[] deps = _dependents.ServiceGroups.Select(static d => d).ToArray();
 
             //Run unloaded method
-            deps.TryForeach(d => d.OnPluginUnloaded((IManagedPlugin)state!));
+            deps.TryForeach(d => d.OnPluginUnloaded(mp));
         }
     }
 }

@@ -39,6 +39,7 @@ using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
 using VNLib.Plugins.Essentials.Middleware;
+using VNLib.Plugins.Essentials.Endpoints;
 
 #nullable enable
 

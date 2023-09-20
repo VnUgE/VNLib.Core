@@ -53,7 +53,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         void OnRuntimeServiceAttach(IManagedPlugin plugin, IEndpoint[] endpoints);
 
         /// <summary>
-        /// Called when a <see cref="ServiceDomain"/>'s <see cref="IPluginManager"/> 
+        /// Called when a <see cref="ServiceDomain"/>'s <see cref="IHttpPluginManager"/> 
         /// unloads a given plugin, and its originally discovered endpoints
         /// </summary>
         /// <param name="plugin">The unloading plugin to detach</param>

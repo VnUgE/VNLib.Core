@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.IO;
 
 namespace VNLib.Plugins.Runtime
 {
@@ -51,5 +52,11 @@ namespace VNLib.Plugins.Runtime
         /// The delay which a watcher should wait to trigger a plugin reload after an assembly file changes
         /// </summary>
         TimeSpan ReloadDelay { get; }
+
+        /// <summary>
+        /// Reads the host configuration into the given stream
+        /// </summary>
+        /// <param name="outputStream">The stream to write configurationd data to</param>
+        void ReadConfigurationData(Stream outputStream);
     }
 }

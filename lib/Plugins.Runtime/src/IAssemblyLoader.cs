@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: IPluginAssemblyLoader.cs 
+* File: IAssemblyLoader.cs 
 *
-* IPluginAssemblyLoader.cs is part of VNLib.Plugins.Runtime which is 
+* IAssemblyLoader.cs is part of VNLib.Plugins.Runtime which is 
 * part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
@@ -22,18 +22,30 @@
 * along with VNLib.Plugins.Runtime. If not, see http://www.gnu.org/licenses/.
 */
 
+using System;
+using System.Reflection;
+
 namespace VNLib.Plugins.Runtime
 {
-
     /// <summary>
-    /// Represents the bare assembly loader that gets a main assembly for a plugin and handles
-    /// type resolution, while providing loading/unloading
+    /// Represents the core assembly loading functionality
     /// </summary>
-    public interface IPluginAssemblyLoader : IAssemblyLoader
+    public interface IAssemblyLoader : IDisposable
     {
         /// <summary>
-        /// Gets the plugin's configuration information
+        /// Unloads the assembly loader if Config.Unloadable is true, otherwise does nothing
         /// </summary>
-        IPluginConfig Config { get; }
+        void Unload();
+
+        /// <summary>
+        /// Prepares the loader for use
+        /// </summary>
+        void Load();
+
+        /// <summary>
+        /// Begins the loading process and recovers the default assembly
+        /// </summary>
+        /// <returns>The main assembly from the assembly file</returns>
+        Assembly GetAssembly();
     }
 }

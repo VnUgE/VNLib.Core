@@ -24,10 +24,10 @@
 
 using System;
 using System.Linq;
-using System.Text.Json;
 using System.Reflection;
 using System.Collections.Generic;
 
+using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
 
 namespace VNLib.Plugins.Runtime
@@ -105,11 +105,11 @@ namespace VNLib.Plugins.Runtime
             }
         }
 
-        internal void ConfigurePlugins(JsonDocument hostDom, JsonDocument pluginDom, string[] cliArgs)
+        internal void ConfigurePlugins(VnMemoryStream configData, string[] cliArgs)
         {
             lock (_stateLock)
             {
-                _plugins.TryForeach(lp => lp.InitConfig(hostDom, pluginDom));
+                _plugins.TryForeach(lp => lp.InitConfig(configData.AsSpan()));
                 _plugins.TryForeach(lp => lp.InitLog(cliArgs));
             }
         }

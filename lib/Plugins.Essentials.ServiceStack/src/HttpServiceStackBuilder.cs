@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
+using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -41,17 +42,18 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// specified host context
         /// </summary>
         public HttpServiceStackBuilder()
-        {}
+        { }
 
         private Action<ICollection<IServiceHost>>? _hostBuilder;
         private Func<ServiceGroup, IHttpServer>? _getServers;
+        private Func<IPluginStack>? _getPlugins;
 
         /// <summary>
         /// Uses the supplied callback to get a collection of virtual hosts
         /// to build the current domain with
         /// </summary>
         /// <param name="hostBuilder">The callback method to build virtual hosts</param>
-        /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
+        /// <returns>The current instance for chaining</returns>
         public HttpServiceStackBuilder WithDomainBuilder(Action<ICollection<IServiceHost>> hostBuilder)
         {
             _hostBuilder = hostBuilder;
@@ -62,9 +64,21 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// Spcifies a callback function that builds <see cref="IHttpServer"/> instances from the hosts
         /// </summary>
         /// <param name="getServers">A callback method that gets the http server implementation for the service group</param>
+        /// <returns>The current instance for chaining</returns>
         public HttpServiceStackBuilder WithHttp(Func<ServiceGroup, IHttpServer> getServers)
         {
             _getServers = getServers;
+            return this;
+        }
+
+        /// <summary>
+        /// Enables the stack to support plugins
+        /// </summary>
+        /// <param name="getStack">The callback function that returns the plugin stack when requested</param>
+        /// <returns>The current instance for chaining</returns>
+        public HttpServiceStackBuilder WithPluginStack(Func<IPluginStack> getStack)
+        {
+            _getPlugins = getStack;
             return this;
         }
 
@@ -80,33 +94,46 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
             //Inint the service domain
             ServiceDomain sd = new();
-            try
+
+            if (!sd.BuildDomain(_hostBuilder))
             {
-                if (!sd.BuildDomain(_hostBuilder))
-                {
-                    throw new ArgumentException("Failed to configure the service domain, you must expose at least one service host");
-                }
-
-                LinkedList<IHttpServer> servers = new();
-
-                //enumerate hosts groups
-                foreach (ServiceGroup hosts in sd.ServiceGroups)
-                {
-                    //Create new server
-                    IHttpServer server = _getServers.Invoke(hosts);
-
-                    //Add server to internal list
-                    servers.AddLast(server);
-                }
-
-                //Return the service stack
-                return new HttpServiceStack(servers, sd);
+                throw new ArgumentException("Failed to configure the service domain, you must expose at least one service host");
             }
-            catch
+
+            LinkedList<IHttpServer> servers = new();
+
+            //enumerate hosts groups
+            foreach (ServiceGroup hosts in sd.ServiceGroups)
             {
-                sd.Dispose();
-                throw;
+                //Create new server
+                IHttpServer server = _getServers.Invoke(hosts);
+
+                //Add server to internal list
+                servers.AddLast(server);
             }
+
+            //Only load plugins if the callback is configured
+            IPluginStack? plugins = _getPlugins?.Invoke();
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
+            plugins ??= new EmptyPluginStack();
+#pragma warning restore CA2000 // Dispose objects before losing scope
+
+            return new(servers, sd, plugins);
+        }
+
+        /*
+         * An empty plugin stack that is used when the plugin callback is not configured
+         */
+        private sealed class EmptyPluginStack : IPluginStack
+        {
+            public IReadOnlyCollection<RuntimePluginLoader> Plugins { get; } = Array.Empty<RuntimePluginLoader>();
+
+            public void BuildStack()
+            { }
+            
+            public void Dispose() 
+            { }
         }
     }
 }

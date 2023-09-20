@@ -24,6 +24,8 @@
 
 using System;
 
+using VNLib.Plugins.Essentials.Endpoints;
+
 #nullable enable
 
 namespace VNLib.Plugins.Essentials

@@ -22,8 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Reflection;
@@ -36,28 +34,16 @@ using VNLib.Plugins.Attributes;
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
 
-    internal sealed class ManagedPlugin : VnDisposeable, IPluginEventListener, IManagedPlugin
+    internal sealed class ManagedPlugin : VnDisposeable, IManagedPlugin
     {
-        private readonly IPluginEventListener _serviceDomainListener;
-        private readonly RuntimePluginLoader _plugin;
+        internal RuntimePluginLoader Plugin { get; }
+
+        ///<inheritdoc/>
+        public string PluginPath => Plugin.Config.AssemblyFile;
 
         private UnloadableServiceContainer? _services;
 
-        public ManagedPlugin(RuntimePluginLoader loader, IPluginEventListener listener)
-        {
-            //configure the loader
-            _plugin = loader;
-
-            //Register loading event listener before loading occurs
-            _plugin.Controller.Register(this, this);
-
-            //Store listener to raise events
-            _serviceDomainListener = listener;
-        }
-
-
-        ///<inheritdoc/>
-        public string PluginPath => _plugin.Config.AssemblyFile;
+        public ManagedPlugin(RuntimePluginLoader loader) => Plugin = loader;
 
         ///<inheritdoc/>
         public IUnloadableServiceProvider Services
@@ -75,29 +61,16 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             get
             {
                 Check();
-                return _plugin.Controller;
+                return Plugin.Controller;
             }
         }
 
-        internal string PluginFileName => Path.GetFileName(PluginPath);
-
-        internal void InitializePlugins()
-        {
-            Check();
-            _plugin.InitializeController();
-        }
-
-        internal void LoadPlugins()
-        {
-            Check();
-            _plugin.LoadPlugins();
-        }
-
         /*
-         * Automatically called after the plugin has successfully loaded
-         * by event handlers below
-         */       
-        private void ConfigureServices()
+        * Automatically called after the plugin has successfully loaded
+        * by event handlers below
+        */
+
+        internal void OnPluginLoaded()
         {
             //If the service container is defined, dispose
             _services?.Dispose();
@@ -106,7 +79,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             _services = new();
 
             //Get types from plugin
-            foreach (LivePlugin plugin in _plugin.Controller.Plugins)
+            foreach (LivePlugin plugin in Plugin.Controller.Plugins)
             {
                 /*
                  * Get the exposed configurator method if declared, 
@@ -122,42 +95,15 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             }
         }
 
-        internal void ReloadPlugins()
-        {
-            Check();
-            _plugin.ReloadPlugins();
-        }
-
-        internal void UnloadPlugins()
-        {
-            Check();
-
-            //unload plugins
-            _plugin.UnloadAll();
-
-            //Services will be cleaned up by the unload event
-        }
-
-        void IPluginEventListener.OnPluginLoaded(PluginController controller, object? state)
-        {
-            //Initialize services after load, before passing event
-            ConfigureServices();
-
-            //Propagate event
-            _serviceDomainListener.OnPluginLoaded(controller, state);
-        }
-
-        void IPluginEventListener.OnPluginUnloaded(PluginController controller, object? state)
+        internal void OnPluginUnloaded()
         {
             //Cleanup services no longer in use. Plugin is still valid until this method returns
             using (_services)
             {
-                //Propagate event
-                _serviceDomainListener.OnPluginUnloaded(controller, state);
-
                 //signal service cancel before disposing
                 _services?.SignalUnload();
             }
+
             //Remove ref to services
             _services = null;
         }
@@ -166,10 +112,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             //Dispose services
             _services?.Dispose();
-            //Unregister the listener to cleanup resources
-            _plugin.Controller.Unregister(this);
+
             //Dispose loader
-            _plugin.Dispose();
+            Plugin.Dispose();
         }
 
 

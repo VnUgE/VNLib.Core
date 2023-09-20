@@ -44,7 +44,7 @@ namespace VNLib.Plugins
     /// Provides a concrete base class for <see cref="IPlugin"/> instances using the Serilog logging provider.
     /// Accepts the standard plugin <see cref="JsonDocument"/> configuration constructors
     /// </summary>
-    public abstract class PluginBase : MarshalByRefObject, IPlugin, IPluginTaskObserver
+    public abstract class PluginBase : MarshalByRefObject, IWebPlugin, IPluginTaskObserver
     {
         /*
          * CTS exists for the life of the plugin, its resources are never disposed
@@ -66,8 +66,14 @@ namespace VNLib.Plugins
         protected virtual string GlobalConfigDomPropertyName => "host";
 
         /// <summary>
+        /// The property name of the plugin configuration element in the plugin
+        /// runtime supplied configuration object.
+        /// </summary>
+        protected virtual string PluginConfigDomPropertyName => "plugin";
+
+        /// <summary>
         /// A list of all currently prepared <see cref="IEndpoint"/> endpoints.
-        /// Endpoints must be added to this list before <see cref="IPlugin.GetEndpoints"/> is called
+        /// Endpoints must be added to this list before <see cref="IWebPlugin.GetEndpoints"/> is called
         /// by the host app
         /// </summary>
         public ICollection<IEndpoint> Endpoints { get; } = new List<IEndpoint>();
@@ -90,7 +96,7 @@ namespace VNLib.Plugins
         /// <summary>
         /// The configuration data from the plugin's config file passed by the host application
         /// </summary>
-        public JsonElement PluginConfig => Configuration.RootElement.GetProperty(GetType().Name);
+        public JsonElement PluginConfig => Configuration.RootElement.GetProperty(PluginConfigDomPropertyName);
 
         /// <inheritdoc/>
         public abstract string PluginName { get; }
@@ -252,7 +258,7 @@ namespace VNLib.Plugins
         /// <param name="cmd">The command message</param>
         protected abstract void ProcessHostCommand(string cmd);
 
-        IEnumerable<IEndpoint> IPlugin.GetEndpoints()
+        IEnumerable<IEndpoint> IWebPlugin.GetEndpoints()
         {
             OnGetEndpoints();
             return Endpoints;
@@ -335,7 +341,10 @@ namespace VNLib.Plugins
                 }
                 
                 //Wait for all tasks to complete for a maxium of 10 seconds
-                Task.WaitAll(tasks, TimeSpan.FromSeconds(10));
+                if(!Task.WaitAll(tasks, TimeSpan.FromSeconds(10)))
+                {
+                    Log.Error("Tasks failed to complete in the allotted timeout period");
+                }
             }
         }
 
@@ -379,7 +388,7 @@ namespace VNLib.Plugins
         protected abstract void OnUnLoad();
         
         /// <summary>
-        /// Invoked before <see cref="IPlugin.GetEndpoints"/> called by the host app to get all endpoints
+        /// Invoked before <see cref="IWebPlugin.GetEndpoints"/> called by the host app to get all endpoints
         /// for the current plugin
         /// </summary>
         protected virtual void OnGetEndpoints() { }

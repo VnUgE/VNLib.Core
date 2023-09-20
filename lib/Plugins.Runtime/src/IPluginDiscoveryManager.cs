@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: IPluginAssemblyLoader.cs 
+* File: IPluginDiscoveryManager.cs 
 *
-* IPluginAssemblyLoader.cs is part of VNLib.Plugins.Runtime which is 
-* part of the larger VNLib collection of libraries and utilities.
+* IPluginDiscoveryManager.cs is part of VNLib.Plugins.Runtime which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU General Public License as published
@@ -24,16 +24,16 @@
 
 namespace VNLib.Plugins.Runtime
 {
-
     /// <summary>
-    /// Represents the bare assembly loader that gets a main assembly for a plugin and handles
-    /// type resolution, while providing loading/unloading
+    /// Represents a plugin discovery manager that, when requestesd, discovers 
+    /// all plugin assembly files.
     /// </summary>
-    public interface IPluginAssemblyLoader : IAssemblyLoader
+    public interface IPluginDiscoveryManager
     {
         /// <summary>
-        /// Gets the plugin's configuration information
+        /// Gets all plugin assembly files that should be loaded
         /// </summary>
-        IPluginConfig Config { get; }
+        /// <returns></returns>
+        string[] DiscoverPluginFiles();
     }
 }
