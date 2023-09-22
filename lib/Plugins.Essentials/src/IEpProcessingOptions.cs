@@ -27,8 +27,6 @@ using System.IO;
 using System.Net;
 using System.Collections.Generic;
 
-using VNLib.Net.Http;
-
 #nullable enable
 
 namespace VNLib.Plugins.Essentials
@@ -39,34 +37,36 @@ namespace VNLib.Plugins.Essentials
     /// </summary>
     public interface IEpProcessingOptions
     {
+
         /// <summary>
         /// The name of a default file to search for within a directory if no file is specified (index.html).
         /// This array should be ordered.
         /// </summary>
         IReadOnlyCollection<string> DefaultFiles { get; }
+
         /// <summary>
         /// File extensions that are denied from being read from the filesystem
         /// </summary>
         IReadOnlySet<string> ExcludedExtensions { get; }
+
         /// <summary>
         /// File attributes that must be matched for the file to be accessed
         /// </summary>
         FileAttributes AllowedAttributes { get; }
+
         /// <summary>
         /// Files that match any attribute flag set will be denied
         /// </summary>
-        FileAttributes DissallowedAttributes { get; }       
+        FileAttributes DissallowedAttributes { get; }      
+        
         /// <summary>
         /// A table of known downstream servers/ports that can be trusted to proxy connections
         /// </summary>
         IReadOnlySet<IPAddress> DownStreamServers { get; }
+
         /// <summary>
         /// A <see cref="TimeSpan"/> for how long a connection may remain open before all operations are cancelled
         /// </summary>
         TimeSpan ExecutionTimeout { get; }
-        /// <summary>
-        /// HTTP level "hard" 301 redirects
-        /// </summary>
-        IReadOnlyDictionary<string, Redirect> HardRedirects { get; }
     }
 }

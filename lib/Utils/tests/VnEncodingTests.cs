@@ -30,6 +30,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Diagnostics;
 
 namespace VNLib.Utils.Tests
 {
@@ -92,6 +93,61 @@ namespace VNLib.Utils.Tests
             
         }
 
-        
+        [TestMethod()]
+        public void PercentEncodeTest()
+        {
+            const string urlEnoded = "https%3A%2F%2Fwww.google.com%2Fsearch%3Fq%3Dtest%26oq%3Dtest%26aqs%3Dchrome..69i57j0l7.1001j0j7%26sourceid%3Dchrome%26ie%3DUTF-8";
+            const string urlDecoded = "https://www.google.com/search?q=test&oq=test&aqs=chrome..69i57j0l7.1001j0j7&sourceid=chrome&ie=UTF-8";
+
+            //We need to allow the '.' character to be encoded
+            ReadOnlySpan<byte> allowedChars = Encoding.UTF8.GetBytes(".");
+
+            
+            /*
+             * Test that the url encoded string is the same as the percent encoded string
+             */
+
+            ReadOnlySpan<byte> utf8Encoded = Encoding.UTF8.GetBytes(urlDecoded);
+
+            string percentEncoded = VnEncoding.PercentEncode(utf8Encoded, allowedChars);
+
+            Assert.IsTrue(percentEncoded.Equals(urlEnoded, StringComparison.Ordinal));
+
+            /*
+             * Test decoding the percent encoded string
+             */
+
+            ReadOnlySpan<byte> percentEncodedUtf8 = Encoding.UTF8.GetBytes(urlEnoded);
+
+            byte[] outBuffer = new byte[percentEncodedUtf8.Length];
+
+            ERRNO decoded = VnEncoding.PercentDecode(percentEncodedUtf8, outBuffer);
+
+            //Make sure result is valid
+            Debug.Assert(decoded > 0);
+
+            string decodedString = Encoding.UTF8.GetString(outBuffer, 0, decoded);
+
+            Assert.IsTrue(decodedString.Equals(urlDecoded, StringComparison.Ordinal));
+        }
+
+        [TestMethod()]
+        public void Base32BasicEncodeDecodeTest()
+        {
+            const string base32Encoded = "JBSWY3DPEBLW64TMMQQQ====";
+            const string base32Decoded = "Hello World!";
+            byte[] rawBytes = Encoding.UTF8.GetBytes(base32Decoded);
+
+            //Recover bytes from base32 encoded string
+            byte[]? fromString = VnEncoding.FromBase32String(base32Encoded); 
+            Assert.IsNotNull(fromString);
+          
+            //Test that the decoded bytes are the same as the raw bytes
+            Assert.IsTrue(rawBytes.SequenceEqual(fromString));
+
+            //Test that the encoded string is the same as the base32 encoded string
+            string toString = VnEncoding.ToBase32String(rawBytes, true);
+            Assert.IsTrue(toString.Equals(base32Encoded, StringComparison.Ordinal));
+        }
     }
 }

@@ -27,6 +27,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.IO;
@@ -126,7 +127,6 @@ namespace VNLib.Net.Http.Core
         {
             server.LocalEndPoint = ctx.LocalEndPoint;
             server.RemoteEndPoint = ctx.RemoteEndpoint;
-            server.EncryptionVersion = ctx.SslVersion;
             //Set to default http version so the response can be configured properly
             server.HttpVersion = defaultHttpVersion;
         }

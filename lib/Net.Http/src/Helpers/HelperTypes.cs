@@ -172,33 +172,4 @@ namespace VNLib.Net.Http
         /// </summary>
         SameSite
     }
-   
-    /// <summary>
-    /// Low level 301 "hard" redirect
-    /// </summary>
-    public class Redirect
-    {
-        public readonly string Url;
-        public readonly Uri RedirectUrl;
-        /// <summary>
-        /// Quickly redirects a url to another url before sessions are established
-        /// </summary>
-        /// <param name="url">Url to redirect on</param>
-        /// <param name="redirecturl">Url to redirect to</param>
-        public Redirect(string url, string redirecturl)
-        {
-            if (string.IsNullOrEmpty(url))
-            {
-                throw new ArgumentException($"'{nameof(url)}' cannot be null or empty.", nameof(url));
-            }
-
-            if (string.IsNullOrEmpty(redirecturl))
-            {
-                throw new ArgumentException($"'{nameof(redirecturl)}' cannot be null or empty.", nameof(redirecturl));
-            }
-
-            Url = url;
-            RedirectUrl = new(redirecturl);
-        }
-    }
 }

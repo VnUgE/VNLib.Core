@@ -39,6 +39,6 @@ namespace VNLib.Plugins.Essentials.Middleware
         /// </summary>
         /// <param name="entity">The entity to process</param>
         /// <returns>The result of the operation</returns>
-        ValueTask<HttpMiddlewareResult> ProcessAsync(HttpEntity entity);
+        ValueTask<FileProcessArgs> ProcessAsync(HttpEntity entity);
     }
 }

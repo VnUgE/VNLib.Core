@@ -73,9 +73,6 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         public abstract IEpProcessingOptions Options { get; }
 
-        ///<inheritdoc/>
-        public abstract IReadOnlyDictionary<string, Redirect> Redirects { get; }
-
         /// <summary>
         /// Event log provider
         /// </summary>
@@ -222,18 +219,18 @@ namespace VNLib.Plugins.Essentials
                     while(mwNode != null)
                     {
                         //Process
-                        HttpMiddlewareResult result = await mwNode.ValueRef.ProcessAsync(entity);
+                        args = await mwNode.ValueRef.ProcessAsync(entity);
                         
-                        switch (result)
+                        switch (args.Routine)
                         {
-                            //move next
-                            case HttpMiddlewareResult.Continue:
+                            //move next if continue is returned
+                            case FpRoutine.Continue:
                                 mwNode = mwNode.Next;
                                 break;
 
                             //Middleware completed the connection, time to exit
-                            case HttpMiddlewareResult.Complete:
-                                return;
+                            default:
+                                goto MwExit;
                         }
                     }                
 
@@ -259,7 +256,7 @@ namespace VNLib.Plugins.Essentials
                             ProcessFile(httpEvent, in args);
                             return;
                         }
-                    }
+                    }              
 
                     //If no virtual processor handled the ws request, deny it
                     if (entity.Server.IsWebSocketRequest)
@@ -270,6 +267,8 @@ namespace VNLib.Plugins.Essentials
 
                     //Finally process as file
                     args = await RouteFileAsync(entity);
+
+                MwExit:
 
                     //Finally process the file
                     ProcessFile(httpEvent, in args);

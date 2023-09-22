@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -35,8 +35,14 @@ namespace VNLib.Net.Http
     /// <summary>
     /// Gets the transport TLS security information for the current connection
     /// </summary>
-    public readonly struct TransportSecurityInfo
+    public readonly record struct TransportSecurityInfo
     {
+
+        /// <summary>
+        /// The transport security layer security protocol
+        /// </summary>
+        public readonly SslProtocols SslProtocol { get; init; }
+
         /// <summary>
         /// Gets a Boolean value that indicates whether the certificate revocation list is checked during the certificate validation process.
         /// </summary>

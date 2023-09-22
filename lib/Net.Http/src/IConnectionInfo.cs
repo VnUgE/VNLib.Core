@@ -40,84 +40,103 @@ namespace VNLib.Net.Http
         /// Full request uri of current connection
         /// </summary>
         Uri RequestUri { get; }
+
         /// <summary>
         /// Current request path. Shortcut to <seealso cref="RequestUri"/> <see cref="Uri.LocalPath"/>
         /// </summary>
         string Path => RequestUri.LocalPath;
+
         /// <summary>
         /// Current connection's user-agent header, (may be null if no user-agent header found)
         /// </summary>
         string? UserAgent { get; }
+
         /// <summary>
         /// Current connection's headers
         /// </summary>
         IHeaderCollection Headers { get; }
+
         /// <summary>
         /// A value that indicates if the connection's origin header was set and it's
         /// authority segment does not match the <see cref="RequestUri"/> authority
         /// segment.
         /// </summary>
         bool CrossOrigin { get; }
+
         /// <summary>
         /// Is the current connecion a websocket request
         /// </summary>
         bool IsWebSocketRequest { get; }
+
         /// <summary>
         /// Request specified content-type
         /// </summary>
         ContentType ContentType { get; }
+
         /// <summary>
         /// Current request's method
         /// </summary>
         HttpMethod Method { get; }
+
         /// <summary>
         /// The current connection's HTTP protocol version
         /// </summary>
         HttpVersion ProtocolVersion { get; }
+
         /// <summary>
         /// Is the connection using transport security? 
         /// </summary>
         bool IsSecure { get; }
+
         /// <summary>
         /// The negotiated transport protocol for the current connection
         /// </summary>
         SslProtocols SecurityProtocol { get; }
+
         /// <summary>
         /// Origin header of current connection if specified, null otherwise
         /// </summary>
         Uri? Origin { get; }
+
         /// <summary>
         /// Referer header of current connection if specified, null otherwise
         /// </summary>
         Uri? Referer { get; }
+
         /// <summary>
         /// The parsed range header, or -1,-1 if the range header was not set
         /// </summary>
         Tuple<long, long>? Range { get; }
+
         /// <summary>
         /// The server endpoint that accepted the connection
         /// </summary>
         IPEndPoint LocalEndpoint { get; }
+
         /// <summary>
         /// The raw <see cref="IPEndPoint"/> of the downstream connection. 
         /// </summary>
         IPEndPoint RemoteEndpoint { get; }
+
         /// <summary>
         /// The encoding type used to decode and encode character data to and from the current client
         /// </summary>
         Encoding Encoding { get; }
+
         /// <summary>
         /// A <see cref="IReadOnlyDictionary{TKey, TValue}"/> of client request cookies
         /// </summary>
         IReadOnlyDictionary<string, string> RequestCookies { get; }
+
         /// <summary>
         /// Gets an <see cref="IEnumerator{T}"/> for the parsed accept header values
         /// </summary>
         IReadOnlyCollection<string> Accept { get; }
+
         /// <summary>
         /// Gets the underlying transport security information for the current connection
         /// </summary>
-        TransportSecurityInfo? TransportSecurity { get; }
+        ref readonly TransportSecurityInfo? GetTransportSecurityInfo();
        
 
         /// <summary>

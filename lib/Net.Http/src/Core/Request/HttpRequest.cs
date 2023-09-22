@@ -25,7 +25,6 @@
 using System;
 using System.Net;
 using System.Collections.Generic;
-using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
@@ -57,19 +56,20 @@ namespace VNLib.Net.Http.Core
         public Uri? Referrer { get; set; }
         internal bool KeepAlive { get; set; }
         public IPEndPoint RemoteEndPoint { get; set; }
-        public IPEndPoint LocalEndPoint { get; set; }
-        public SslProtocols EncryptionVersion { get; set; }
+        public IPEndPoint LocalEndPoint { get; set; }       
         public Tuple<long, long>? Range { get; set; }
 
         /// <summary>
         /// A value indicating whether the connection contained a request entity body.
         /// </summary>
         public bool HasEntityBody { get; set; }
+
         /// <summary>
         /// A transport stream wrapper that is positioned for reading
         /// the entity body from the input stream
         /// </summary>
         public HttpInputStream InputStream { get; }
+
         /// <summary>
         /// A value indicating if the client's request had an Expect-100-Continue header
         /// </summary>
@@ -104,7 +104,6 @@ namespace VNLib.Net.Http.Core
         {
             //Set to defaults
             ContentType = ContentType.NonSupported;
-            EncryptionVersion = default;
             Method = HttpMethod.None;
             HttpVersion = HttpVersion.None;
         }

@@ -114,7 +114,11 @@ namespace VNLib.Net.Http.Core
             ContextFlags = new(0);
         }
 
-        public TransportSecurityInfo? GetSecurityInfo() => _ctx?.GetSecurityInfo();
+        /// <summary>
+        /// Gets a readonly reference to the transport security information
+        /// </summary>
+        /// <returns>A readonly referrence to the <see cref="TransportSecurityInfo"/> structure </returns>
+        public ref readonly TransportSecurityInfo? GetSecurityInfo() => ref _ctx!.GetSecurityInfo();
 
         #region Context information
 
@@ -123,9 +127,6 @@ namespace VNLib.Net.Http.Core
 
         ///<inheritdoc/>
         HttpVersion IHttpContextInformation.CurrentVersion => Request.HttpVersion;
-
-        ///<inheritdoc/>
-        HttpConfig IHttpContextInformation.Config => ParentServer.Config;
 
         ///<inheritdoc/>
         public ServerPreEncodedSegments EncodedSegments => ParentServer.PreEncodedSegments;
@@ -164,7 +165,7 @@ namespace VNLib.Net.Http.Core
         }
 
         ///<inheritdoc/>
-        public Task FlushTransportAsnc()
+        public Task FlushTransportAsync()
         {
             return _ctx!.ConnectionStream.FlushAsync();
         }

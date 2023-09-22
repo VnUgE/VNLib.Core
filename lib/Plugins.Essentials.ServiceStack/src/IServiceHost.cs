@@ -40,7 +40,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         IWebRoot Processor { get; }
 
         /// <summary>
-        /// The host's transport infomration
+        /// The host's transport information
         /// </summary>
         IHostTransportInfo TransportInfo { get; }
       

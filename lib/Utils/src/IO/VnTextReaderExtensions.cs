@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -52,8 +52,9 @@ namespace VNLib.Utils.IO
         /// <remarks>Allows reading lines of data from the stream without allocations</remarks>
         public static ERRNO ReadLine<T>(this ref T reader, Span<char> charBuffer) where T:struct, IVnTextReader
         {
-            return readLine(ref reader, charBuffer);
+            return ReadLineInternal(ref reader, charBuffer);
         }
+
         /// <summary>
         /// Attempts to read a line from the stream and store it in the specified buffer
         /// </summary>
@@ -65,7 +66,7 @@ namespace VNLib.Utils.IO
         /// <remarks>Allows reading lines of data from the stream without allocations</remarks>
         public static ERRNO ReadLine<T>(this T reader, Span<char> charBuffer) where T : class, IVnTextReader
         {
-            return readLine(ref reader, charBuffer);
+            return ReadLineInternal(ref reader, charBuffer);
         }
 
         /// <summary>
@@ -80,6 +81,7 @@ namespace VNLib.Utils.IO
         {
             return reader.ReadRemaining(buffer.AsSpan(offset, count));
         }
+
         /// <summary>
         /// Fill a buffer with reamining buffered data 
         /// </summary>
@@ -103,8 +105,9 @@ namespace VNLib.Utils.IO
         /// <remarks>You should use the <see cref="IVnTextReader.Available"/> property to know how much remaining data is buffered</remarks>
         public static int ReadRemaining<T>(this ref T reader, Span<byte> buffer) where T : struct, IVnTextReader
         {
-            return readRemaining(ref reader, buffer);
+            return ReadRemainingInternal(ref reader, buffer);
         }
+
         /// <summary>
         /// Fill a buffer with reamining buffered data, up to 
         /// the size of the supplied buffer
@@ -115,10 +118,10 @@ namespace VNLib.Utils.IO
         /// <remarks>You should use the <see cref="IVnTextReader.Available"/> property to know how much remaining data is buffered</remarks>
         public static int ReadRemaining<T>(this T reader, Span<byte> buffer) where T : class, IVnTextReader
         {
-            return readRemaining(ref reader, buffer);
+            return ReadRemainingInternal(ref reader, buffer);
         }
        
-        private static ERRNO readLine<T>(ref T reader, Span<char> chars) where T: IVnTextReader
+        private static ERRNO ReadLineInternal<T>(ref T reader, Span<char> chars) where T: IVnTextReader
         {
             /*
             *  I am aware of a potential bug, the line decoding process
@@ -129,68 +132,32 @@ namespace VNLib.Utils.IO
             *  I dont expect this to be an issue unless there is a bug within the specified 
             *  encoder implementation
             */
-            ReadOnlySpan<byte> LineTermination = reader.LineTermination.Span;
+           
+            int result = 0;
+
             //If buffered data is available, check for line termination
-            if (reader.Available > 0)
+            if (reader.Available > 0 && TryReadLine(ref reader, chars, ref result))
             {
-                //Get current buffer window
-                ReadOnlySpan<byte> bytes = reader.BufferedDataWindow;
-                //search for line termination in current buffer
-                int term = bytes.IndexOf(LineTermination);
-                //Termination found in buffer window
-                if (term > -1)
-                {
-                    //Capture the line from the begining of the window to the termination
-                    ReadOnlySpan<byte> line = bytes[..term];
-                    //Get the number ot chars 
-                    int charCount = reader.Encoding.GetCharCount(line);
-                    //See if the buffer is large enough
-                    if (bytes.Length < charCount)
-                    {
-                        return E_BUFFER_TOO_SMALL;
-                    }
-                    //Use the decoder to convert the data
-                    _ = reader.Encoding.GetChars(line, chars);
-                    //Shift the window to the end of the line (excluding the termination, regardless of the conversion result)
-                    reader.Advance(term + LineTermination.Length);
-                    //Return the number of characters
-                    return charCount;
-                }
-                //Termination not found but there may be more data waiting
+                return result;
             }
+
             //Compact the buffer window and make sure it was compacted so there is room to fill the buffer
-            if (reader.CompactBufferWindow())
+            if (reader.CompactBufferWindow() > 0)
             {
                 //There is room, so buffer more data
                 reader.FillBuffer();
+
                 //Check again to see if more data is buffered
                 if (reader.Available <= 0)
                 {
                     //No data avialable
                     return 0;
                 }
-                //Get current buffer window
-                ReadOnlySpan<byte> bytes = reader.BufferedDataWindow;
-                //search for line termination in current buffer
-                int term = bytes.IndexOf(LineTermination);
-                //Termination found in buffer window
-                if (term > -1)
+
+                //Try to read the line again after refill
+                if (TryReadLine(ref reader, chars, ref result))
                 {
-                    //Capture the line from the begining of the window to the termination
-                    ReadOnlySpan<byte> line = bytes[..term];
-                    //Get the number ot chars 
-                    int charCount = reader.Encoding.GetCharCount(line);
-                    //See if the buffer is large enough
-                    if (bytes.Length < charCount)
-                    {
-                        return E_BUFFER_TOO_SMALL;
-                    }
-                    //Use the decoder to convert the data
-                    _ = reader.Encoding.GetChars(line, chars);
-                    //Shift the window to the end of the line (excluding the termination, regardless of the conversion result)
-                    reader.Advance(term + LineTermination.Length);
-                    //Return the number of characters
-                    return charCount;
+                    return result;
                 }
             }
 
@@ -201,20 +168,63 @@ namespace VNLib.Utils.IO
             throw new OutOfMemoryException("The line was not found within the current buffer, cannot continue");
 #pragma warning restore CA2201 // Do not raise reserved exception types
         }
+
+        private static bool TryReadLine<T>(ref T reader, Span<char> chars, ref int result) where T: IVnTextReader
+        {
+            ReadOnlySpan<byte> LineTermination = reader.LineTermination.Span;
+
+            //Get current buffer window
+            ReadOnlySpan<byte> bytes = reader.BufferedDataWindow;
+
+            //search for line termination in current buffer
+            int term = bytes.IndexOf(LineTermination);
+
+            //Termination found in buffer window
+            if (term > -1)
+            {
+                //Capture the line from the begining of the window to the termination
+                ReadOnlySpan<byte> line = bytes[..term];
+
+                //Get the number ot chars 
+                result = reader.Encoding.GetCharCount(line);
+
+                //See if the buffer is large enough
+                if (bytes.Length < result)
+                {
+                    result = E_BUFFER_TOO_SMALL;
+                    return true;
+                }
+
+                //Use the decoder to convert the data
+                _ = reader.Encoding.GetChars(line, chars);
+
+                //Shift the window to the end of the line (excluding the termination, regardless of the conversion result)
+                reader.Advance(term + LineTermination.Length);
+
+                //Return the number of characters
+                return true;
+            }
+
+            return false;
+        }
         
-        private static int readRemaining<T>(ref T reader, Span<byte> buffer) where T: IVnTextReader
+        private static int ReadRemainingInternal<T>(ref T reader, Span<byte> buffer) where T: IVnTextReader
         {
             //guard for empty buffer
             if (buffer.Length == 0 || reader.Available == 0)
             {
                 return 0;
             }
+
             //get the remaining bytes in the reader
             Span<byte> remaining = reader.BufferedDataWindow;
+
             //Calculate the number of bytes to copy
             int canCopy = Math.Min(remaining.Length, buffer.Length);
+
             //Copy remaining bytes to buffer
             remaining[..canCopy].CopyTo(buffer);
+
             //Shift the window by the number of bytes copied
             reader.Advance(canCopy);
             return canCopy;

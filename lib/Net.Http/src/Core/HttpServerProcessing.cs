@@ -201,8 +201,8 @@ namespace VNLib.Net.Http
                 //Close the response
                 await context.WriteResponseAsync();
 
-                //Flush the stream before retuning
-                await context.FlushTransportAsnc();
+                //Flush the stream before returning
+                await context.FlushTransportAsync();
                 
                 /*
                  * If an alternate protocol was specified, we need to break the keepalive loop
@@ -236,6 +236,14 @@ namespace VNLib.Net.Http
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private HttpStatusCode ParseRequest(HttpContext ctx)
         {
+            //Get transport security info
+            ref readonly TransportSecurityInfo? secInfo = ref ctx.GetSecurityInfo();
+
+            if (secInfo.HasValue)
+            {
+                //TODO: future support for http2 and http3 over tls
+            }
+
             //Get the parse buffer
             IHttpHeaderParseBuffer parseBuffer = ctx.Buffers.RequestHeaderParseBuffer;
 
@@ -250,7 +258,7 @@ namespace VNLib.Net.Http
                 Http11ParseExtensions.Http1ParseState parseState = new();
                 
                 //Parse the request line 
-                HttpStatusCode code = ctx.Request.Http1ParseRequestLine(ref parseState, ref reader, lineBuf);
+                HttpStatusCode code = ctx.Request.Http1ParseRequestLine(ref parseState, ref reader, lineBuf, secInfo.HasValue);
                 
                 if (code > 0)
                 {
@@ -352,15 +360,6 @@ namespace VNLib.Net.Http
             {
                 context.Respond(HttpStatusCode.NotFound);
                 //make sure control leaves
-                return keepalive;
-            }
-
-            //check for redirects
-            if (root.Redirects.TryGetValue(context.Request.Location.LocalPath, out Redirect? r))
-            {
-                //301
-                context.Redirect301(r.RedirectUrl);
-                //Return keepalive
                 return keepalive;
             }
 

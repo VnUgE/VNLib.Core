@@ -29,7 +29,6 @@ using System.Linq;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 using VNLib.Utils.Logging;
@@ -45,7 +44,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// </summary>
     internal sealed class PluginManager : VnDisposeable, IHttpPluginManager, IPluginEventListener
     {
-        private readonly ConditionalWeakTable<PluginController, ManagedPlugin> _managedPlugins;
+        private readonly Dictionary<PluginController, ManagedPlugin> _managedPlugins;
         private readonly ServiceDomain _dependents;
         private readonly IPluginStack _stack;       
 
@@ -71,7 +70,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             _ = _stack ?? throw new InvalidOperationException("Plugin stack has not been set.");
 
-            //Build the plugin stack
+            /*
+             * Since we own the plugin stack, it is safe to build it here.
+             * This method is not public and should not be called more than 
+             * once. Otherwise it can cause issues with the plugin stack.
+             */
             _stack.BuildStack();
 
             //Register for plugin events
@@ -83,15 +86,24 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             //Add all wrappers to the managed plugins table
             Array.ForEach(wrapper, w => _managedPlugins.Add(w.Plugin.Controller, w));
 
-            //Init remaining controllers single-threaded
+            //Init remaining controllers single-threaded because it may mutate the table
             _managedPlugins.Select(p => p.Value).TryForeach(w => InitializePlugin(w.Plugin, debugLog));
 
             //Load stage, load all multithreaded
-            Parallel.ForEach(wrapper, wp => LoadPlugin(wp.Plugin, debugLog));
+            Parallel.ForEach(_managedPlugins.Values, wp => LoadPlugin(wp.Plugin, debugLog));
 
             debugLog.Information("Plugin loading completed");
         }
 
+        /*
+         * Plugins are manually loaded by this manager instead of the stack shortcut extensions
+         * because I want to catch individual exceptions.
+         * 
+         * I do not prefer this method as I would prefer loading is handled by the stack
+         * and the host not by this library. 
+         * 
+         * This will change in the future.
+         */
       
         private void InitializePlugin(RuntimePluginLoader plugin, ILogProvider debugLog)
         {
@@ -108,7 +120,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                  */
                 if (!plugin.Controller.Plugins.Any())
                 {
-                    debugLog.Warn("No plugin instances were exposed via {ams} assembly. This may be due to an assebmly mismatch", fileName);
+                    debugLog.Warn("No plugin instances were exposed via {asm} assembly. This may be due to an assebmly mismatch", fileName);
                 }
             }
             catch (Exception ex)
@@ -117,9 +129,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
                 //Remove the plugin from the table
                 _managedPlugins.Remove(plugin.Controller);
-
-                //Dispose the plugin
-                plugin.Dispose();
             }
         }
 
@@ -191,12 +200,25 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             //Dispose all managed plugins and clear the table
             _managedPlugins.TryForeach(p => p.Value.Dispose());
             _managedPlugins.Clear();
+
+            //Dispose the plugin stack
+            _stack.Dispose();
         }
+
+        /*
+         * When using a service stack an loading manually, plugins that have errors 
+         * will not be captured by this instance. However when using the shortcut
+         * extensions, the events will be invoked regaldess if we loaded the plugin
+         * here.
+         */
 
         void IPluginEventListener.OnPluginLoaded(PluginController controller, object? state)
         {
-            //Handle service events
-            ManagedPlugin mp = _managedPlugins.GetValue(controller, (pc) => null!);
+            //Make sure the plugin is managed by this manager
+            if(!_managedPlugins.TryGetValue(controller, out ManagedPlugin? mp))
+            {
+                return;
+            }
 
             //Run onload method before invoking other handlers
             mp.OnPluginLoaded();
@@ -210,8 +232,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         void IPluginEventListener.OnPluginUnloaded(PluginController controller, object? state)
         {
-            //Handle service events
-            ManagedPlugin mp = _managedPlugins.GetValue(controller, (pc) => null!);
+            //Make sure the plugin is managed by this manager
+            if (!_managedPlugins.TryGetValue(controller, out ManagedPlugin? mp))
+            {
+                return;
+            }
 
             //Run onload method before invoking other handlers
             mp.OnPluginUnloaded();

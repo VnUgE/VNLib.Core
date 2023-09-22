@@ -39,44 +39,70 @@ namespace VNLib.Net.Http
 
         ///<inheritdoc/>
         public Uri RequestUri => Context.Request.Location;
+
         ///<inheritdoc/>
         public string Path => RequestUri.LocalPath;
+
         ///<inheritdoc/>
         public string? UserAgent => Context.Request.UserAgent;
+
         ///<inheritdoc/>
         public IHeaderCollection Headers { get; private set; }
+
         ///<inheritdoc/>
         public bool CrossOrigin { get; }
+
         ///<inheritdoc/>
         public bool IsWebSocketRequest { get; }
+
         ///<inheritdoc/>
         public ContentType ContentType => Context.Request.ContentType;
+
         ///<inheritdoc/>
         public HttpMethod Method => Context.Request.Method;
+
         ///<inheritdoc/>
         public HttpVersion ProtocolVersion => Context.Request.HttpVersion;
+
         ///<inheritdoc/>
-        public bool IsSecure => Context.Request.EncryptionVersion != SslProtocols.None;
+        public bool IsSecure => SecurityProtocol != SslProtocols.None;
+
         ///<inheritdoc/>
-        public SslProtocols SecurityProtocol => Context.Request.EncryptionVersion;
+        public SslProtocols SecurityProtocol
+        {
+            get
+            {
+                ref readonly TransportSecurityInfo? securityInfo = ref Context.GetSecurityInfo();
+                return securityInfo.HasValue ? securityInfo.Value.SslProtocol : SslProtocols.None;
+            }
+        }
+
         ///<inheritdoc/>
         public Uri? Origin => Context.Request.Origin;
+
         ///<inheritdoc/>
         public Uri? Referer => Context.Request.Referrer;
+
         ///<inheritdoc/>
         public Tuple<long, long>? Range => Context.Request.Range;
+
         ///<inheritdoc/>
         public IPEndPoint LocalEndpoint => Context.Request.LocalEndPoint;
+
         ///<inheritdoc/>
         public IPEndPoint RemoteEndpoint => Context.Request.RemoteEndPoint;
+
         ///<inheritdoc/>
         public Encoding Encoding => Context.ParentServer.Config.HttpEncoding;
+
         ///<inheritdoc/>
         public IReadOnlyDictionary<string, string> RequestCookies => Context.Request.Cookies;
+
         ///<inheritdoc/>
         public IReadOnlyCollection<string> Accept => Context.Request.Accept;
+
         ///<inheritdoc/>
-        public TransportSecurityInfo? TransportSecurity => Context.GetSecurityInfo();
+        public ref readonly TransportSecurityInfo? GetTransportSecurityInfo() => ref Context.GetSecurityInfo();       
 
         ///<inheritdoc/>
         public void SetCookie(string name, string value, string? domain, string? path, TimeSpan Expires, CookieSameSite sameSite, bool httpOnly, bool secure)

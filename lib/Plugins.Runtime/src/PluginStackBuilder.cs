@@ -49,6 +49,10 @@ namespace VNLib.Plugins.Runtime
 
         private Func<IPluginConfig, IAssemblyLoader>? Loader;
 
+        /// <summary>
+        /// Shortcut constructor for easy fluent chaining.
+        /// </summary>
+        /// <returns>A new <see cref="PluginStackBuilder"/></returns>
         public static PluginStackBuilder Create() => new();
 
         /// <summary>
@@ -114,7 +118,7 @@ namespace VNLib.Plugins.Runtime
         /// </summary>
         /// <returns>The current builder instance for chaining</returns>
         /// <exception cref="ArgumentException"></exception>
-        public IPluginStack BuildStack()
+        public IPluginStack ConfigureStack()
         {
             _ = DiscoveryManager ?? throw new ArgumentException("You must specify a plugin discovery manager");
 

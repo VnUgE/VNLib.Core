@@ -27,7 +27,6 @@ using System.Net;
 using System.Linq;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
@@ -64,10 +63,11 @@ namespace VNLib.Net.Http.Core
         /// <param name="reader">The reader to read lines from the transport</param>
         /// <param name="parseState">The HTTP1 parsing state</param>
         /// <param name="lineBuf">The buffer to use when parsing the request data</param>
+        /// <param name="usingTls">True if the transport is using TLS</param>
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         /// <exception cref="UriFormatException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1ParseRequestLine(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, Span<char> lineBuf)
+        public static HttpStatusCode Http1ParseRequestLine(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, Span<char> lineBuf, bool usingTls)
         {
             //Locals
             ERRNO requestResult;
@@ -141,7 +141,7 @@ namespace VNLib.Net.Http.Core
                 parseState.Location = new()
                 {
                     //Set a default scheme
-                    Scheme = Request.EncryptionVersion == SslProtocols.None ? Uri.UriSchemeHttp : Uri.UriSchemeHttps,
+                    Scheme = usingTls ? Uri.UriSchemeHttp : Uri.UriSchemeHttps,
                 };
 
                 //Need to manually parse the query string

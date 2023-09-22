@@ -112,9 +112,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             //Dispose services
             _services?.Dispose();
-
-            //Dispose loader
-            Plugin.Dispose();
         }
 
 

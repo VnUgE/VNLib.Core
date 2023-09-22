@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -25,8 +25,6 @@
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using System.Security.Authentication;
-
 
 namespace VNLib.Net.Http
 {
@@ -39,14 +37,12 @@ namespace VNLib.Net.Http
         /// The transport network stream for application data marshaling
         /// </summary>
         Stream ConnectionStream { get; }
-        /// <summary>
-        /// The transport security layer security protocol
-        /// </summary>
-        SslProtocols SslVersion { get; }
+
         /// <summary>
         /// A copy of the local endpoint of the listening socket
         /// </summary>
         IPEndPoint LocalEndPoint { get; }
+
         /// <summary>
         /// The <see cref="IPEndPoint"/> representing the client's connection information
         /// </summary>
@@ -66,6 +62,6 @@ namespace VNLib.Net.Http
         /// Attemts to get the transport security details for the connection
         /// </summary>
         /// <returns>A the <see cref="TransportSecurityInfo"/> structure if applicable, null otherwise</returns>
-        TransportSecurityInfo? GetSecurityInfo();
+        ref readonly TransportSecurityInfo? GetSecurityInfo();
     }
 }

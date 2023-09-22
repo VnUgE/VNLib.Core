@@ -33,11 +33,6 @@ namespace VNLib.Net.Http
     public interface IHttpServer
     {
         /// <summary>
-        /// The <see cref="HttpConfig"/> for the current server
-        /// </summary>
-        HttpConfig Config { get; }
-
-        /// <summary>
         /// Gets a value indicating whether the server is listening for connections
         /// </summary>
         bool Running { get; }

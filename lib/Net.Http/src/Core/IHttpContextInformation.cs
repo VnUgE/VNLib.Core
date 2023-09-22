@@ -46,11 +46,6 @@ namespace VNLib.Net.Http.Core
         HttpVersion CurrentVersion { get; }
 
         /// <summary>
-        /// The current server configuration
-        /// </summary>
-        HttpConfig Config { get; }
-
-        /// <summary>
         /// Gets the transport stream for the current connection.
         /// </summary>
         /// <returns>The current transport stream</returns>

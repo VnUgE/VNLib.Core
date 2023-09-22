@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -24,8 +24,6 @@
 
 using System;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-
 
 namespace VNLib.Net.Http
 {
@@ -35,10 +33,12 @@ namespace VNLib.Net.Http
     /// </summary>
     public interface IWebRoot
     {
+
         /// <summary>
         /// The hostname the server will listen for, and the hostname that will identify this root when a connection requests it
         /// </summary>
         string Hostname { get; }
+
         /// <summary>
         /// <para>
         /// The main event handler for user code to process a request 
@@ -50,9 +50,5 @@ namespace VNLib.Net.Http
         /// <param name="httpEvent">An active, unprocessed event capturing the request infomration into a standard format</param>
         /// <returns>A <see cref="ValueTask"/> that the processor will await until the entity has been processed</returns>
         ValueTask ClientConnectedAsync(IHttpEvent httpEvent);
-        /// <summary>
-        /// "Low-Level" 301 redirects
-        /// </summary>
-        IReadOnlyDictionary<string, Redirect> Redirects { get; }
     }
 }

@@ -45,6 +45,7 @@ namespace VNLib.Utils
     /// </summary>
     public static class VnEncoding
     {
+
         /// <summary>
         /// Encodes a <see cref="ReadOnlySpan{T}"/> with the specified <see cref="Encoding"/> to a <see cref="VnMemoryStream"/> that must be disposed by the user
         /// </summary>
@@ -90,6 +91,7 @@ namespace VNLib.Utils
             //Return default if null
             return data == null || data.Length == 0 ? ValueTask.FromResult<T?>(default) : JsonSerializer.DeserializeAsync<T>(data, options, cancellationToken);
         }
+
         /// <summary>
         /// Attempts to deserialze a json object from a stream of UTF8 data
         /// </summary>
@@ -105,6 +107,7 @@ namespace VNLib.Utils
             //Return default if null
             return data == null || data.Length == 0 ? ValueTask.FromResult<object?>(default) : JsonSerializer.DeserializeAsync(data, type, options, cancellationToken);
         }
+
         /// <summary>
         /// Attempts to serialize the object to json and write the encoded data to the stream
         /// </summary>
@@ -538,6 +541,8 @@ namespace VNLib.Utils
 
         #region percent encoding
 
+        private const int MAX_STACKALLOC = 1024;
+
         private static readonly ReadOnlyMemory<byte> HexToUtf8Pos = new byte[16]
         {
             0x30, //0
@@ -572,9 +577,10 @@ namespace VNLib.Utils
              * For every illegal character, the percent encoding adds 3 bytes of 
              * entropy. So a single byte will be replaced by 3, so adding 
              * 2 bytes for every illegal character plus the length of the 
-             * intial buffer, we get the size of the buffer needed to 
+             * intial buffer, we get the exact size of the buffer needed to 
              * percent encode.
              */
+
             int count = 0, len = utf8Bytes.Length;
             fixed (byte* utfBase = &MemoryMarshal.GetReference(utf8Bytes))
             {
@@ -658,29 +664,29 @@ namespace VNLib.Utils
         {
             int outPos = 0, len = utf8Encoded.Length;
             ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.Span;
-            
+
             for (int i = 0; i < len; i++)
             {
                 byte value = utf8Encoded[i];
 
                 //Begining of percent encoding character
-                if(value == 0x25)
+                if (value == 0x25)
                 {
                     //Calculate the base16 multiplier from the upper half of the 
                     int multiplier = lookupTable.IndexOf(utf8Encoded[i + 1]);
-                   
+
                     //get the base16 lower half to add
                     int lower = lookupTable.IndexOf(utf8Encoded[i + 2]);
-                    
+
                     //Check format
-                    if(multiplier < 0 || lower < 0)
+                    if (multiplier < 0 || lower < 0)
                     {
                         throw new FormatException($"Encoded buffer contains invalid hexadecimal characters following the % character at position {i}");
                     }
-                    
+
                     //Calculate the new value, shift multiplier to the upper 4 bits, then mask + or the lower 4 bits
                     value = (byte)(((byte)(multiplier << 4)) | ((byte)lower & 0x0f));
-                    
+
                     //Advance the encoded index by the two consumed chars
                     i += 2;
                 }
@@ -689,6 +695,56 @@ namespace VNLib.Utils
             }
             return outPos;
         }
+
+        /// <summary>
+        /// Encodes the utf8 encoded character buffer to its percent/hex encoded utf8 
+        /// character representation and returns the encoded string
+        /// </summary>
+        /// <param name="utf8Bytes">The bytes to encode</param>
+        /// <param name="allowedChars">A collection of allowed characters that will not be encoded</param>
+        /// <returns>The percent encoded string</returns>
+        /// <exception cref="FormatException"></exception>
+        public static string PercentEncode(ReadOnlySpan<byte> utf8Bytes, ReadOnlySpan<byte> allowedChars = default)
+        {
+            /*
+             * I cannot avoid the allocation of a binary buffer without doing some sketchy
+             * byte -> char cast on the string.create method. Which would also require object 
+             * allocation for state data, and since spans are used, we cannot cross that 
+             * callback boundry anyway. 
+             */
+
+            int bufferSize = PercentEncodeCalcBufferSize(utf8Bytes, allowedChars);
+
+            //use stackalloc if the buffer is small enough
+            if (bufferSize <= MAX_STACKALLOC)
+            {
+                //stack alloc output buffer
+                Span<byte> output = stackalloc byte[bufferSize];
+
+                ERRNO encoded = PercentEncode(utf8Bytes, output, allowedChars);
+
+                if(encoded <= 0)
+                {
+                    throw new FormatException("Failed to percent encode the input data");
+                }
+
+                return Encoding.UTF8.GetString(output);
+            }
+            else
+            {
+                //Alloc heap buffer
+                using UnsafeMemoryHandle<byte> handle = MemoryUtil.UnsafeAllocNearestPage(bufferSize);
+                
+                ERRNO encoded = PercentEncode(utf8Bytes, handle.Span, allowedChars);
+
+                if (encoded <= 0)
+                {
+                    throw new FormatException("Failed to percent encode the input data");
+                }
+
+                return Encoding.UTF8.GetString(handle.AsSpan(0, encoded));
+            }
+        }     
 
         #endregion
 
@@ -767,6 +823,7 @@ namespace VNLib.Utils
                 }
             }
         }
+        
         /// <summary>
         /// Converts a base64url encoded utf8 encoded binary buffer to
         /// its base64 encoded version

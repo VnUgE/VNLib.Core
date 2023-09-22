@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -22,7 +22,6 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
-using System;
 using System.Runtime.CompilerServices;
 
 namespace VNLib.Utils
@@ -33,22 +32,26 @@ namespace VNLib.Utils
     public class BitField
     {
         private ulong Field;
+
         /// <summary>
         /// The readonly value of the <see cref="BitField"/>
         /// </summary>
         public ulong Value => Field;
+
         /// <summary>
         /// Creates a new <see cref="BitField"/> initialized to the specified value
         /// </summary>
         /// <param name="initial">Initial value</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitField(ulong initial) => Field = initial;
+
         /// <summary>
         /// Creates a new <see cref="BitField"/> initialized to the specified value
         /// </summary>
         /// <param name="initial">Initial value</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitField(long initial) => Field = unchecked((ulong)initial);
+
         /// <summary>
         /// Determines if the specified flag is set
         /// </summary>
@@ -56,6 +59,7 @@ namespace VNLib.Utils
         /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSet(ulong mask) => (Field & mask) != 0;
+
         /// <summary>
         /// Determines if the specified flag is set
         /// </summary>
@@ -63,6 +67,7 @@ namespace VNLib.Utils
         /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSet(long mask) => (Field & unchecked((ulong)mask)) != 0;
+
         /// <summary>
         /// Determines if the specified flag is set
         /// </summary>
@@ -70,6 +75,7 @@ namespace VNLib.Utils
         /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Set(ulong mask) => Field |= mask;
+
         /// <summary>
         /// Determines if the specified flag is set
         /// </summary>
@@ -77,6 +83,7 @@ namespace VNLib.Utils
         /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Set(long mask) => Field |= unchecked((ulong)mask);
+
         /// <summary>
         /// Sets or clears a flag(s) indentified by a mask based on the value
         /// </summary>
@@ -94,18 +101,21 @@ namespace VNLib.Utils
                 Clear(mask);
             }
         }
+
         /// <summary>
         /// Clears the flag identified by the specified mask
         /// </summary>
         /// <param name="mask">The mask used to clear the given flag</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear(ulong mask) => Field &= ~mask;
+
         /// <summary>
         /// Clears the flag identified by the specified mask
         /// </summary>
         /// <param name="mask">The mask used to clear the given flag</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear(long mask) => Field &= ~unchecked((ulong)mask);
+
         /// <summary>
         /// Clears all flags by setting the <see cref="Field"/> property value to 0
         /// </summary>

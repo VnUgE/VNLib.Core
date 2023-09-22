@@ -55,7 +55,7 @@ namespace VNLib.Net.Http.Core
         /// Flushes and pending data associated with the request to the transport
         /// </summary>
         /// <returns>A task that represents the flush operation</returns>
-        Task FlushTransportAsnc();
+        Task FlushTransportAsync();
 
         /// <summary>
         /// Signals to the context that it will release any request specific

@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
@@ -36,6 +37,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// </summary>
     public sealed class HttpServiceStackBuilder
     {
+
         /// <summary>
         /// Initializes a new <see cref="HttpServiceStack"/> that will 
         /// generate servers to listen for services exposed by the 
@@ -54,7 +56,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="hostBuilder">The callback method to build virtual hosts</param>
         /// <returns>The current instance for chaining</returns>
-        public HttpServiceStackBuilder WithDomainBuilder(Action<ICollection<IServiceHost>> hostBuilder)
+        public HttpServiceStackBuilder WithDomain(Action<ICollection<IServiceHost>> hostBuilder)
         {
             _hostBuilder = hostBuilder;
             return this;
@@ -83,7 +85,29 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         }
 
         /// <summary>
-        /// Builds the new <see cref="HttpServiceStack"/> from the configured callbacks, WITHOUT loading plugins
+        /// Configures the stack to use the built-in http server implementation
+        /// </summary>
+        /// <param name="transport">The transport builder callback function</param>
+        /// <param name="config">The http configuration structure used to initalize servers</param>
+        /// <returns>The current instance for chaining</returns>
+        public HttpServiceStackBuilder WithBuiltInHttp(Func<ServiceGroup, ITransportProvider> transport, HttpConfig config)
+        {
+            return WithHttp(sg => new HttpServer(config, transport(sg), sg.Hosts.Select(static p => p.Processor))); 
+        }
+
+        /// <summary>
+        /// Configures the stack to use the built-in http server implementation
+        /// </summary>
+        /// <param name="transport">The transport builder callback function</param>
+        /// <param name="configCallback">The http configuration builder callback method</param>
+        /// <returns>The current instance for chaining</returns>
+        public HttpServiceStackBuilder WithBuiltInHttp(Func<ServiceGroup, ITransportProvider> transport, Func<ServiceGroup, HttpConfig> configCallback)
+        {
+            return WithHttp(sg => new HttpServer(configCallback(sg), transport(sg), sg.Hosts.Select(static p => p.Processor)));
+        }
+
+        /// <summary>
+        /// Builds the new <see cref="HttpServiceStack"/> from the configured callbacks
         /// </summary>
         /// <returns>The newly constructed <see cref="HttpServiceStack"/> that may be used to manage your http services</returns>
         /// <exception cref="ArgumentNullException"></exception>
