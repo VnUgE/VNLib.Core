@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IUnloadableServiceProvider.cs 
+* File: IAccountSecUpdateable.cs 
 *
-* IUnloadableServiceProvider.cs is part of VNLib.Plugins.Essentials.ServiceStack 
-* which is part of the larger VNLib collection of libraries and utilities.
+* IAccountSecUpdateable.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,21 +22,23 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
-using System.Threading;
+using VNLib.Plugins.Essentials.Accounts;
+
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
-    /// A <see cref="IServiceProvider"/> that may be unloaded when the 
-    /// assembly that is sharing the types are being disposed.
+    /// Adds functionality to event processors to allow them to be updated 
+    /// with a new <see cref="IAccountSecurityProvider"/> instance dynamically 
+    /// at runtime
     /// </summary>
-    public interface IUnloadableServiceProvider : IServiceProvider
+    public interface IAccountSecUpdateable
     {
         /// <summary>
-        /// A token that is set cancelled state when the service provider
-        /// is unloaded.
+        /// Sets the <see cref="IAccountSecurityProvider"/> instance for the event processor
+        /// may be null to remove a previous provider
         /// </summary>
-        CancellationToken UnloadToken { get; }
+        /// <param name="provider">The new <see cref="IAccountSecurityProvider"/> instance</param>
+        void SetAccountSecProvider(IAccountSecurityProvider? provider);
     }
 }

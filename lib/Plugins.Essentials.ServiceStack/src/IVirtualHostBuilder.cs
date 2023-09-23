@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IManagedPlugin.cs 
+* File: IVirtualHostBuilder.cs 
 *
-* IManagedPlugin.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* IVirtualHostBuilder.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -22,36 +22,21 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.ComponentModel.Design;
+using System;
 
-using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
-
-
     /// <summary>
-    /// Represents a plugin managed by a <see cref="IHttpPluginManager"/> that includes dynamically loaded plugins
+    /// Allows for configuring a single virtual host
     /// </summary>
-    public interface IManagedPlugin
+    public interface IVirtualHostBuilder
     {
         /// <summary>
-        /// Exposes the internal <see cref="PluginController"/> for the loaded plugin
+        /// Allows configuring a virtual host options
         /// </summary>
-        PluginController Controller { get; }
-
-        /// <summary>
-        /// The file path to the loaded plugin
-        /// </summary>
-        string PluginPath { get; }
-
-        /// <summary>
-        /// The exposed services the inernal plugin provides
-        /// </summary>
-        /// <remarks>
-        /// WARNING: Services exposed by the plugin will abide by the plugin lifecycle, so consumers 
-        /// must listen for plugin load/unload events to respect lifecycles properly.
-        /// </remarks>
-        IServiceContainer Services { get; }
+        /// <param name="configCallback">A callback function used to modify the virtual host configuration</param>
+        /// <returns></returns>
+        IVirtualHostBuilder WithOption(Action<VirtualHostConfiguration> configCallback);
     }
 }

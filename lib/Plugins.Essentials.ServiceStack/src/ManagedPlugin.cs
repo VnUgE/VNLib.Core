@@ -22,48 +22,41 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
 using System.Linq;
-using System.Threading;
 using System.Reflection;
 using System.ComponentModel.Design;
 
-using VNLib.Utils;
 using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Attributes;
+
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
 
-    internal sealed class ManagedPlugin : VnDisposeable, IManagedPlugin
+    internal sealed class ManagedPlugin : IManagedPlugin
     {
         internal RuntimePluginLoader Plugin { get; }
 
         ///<inheritdoc/>
         public string PluginPath => Plugin.Config.AssemblyFile;
 
-        private UnloadableServiceContainer? _services;
+        private ServiceContainer? _services;
 
         public ManagedPlugin(RuntimePluginLoader loader) => Plugin = loader;
 
         ///<inheritdoc/>
-        public IUnloadableServiceProvider Services
+        public IServiceContainer Services
         {
             get
             {
-                Check();
+                _ = _services ?? throw new InvalidOperationException("The service container is not currently loaded");
                 return _services!;
             }
         }
 
         ///<inheritdoc/>
-        public PluginController Controller
-        {
-            get
-            {
-                Check();
-                return Plugin.Controller;
-            }
-        }
+        public PluginController Controller =>  Plugin.Controller;
 
         /*
         * Automatically called after the plugin has successfully loaded
@@ -98,45 +91,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         internal void OnPluginUnloaded()
         {
             //Cleanup services no longer in use. Plugin is still valid until this method returns
-            using (_services)
-            {
-                //signal service cancel before disposing
-                _services?.SignalUnload();
-            }
-
+            _services?.Dispose();
             //Remove ref to services
             _services = null;
-        }
-
-        protected override void Free()
-        {
-            //Dispose services
-            _services?.Dispose();
-        }
-
-
-        private sealed class UnloadableServiceContainer : ServiceContainer, IUnloadableServiceProvider
-        {
-            private readonly CancellationTokenSource _cts;
-
-            public UnloadableServiceContainer() : base()
-            {
-                _cts = new();
-            }
-
-            ///<inheritdoc/>
-            CancellationToken IUnloadableServiceProvider.UnloadToken => _cts.Token;
-
-            /// <summary>
-            /// Signals to listensers that the service container will be unloading
-            /// </summary>
-            internal void SignalUnload() => _cts.Cancel();
-
-            protected override void Dispose(bool disposing)
-            {
-                base.Dispose(disposing);
-                _cts.Dispose();
-            }
         }
     }
 }

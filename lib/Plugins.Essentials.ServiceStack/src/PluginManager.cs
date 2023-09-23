@@ -197,8 +197,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         protected override void Free()
         {
-            //Dispose all managed plugins and clear the table
-            _managedPlugins.TryForeach(p => p.Value.Dispose());
+            //Clear plugin table
             _managedPlugins.Clear();
 
             //Dispose the plugin stack
@@ -238,14 +237,19 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 return;
             }
 
-            //Run onload method before invoking other handlers
-            mp.OnPluginUnloaded();
+            try
+            {
+                //Get event listeners at event time because deps may be modified by the domain
+                ServiceGroup[] deps = _dependents.ServiceGroups.Select(static d => d).ToArray();
 
-            //Get event listeners at event time because deps may be modified by the domain
-            ServiceGroup[] deps = _dependents.ServiceGroups.Select(static d => d).ToArray();
-
-            //Run unloaded method
-            deps.TryForeach(d => d.OnPluginUnloaded(mp));
+                //Run unloaded method
+                deps.TryForeach(d => d.OnPluginUnloaded(mp));
+            }
+            finally
+            {
+                //always unload the plugin wrapper
+                mp.OnPluginUnloaded();
+            }
         }
     }
 }

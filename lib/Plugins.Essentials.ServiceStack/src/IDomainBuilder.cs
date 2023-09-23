@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IManagedPlugin.cs 
+* File: IDomainBuilder.cs 
 *
-* IManagedPlugin.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* IDomainBuilder.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -22,36 +22,31 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.ComponentModel.Design;
+using System.IO;
 
-using VNLib.Plugins.Runtime;
+using VNLib.Utils.Logging;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
-
-
     /// <summary>
-    /// Represents a plugin managed by a <see cref="IHttpPluginManager"/> that includes dynamically loaded plugins
+    /// Allows for defining virtual hosts for the service stack
     /// </summary>
-    public interface IManagedPlugin
+    public interface IDomainBuilder
     {
         /// <summary>
-        /// Exposes the internal <see cref="PluginController"/> for the loaded plugin
+        /// Adds a single virtual host to the domain that must be configured.
         /// </summary>
-        PluginController Controller { get; }
+        /// <param name="rootDirectory">The service root directory</param>
+        /// <param name="hooks">The virtual host event hook handler</param>
+        /// <param name="Logger">The log provider</param>
+        /// <returns>The <see cref="IVirtualHostBuilder"/> instance</returns>
+        IVirtualHostBuilder WithVirtualHost(DirectoryInfo rootDirectory, IVirtualHostHooks hooks, ILogProvider Logger);
 
         /// <summary>
-        /// The file path to the loaded plugin
+        /// Adds a single pre-configured virtual host to the domain 
         /// </summary>
-        string PluginPath { get; }
-
-        /// <summary>
-        /// The exposed services the inernal plugin provides
-        /// </summary>
-        /// <remarks>
-        /// WARNING: Services exposed by the plugin will abide by the plugin lifecycle, so consumers 
-        /// must listen for plugin load/unload events to respect lifecycles properly.
-        /// </remarks>
-        IServiceContainer Services { get; }
+        /// <param name="config">The pre-configured virtual host configuration</param>
+        /// <returns>The current instance</returns>
+        IDomainBuilder WithVirtualHost(VirtualHostConfiguration config);
     }
 }
