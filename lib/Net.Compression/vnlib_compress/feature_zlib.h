@@ -43,8 +43,8 @@ int DeflateAllocCompressor(CompressorState* state);
 
 int DeflateFreeCompressor(CompressorState* state);
 
-int DeflateCompressBlock(CompressorState* state, CompressionOperation* operation);
+int DeflateCompressBlock(const CompressorState* state, CompressionOperation* operation);
 
-int64_t DeflateGetCompressedSize(CompressorState* state, uint64_t length, int32_t flush);
+int64_t DeflateGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush);
 
 #endif 

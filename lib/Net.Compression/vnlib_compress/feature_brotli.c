@@ -107,7 +107,7 @@ void BrFreeCompressor(CompressorState* state)
 	}
 }
 
-int BrCompressBlock(CompressorState* state, CompressionOperation* operation)
+int BrCompressBlock(const CompressorState* state, CompressionOperation* operation)
 {
 	BrotliEncoderOperation brOperation;
 	BROTLI_BOOL brResult;
@@ -192,7 +192,7 @@ int BrCompressBlock(CompressorState* state, CompressionOperation* operation)
 }
 
 
-int64_t BrGetCompressedSize(CompressorState* state, uint64_t length)
+int64_t BrGetCompressedSize(const CompressorState* state, uint64_t length)
 {
 	/*
 	* When the flush flag is set, the caller is requesting the

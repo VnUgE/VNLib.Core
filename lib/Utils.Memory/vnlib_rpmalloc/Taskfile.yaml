@@ -1,0 +1,73 @@
+# https://taskfile.dev
+
+#Called by the vnbuild system to produce builds for my website
+#https://www.vaughnnugent.com/resources/software
+
+#This taskfile is called in this directory and is specific to the vnlib_rpmalloc project
+#that handles the MSBuild outside of the solution file
+
+version: '3'
+
+vars:
+  INT_DIR: '{{.SCRATCH_DIR}}/obj/{{.MODULE_NAME}}/'
+  MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
+
+tasks:
+  
+  build:
+    cmds:
+     #init cmake build with greedy enabled
+     - cmake -B./build -DENABLE_GREEDY=1
+
+     #build solution in debug mode
+     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=debug {{.BUILD_FLAGS}} {{.MS_ARGS}} 
+
+     #build in release
+     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=release {{.BUILD_FLAGS}} {{.MS_ARGS}} 
+
+  postbuild_success:
+    vars:
+      #required files to include in tar
+      TAR_FILES: "license.txt readme.txt rpmalloc_license.txt"
+    
+    cmds:
+      #make bin dir
+    - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
+      ignore_error: true
+
+    #get licenses for debug
+    - task: licenses
+      vars: 
+        TARGET: './build/Debug'
+
+    - task: licenses
+      vars:
+        TARGET: './build/Release'
+
+
+    #static debug lib
+    - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
+    #dynamic debug lib
+    - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
+
+    #release static lib
+    - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
+    #release dll
+    - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+
+
+  licenses:
+    cmds:
+     #add rpmalloc license to binary output
+     - powershell -Command "Copy-Item -Path ../rpmalloc/license -Destination '{{.TARGET}}/rpmalloc_license.txt'"
+     #add my license file
+     - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
+     #add readme file
+     - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
+
+
+  clean:
+    ignore_error: true
+    cmds: 
+     - cmd: powershell -Command "Remove-Item -Recurse './bin'"
+     - cmd: powershell -Command "Remove-Item -Recurse './build'"

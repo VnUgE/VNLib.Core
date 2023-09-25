@@ -1,9 +1,0 @@
-{
-  "name": "WinRpMalloc",
-  "version": "0.1.2",
-  "author": "Vaughn Nugent",
-  "description": "A project to maintain an x64 Windows dll for RpMalloc by Mattias Jansson with some basic defaults for .NET loading. The debug output contains the debug MVCR libs and debug symbols.",
-  "copyright": "Copyright \u00A9 2023 Vaughn Nugent",
-  "company": "Vaughn Nugent",
-  "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/WinRpMalloc"
-}

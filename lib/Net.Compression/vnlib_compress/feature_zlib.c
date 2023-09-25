@@ -168,7 +168,7 @@ int DeflateFreeCompressor(CompressorState* state)
 	return TRUE;
 }
 
-int DeflateCompressBlock(CompressorState* state, CompressionOperation* operation)
+int DeflateCompressBlock(const CompressorState* state, CompressionOperation* operation)
 {
 	z_stream* stream;
 	int result;
@@ -243,7 +243,7 @@ int DeflateCompressBlock(CompressorState* state, CompressionOperation* operation
 	return result;
 }
 
-int64_t DeflateGetCompressedSize(CompressorState* state, uint64_t length, int32_t flush)
+int64_t DeflateGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush)
 {
 	uint64_t compressedSize;
 
