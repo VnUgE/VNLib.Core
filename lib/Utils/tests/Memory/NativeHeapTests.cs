@@ -7,13 +7,13 @@ namespace VNLib.Utils.Memory.Tests
     [TestClass()]
     public class NativeHeapTests
     {
+        const string RpMallocLibPath = "../../../../../Utils.Memory/vnlib_rpmalloc/build/Debug/vnlib_rpmalloc.dll";
+
         [TestMethod()]
         public void LoadHeapTest()
         {
-            const string TEST_HEAP_FILENAME = @"rpmalloc.dll";
-
             //Try to load the global heap
-            using NativeHeap heap = NativeHeap.LoadHeap(TEST_HEAP_FILENAME, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories, HeapCreation.None, 0);
+            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories, HeapCreation.None, 0);
 
             Assert.IsFalse(heap.IsInvalid);
 

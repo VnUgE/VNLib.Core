@@ -46,7 +46,7 @@ namespace VNLib.Plugins.Runtime
         /// <summary>
         /// Gets the plugin assembly loader configuration information
         /// </summary>
-        public IPluginConfig Config => Loader.Config;
+        public IPluginAssemblyLoadConfig Config => Loader.Config;
 
         /// <summary>
         /// Gets the plugin lifecycle controller

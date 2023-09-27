@@ -118,17 +118,17 @@ HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapAlloc(LPVOID heap, size_t elements,
         */
         GLOBAL_HEAP_INIT_CHECK
 
-            //Allocate the block
-            if (zero)
-            {
-                //Calloc
-                return rpcalloc(elements, alignment);
-            }
-            else
-            {
-                //Alloc without zero
-                return rpmalloc(size);
-            }
+        //Allocate the block
+        if (zero)
+        {
+            //Calloc
+            return rpcalloc(elements, alignment);
+        }
+        else
+        {
+            //Alloc without zero
+            return rpmalloc(size);
+        }
     }
     else
     {
@@ -161,8 +161,8 @@ HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapRealloc(LPVOID heap, LPVOID block, 
         */
         GLOBAL_HEAP_INIT_CHECK
 
-            //Calloc
-            return rprealloc(block, size);
+        //Calloc
+        return rprealloc(block, size);
     }
     else
     {
@@ -184,8 +184,8 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(LPVOID heap, LPVOID block)
 
         GLOBAL_HEAP_INIT_CHECK
 
-            //free block
-            rpfree(block);
+        //free block
+        rpfree(block);
     }
     else
     {

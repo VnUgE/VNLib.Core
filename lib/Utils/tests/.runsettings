@@ -2,7 +2,6 @@
 <RunSettings>
     <RunConfiguration>
       <EnvironmentVariables>
-        <VNLIB_SHARED_HEAP_FILE_PATH></VNLIB_SHARED_HEAP_FILE_PATH>
         <VNLIB_SHARED_HEAP_DIAGNOSTICS>1</VNLIB_SHARED_HEAP_DIAGNOSTICS>
       </EnvironmentVariables>
     </RunConfiguration>

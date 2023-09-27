@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: IPluginAssemblyLoader.cs 
+* File: IPluginConfigReader.cs 
 *
-* IPluginAssemblyLoader.cs is part of VNLib.Plugins.Runtime which is 
-* part of the larger VNLib collection of libraries and utilities.
+* IPluginConfigReader.cs is part of VNLib.Plugins.Runtime which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU General Public License as published
@@ -22,18 +22,22 @@
 * along with VNLib.Plugins.Runtime. If not, see http://www.gnu.org/licenses/.
 */
 
+using System.IO;
+
 namespace VNLib.Plugins.Runtime
 {
-
     /// <summary>
-    /// Represents the bare assembly loader that gets a main assembly for a plugin and handles
-    /// type resolution, while providing loading/unloading
+    /// Represents an object that gets configuration data for the desired assembly configuration
+    /// and writes that conifguration to the output stream.
     /// </summary>
-    public interface IPluginAssemblyLoader : IAssemblyLoader
+    public interface IPluginConfigReader
     {
         /// <summary>
-        /// Gets the plugin's configuration information
+        /// Gets the configuration data for the desired assembly configuration and writes that
+        /// configuration to the output stream.
         /// </summary>
-        IPluginAssemblyLoadConfig Config { get; }
+        /// <param name="asmConfig">The assembly configuration to get the configuration data for</param>
+        /// <param name="outputStream">The stream to write the configuration file data to</param>
+        void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream outputStream);
     }
 }

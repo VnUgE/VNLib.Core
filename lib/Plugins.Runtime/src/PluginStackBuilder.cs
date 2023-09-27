@@ -25,17 +25,15 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Reflection;
 using System.Collections.Generic;
 
-using VNLib.Utils.IO;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 
 namespace VNLib.Plugins.Runtime
 {
+
     /// <summary>
     /// A construction class used to build a single plugin stack. 
     /// </summary>
@@ -44,10 +42,10 @@ namespace VNLib.Plugins.Runtime
         private IPluginDiscoveryManager? DiscoveryManager;
         private bool HotReload;
         private TimeSpan ReloadDelay;
-        private byte[]? HostConfigData;
+        private IPluginConfigReader? PluginConfig;
         private ILogProvider? DebugLog;
 
-        private Func<IPluginConfig, IAssemblyLoader>? Loader;
+        private Func<IPluginAssemblyLoadConfig, IAssemblyLoader>? Loader;
 
         /// <summary>
         /// Shortcut constructor for easy fluent chaining.
@@ -76,17 +74,17 @@ namespace VNLib.Plugins.Runtime
             HotReload = true;
             ReloadDelay = reloadDelay;
             return this;
-        }       
+        }
 
         /// <summary>
         /// Specifies the JSON host configuration data to pass to the plugin
         /// </summary>
-        /// <param name="hostConfig"></param>
+        /// <param name="pluginConfig">The plugin configuration data</param>
         /// <returns>The current builder instance for chaining</returns>
-        public PluginStackBuilder WithConfigurationData(ReadOnlySpan<byte> hostConfig)
+        public PluginStackBuilder WithConfigurationReader(IPluginConfigReader pluginConfig)
         {
             //Store binary copy
-            HostConfigData = hostConfig.ToArray();
+            PluginConfig = pluginConfig ?? throw new ArgumentNullException(nameof(pluginConfig));
             return this;
         }
 
@@ -96,7 +94,7 @@ namespace VNLib.Plugins.Runtime
         /// </summary>
         /// <param name="loaderFactory">The factory callback funtion</param>
         /// <returns>The current builder instance for chaining</returns>
-        public PluginStackBuilder WithLoaderFactory(Func<IPluginConfig, IAssemblyLoader> loaderFactory)
+        public PluginStackBuilder WithLoaderFactory(Func<IPluginAssemblyLoadConfig, IAssemblyLoader> loaderFactory)
         {
             Loader = loaderFactory;
             return this;
@@ -121,17 +119,13 @@ namespace VNLib.Plugins.Runtime
         public IPluginStack ConfigureStack()
         {
             _ = DiscoveryManager ?? throw new ArgumentException("You must specify a plugin discovery manager");
-
-            //Create a default config if none was specified
-            HostConfigData ??= GetEmptyConfig();
+            _ = PluginConfig ?? throw new ArgumentException("A plugin confuration reader must be specified");
 
             //Clone the current builder state
             PluginStackBuilder clone = (PluginStackBuilder)MemberwiseClone();
 
             return new PluginStack(clone);
         }
-
-        private static byte[] GetEmptyConfig() => Encoding.UTF8.GetBytes("{}");
 
 
         /*
@@ -172,7 +166,7 @@ namespace VNLib.Plugins.Runtime
                 //Create a loader for each plugin
                 foreach (string pluginPath in pluginPaths)
                 {
-                    PlugingAssemblyConfig pConf = new(Builder.HostConfigData)
+                    PlugingAssemblyConfig pConf = new(Builder.PluginConfig!)
                     {
                         AssemblyFile = pluginPath,
                         WatchForReload = Builder.HotReload,
@@ -200,7 +194,7 @@ namespace VNLib.Plugins.Runtime
             }
         }
 
-        internal sealed record class PluginAsmLoader(IAssemblyLoader Loader, IPluginConfig Config) : IPluginAssemblyLoader
+        internal sealed record class PluginAsmLoader(IAssemblyLoader Loader, IPluginAssemblyLoadConfig Config) : IPluginAssemblyLoader
         {
             ///<inheritdoc/>
             public void Dispose() => Loader.Dispose();
@@ -215,7 +209,7 @@ namespace VNLib.Plugins.Runtime
             public void Unload() => Loader.Unload();
         }
 
-        internal sealed record class PlugingAssemblyConfig(ReadOnlyMemory<byte> HostConfig) : IPluginConfig
+        internal sealed record class PlugingAssemblyConfig(IPluginConfigReader Config) : IPluginAssemblyLoadConfig
         {
             ///<inheritdoc/>
             public bool Unloadable { get; init; }
@@ -229,54 +223,8 @@ namespace VNLib.Plugins.Runtime
             ///<inheritdoc/>
             public TimeSpan ReloadDelay { get; init; }
 
-            /*
-             * The plugin config file is the same as the plugin assembly file, 
-             * but with the .json extension
-             */
-            private string PluginConfigFile => Path.ChangeExtension(AssemblyFile, ".json");
-
             ///<inheritdoc/>
-            public void ReadConfigurationData(Stream outputStream)
-            {
-                //Allow comments and trailing commas
-                JsonDocumentOptions jdo = new()
-                {
-                    AllowTrailingCommas = true,
-                    CommentHandling = JsonCommentHandling.Skip,
-                };
-
-                using JsonDocument hConfig = JsonDocument.Parse(HostConfig, jdo);
-
-                //Read the plugin config file
-                if (FileOperations.FileExists(PluginConfigFile))
-                {
-                    //Open file stream to read data
-                    using FileStream confStream = File.OpenRead(PluginConfigFile);
-
-                    //Parse the config file
-                    using JsonDocument pConfig = JsonDocument.Parse(confStream, jdo);
-
-                    //Merge the configs
-                    using JsonDocument merged = hConfig.Merge(pConfig,"host", "plugin");
-
-                    //Write the merged config to the output stream
-                    using Utf8JsonWriter writer = new(outputStream);
-                    merged.WriteTo(writer);
-                }
-                else
-                {
-                    byte[] pluginConfig = Encoding.UTF8.GetBytes("{}");
-
-                    using JsonDocument pConfig = JsonDocument.Parse(pluginConfig, jdo);
-
-                    //Merge the configs
-                    using JsonDocument merged = hConfig.Merge(pConfig,"host", "plugin");
-
-                    //Write the merged config to the output stream
-                    using Utf8JsonWriter writer = new(outputStream);
-                    merged.WriteTo(writer);
-                }
-            }
+            public void ReadConfigurationData(Stream outputStream) => Config.ReadPluginConfigData(this, outputStream);
         }
     }
 }

@@ -26,7 +26,6 @@ Again, go to my website below, my email address is available, go ahead and send 
 ## Index/NameSpaces
 **VNLib.**
 - [Utils](lib/Utils/#) - A mutli-use library focused on reducing complexity for working with native resources, memory, asynchronous patterns and data-structures, object/resource pooling, critical resource handling, and common logging abstractions. 
-- [NativeHeapApi](lib/NativeHeapApi/#) - A C implementation overview for building unmanaged heaps for use in the Utils.Memory.NativeHeap umanaged heap architecture.
 - [Hashing.Portable](lib/Hashing.Portable/#) - Common cryptographic/hashing relate operations in a single package with room to grow. Also Argon2 bindings
 - [Net.Http](lib/Net.Http/#) - High performance ^HTTP/1.1 application processing library, transport not included! For web or custom use, custom app layer protocols supported - roll your own web-sockets or SSE if you want! (See [Essentials](lib/Plugins.Essentials/#) library if you want to use mine! It's not bad.)
 - [Net.Transport.SimpleTCP](lib/Net.Transport.SimpleTCP/#) - A not-so-simple, performance oriented, low/no allocation, .NET/C# native, TCP listener library using the System.IO.Pipelines architecture with SSL/TLS support.
@@ -36,7 +35,7 @@ Again, go to my website below, my email address is available, go ahead and send 
 - [Plugins.Essentials.ServiceStack](lib/Plugins.Essentials.ServiceStack/#) - A library for scaffolding structured web applications from the individual http and supporting libraries into a completely managed http service stack for an entire application. 
 - [Plugins.PluginBase](lib/Plugins.PluginBase/#) - Base library/api for plugin developers to build fully managed/supported runtime loaded plugins, without worrying about the plumbing, such as the IPlugin api, endpoint creation, and logging! This library is required if you wish to use most of the Plugin.Extensions libraries.
 - [Net.Messaging.FBM](lib/Net.Messaging.FBM/#) - Fixed Buffer Messaging protocol, high performance, request/response architecture, client & server library, built atop http and web-sockets. As implied, relies on fixed sized internal buffers that are negotiated to transfer data with minimal overhead for known messaging architectures.
-- [WinRpMalloc](lib/WinRpMalloc/#) - A Windows x64 dll project that exposes the rpmalloc memory allocator as a NativeHeap for .NET Utils library loading in the unmanned heap architecture.
+- [Utils.Memory](lib/Utils.Memory/#) - Utilty libraries for native memory management framework for VNLib, including an x64 CMake build of rpmalloc.
 - [Net.Compression](lib/Net.Compression/#) - A cross platform native compression provider and IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
 - [Net.Rest.Client](lib/Net.Rest.Client/#) - A minimal library that provides a RestSharp client resource pool for concurrent usage with async support, along with an OAuth2 client credentials IAuthenticator implementation for use with Oauth2 plugins.
 

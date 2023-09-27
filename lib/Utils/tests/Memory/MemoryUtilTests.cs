@@ -366,6 +366,7 @@ namespace VNLib.Utils.Memory.Tests
             //Get stats
             HeapStatistics postTest = MemoryUtil.GetSharedHeapStats();
 
+            Assert.IsFalse(postTest == default);
             Assert.IsTrue(postTest.AllocatedBytes == preTest.AllocatedBytes + 1024);
             Assert.IsTrue(postTest.AllocatedBlocks == preTest.AllocatedBlocks + 1);
 

@@ -26,11 +26,11 @@ using System;
 using System.Linq;
 using System.Text;
 using System.Buffers;
+using System.Diagnostics;
 using System.Buffers.Text;
 using System.Security.Cryptography;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Diagnostics;
 
 namespace VNLib.Utils.Tests
 {

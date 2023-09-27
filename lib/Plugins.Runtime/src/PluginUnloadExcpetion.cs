@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -35,12 +35,15 @@ namespace VNLib.Plugins.Runtime
     public class PluginUnloadException : Exception
     {
         public PluginUnloadException()
-        {}
+        { }
+
         public PluginUnloadException(string message) : base(message)
-        {}
+        { }
+
         public PluginUnloadException(string message, Exception innerException) : base(message, innerException)
-        {}
+        { }
+
         protected PluginUnloadException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {}
+        { }
     }
 }

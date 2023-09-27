@@ -672,6 +672,8 @@ namespace VNLib.Utils.Memory
             //Get array base address
             void* basePtr = (void*)arrHandle.AddrOfPinnedObject();
 
+            Debug.Assert(basePtr != null);
+
             //Get element offset
             void* indexOffet = Unsafe.Add<T>(basePtr, elementOffset);
 
@@ -686,10 +688,7 @@ namespace VNLib.Utils.Memory
         /// <param name="pinnable">An optional <see cref="IPinnable"/> instace to wrap with the handle</param>
         /// <returns>The <see cref="MemoryHandle"/> wrapper</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryHandle GetMemoryHandleFromPointer(IntPtr value, GCHandle handle = default, IPinnable? pinnable = null)
-        {
-            return new MemoryHandle(value.ToPointer(), handle, pinnable);
-        }
+        public static MemoryHandle GetMemoryHandleFromPointer(IntPtr value, GCHandle handle = default, IPinnable? pinnable = null) => new (value.ToPointer(), handle, pinnable);
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> from the supplied address

@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: IPluginConfig.cs 
+* File: IPluginAssemblyLoadConfig.cs 
 *
-* IPluginConfig.cs is part of VNLib.Plugins.Runtime which is part 
+* IPluginAssemblyLoadConfig.cs is part of VNLib.Plugins.Runtime which is part 
 * of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
@@ -31,7 +31,7 @@ namespace VNLib.Plugins.Runtime
     /// Represents configuration information for a <see cref="IPluginAssemblyLoader"/>
     /// instance.
     /// </summary>
-    public interface IPluginConfig
+    public interface IPluginAssemblyLoadConfig
     {
         /// <summary>
         /// A value that indicates if the instance is unlodable.

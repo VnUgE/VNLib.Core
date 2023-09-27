@@ -25,6 +25,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Collections.Generic;
 
@@ -259,24 +260,40 @@ namespace VNLib.Plugins.Runtime
         }
 
         /// <summary>
-        /// Specify the host configuration data to pass to the plugin
+        /// Configures the plugin stack to retrieve plugin-local json configuration files 
+        /// from the same directory as the plugin assembly file.
         /// </summary>
         /// <param name="builder"></param>
-        /// <param name="hostConfig">A configuration element to pass to the plugin's host config element</param>
+        /// <param name="hostConfig">An optional configuration element to pass to the plugin's host config element</param>
         /// <returns>The current builder instance for chaining</returns>
-        public static PluginStackBuilder WithConfigurationData(this PluginStackBuilder builder, JsonElement hostConfig)
+        public static PluginStackBuilder WithLocalJsonConfig(this PluginStackBuilder builder, in JsonElement? hostConfig)
         {
             _ = builder ?? throw new ArgumentNullException(nameof(builder));
 
-            //Clone the host config into binary
-            using VnMemoryStream ms = new();
-            using (Utf8JsonWriter writer = new(ms))
+            LocalFilePluginConfigReader reader;
+
+            //Host config is optional
+            if (hostConfig.HasValue)
             {
-                hostConfig.WriteTo(writer);
+                //Clone the host config into binary
+                using VnMemoryStream ms = new();
+                using (Utf8JsonWriter writer = new(ms))
+                {
+                    hostConfig.Value.WriteTo(writer);
+                }
+
+                //Create a reader from the binary
+                reader = new LocalFilePluginConfigReader(ms.ToArray());
+            }
+            else
+            {
+                //Empty json
+                byte[] emptyJson = Encoding.UTF8.GetBytes("{}");
+                reader = new LocalFilePluginConfigReader(emptyJson);
             }
 
             //Store binary
-            return builder.WithConfigurationData(ms.AsSpan());
+            return builder.WithConfigurationReader(reader);
         }
 
         /// <summary>
@@ -341,6 +358,61 @@ namespace VNLib.Plugins.Runtime
                     string compined = Path.Combine(pdir.FullName, pdir.Name);
                     return string.Concat(compined, PLUGIN_FILE_EXTENSION);
                 });
+            }
+        }
+
+        /*
+         * Assumes plugin configuration data is stored in a json file with the same name as 
+         * the plugin assembly but with a json extension. 
+         * 
+         * The json file is local for the specific plugin and is not shared between plugins. The host 
+         * configuration is also required
+         */
+        private sealed record class LocalFilePluginConfigReader(ReadOnlyMemory<byte> HostJson) : IPluginConfigReader
+        {
+            public void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream configData)
+            {
+                //Allow comments and trailing commas
+                JsonDocumentOptions jdo = new()
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip,
+                };
+
+                //Config file is the same name as the assembly but with a json extension
+                string pluginConfigFile = Path.ChangeExtension(asmConfig.AssemblyFile, ".json");
+
+                using JsonDocument hConfig = JsonDocument.Parse(HostJson, jdo);
+
+                //Read the plugin config file
+                if (FileOperations.FileExists(pluginConfigFile))
+                {
+                    //Open file stream to read data
+                    using FileStream confStream = File.OpenRead(pluginConfigFile);
+
+                    //Parse the config file
+                    using JsonDocument pConfig = JsonDocument.Parse(confStream, jdo);
+
+                    //Merge the configs
+                    using JsonDocument merged = hConfig.Merge(pConfig,"host", "plugin");
+
+                    //Write the merged config to the output stream
+                    using Utf8JsonWriter writer = new(configData);
+                    merged.WriteTo(writer);
+                }
+                else
+                {
+                    byte[] pluginConfig = Encoding.UTF8.GetBytes("{}");
+
+                    using JsonDocument pConfig = JsonDocument.Parse(pluginConfig, jdo);
+
+                    //Merge the configs
+                    using JsonDocument merged = hConfig.Merge(pConfig,"host", "plugin");
+
+                    //Write the merged config to the output stream
+                    using Utf8JsonWriter writer = new(configData);
+                    merged.WriteTo(writer);
+                }
             }
         }
     }
