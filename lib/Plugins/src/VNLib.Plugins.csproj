@@ -17,13 +17,13 @@
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
     <PackageTags>Plugins, VNLIb, VNLib Plugins, Plugin Base</PackageTags>
     <Product>VNLib Plugins Interface Assembly</Product>
-    <Description>
-      Provides a standard interface for building dynamically loadable
-      plugins and asynchronus web endpoint processing, compatible
-      with the VNLib.Plugins.Runtime loader library.
+    <Description>Provides a standard interface for building dynamically loadable plugins and asynchronus web endpoint processing, compatible with the VNLib.Plugins.Runtime loader library.
     </Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>
@@ -45,6 +45,7 @@
     <None Include="..\LICENSE">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

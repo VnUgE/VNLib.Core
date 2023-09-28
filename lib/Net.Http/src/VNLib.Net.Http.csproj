@@ -16,14 +16,13 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Product>VNLib HTTP Library</Product>
-    <Description>
-      Provides a high performance HTTP 0.9-1.1 application processing layer for handling transport *agnostic connections and asynchronous event support for applications serving HTTP
-      requests such as web content. This library has a large focus on low/no GC allocations using unmanaged memory support provided by the VNLib.Utils library. No external dependencies
-      outside of the VNLib ecosystem are required. The VNLib.Plugins and VNLib.Plugins.Essentials libraries are highly recommended for serving web content.
-    </Description>
+    <Description>Provides a high performance HTTP 0.9-1.1 application processing layer for handling transport *agnostic connections and asynchronous event support for applications serving HTTP requests such as web content. This library has a large focus on low/no GC allocations using unmanaged memory support provided by the VNLib.Utils library. No external dependencies outside of the VNLib ecosystem are required. The VNLib.Plugins and VNLib.Plugins.Essentials libraries are highly recommended for serving web content.</Description>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Http</RepositoryUrl>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -61,6 +60,7 @@
     <None Include="..\LICENSE">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

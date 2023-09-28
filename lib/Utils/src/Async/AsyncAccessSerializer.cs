@@ -177,38 +177,47 @@ namespace VNLib.Utils.Async
              * 
              * When there are no more waiters for a moniker at the time the lock was entered, the WaitEntry is released
              * back to the pool.
-             */
+             * 
+             * Since tasks are cancellable by another thread at any time, it is possible that the canceled task will be
+             * dequeued as the next task to transition. This condition is guarded by the release token by returning a boolean
+             * signalling the transition failure, if so, must repeat the release process, until a valid release occurs
+             * or the final release is issued.
+             */        
 
             WaitReleaseToken releaser;
 
-            lock (StoreLock)
+            do
             {
-                WaitEntry entry = WaitTable[moniker];
-
-                //Call release while holding store lock
-                if (entry.ExitWait(out releaser) == 0)
+                lock (StoreLock)
                 {
-                    //No more waiters
-                    WaitTable.Remove(moniker);
+                    WaitEntry entry = WaitTable[moniker];
 
-                    /*
-                     * We must release the semaphore before returning to pool, 
-                     * its safe because there are no more waiters
-                     */
+                    //Call release while holding store lock
+                    if (entry.ExitWait(out releaser) == 0)
+                    {
+                        //No more waiters
+                        WaitTable.Remove(moniker);
 
-                    Debug.Assert(!releaser.WillTransition, "The wait entry referrence count was 0 but a release token was issued that would cause a lock transision");
+                        /*
+                         * We must release the semaphore before returning to pool, 
+                         * its safe because there are no more waiters
+                         */
 
-                    releaser.Release();
+                        Debug.Assert(!releaser.WillTransition, "The wait entry referrence count was 0 but a release token was issued that would cause a lock transision");
 
-                    ReturnEntry(entry);
+                        releaser.Release();
 
-                    //already released
-                    releaser = default;
+                        ReturnEntry(entry);
+
+                        return;
+                    }
                 }
-            }
 
-            //Release sem outside of lock
-            releaser.Release();
+            /*
+             * If the releaser fails to transition the next task, we need to repeat the 
+             * release process to ensure that at least one waiter is properly released
+             */
+            } while (!releaser.Release());
         }
 
 
@@ -483,9 +492,44 @@ namespace VNLib.Utils.Async
             /// <summary>
             /// Releases the exclusive lock held by the token. NOTE:
             /// this method may only be called ONCE after a wait has been
-            /// released
+            /// released. 
+            /// <para>
+            /// If <see cref="WillTransition"/> is true, this method may cause a waiting 
+            /// task to transition. The result must be examined to determine if the
+            /// transition was successful.If a transition is not successful, then a deadlock may occur if 
+            /// another waiter is not selected.
+            /// </para>
             /// </summary>
-            public readonly void Release() => _nextWaiter?.Start();
+            /// <returns>A value that indicates if the task was transition successfully</returns>
+            public readonly bool Release()
+            {
+                //return success if no next waiter
+                if(_nextWaiter == null)
+                {
+                    return true;
+                }
+
+                /*
+                 * Guard against the next waiter being cancelled,
+                 * this thread could be suspended after this check
+                 * but for now should be good enough. An exception
+                 * will be thrown if this doesnt work
+                 */
+
+                if (_nextWaiter.Status == TaskStatus.Created)
+                {
+                    _nextWaiter.Start();
+                    return true;
+                }
+
+                if(_nextWaiter.Status == TaskStatus.Canceled)
+                {
+                    return false;
+                }
+
+                Debug.Fail($"Next waiting task is in an invalid state: {_nextWaiter.Status}");
+                return false;
+            }
         }
 
         /// <summary>

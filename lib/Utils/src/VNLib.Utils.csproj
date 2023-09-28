@@ -17,13 +17,12 @@
     <Company>Vaughn Nugent</Company>
     <Product>VNLib Utilities Library</Product>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
-    <Description>
-      .NET/6.0 Utilities library for high-performance common operations. Utilities and abstractions for building and 
-      diagnosing native memory implementations. Dyanmic native library loading, IO, extensions, data encoding, resource 
-      access, and asynchronous cooperation primitives.
-    </Description>
+    <Description>.NET/6.0 Utilities library for high-performance common operations. Utilities and abstractions for building and diagnosing native memory implementations. Dyanmic native library loading, IO, extensions, data encoding, resource access, and asynchronous cooperation primitives.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,9 +33,10 @@
     <None Include="..\LICENSE">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
+  
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
   </PropertyGroup>

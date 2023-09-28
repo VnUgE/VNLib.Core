@@ -8,14 +8,14 @@
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <PropertyGroup>
     <Product>VNLib Simple Transport Library</Product>
-    <Description>
-      Provides a library for single process asynchronous, event driven, TCP socket listening and supporting 
-      structures to implement simple high performance TCP servers with or without TLS security.
-    </Description>
+    <Description>Provides a library for single process asynchronous, event driven, TCP socket listening and supporting structures to implement simple high performance TCP servers with or without TLS security.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
@@ -47,6 +47,7 @@
     <None Include="..\LICENSE">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 
