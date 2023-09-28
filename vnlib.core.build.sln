@@ -27,10 +27,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNLib.Plugins.PluginBase", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7E900836-E8C1-468E-899A-8FC82526F246}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		.gitignore = .gitignore
 		.onedev-buildspec.yml = .onedev-buildspec.yml
 		GitVersion.yml = GitVersion.yml
+		Module.Taskfile.yaml = Module.Taskfile.yaml
 		README.md = README.md
+		Taskfile.yaml = Taskfile.yaml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Compression", "Compression", "{A7EC3CF5-76B0-4235-AE9F-05409E3308B9}"

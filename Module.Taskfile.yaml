@@ -12,7 +12,7 @@ version: '3'
 
 vars:
   INT_DIR: '{{.SCRATCH_DIR}}/obj/{{.MODULE_NAME}}/'
-  MS_ARGS: '/p:RunAnalyzersDuringBuild=false /p:IntermediateOutputPath="{{.INT_DIR}}" /p:UseCommonOutputDirectory=true /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
+  MS_ARGS: '/p:RunAnalyzersDuringBuild=false /p:IntermediateOutputPath="{{.INT_DIR}}" /p:UseCommonOutputDirectory=true /p:BuildInParallel=true /p:MultiProcessorCompilation=true /p:ErrorOnDuplicatePublishOutputFiles=false'
   PACK_OUT: '{{.OUTPUT_DIR}}/{{.HEAD_SHA}}/pkg'
 
 tasks:
