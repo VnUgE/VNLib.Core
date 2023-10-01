@@ -835,9 +835,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                 //Setup a new websocket session with a new session id
                 entity.DangerousChangeProtocol(ws);
             }
-            //Set the client up for a bad request response, nod a valid websocket request
-            entity.CloseResponse(HttpStatusCode.BadRequest);
-            return false;
+            return success;
         }
 
         /// <summary>

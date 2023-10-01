@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -76,7 +76,8 @@ namespace VNLib.Utils.IO
         }
 
         /// <summary>
-        /// Creates a new memory stream
+        /// Creates a new memory stream using the <see cref="MemoryUtil.Shared"/>
+        /// global heap instance.
         /// </summary>
         public VnMemoryStream() : this(MemoryUtil.Shared) { }
         

@@ -37,9 +37,8 @@ endif()
 
 
 #Setup the compiler options 
-set(CMAKE_CXX_STANDARD 90)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(DEFAULT_BUILD_TYPE "Release")
+set(CMAKE_C_STANDARD 90)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 #enable position independent code (for shared libraries with exports)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

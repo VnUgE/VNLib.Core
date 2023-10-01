@@ -302,7 +302,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
 
         /// <summary>
-        /// Sets a cookie with an infinite (session life-span)
+        /// Sets the desired http cookie for the current connection
         /// </summary>
         /// <param name="server"></param>
         /// <param name="cookie">The cookie to set for the server</param>

@@ -551,7 +551,7 @@ namespace VNLib.Utils.Async
             /// or yield (IE Return <see cref="Task.CompletedTask"/>)
             /// </summary>
             /// <returns></returns>
-            public Task EnterWaitAsync() => _waiter ?? Task.CompletedTask;
+            public readonly Task EnterWaitAsync() => _waiter ?? Task.CompletedTask;
         }
     }
 }
