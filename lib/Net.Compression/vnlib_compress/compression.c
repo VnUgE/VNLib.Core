@@ -46,19 +46,19 @@
 */
 VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void);
 
-VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ void* compressor);
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ const void* compressor);
 
-VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ void* compressor);
+VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ const void* compressor);
 
-VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ void* compressor);
+VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ const void* compressor);
 
 VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionLevel level);
 
 VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor);
 
-VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ void* compressor, uint64_t inputLength, int32_t flush);
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ const void* compressor, uint64_t inputLength, int32_t flush);
 
-VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ void* compressor, CompressionOperation* operation);
+VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ const void* compressor, CompressionOperation* operation);
 
 /*
  Gets the supported compressors, this is defined at compile time and is a convenience method for
@@ -89,7 +89,7 @@ VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void)
 	return supported;
 }
 
-VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ void* compressor)
+VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ const void* compressor)
 {
 	if (!compressor)
 	{
@@ -99,7 +99,7 @@ VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ void* compressor)
 	return ((CompressorState*)compressor)->type;
 }
 
-VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ void* compressor)
+VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ const void* compressor)
 {
 	if (!compressor)
 	{
@@ -109,7 +109,7 @@ VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ void* compressor)
 	return ((CompressorState*)compressor)->level;
 }
 
-VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ void* compressor)
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ const void* compressor)
 {
 	if (!compressor)
 	{
@@ -118,8 +118,6 @@ VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ void* compressor)
 	
 	return (int64_t)((CompressorState*)compressor)->blockSize;
 }
-
-
 
 VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionLevel level)
 {
@@ -214,7 +212,7 @@ VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionL
 	}
 }
 
-VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ const void* compressor)
+VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor)
 {	
 	CompressorState* comp;
 	int errorCode;

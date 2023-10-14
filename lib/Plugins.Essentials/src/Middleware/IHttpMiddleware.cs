@@ -34,8 +34,8 @@ namespace VNLib.Plugins.Essentials.Middleware
     public interface IHttpMiddleware
     {
         /// <summary>
-        /// Processes the <see cref="HttpEntity"/> and returns a <see cref="HttpMiddlewareResult"/> 
-        /// indicating whether the request should continue to be processed.
+        /// Processes the <see cref="HttpEntity"/> and returns a <see cref="FileProcessArgs"/> 
+        /// indicating the result of the process operation
         /// </summary>
         /// <param name="entity">The entity to process</param>
         /// <returns>The result of the operation</returns>

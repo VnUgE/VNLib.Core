@@ -28,6 +28,7 @@ using System.Text;
 using System.Buffers;
 using System.Text.Json;
 using System.Threading;
+using System.Diagnostics;
 using System.Buffers.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
@@ -36,7 +37,6 @@ using System.Runtime.CompilerServices;
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-
 
 namespace VNLib.Utils
 {
@@ -778,7 +778,7 @@ namespace VNLib.Utils
         {
             return Convert.TryToBase64Chars(buffer, base64, out int charsWritten, options: options) ? charsWritten : ERRNO.E_FAIL;
         }
-
+       
 
         /*
          * Calc base64 padding chars excluding the length mod 4 = 0 case
@@ -980,6 +980,99 @@ namespace VNLib.Utils
                 return nonPadded.Length;
             }
 
+        }
+
+        /// <summary>
+        /// Attempts to base64url encode the binary buffer to it's base64url encoded representation
+        /// in place, aka does not allocate a temporary buffer. The buffer must be large enough to
+        /// encode the data, if not the operation will fail. The data in this span will be overwritten
+        /// to do the conversion
+        /// </summary>
+        /// <param name="rawData">The raw data buffer that will be used to encode data aswell as read it</param>
+        /// <param name="length">The length of the binary data to encode</param>
+        /// <param name="includePadding">A value specifying whether base64 padding should be encoded</param>
+        /// <returns>The base64url encoded string</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public static string ToBase64UrlSafeStringInPlace(Span<byte> rawData, int length, bool includePadding)
+        {
+            //Encode in place
+            if (Base64.EncodeToUtf8InPlace(rawData, length, out int converted) != OperationStatus.Done)
+            {
+                throw new ArgumentException("The input buffer was not large enough to encode in-place", nameof(rawData));
+            }
+
+            //trim to converted size
+            Span<byte> base64 = rawData[..converted];
+
+            //Make url safe
+            Base64ToUrlSafeInPlace(base64);
+
+            //Remove padding
+            if (!includePadding)
+            {
+                base64 = base64.TrimEnd((byte)0x3d);
+            }
+
+            //Convert to string
+            return Encoding.UTF8.GetString(base64);
+        }
+
+        /// <summary>
+        /// Converts binary data to it's base64url encoded representation and may allocate a temporary 
+        /// heap buffer.
+        /// </summary>
+        /// <param name="rawData">The binary data to encode</param>
+        /// <param name="includePadding">A value that indicates if the base64 padding characters should be included</param>
+        /// <returns>The base64url encoded string</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public static string ToBase64UrlSafeString(ReadOnlySpan<byte> rawData, bool includePadding)
+        {
+            int maxBufSize = Base64.GetMaxEncodedToUtf8Length(rawData.Length);
+            
+            if(maxBufSize > MAX_STACKALLOC)
+            {
+                //alloc buffer
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage(maxBufSize);
+
+                return ConvertToBase64UrlStringInternal(rawData, buffer.Span, includePadding);
+            }
+            else
+            {
+                //Stack alloc buffer
+                Span<byte> buffer = stackalloc byte[maxBufSize];
+
+                return ConvertToBase64UrlStringInternal(rawData, buffer, includePadding);
+            }
+        }
+
+        private static string ConvertToBase64UrlStringInternal(ReadOnlySpan<byte> rawData, Span<byte> buffer, bool includePadding)
+        {
+            //Conver to base64
+            OperationStatus status = Base64.EncodeToUtf8(rawData, buffer, out _, out int written, true);
+
+            //Check for invalid states
+            Debug.Assert(status != OperationStatus.DestinationTooSmall, "Buffer allocation was too small for the conversion");
+            Debug.Assert(status != OperationStatus.NeedMoreData, "Need more data status was returned but is not valid for an encoding operation");
+
+            //Should never occur, but just in case, this is an input error
+            if (status == OperationStatus.InvalidData)
+            {
+                throw new ArgumentException("Your input data contained values that could not be converted to base64", nameof(rawData));
+            }
+
+            Span<byte> base64 = buffer[..written];
+
+            //Make url safe
+            Base64ToUrlSafeInPlace(base64);
+
+            //Remove padding
+            if (!includePadding)
+            {
+                base64 = base64.TrimEnd((byte)0x3d);
+            }
+
+            //Convert to string
+            return Encoding.UTF8.GetString(base64);
         }
 
         /// <summary>

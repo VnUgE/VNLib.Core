@@ -23,7 +23,6 @@
 */
 
 using System.Net;
-using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -80,28 +79,28 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             _endpointsForPlugins.Clear();
         }
 
-        internal void OnPluginLoaded(IManagedPlugin controller)
+        internal void OnPluginLoaded(IManagedPlugin plugin)
         {
             //Get all new endpoints for plugin
-            IEndpoint[] newEndpoints = controller.Controller.GetOnlyWebPlugins().SelectMany(static pl => pl.Plugin!.GetEndpoints()).ToArray();
+            IEndpoint[] newEndpoints = plugin.GetEndpoints();
 
             //Add endpoints to dict
-            _endpointsForPlugins.AddOrUpdate(controller, newEndpoints);
+            _endpointsForPlugins.AddOrUpdate(plugin, newEndpoints);
 
             //Add endpoints to hosts
-            _vHosts.TryForeach(v => v.OnRuntimeServiceAttach(controller, newEndpoints));
+            _vHosts.TryForeach(v => v.OnRuntimeServiceAttach(plugin, newEndpoints));
         }
 
-        internal void OnPluginUnloaded(IManagedPlugin controller)
+        internal void OnPluginUnloaded(IManagedPlugin plugin)
         {
             //Get the old endpoints from the controller referrence and remove them
-            if (_endpointsForPlugins.TryGetValue(controller, out IEndpoint[]? oldEps))
+            if (_endpointsForPlugins.TryGetValue(plugin, out IEndpoint[]? oldEps))
             {
                 //Remove the old endpoints
-                _vHosts.TryForeach(v => v.OnRuntimeServiceDetach(controller, oldEps));
+                _vHosts.TryForeach(v => v.OnRuntimeServiceDetach(plugin, oldEps));
 
                 //remove controller ref
-                _ = _endpointsForPlugins.Remove(controller);
+                _ = _endpointsForPlugins.Remove(plugin);
             }
         }
     }

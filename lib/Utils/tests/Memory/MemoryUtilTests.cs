@@ -388,7 +388,7 @@ namespace VNLib.Utils.Memory.Tests
             IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess();
 
             //Init wrapper and dispose
-            using TrackedHeapWrapper wrapper = new(heap);
+            using TrackedHeapWrapper wrapper = new(heap, true);
 
             //Confirm 0 stats
             HeapStatistics preTest = wrapper.GetCurrentStats();

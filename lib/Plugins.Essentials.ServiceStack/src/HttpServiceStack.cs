@@ -29,7 +29,6 @@ using System.Collections.Generic;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
-using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -62,7 +61,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// generate servers to listen for services exposed by the 
         /// specified host context
         /// </summary>
-        internal HttpServiceStack(LinkedList<IHttpServer> servers, ServiceDomain serviceDomain, IPluginStack plugins)
+        internal HttpServiceStack(LinkedList<IHttpServer> servers, ServiceDomain serviceDomain, IPluginInitializer plugins)
         {
             _servers = servers;
             _serviceDomain = serviceDomain;

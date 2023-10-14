@@ -438,6 +438,27 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
+        /// Allocates a buffer from the current heap and initialzies it by copying the initial data buffer
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="heap"></param>
+        /// <param name="initialData">The initial data to set the buffer to</param>
+        /// <returns>The initalized <see cref="MemoryHandle{T}"/> block</returns>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static MemoryHandle<T> AllocAndCopy<T>(this IUnmangedHeap heap, ReadOnlyMemory<T> initialData) where T : unmanaged
+        {
+            //Aloc block
+            MemoryHandle<T> handle = heap.Alloc<T>(initialData.Length);
+
+            //Copy initial data
+            MemoryUtil.Copy(initialData, handle, 0);
+
+            return handle;
+        }
+
+        /// <summary>
         /// Copies data from the input buffer to the current handle and resizes the handle to the 
         /// size of the buffer
         /// </summary>

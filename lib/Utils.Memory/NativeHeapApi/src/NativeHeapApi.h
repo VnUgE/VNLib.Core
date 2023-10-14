@@ -43,9 +43,14 @@
  #ifdef WIN32
   #define HEAP_METHOD_EXPORT __declspec(dllexport)
  #else
-  #define METHOD_EXPORT
+  #define HEAP_METHOD_EXPORT  __attribute__((visibility("default")))
  #endif
 #endif // HEAP_METHOD_EXPORT!
+
+#ifndef WIN32
+typedef unsigned long DWORD;
+typedef void* LPVOID;
+#endif // !WIN32
 
 /// <summary>
 /// Internal heap creation flags passed to the creation method by the library loader

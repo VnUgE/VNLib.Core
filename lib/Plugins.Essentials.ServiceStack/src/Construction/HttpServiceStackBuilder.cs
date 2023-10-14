@@ -50,6 +50,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         private Action<ICollection<IServiceHost>>? _hostBuilder;
         private Func<ServiceGroup, IHttpServer>? _getServers;
         private Func<IPluginStack>? _getPlugins;
+        private IManualPlugin[]? manualPlugins;
 
         /// <summary>
         /// Uses the supplied callback to get a collection of virtual hosts
@@ -93,7 +94,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <returns>The current instance for chaining</returns>
         public HttpServiceStackBuilder WithBuiltInHttp(Func<ServiceGroup, ITransportProvider> transport, HttpConfig config)
         {
-            return WithHttp(sg => new HttpServer(config, transport(sg), sg.Hosts.Select(static p => p.Processor)));
+            return WithBuiltInHttp(transport, sg => config);
         }
 
         /// <summary>
@@ -105,6 +106,18 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         public HttpServiceStackBuilder WithBuiltInHttp(Func<ServiceGroup, ITransportProvider> transport, Func<ServiceGroup, HttpConfig> configCallback)
         {
             return WithHttp(sg => new HttpServer(configCallback(sg), transport(sg), sg.Hosts.Select(static p => p.Processor)));
+        }
+
+        /// <summary>
+        /// Adds a collection of manual plugin instances to the stack. Every call 
+        /// to this method will replace the previous collection.
+        /// </summary>
+        /// <param name="plugins">The array of plugins (or params) to add</param>
+        /// <returns>The current instance for chaining</returns>
+        public HttpServiceStackBuilder WithManualPlugins(params IManualPlugin[] plugins)
+        {
+            manualPlugins = plugins;
+            return this;
         }
 
         /// <summary>
@@ -137,6 +150,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 servers.AddLast(server);
             }
 
+            //Always init manual array
+            manualPlugins ??= Array.Empty<IManualPlugin>();
+
             //Only load plugins if the callback is configured
             IPluginStack? plugins = _getPlugins?.Invoke();
 
@@ -144,7 +160,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             plugins ??= new EmptyPluginStack();
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
-            return new(servers, sd, plugins);
+            IPluginInitializer init = new PluginStackInitializer(plugins, manualPlugins);
+
+            return new(servers, sd, init);
         }
 
         /*

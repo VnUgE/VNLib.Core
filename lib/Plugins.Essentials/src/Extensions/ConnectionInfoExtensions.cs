@@ -112,10 +112,23 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Determines if the connection accepts any content type
         /// </summary>
         /// <returns>true if the connection accepts any content typ, false otherwise</returns>
-        private static bool AcceptsAny(this IConnectionInfo server)
+        private static bool AcceptsAny(IConnectionInfo server)
         {
-            //Accept any if no accept header was present, or accept all value */*
-            return server.Accept.Count == 0 || server.Accept.Where(static t => t.StartsWith("*/*", StringComparison.OrdinalIgnoreCase)).Any();
+            if(server.Accept.Count == 0)
+            {
+                return true;
+            }
+
+            //Search list for accept any
+            foreach(string accept in server.Accept)
+            {
+                if(accept.StartsWith("*/*", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -222,10 +235,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// code relies on the port number of the <see cref="ConnectionInfo.RequestUri"/>
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool EnpointPortsMatch(this IConnectionInfo server)
-        {
-            return server.RequestUri.Port == server.LocalEndpoint.Port;
-        }
+        public static bool EnpointPortsMatch(this IConnectionInfo server) => server.RequestUri.Port == server.LocalEndpoint.Port;
         /// <summary>
         /// Determines if the host of the current request URI matches the referer header host
         /// </summary>
@@ -384,7 +394,6 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="server"></param>
         /// <param name="isTrusted"></param>
         /// <returns>The real ip of the connection</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static IPAddress GetTrustedIp(this IConnectionInfo server, bool isTrusted)
         {
             //If the connection is not trusted, then ignore header parsing
@@ -400,7 +409,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                 return server.RemoteEndpoint.Address;
             }
         }
-        
+
         /// <summary>
         /// Gets a value that determines if the connection is using tls, locally 
         /// or behind a trusted downstream server that is using tls.
@@ -408,13 +417,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="server"></param>
         /// <returns>True if the connection is secure, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsSecure(this IConnectionInfo server)
-        {
-            //Get value of the trusted downstream server
-            return IsSecure(server, server.IsBehindDownStreamServer());
-        }
-        
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsSecure(this IConnectionInfo server) => IsSecure(server, server.IsBehindDownStreamServer());
+
         internal static bool IsSecure(this IConnectionInfo server, bool isTrusted)
         {
             //If the connection is not trusted, then ignore header parsing

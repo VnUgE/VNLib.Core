@@ -73,7 +73,7 @@ namespace VNLib.Net.Messaging.FBM.Client
       
         private readonly SemaphoreSlim SendLock;
         private readonly ConcurrentDictionary<int, FBMRequest> ActiveRequests;
-        private readonly ReusableStore<FBMRequest> RequestRental;
+        private readonly ObjectRental<FBMRequest> RequestRental;
 
         /// <summary>
         /// The configuration for the current client
@@ -539,6 +539,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="vms">The raw response packet from the server</param>
         private void ProcessControlFrame(VnMemoryStream vms)
         {
+            Debug("Client control frame received. Size: {size}", vms.Length.ToString());
             vms.Dispose();
         }
         

@@ -68,6 +68,11 @@ namespace VNLib.Utils.Memory
         public const string SHARED_HEAP_RAW_FLAGS = "VNLIB_SHARED_HEAP_RAW_FLAGS";
 
         /// <summary>
+        /// The environment variable name used to specify the shared heap type
+        /// </summary>
+        public const string SHARED_HEAP_GLOBAL_ZERO = "VNLIB_SHARED_HEAP_GLOBAL_ZERO";
+
+        /// <summary>
         /// Initial shared heap size (bytes)
         /// </summary>
         public const nuint SHARED_HEAP_INIT_SIZE = 20971520;
@@ -102,10 +107,12 @@ namespace VNLib.Utils.Memory
         {
             //Get env for heap diag
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
+            _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_GLOBAL_ZERO), out ERRNO globalZero);
            
             Trace.WriteIf(diagEnable, "Shared heap diagnostics enabled");
+            Trace.WriteIf(globalZero, "Shared heap global zero enabled");
             
-            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true, diagEnable), LazyThreadSafetyMode.PublicationOnly);
+            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true, diagEnable, globalZero), LazyThreadSafetyMode.PublicationOnly);
             
             //Cleanup the heap on process exit
             AppDomain.CurrentDomain.DomainUnload += DomainUnloaded;
@@ -143,12 +150,13 @@ namespace VNLib.Utils.Memory
         /// Initializes a new <see cref="IUnmangedHeap"/> determined by compilation/runtime flags
         /// and operating system type for the current proccess.
         /// </summary>
+        /// <param name="globalZero">If true, sets the <see cref="HeapCreation.GlobalZero"/> flag</param>
         /// <returns>An <see cref="IUnmangedHeap"/> for the current process</returns>
         /// <exception cref="SystemException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
-        public static IUnmangedHeap InitializeNewHeapForProcess() => InitHeapInternal(false, false);
+        public static IUnmangedHeap InitializeNewHeapForProcess(bool globalZero = false) => InitHeapInternal(false, false, globalZero);
 
-        private static IUnmangedHeap InitHeapInternal(bool isShared, bool enableStats)
+        private static IUnmangedHeap InitHeapInternal(bool isShared, bool enableStats, bool globalZero)
         {
             bool IsWindows = OperatingSystem.IsWindows();
             
@@ -166,6 +174,9 @@ namespace VNLib.Utils.Memory
             * need serialziation
             */
             cFlags |= isShared ? HeapCreation.IsSharedHeap : HeapCreation.None;
+
+            //Set global zero flag if requested
+            cFlags |= globalZero ? HeapCreation.GlobalZero : HeapCreation.None;
 
             IUnmangedHeap heap;
 
@@ -207,7 +218,7 @@ namespace VNLib.Utils.Memory
             }
 
             //Enable heap statistics
-            return enableStats ? new TrackedHeapWrapper(heap) : heap;
+            return enableStats ? new TrackedHeapWrapper(heap, true) : heap;
         }
 
         /// <summary>
@@ -230,7 +241,7 @@ namespace VNLib.Utils.Memory
             {
                 return;
             }
-            
+
             uint byteSize = ByteCount<T>((uint)block.Length);
 
             fixed (void* ptr = &MemoryMarshal.GetReference(block))
@@ -303,6 +314,14 @@ namespace VNLib.Utils.Memory
             //Zero block
             Unsafe.InitBlock(block, 0, (uint)(size * itemCount));
         }
+
+        /// <summary>
+        /// Zeroes a block of memory of the given unmanaged type
+        /// </summary>
+        /// <typeparam name="T">The unmanaged type to zero</typeparam>
+        /// <param name="block">A pointer to the block of memory to zero</param>
+        /// <param name="itemCount">The number of elements in the block to zero</param>
+        public static void InitializeBlock<T>(IntPtr block, int itemCount) where T : unmanaged => InitializeBlock((T*)block, itemCount);
 
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
@@ -498,7 +517,7 @@ namespace VNLib.Utils.Memory
             CheckBounds(dest, destOffset, count);
 
             //Check if 64bit
-            if(sizeof(nuint) == 8)
+            if(sizeof(void*) == 8)
             {
                 //Get the number of bytes to copy
                 nuint byteCount = ByteCount<T>(count);
@@ -510,7 +529,7 @@ namespace VNLib.Utils.Memory
                 T* src = (T*)srcHandle.Pointer + offset;
 
                 //pin array
-                fixed (T* dst = dest)
+                fixed (T* dst = &MemoryMarshal.GetArrayDataReference(dest))
                 {
                     //Offset dest ptr
                     T* dstOffset = dst + destOffset;
@@ -592,7 +611,7 @@ namespace VNLib.Utils.Memory
         {
             if (offset + count > handle.Length)
             {
-                throw new ArgumentOutOfRangeException("The offset or count is outside of the range of the block of memory");
+                throw new ArgumentOutOfRangeException(nameof(offset), "Offset or count are beyond the range of the supplied memory handle");
             }
         }
 

@@ -22,29 +22,16 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
 using System.ComponentModel.Design;
-
-using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
-
-
     /// <summary>
     /// Represents a plugin managed by a <see cref="IHttpPluginManager"/> that includes dynamically loaded plugins
     /// </summary>
     public interface IManagedPlugin
     {
-        /// <summary>
-        /// Exposes the internal <see cref="PluginController"/> for the loaded plugin
-        /// </summary>
-        PluginController Controller { get; }
-
-        /// <summary>
-        /// The file path to the loaded plugin
-        /// </summary>
-        string PluginPath { get; }
-
         /// <summary>
         /// The exposed services the inernal plugin provides
         /// </summary>
@@ -53,5 +40,30 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// must listen for plugin load/unload events to respect lifecycles properly.
         /// </remarks>
         IServiceContainer Services { get; }
+
+        /// <summary>
+        /// Internal call to get all exported plugin endpoints
+        /// </summary>
+        /// <returns></returns>
+        internal IEndpoint[] GetEndpoints();
+
+        /// <summary>
+        /// Internal notification that the plugin is loaded
+        /// </summary>
+        internal void OnPluginLoaded();
+
+        /// <summary>
+        /// Internal notification that the plugin is unloaded
+        /// </summary>
+        internal void OnPluginUnloaded();
+
+        /// <summary>
+        /// Sends the specified command to the desired plugin by it's name
+        /// </summary>
+        /// <param name="pluginName">The name of the plugin to find</param>
+        /// <param name="command">The command text to send to the plugin</param>
+        /// <param name="comp">The string name comparison type</param>
+        /// <returns>True if the command was sent successfully</returns>
+        internal bool SendCommandToPlugin(string pluginName, string command, StringComparison comp);
     }
 }

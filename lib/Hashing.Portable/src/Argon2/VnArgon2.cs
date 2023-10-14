@@ -52,7 +52,7 @@ namespace VNLib.Hashing
         public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "ARGON2_DLL_PATH";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;
-        private static readonly Lazy<IUnmangedHeap> _heap = new (MemoryUtil.InitializeNewHeapForProcess, LazyThreadSafetyMode.PublicationOnly);
+        private static readonly Lazy<IUnmangedHeap> _heap = new (static () => MemoryUtil.InitializeNewHeapForProcess(true), LazyThreadSafetyMode.PublicationOnly);
         private static readonly Lazy<SafeArgon2Library> _nativeLibrary = new(LoadSharedLibInternal, LazyThreadSafetyMode.PublicationOnly);
 
 
@@ -130,7 +130,7 @@ namespace VNLib.Hashing
             int passBytes = LocEncoding.GetByteCount(password);
             
             //Alloc memory for salt
-            using IMemoryHandle<byte> buffer = PwHeap.Alloc<byte>(saltbytes + passBytes, true);
+            using IMemoryHandle<byte> buffer = PwHeap.Alloc<byte>(saltbytes + passBytes);
             
             Span<byte> saltBuffer = buffer.AsSpan(0, saltbytes);
             Span<byte> passBuffer = buffer.AsSpan(passBytes);
@@ -170,7 +170,7 @@ namespace VNLib.Hashing
             int passBytes = LocEncoding.GetByteCount(password);
             
             //Alloc memory for password
-            using IMemoryHandle<byte> pwdHandle = PwHeap.Alloc<byte>(passBytes, true);
+            using IMemoryHandle<byte> pwdHandle = PwHeap.Alloc<byte>(passBytes);
             
             //Encode password, create a new span to make sure its proper size 
             _ = LocEncoding.GetBytes(password, pwdHandle.Span);
@@ -317,7 +317,7 @@ namespace VNLib.Hashing
             int rawPassLen = LocEncoding.GetByteCount(rawPass);
 
             //Alloc buffer for decoded data
-            using IMemoryHandle<byte> rawBufferHandle = PwHeap.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen, true);
+            using IMemoryHandle<byte> rawBufferHandle = PwHeap.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen);
             
             //Split buffers
             Span<byte> saltBuf = rawBufferHandle.Span[..saltBase64BufSize];
@@ -375,7 +375,7 @@ namespace VNLib.Hashing
         )
         {
             //Alloc data for hash output
-            using IMemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(hashBytes.Length, true);
+            using IMemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(hashBytes.Length);
 
             //Pin to get the base pointer
             using MemoryHandle outputPtr = outputHandle.Pin(0);

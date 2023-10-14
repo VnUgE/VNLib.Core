@@ -74,6 +74,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         {
             Heap = heap;
         }
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
         /// <summary>
         /// Begins listening for requests on the current websocket until 
@@ -86,6 +87,9 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <returns>A <see cref="Task"/> that completes when the connection closes</returns>
         public async Task ListenAsync(WebSocketSession wss, RequestHandler handler, FBMListenerSessionParams args, object? userState)
         {
+            _ = wss ?? throw new ArgumentNullException(nameof(wss));
+            _ = handler ?? throw new ArgumentNullException(nameof(handler));
+
             ListeningSession session = new(wss, handler, in args, userState);
 
             //Alloc a recieve buffer
@@ -112,10 +116,10 @@ namespace VNLib.Net.Messaging.FBM.Server
                         //break listen loop
                         break;
                     }
-                    //create buffer for storing data
-                    VnMemoryStream request = new(Heap);
-                    //Copy initial data
-                    request.Write(recvBuffer.Memory.Span[..result.Count]);
+
+                    //create buffer for storing data, pre alloc with initial data
+                    VnMemoryStream request = new(Heap, recvBuffer.Memory[..result.Count]);
+
                     //Streaming read
                     while (!result.EndOfMessage)
                     {
@@ -213,7 +217,9 @@ namespace VNLib.Net.Messaging.FBM.Server
                 }
 
                 //Get response data
+
                 await using IAsyncMessageReader messageEnumerator = await context.Response.GetResponseDataAsync(session.CancellationToken);
+
 
                 //Load inital segment
                 if (await messageEnumerator.MoveNextAsync() && !session.CancellationToken.IsCancellationRequested)
@@ -221,10 +227,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                     ValueTask sendTask;
 
                     //Syncrhonize access to send data because we may need to stream data to the client
-                    if (!session.ResponseLock.Wait(0))
-                    {
-                        await session.ResponseLock.WaitAsync(SEND_SEMAPHORE_TIMEOUT_MS);
-                    }
+                    await session.ResponseLock.WaitAsync(SEND_SEMAPHORE_TIMEOUT_MS);
 
                     try
                     {
@@ -284,9 +287,11 @@ namespace VNLib.Net.Messaging.FBM.Server
             return Task.CompletedTask;
         }
 
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
+
         private sealed class ListeningSession
         {
-            private readonly ReusableStore<FBMContext> CtxStore;
+            private readonly ObjectRental<FBMContext> CtxStore;
             private readonly CancellationTokenSource Cancellation;
             private readonly CancellationTokenRegistration Registration;
             private readonly FBMListenerSessionParams Params;

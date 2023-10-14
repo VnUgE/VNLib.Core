@@ -22,11 +22,12 @@
 * along with vnlib_rpmalloc. If not, see http://www.gnu.org/licenses/.
 */
 
-
 #include "vnlib_rpmalloc.h"
 #include <NativeHeapApi.h>
 #include <rpmalloc.h>
 #include <stdint.h>
+
+#if defined(_WIN32)
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -53,6 +54,79 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     }
     return TRUE;
 }
+
+#else
+
+/*
+* Nuts and bolts from rpmalloc/malloc.c for pthread hooks
+* for thread and process heap initializations
+*/
+
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <unistd.h>
+
+//! Set main thread ID (from rpmalloc.c)
+extern void rpmalloc_set_main_thread(void);
+
+static pthread_key_t destructor_key;
+
+static void thread_destructor(void*);
+
+static void __attribute__((constructor)) initializer(void) {
+    rpmalloc_set_main_thread();
+    rpmalloc_initialize();
+    pthread_key_create(&destructor_key, thread_destructor);
+}
+
+static void __attribute__((destructor)) finalizer(void) {
+    rpmalloc_finalize();
+}
+
+typedef struct {
+    void* (*real_start)(void*);
+    void* real_arg;
+} thread_starter_arg;
+
+static void* thread_starter(void* argptr) {
+    thread_starter_arg* arg = argptr;
+    void* (*real_start)(void*) = arg->real_start;
+    void* real_arg = arg->real_arg;
+    rpmalloc_thread_initialize();
+    rpfree(argptr);
+    pthread_setspecific(destructor_key, (void*)1);
+    return (*real_start)(real_arg);
+}
+
+static void thread_destructor(void* value) {
+    (void)sizeof(value);
+    rpmalloc_thread_finalize(1);
+}
+
+
+#include <dlfcn.h>
+
+int pthread_create(pthread_t* thread,
+    const pthread_attr_t* attr,
+    void* (*start_routine)(void*),
+    void* arg) {
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || \
+    defined(__APPLE__) || defined(__HAIKU__)
+    char fname[] = "pthread_create";
+#else
+    char fname[] = "_pthread_create";
+#endif
+    void* real_pthread_create = dlsym(RTLD_NEXT, fname);
+
+    rpmalloc_thread_initialize();
+    thread_starter_arg* starter_arg = rpmalloc(sizeof(thread_starter_arg));
+    starter_arg->real_start = start_routine;
+    starter_arg->real_arg = arg;
+    return (*(int (*)(pthread_t*, const pthread_attr_t*, void* (*)(void*), void*))real_pthread_create)(thread, attr, thread_starter, starter_arg);
+}
+
+#endif
 
 #define GLOBAL_HEAP_HANDLE_VALUE -10
 #define GLOBAL_HEAP_INIT_CHECK if (!rpmalloc_is_thread_initialized()) { rpmalloc_thread_initialize(); }

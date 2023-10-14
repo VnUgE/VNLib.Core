@@ -34,6 +34,7 @@ namespace VNLib.Utils.Memory.Diagnostics
     public class TrackedHeapWrapper : VnDisposeable, IUnmangedHeap
     {
         private readonly IUnmangedHeap _heap;
+        private readonly bool _ownsHeap;
         private readonly object _statsLock;
         private readonly ConcurrentDictionary<IntPtr, ulong> _table;
 
@@ -62,13 +63,15 @@ namespace VNLib.Utils.Memory.Diagnostics
         /// Creates a new diagnostics wrapper for the heap
         /// </summary>
         /// <param name="heap">The heap to gather statistics on</param>
-        public TrackedHeapWrapper(IUnmangedHeap heap)
+        /// <param name="ownsHeap">If true, the wrapper will dispose the heap when disposed</param>
+        public TrackedHeapWrapper(IUnmangedHeap heap, bool ownsHeap)
         {
             _statsLock = new();
             _table = new();
             _heap = heap;
-            //Default min block size to 0
+            //Default min block size to max
             _minBlockSize = ulong.MaxValue;
+            _ownsHeap = ownsHeap;
         }
 
         /// <summary>
@@ -124,8 +127,11 @@ namespace VNLib.Utils.Memory.Diagnostics
         ///<inheritdoc/>
         protected override void Free()
         {
-            Heap.Dispose();
-        }       
+            if(_ownsHeap)
+            {
+                _heap.Dispose();
+            }
+        }
 
         ///<inheritdoc/>
         public bool Free(ref IntPtr block)

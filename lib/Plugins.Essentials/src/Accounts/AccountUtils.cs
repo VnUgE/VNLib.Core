@@ -595,25 +595,6 @@ namespace VNLib.Plugins.Essentials.Accounts
             user.SetValueType(FAILED_LOGIN_ENTRY, value.ToUInt64());
         }
 
-        /// <summary>
-        /// Increments the failed login attempt count
-        /// </summary>
-        /// <param name="user"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FailedLoginIncrement(this IUser user) => FailedLoginIncrement(user, DateTimeOffset.UtcNow);
-
-        /// <summary>
-        /// Increments the failed login attempt count
-        /// </summary>
-        /// <param name="user"></param>
-        /// <param name="time">Explicitly set the time of the counter</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FailedLoginIncrement(this IUser user, DateTimeOffset time)
-        {
-            TimestampedCounter current = user.FailedLoginCount();
-            user.FailedLoginCount(current.Count + 1, time);
-        }
-
         #endregion
     }
 }

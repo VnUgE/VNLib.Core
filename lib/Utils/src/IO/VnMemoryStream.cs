@@ -94,7 +94,7 @@ namespace VNLib.Utils.IO
         /// buffer of the specified size on the specified heap to avoid resizing.
         /// </summary>
         /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
-        /// <param name="bufferSize">Number of bytes (length) of the stream if known</param>
+        /// <param name="bufferSize">The initial internal buffer size, does not effect the length/size of the stream, helps pre-alloc</param>
         /// <param name="zero">Zero memory allocations during buffer expansions</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
@@ -119,7 +119,22 @@ namespace VNLib.Utils.IO
             _length = data.Length;
             _position = 0;
         }
-        
+
+        /// <summary>
+        /// Creates a new memory stream from the data provided
+        /// </summary>
+        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
+        /// <param name="data">Initial data</param>
+        public VnMemoryStream(IUnmangedHeap heap, ReadOnlyMemory<byte> data)
+        {
+            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            //Alloc the internal buffer to match the data stream
+            _buffer = heap.AllocAndCopy(data);
+            //Set length
+            _length = data.Length;
+            _position = 0;
+        }
+
         /// <summary>
         /// WARNING: Dangerous constructor, make sure read-only and owns hanlde are set accordingly
         /// </summary>
@@ -302,6 +317,23 @@ namespace VNLib.Utils.IO
             
             return bytesToRead;
         }
+        ///<inheritdoc/>
+        public override unsafe int ReadByte()
+        {
+            if (LenToPosDiff == 0)
+            {
+                return -1;
+            }
+
+            //get the value at the current position
+            byte* ptr = _buffer.GetOffset(_position);
+            
+            //Increment position
+            _position++;
+
+            //Return value
+            return ptr[0];
+        }
 
         /*
          * Async reading will always run synchronously in a memory stream,
@@ -469,7 +501,7 @@ namespace VNLib.Utils.IO
         /// If the current stream is a readonly stream, creates a shallow copy for reading only.
         /// </summary>
         /// <returns>New stream shallow copy of the internal stream</returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
         public object Clone() => GetReadonlyShallowCopy();
 
         /*

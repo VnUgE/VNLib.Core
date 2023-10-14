@@ -199,51 +199,33 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual ValueTask<VfReturnType> PostAsync(HttpEntity entity)
-        {
-            return ValueTask.FromResult(Post(entity));
-        }
+        protected virtual ValueTask<VfReturnType> PostAsync(HttpEntity entity) => ValueTask.FromResult(Post(entity));
         /// <summary>
         /// This method gets invoked when an incoming GET request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual ValueTask<VfReturnType> GetAsync(HttpEntity entity)
-        {
-            return ValueTask.FromResult(Get(entity));
-        }
+        protected virtual ValueTask<VfReturnType> GetAsync(HttpEntity entity) => ValueTask.FromResult(Get(entity));
         /// <summary>
         /// This method gets invoked when an incoming DELETE request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual ValueTask<VfReturnType> DeleteAsync(HttpEntity entity)
-        {
-            return ValueTask.FromResult(Delete(entity));
-        }
+        protected virtual ValueTask<VfReturnType> DeleteAsync(HttpEntity entity) => ValueTask.FromResult(Delete(entity));
         /// <summary>
         /// This method gets invoked when an incoming PUT request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual ValueTask<VfReturnType> PutAsync(HttpEntity entity)
-        {
-            return ValueTask.FromResult(Put(entity));
-        }
+        protected virtual ValueTask<VfReturnType> PutAsync(HttpEntity entity) => ValueTask.FromResult(Put(entity));
         /// <summary>
         /// This method gets invoked when an incoming PATCH request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual ValueTask<VfReturnType> PatchAsync(HttpEntity entity)
-        {
-            return ValueTask.FromResult(Patch(entity));
-        }
+        protected virtual ValueTask<VfReturnType> PatchAsync(HttpEntity entity) => ValueTask.FromResult(Patch(entity));
 
-        protected virtual ValueTask<VfReturnType> OptionsAsync(HttpEntity entity)
-        {
-            return ValueTask.FromResult(Options(entity));
-        }
+        protected virtual ValueTask<VfReturnType> OptionsAsync(HttpEntity entity) => ValueTask.FromResult(Options(entity));
 
         /// <summary>
         /// Invoked when a request is received for a method other than GET, POST, DELETE, or PUT;
@@ -251,20 +233,14 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <param name="entity">The entity that </param>
         /// <param name="method">The request method</param>
         /// <returns>The results of the processing</returns>
-        protected virtual ValueTask<VfReturnType> AlternateMethodAsync(HttpEntity entity, HttpMethod method)
-        {
-            return ValueTask.FromResult(AlternateMethod(entity, method));
-        }
+        protected virtual ValueTask<VfReturnType> AlternateMethodAsync(HttpEntity entity, HttpMethod method) => ValueTask.FromResult(AlternateMethod(entity, method));
 
         /// <summary>
         /// Invoked when the current endpoint received a websocket request
         /// </summary>
         /// <param name="entity">The entity that requested the websocket</param>
         /// <returns>The results of the operation</returns>
-        protected virtual ValueTask<VfReturnType> WebsocketRequestedAsync(HttpEntity entity)
-        {
-            return ValueTask.FromResult(WebsocketRequested(entity));
-        }
+        protected virtual ValueTask<VfReturnType> WebsocketRequestedAsync(HttpEntity entity) => ValueTask.FromResult(WebsocketRequested(entity));
 
         /// <summary>
         /// This method gets invoked when an incoming POST request to the endpoint has been requested.
@@ -329,10 +305,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
             return VfReturnType.VirtualSkip;
         }
 
-        protected virtual VfReturnType Options(HttpEntity entity)
-        {
-            return VfReturnType.Forbidden;
-        }
+        protected virtual VfReturnType Options(HttpEntity entity) => VfReturnType.Forbidden;
 
         /// <summary>
         /// Invoked when the current endpoint received a websocket request
@@ -342,6 +315,102 @@ namespace VNLib.Plugins.Essentials.Endpoints
         protected virtual VfReturnType WebsocketRequested(HttpEntity entity)
         {
             entity.CloseResponse(HttpStatusCode.Forbidden);
+            return VfReturnType.VirtualSkip;
+        }
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a 200 OK status code
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualOk(HttpEntity entity) => VirtualClose(entity, HttpStatusCode.OK);
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a 200 OK status code
+        /// that returns a <see cref="WebMessage"/> json response
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="webm">The <see cref="WebMessage"/> json response</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualOk<T>(HttpEntity entity, T webm) where T: WebMessage
+        {
+            entity.CloseResponse(webm);
+            return VfReturnType.VirtualSkip;
+        }
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a 200 OK status code
+        /// that returns a <see cref="WebMessage"/> json response
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="jsonValue">A object that will be serialized and returned to the client as JSON</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualOkJson<T>(HttpEntity entity, T jsonValue) => VirtualCloseJson(entity, jsonValue, HttpStatusCode.OK);
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a 200 OK status code
+        /// that returns a <see cref="WebMessage"/> json response
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="webm">The <see cref="WebMessage"/> json response</param>
+        /// <param name="code">The status code to return to the client</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualClose<T>(HttpEntity entity, T webm, HttpStatusCode code) where T: WebMessage => VirtualCloseJson(entity, webm, code);
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a given status code
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="code">The status code to return to the client</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualClose(HttpEntity entity, HttpStatusCode code)
+        {
+            entity.CloseResponse(code);
+            return VfReturnType.VirtualSkip;
+        }
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a given status code,
+        /// and memory content to return to the client
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="code">The status code to return to the client</param>
+        /// <param name="ct">The response content type</param>
+        /// <param name="response">The memory response to return to the user</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualClose(HttpEntity entity, HttpStatusCode code, ContentType ct, IMemoryResponseReader response)
+        {
+            entity.CloseResponse(code, ct, response);
+            return VfReturnType.VirtualSkip;
+        }
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a given status code,
+        /// and memory content to return to the client
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="code">The status code to return to the client</param>
+        /// <param name="ct">The response content type</param>
+        /// <param name="response">The stream response to return to the user</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualClose(HttpEntity entity, HttpStatusCode code, ContentType ct, Stream response)
+        {
+            entity.CloseResponse(code, ct, response);
+            return VfReturnType.VirtualSkip;
+        }
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a given status code, and 
+        /// a json payload to return to the client
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="code">The status code to return to the client</param>
+        /// <param name="jsonValue">A object that will be serialized and returned to the client as JSON</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualCloseJson<T>(HttpEntity entity, T jsonValue, HttpStatusCode code)
+        {
+            entity.CloseResponseJson(code, jsonValue);
             return VfReturnType.VirtualSkip;
         }
     }

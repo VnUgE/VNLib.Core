@@ -2,12 +2,12 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using System;
+using System.Linq;
 using System.Threading;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Linq;
 
 namespace VNLib.Utils.Async.Tests
 {
@@ -101,7 +101,7 @@ namespace VNLib.Utils.Async.Tests
             
             int maxCount = 64;
 
-            Task[] asyncArr = new int[maxCount].Select(async p =>
+            Task[] asyncArr = new int[maxCount].Select(p => Task.Run(async () =>
             {
                  //Take a lock then random delay, then release
                 Task entry = serializer.WaitAsync(DEFAULT_KEY);
@@ -119,7 +119,7 @@ namespace VNLib.Utils.Async.Tests
 
                 serializer.Release(DEFAULT_KEY);
 
-            }).ToArray();
+            })).ToArray();
 
             Task.WaitAll(asyncArr);
         }
@@ -149,7 +149,7 @@ namespace VNLib.Utils.Async.Tests
 
             using CancellationTokenSource cts = new(500);
 
-            Task[] asyncArr = new int[maxCount].Select(async p =>
+            Task[] asyncArr = new int[maxCount].Select(p => Task.Run(async () =>
             {
                 //Take a lock then random delay, then release
                 await serializer.WaitAsync(DEFAULT_KEY, cts.Token);
@@ -159,7 +159,7 @@ namespace VNLib.Utils.Async.Tests
 
                 serializer.Release(DEFAULT_KEY);
 
-            }).ToArray();
+            })).ToArray();
 
             Task.WaitAll(asyncArr);
 
@@ -175,18 +175,19 @@ namespace VNLib.Utils.Async.Tests
             //Alloc serailzer base on string 
             IAsyncAccessSerializer<string> serializer = new AsyncAccessSerializer<string>(100, 100, StringComparer.Ordinal);
 
-            int maxCount = 128;
+            const int maxCount = 128;
+            const int itterations = 20;
             string test = "";
             Stopwatch timer = new();
 
             using CancellationTokenSource cts = new(500);
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < itterations; i++)
             {
                 test = "";
                 timer.Restart();              
 
-                Task[] asyncArr = new int[maxCount].Select(async p =>
+                Task[] asyncArr = new int[maxCount].Select(p => Task.Run(async () =>
                 {
                     //Take a lock then random delay, then release
                     await serializer.WaitAsync(DEFAULT_KEY, cts.Token);
@@ -196,7 +197,7 @@ namespace VNLib.Utils.Async.Tests
 
                     serializer.Release(DEFAULT_KEY);
 
-                }).ToArray();
+                })).ToArray();
 
                 Task.WaitAll(asyncArr);
 
@@ -208,12 +209,12 @@ namespace VNLib.Utils.Async.Tests
 
             using SemaphoreSlim slim = new(1,1);
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < itterations; i++)
             {
                 test = "";
                 timer.Restart();
 
-                Task[] asyncArr = new int[maxCount].Select(async p =>
+                Task[] asyncArr = new int[maxCount].Select(p => Task.Run(async () =>
                 {
                     //Take a lock then random delay, then release
                     await slim.WaitAsync(cts.Token);
@@ -222,7 +223,7 @@ namespace VNLib.Utils.Async.Tests
                     test += "0";
 
                     slim.Release();
-                }).ToArray();
+                })).ToArray();
 
                 Task.WaitAll(asyncArr);
 

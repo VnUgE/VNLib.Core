@@ -55,7 +55,6 @@ tasks:
     #release dll
     - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
 
-
   licenses:
     cmds:
      #add rpmalloc license to binary output
@@ -64,7 +63,6 @@ tasks:
      - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
      #add readme file
      - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
-
 
   clean:
     ignore_error: true
