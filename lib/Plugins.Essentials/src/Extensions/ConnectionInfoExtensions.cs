@@ -31,8 +31,6 @@ using System.Runtime.CompilerServices;
 using VNLib.Net.Http;
 using VNLib.Utils.Extensions;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Extensions
 {
 

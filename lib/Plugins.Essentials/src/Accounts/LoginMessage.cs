@@ -24,6 +24,7 @@
 
 using System;
 using System.Text.Json.Serialization;
+
 using VNLib.Utils.Memory;
 
 namespace VNLib.Plugins.Essentials.Accounts
@@ -48,7 +49,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// may represent a user's password
         /// </summary>
         [JsonPropertyName("password")]
-        public string Password
+        public string? Password
         {
             get => base[0];
             set => base[0] = value;
@@ -70,7 +71,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// The clients specified local-language
         /// </summary>
         [JsonPropertyName("locallanguage")]
-        public string LocalLanguage { get; set; }
+        public string? LocalLanguage { get; set; }
         /// <summary>
         /// The clients shared public key used for encryption, this property is not protected
         /// </summary>

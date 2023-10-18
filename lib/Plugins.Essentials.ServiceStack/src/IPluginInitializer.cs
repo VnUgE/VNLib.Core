@@ -24,14 +24,11 @@
 
 
 using VNLib.Utils.Logging;
-using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     internal interface IPluginInitializer
     {
-        void PrepareStack(IPluginEventListener listener);
-
         IManagedPlugin[] InitializePluginStack(ILogProvider eventLogger);
 
         void UnloadPlugins();

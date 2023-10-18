@@ -22,9 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-
-#nullable enable
-
 using VNLib.Net.Http;
 using VNLib.Plugins.Essentials.Accounts;
 

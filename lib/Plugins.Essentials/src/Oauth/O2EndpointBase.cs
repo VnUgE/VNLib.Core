@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -31,8 +31,8 @@ using System.Threading.Tasks;
 using VNLib.Utils;
 using VNLib.Utils.Logging;
 using VNLib.Net.Http;
-using VNLib.Plugins.Essentials.Extensions;
 using VNLib.Plugins.Essentials.Endpoints;
+using VNLib.Plugins.Essentials.Extensions;
 
 namespace VNLib.Plugins.Essentials.Oauth
 {
@@ -54,21 +54,25 @@ namespace VNLib.Plugins.Essentials.Oauth
             {
                 VfReturnType rt;
                 ERRNO preProc = PreProccess(entity);
+
                 //Entity was responded to by the pre-processor
                 if (preProc < 0)
                 {
                     return VfReturnType.VirtualSkip;
                 }
+
                 if (preProc == ERRNO.E_FAIL)
                 {
                     rt = VfReturnType.Forbidden;
                     goto Exit;
                 }
+
                 //If websockets are quested allow them to be processed in a logged-in/secure context
                 if (entity.Server.IsWebSocketRequest)
                 {
                     return await WebsocketRequestedAsync(entity);
                 }
+
                 //Capture return type
                 rt = entity.Server.Method switch
                 {
@@ -81,29 +85,18 @@ namespace VNLib.Plugins.Essentials.Oauth
                     HttpMethod.OPTIONS => await OptionsAsync(entity),
                     _ => await AlternateMethodAsync(entity, entity.Server.Method),
                 };
+
             Exit:
                 //Write a standard Ouath2 error messag
-                switch (rt)
+                return rt switch
                 {
-                    case VfReturnType.VirtualSkip:
-                        return VfReturnType.VirtualSkip;
-                    case VfReturnType.ProcessAsFile:
-                        return VfReturnType.ProcessAsFile;
-                    case VfReturnType.NotFound:
-                        entity.CloseResponseError(HttpStatusCode.NotFound, ErrorType.InvalidRequest, "The requested resource could not be found");
-                        return VfReturnType.VirtualSkip;
-                    case VfReturnType.BadRequest:
-                        entity.CloseResponseError(HttpStatusCode.BadRequest, ErrorType.InvalidRequest, "Your request was not properlty formatted and could not be proccessed");
-                        return VfReturnType.VirtualSkip;
-                    case VfReturnType.Error:
-                        entity.CloseResponseError(HttpStatusCode.InternalServerError, ErrorType.ServerError, "There was a server error processing your request");
-                        return VfReturnType.VirtualSkip;
-
-                    case VfReturnType.Forbidden:
-                    default:
-                        entity.CloseResponseError(HttpStatusCode.Forbidden, ErrorType.InvalidClient, "You do not have access to this resource");
-                        return VfReturnType.VirtualSkip;
-                }
+                    VfReturnType.VirtualSkip => VfReturnType.VirtualSkip,
+                    VfReturnType.ProcessAsFile => VfReturnType.ProcessAsFile,
+                    VfReturnType.NotFound => O2VirtualClose(entity, HttpStatusCode.NotFound, ErrorType.InvalidRequest, "The requested resource could not be found"),
+                    VfReturnType.BadRequest => O2VirtualClose(entity, HttpStatusCode.BadRequest, ErrorType.InvalidRequest, "Your request was not properlty formatted and could not be proccessed"),
+                    VfReturnType.Error => O2VirtualClose(entity, HttpStatusCode.InternalServerError, ErrorType.ServerError, "There was a server error processing your request"),
+                    _ => O2VirtualClose(entity, HttpStatusCode.Forbidden, ErrorType.InvalidClient, "You do not have access to this resource"),
+                };
             }
             catch (TerminateConnectionException)
             {
@@ -118,22 +111,19 @@ namespace VNLib.Plugins.Essentials.Oauth
             catch (ContentTypeUnacceptableException)
             {
                 //Respond with an 406 error message
-                entity.CloseResponseError(HttpStatusCode.NotAcceptable, ErrorType.InvalidRequest, "The response type is not acceptable for this endpoint");
-                return VfReturnType.VirtualSkip;
+                return O2VirtualClose(entity, HttpStatusCode.NotAcceptable, ErrorType.InvalidRequest, "The response type is not acceptable for this endpoint");
             }
             catch (InvalidJsonRequestException)
             {
                 //Respond with an error message
-                entity.CloseResponseError(HttpStatusCode.BadRequest, ErrorType.InvalidRequest, "The request body was not a proper JSON schema");
-                return VfReturnType.VirtualSkip;
+                return O2VirtualClose(entity, HttpStatusCode.BadRequest, ErrorType.InvalidRequest, "The request body was not a proper JSON schema");
             }
             catch (Exception ex)
             {
                 //Log an uncaught excetpion and return an error code (log may not be initialized)
                 Log?.Error(ex);
                 //Respond with an error message
-                entity.CloseResponseError(HttpStatusCode.InternalServerError, ErrorType.ServerError, "There was a server error processing your request");
-                return VfReturnType.VirtualSkip;
+                return O2VirtualClose(entity, HttpStatusCode.InternalServerError, ErrorType.ServerError, "There was a server error processing your request");
             }
         }
 
@@ -157,6 +147,12 @@ namespace VNLib.Plugins.Essentials.Oauth
                 return false;
             }
             return base.PreProccess(entity);
+        }
+
+        public static VfReturnType O2VirtualClose(HttpEntity entity, HttpStatusCode statusCode, ErrorType type, string message)
+        {
+            entity.CloseResponseError(statusCode, type, message);
+            return VfReturnType.VirtualSkip;
         }
     }
 }

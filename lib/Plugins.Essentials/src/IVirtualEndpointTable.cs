@@ -23,10 +23,9 @@
 */
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 using VNLib.Plugins.Essentials.Endpoints;
-
-#nullable enable
 
 namespace VNLib.Plugins.Essentials
 {
@@ -70,6 +69,6 @@ namespace VNLib.Plugins.Essentials
         /// <param name="path">The connection path to recover the endpoint from</param>
         /// <param name="endpoint"></param>
         /// <returns></returns>
-        bool TryGetEndpoint(string path, out IVirtualEndpoint<HttpEntity>? endpoint);
+        bool TryGetEndpoint(string path, [NotNullWhen(true)] out IVirtualEndpoint<HttpEntity>? endpoint);
     }
 }

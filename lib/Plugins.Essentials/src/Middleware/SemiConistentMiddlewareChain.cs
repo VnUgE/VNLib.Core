@@ -24,8 +24,6 @@
 
 using System.Collections.Generic;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Middleware
 {
     /// <summary>

@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: AccountUtil.cs 
+* File: SessionType.cs 
 *
-* AccountUtil.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+* SessionType.cs is part of VNLib.Plugins.Essentials which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
@@ -23,22 +23,20 @@
 */
 
 
-namespace VNLib.Plugins.Essentials.Accounts
+namespace VNLib.Plugins.Essentials.Sessions
 {
     /// <summary>
-    /// Exposed the required security information for a <see cref="IAccountSecurityProvider"/>
-    /// to authorized a connection.
+    /// Flags to specify <see cref="ISession"/> session types
     /// </summary>
-    public interface IClientSecInfo
+    public enum SessionType
     {
         /// <summary>
-        /// The clients public-key
+        /// The session is a "basic" or web based session
         /// </summary>
-        string PublicKey { get; }
-
+        Web,
         /// <summary>
-        /// The unique id the client provided to this server
+        /// The session is an OAuth2 session type
         /// </summary>
-        string ClientId { get; }
+        OAuth2
     }
 }

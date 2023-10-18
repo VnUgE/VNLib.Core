@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -29,24 +29,24 @@ namespace VNLib.Plugins.Essentials.Accounts
     public class AccountData
     {
         [JsonPropertyName("email")]
-        public string EmailAddress { get; set; }
+        public string? EmailAddress { get; set; }
         [JsonPropertyName("phone")]
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
         [JsonPropertyName("first")]
-        public string First { get; set; }
+        public string? First { get; set; }
         [JsonPropertyName("last")]
-        public string Last { get; set; }
+        public string? Last { get; set; }
         [JsonPropertyName("company")]
-        public string Company { get; set; }
+        public string? Company { get; set; }
         [JsonPropertyName("street")]
-        public string Street { get; set; }
+        public string? Street { get; set; }
         [JsonPropertyName("city")]
-        public string City { get; set; }
+        public string? City { get; set; }
         [JsonPropertyName("state")]
-        public string State { get; set; }
+        public string? State { get; set; }
         [JsonPropertyName("zip")]
-        public string Zip { get; set; }
+        public string? Zip { get; set; }
         [JsonPropertyName("created")]
-        public string Created { get; set; }
+        public string? Created { get; set; }
     }
 }

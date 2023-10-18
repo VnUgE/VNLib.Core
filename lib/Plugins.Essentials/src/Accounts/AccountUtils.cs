@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
@@ -37,8 +36,6 @@ using VNLib.Utils.Extensions;
 using VNLib.Plugins.Essentials.Users;
 using VNLib.Plugins.Essentials.Sessions;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Accounts
 {
 
@@ -51,7 +48,7 @@ namespace VNLib.Plugins.Essentials.Accounts
     {
 
         /// <summary>
-        /// The size in bytes of the random passwords generated when invoking the <see cref="SetRandomPasswordAsync(PasswordHashing, IUserManager, IUser, int)"/>
+        /// The size in bytes of the random passwords generated when invoking the <see cref="SetRandomPasswordAsync(IPasswordHashingProvider, IUserManager, IUser, int)"/>
         /// </summary>
         public const int RANDOM_PASS_SIZE = 240;
      
@@ -188,8 +185,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>A <see cref="PrivateString"/> that contains the new password hash</returns>
         public static PrivateString GetRandomPassword(this IPasswordHashingProvider hashing, int size = RANDOM_PASS_SIZE)
         {
+            _ = hashing ?? throw new ArgumentNullException(nameof(hashing));
+
             //Get random bytes
-            byte[] randBuffer = ArrayPool<byte>.Shared.Rent(size);
+            using UnsafeMemoryHandle<byte> randBuffer = MemoryUtil.UnsafeAlloc(size);
             try
             {
                 Span<byte> span = randBuffer.AsSpan(0, size);
@@ -203,8 +202,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             finally
             {
                 //Zero the block and return to pool
-                MemoryUtil.InitializeBlock(randBuffer.AsSpan());
-                ArrayPool<byte>.Shared.Return(randBuffer);
+                MemoryUtil.InitializeBlock(randBuffer.Span);
             }
         }
 
@@ -221,6 +219,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <exception cref="ArgumentNullException"></exception>
         public static async Task<bool> VerifyPasswordAsync(this IUserManager manager, string userId, PrivateString rawPassword, IPasswordHashingProvider hashing, CancellationToken cancellation)
         {
+            _ = manager ?? throw new ArgumentNullException(nameof(manager));
             _ = userId ?? throw new ArgumentNullException(nameof(userId));
             _ = rawPassword ?? throw new ArgumentNullException(nameof(rawPassword));
             _ = hashing ?? throw new ArgumentNullException(nameof(hashing));
@@ -228,7 +227,17 @@ namespace VNLib.Plugins.Essentials.Accounts
             //Get the user, may be null if the user does not exist
             using IUser? user = await manager.GetUserAndPassFromIDAsync(userId, cancellation);
 
-            return user != null && hashing.Verify(user.PassHash.ToReadOnlySpan(), rawPassword.ToReadOnlySpan());
+            if(user == null)
+            {
+                return false;
+            }
+
+            if(user.PassHash == null)
+            {
+                return false;
+            }
+
+            return hashing.Verify(user.PassHash.ToReadOnlySpan(), rawPassword.ToReadOnlySpan());
         }
 
         /// <summary>
@@ -242,7 +251,11 @@ namespace VNLib.Plugins.Essentials.Accounts
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool VerifyPassword(this IUser user, PrivateString rawPassword, IPasswordHashingProvider hashing)
         {
-            return user.PassHash != null && hashing.Verify(user.PassHash, rawPassword);
+            _ = user ?? throw new ArgumentNullException(nameof(user));
+            _ = rawPassword ?? throw new ArgumentNullException(nameof(rawPassword));
+            _ = hashing ?? throw new ArgumentNullException(nameof(hashing));
+
+            return user.PassHash != null && hashing.Verify(user.PassHash.ToReadOnlySpan(), rawPassword.ToReadOnlySpan());
         }
 
         /// <summary>
@@ -256,8 +269,12 @@ namespace VNLib.Plugins.Essentials.Accounts
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Verify(this IPasswordHashingProvider provider, PrivateString passHash, PrivateString password)
         {
+            _ = provider ?? throw new ArgumentNullException(nameof(provider));
+            _ = password ?? throw new ArgumentNullException(nameof(password));
+            _ = passHash ?? throw new ArgumentNullException(nameof(passHash));
+
             //Casting PrivateStrings to spans will reference the base string directly
-            return provider.Verify((ReadOnlySpan<char>)passHash, (ReadOnlySpan<char>)password);
+            return provider.Verify(passHash.ToReadOnlySpan(), password.ToReadOnlySpan());
         }
 
         /// <summary>
@@ -270,7 +287,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PrivateString Hash(this IPasswordHashingProvider provider, PrivateString password)
         {
-            return provider.Hash((ReadOnlySpan<char>)password);
+            _ = provider ?? throw new ArgumentNullException(nameof(provider));
+            _ = password ?? throw new ArgumentNullException(nameof(password));
+
+            return provider.Hash(password.ToReadOnlySpan());
         }
 
         #endregion

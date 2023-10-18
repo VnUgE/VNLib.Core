@@ -53,7 +53,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         bool Verify(ReadOnlySpan<byte> passHash, ReadOnlySpan<byte> password);
 
         /// <summary>
-        /// Hashes the specified character encoded password to it's secured hashed form.
+        /// Calculates the cryptographic hash of the specified binary encoded password.
         /// </summary>
         /// <param name="password">The character encoded password to encrypt</param>
         /// <returns>A <see cref="PrivateString"/> containing the new password hash.</returns>
@@ -61,7 +61,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         PrivateString Hash(ReadOnlySpan<char> password);
 
         /// <summary>
-        /// Hashes the specified binary encoded password to it's secured hashed form.
+        /// Calculates the cryptographic hash of the specified binary encoded password.
         /// </summary>
         /// <param name="password">The binary encoded password to encrypt</param>
         /// <returns>A <see cref="PrivateString"/> containing the new password hash.</returns>

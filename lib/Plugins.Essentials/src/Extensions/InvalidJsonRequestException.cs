@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,8 +23,6 @@
 */
 
 using System.Text.Json;
-
-#nullable enable
 
 namespace VNLib.Plugins.Essentials.Extensions
 {

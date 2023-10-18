@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -24,9 +24,8 @@
 
 using System;
 using System.Runtime.Serialization;
-using VNLib.Utils.Resources;
 
-#nullable enable
+using VNLib.Utils.Resources;
 
 namespace VNLib.Plugins.Essentials.Users
 {

@@ -26,8 +26,6 @@ using System;
 
 using VNLib.Plugins.Essentials.Users;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Accounts
 {
     /// <summary>

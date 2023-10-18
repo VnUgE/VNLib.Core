@@ -200,24 +200,28 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
         protected virtual ValueTask<VfReturnType> PostAsync(HttpEntity entity) => ValueTask.FromResult(Post(entity));
+
         /// <summary>
         /// This method gets invoked when an incoming GET request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
         protected virtual ValueTask<VfReturnType> GetAsync(HttpEntity entity) => ValueTask.FromResult(Get(entity));
+
         /// <summary>
         /// This method gets invoked when an incoming DELETE request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
         protected virtual ValueTask<VfReturnType> DeleteAsync(HttpEntity entity) => ValueTask.FromResult(Delete(entity));
+
         /// <summary>
         /// This method gets invoked when an incoming PUT request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
         protected virtual ValueTask<VfReturnType> PutAsync(HttpEntity entity) => ValueTask.FromResult(Put(entity));
+
         /// <summary>
         /// This method gets invoked when an incoming PATCH request to the endpoint has been requested.
         /// </summary>
@@ -225,6 +229,11 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <returns>The result of the operation to return to the file processor</returns>
         protected virtual ValueTask<VfReturnType> PatchAsync(HttpEntity entity) => ValueTask.FromResult(Patch(entity));
 
+        /// <summary>
+        /// This method gets invoked when an incoming OPTIONS request to the endpoint has been requested.
+        /// </summary>
+        /// <param name="entity">The entity to be processed</param>
+        /// <returns>The result of the operation to return to the file processor</returns>
         protected virtual ValueTask<VfReturnType> OptionsAsync(HttpEntity entity) => ValueTask.FromResult(Options(entity));
 
         /// <summary>
@@ -247,63 +256,43 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual VfReturnType Post(HttpEntity entity)
-        {
-            //Return method not allowed
-            entity.CloseResponse(HttpStatusCode.MethodNotAllowed);
-            return VfReturnType.VirtualSkip;
-        }
+        protected virtual VfReturnType Post(HttpEntity entity) => VirtualClose(entity, HttpStatusCode.MethodNotAllowed);
+
         /// <summary>
         /// This method gets invoked when an incoming GET request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual VfReturnType Get(HttpEntity entity)
-        {
-            return VfReturnType.ProcessAsFile;
-        }
+        protected virtual VfReturnType Get(HttpEntity entity) => VfReturnType.ProcessAsFile;
+
         /// <summary>
         /// This method gets invoked when an incoming DELETE request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual VfReturnType Delete(HttpEntity entity)
-        {
-            entity.CloseResponse(HttpStatusCode.MethodNotAllowed);
-            return VfReturnType.VirtualSkip;
-        }
+        protected virtual VfReturnType Delete(HttpEntity entity) => VirtualClose(entity, HttpStatusCode.MethodNotAllowed);
+
         /// <summary>
         /// This method gets invoked when an incoming PUT request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual VfReturnType Put(HttpEntity entity)
-        {
-            entity.CloseResponse(HttpStatusCode.MethodNotAllowed);
-            return VfReturnType.VirtualSkip;
-        }
+        protected virtual VfReturnType Put(HttpEntity entity) => VirtualClose(entity, HttpStatusCode.MethodNotAllowed);
+
         /// <summary>
         /// This method gets invoked when an incoming PATCH request to the endpoint has been requested.
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <returns>The result of the operation to return to the file processor</returns>
-        protected virtual VfReturnType Patch(HttpEntity entity)
-        {
-            entity.CloseResponse(HttpStatusCode.MethodNotAllowed);
-            return VfReturnType.VirtualSkip;
-        }
+        protected virtual VfReturnType Patch(HttpEntity entity) => VirtualClose(entity, HttpStatusCode.MethodNotAllowed);
+
         /// <summary>
         /// Invoked when a request is received for a method other than GET, POST, DELETE, or PUT;
         /// </summary>
         /// <param name="entity">The entity that </param>
         /// <param name="method">The request method</param>
         /// <returns>The results of the processing</returns>
-        protected virtual VfReturnType AlternateMethod(HttpEntity entity, HttpMethod method)
-        {
-            //Return method not allowed
-            entity.CloseResponse(HttpStatusCode.MethodNotAllowed);
-            return VfReturnType.VirtualSkip;
-        }
+        protected virtual VfReturnType AlternateMethod(HttpEntity entity, HttpMethod method) => VirtualClose(entity, HttpStatusCode.MethodNotAllowed);
 
         protected virtual VfReturnType Options(HttpEntity entity) => VfReturnType.Forbidden;
 

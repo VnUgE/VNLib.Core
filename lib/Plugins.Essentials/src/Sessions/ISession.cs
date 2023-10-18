@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,22 +27,10 @@ using System.Net;
 
 using VNLib.Utils;
 
+#nullable disable
+
 namespace VNLib.Plugins.Essentials.Sessions
 {
-    /// <summary>
-    /// Flags to specify <see cref="ISession"/> session types
-    /// </summary>
-    public enum SessionType
-    {
-        /// <summary>
-        /// The session is a "basic" or web based session
-        /// </summary>
-        Web,
-        /// <summary>
-        /// The session is an OAuth2 session type
-        /// </summary>
-        OAuth2
-    }
 
     /// <summary>
     /// Represents a connection oriented session data
@@ -70,6 +58,11 @@ namespace VNLib.Plugins.Essentials.Sessions
         string SessionID { get; }
 
         /// <summary>
+        /// A value that indicates this session was newly created
+        /// </summary>
+        bool IsNew { get; }
+
+        /// <summary>
         /// User ID associated with session
         /// </summary>
         string UserID { get; set; }
@@ -93,11 +86,6 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// Sets the session ID to be regenerated if applicable
         /// </summary>
         void RegenID();
-
-        /// <summary>
-        /// A value that indicates this session was newly created
-        /// </summary>
-        bool IsNew { get; }
 
         /// <summary>
         /// This is a special function that requests the session to be detached from the current http connection

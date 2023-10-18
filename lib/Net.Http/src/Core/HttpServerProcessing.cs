@@ -56,7 +56,7 @@ namespace VNLib.Net.Http
             try
             {
                 //Set write timeout
-                transportContext.ConnectionStream.WriteTimeout = Config.SendTimeout;
+                transportContext.ConnectionStream.WriteTimeout = _config.SendTimeout;
 
                 //Init stream
                 context.InitializeContext(transportContext);
@@ -65,7 +65,7 @@ namespace VNLib.Net.Http
                 do
                 {
                     //Set rx timeout low for initial reading
-                    transportContext.ConnectionStream.ReadTimeout = Config.ActiveConnectionRecvTimeout;
+                    transportContext.ConnectionStream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
                     
                     //Process the request
                     bool keepAlive = await ProcessHttpEventAsync(context);
@@ -77,7 +77,7 @@ namespace VNLib.Net.Http
                     }
 
                     //Reset inactive keeaplive timeout, when expired the following read will throw a cancealltion exception
-                    transportContext.ConnectionStream.ReadTimeout = (int)Config.ConnectionKeepAlive.TotalMilliseconds;
+                    transportContext.ConnectionStream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
                     
                     //"Peek" or wait for more data to begin another request (may throw timeout exception when timmed out)
                     await transportContext.ConnectionStream.ReadAsync(Memory<byte>.Empty, StopToken!.Token);
@@ -114,15 +114,15 @@ namespace VNLib.Net.Http
             //Catch wrapped OC exceptions
             catch (IOException ioe) when (ioe.InnerException is OperationCanceledException oce)
             {
-                Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m} connection closed", oce.Message);
+                _config.ServerLog.Debug("Failed to receive transport data within a timeout period {m} connection closed", oce.Message);
             }
             catch (OperationCanceledException oce)
             {
-                Config.ServerLog.Debug("Failed to receive transport data within a timeout period {m} connection closed", oce.Message);
+                _config.ServerLog.Debug("Failed to receive transport data within a timeout period {m} connection closed", oce.Message);
             }
             catch(Exception ex)
             {
-                Config.ServerLog.Error(ex);
+                _config.ServerLog.Error(ex);
             }
             
             //Dec open connection count
@@ -142,7 +142,7 @@ namespace VNLib.Net.Http
             }
             catch(Exception ex)
             {
-                Config.ServerLog.Error(ex);
+                _config.ServerLog.Error(ex);
             }
         }
 
@@ -188,11 +188,11 @@ namespace VNLib.Net.Http
                     //Response
                     context.Response.Compile(ref writer);
 
-                    server.Config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
+                    server._config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
                 }
 
                 //Write debug response log
-                if(Config.RequestDebugLog != null)
+                if(_config.RequestDebugLog != null)
                 {
                     WriteConnectionDebugLog(this, context);
                 }
@@ -248,7 +248,7 @@ namespace VNLib.Net.Http
             IHttpHeaderParseBuffer parseBuffer = ctx.Buffers.RequestHeaderParseBuffer;
 
             //Init parser
-            TransportReader reader = new (ctx.GetTransport(), parseBuffer, Config.HttpEncoding, HeaderLineTermination);
+            TransportReader reader = new (ctx.GetTransport(), parseBuffer, _config.HttpEncoding, HeaderLineTermination);
            
             try
             {
@@ -323,7 +323,7 @@ namespace VNLib.Net.Http
             }
 
             //Check open connection count (not super accurate, or might not be atomic)
-            if (OpenConnectionCount > Config.MaxOpenConnections)
+            if (OpenConnectionCount > _config.MaxOpenConnections)
             {
                 //Close the connection and return 503
                 context.Response.Headers[HttpResponseHeader.Connection] = "closed";
@@ -332,7 +332,7 @@ namespace VNLib.Net.Http
             }
             
             //Store keepalive value from request, and check if keepalives are enabled by the configuration
-            bool keepalive = context.Request.KeepAlive & Config.ConnectionKeepAlive > TimeSpan.Zero;
+            bool keepalive = context.Request.KeepAlive & _config.ConnectionKeepAlive > TimeSpan.Zero;
             
             //Set connection header (only for http1.1)
           
@@ -400,7 +400,7 @@ namespace VNLib.Net.Http
             catch (TerminateConnectionException tce)
             {
                 //Log the event as a debug so user can see it was handled
-                Config.ServerLog.Debug(tce, "User-code requested a connection termination");
+                _config.ServerLog.Debug(tce, "User-code requested a connection termination");
 
                 //See if the exception requested an error code response
                 if (tce.Code > 0)
@@ -424,7 +424,7 @@ namespace VNLib.Net.Http
             }
             catch (Exception ex)
             {
-                Config.ServerLog.Warn(ex, "Unhandled exception during application code execution.");
+                _config.ServerLog.Warn(ex, "Unhandled exception during application code execution.");
             }
             finally
             {

@@ -23,7 +23,6 @@
 */
 
 using System.Net;
-using System.Threading.Tasks;
 
 using VNLib.Net.Http;
 
@@ -52,7 +51,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// When an error occurs and is handled by the library, this event is invoked 
         /// </para>
         /// <para>
-        /// NOTE: This function must be thread-safe!
+        /// NOTE: This function must be thread-safe! And should not throw exceptions
         /// </para>
         /// </summary>
         /// <param name="errorCode">The error code that was created during processing</param>
@@ -64,14 +63,19 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// For pre-processing a request entity before all endpoint lookups are performed
         /// </summary>
         /// <param name="entity">The http entity to process</param>
-        /// <returns>The results to return to the file processor, or null of the entity requires further processing</returns>
-        ValueTask<FileProcessArgs> PreProcessEntityAsync(HttpEntity entity);
+        /// <param name="args">The results to return to the file processor, or <see cref="FileProcessArgs.Continue"/> if processing should continue</param>
+        /// <returns></returns>
+        void PreProcessEntityAsync(HttpEntity entity, out FileProcessArgs args);
 
         /// <summary>
-        /// Allows for post processing of a selected <see cref="FileProcessArgs"/> for the given entity
+        /// Allows for post processing of a selected <see cref="FileProcessArgs"/> for the given entity.
+        /// <para>
+        /// This method may mutate the <paramref name="chosenRoutine"/> argument referrence to change the
+        /// the routine that will be used to process the file.
+        /// </para>
         /// </summary>
         /// <param name="entity">The http entity to process</param>
         /// <param name="chosenRoutine">The selected file processing routine for the given request</param>
-        void PostProcessFile(HttpEntity entity, in FileProcessArgs chosenRoutine);
+        void PostProcessFile(HttpEntity entity, ref FileProcessArgs chosenRoutine);
     }
 }

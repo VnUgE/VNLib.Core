@@ -25,8 +25,8 @@
 using System.Linq;
 using System.Collections.Generic;
 
-using VNLib.Plugins.Runtime;
 using VNLib.Utils.Logging;
+using VNLib.Plugins.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -47,7 +47,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="controller"></param>
         /// <returns></returns>
-        internal static IEnumerable<LivePlugin> GetOnlyWebPlugins(this PluginController controller) => controller.Plugins.Where(p => p.Plugin is IWebPlugin);
+        internal static IEnumerable<LivePlugin> GetOnlyWebPlugins(this PluginController controller) => controller.Plugins.Where(static p => p.Plugin is IWebPlugin);
 
         /// <summary>
         /// Loads all plugins that implement <see cref="IWebPlugin"/> interface into the 
@@ -56,5 +56,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// <param name="stack"></param>
         /// <param name="logProvider">A log provider for writing loading logs to</param>
         public static void LoadPlugins(this HttpServiceStack stack, ILogProvider logProvider) => (stack.PluginManager as PluginManager)!.LoadPlugins(logProvider);
+
+        internal static PluginLoadEventListener GetListener(this ServiceDomain domain) => new(domain);
     }
 }

@@ -27,8 +27,6 @@ using System.IO;
 using System.Net;
 using System.Collections.Generic;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials
 {
     /// <summary>

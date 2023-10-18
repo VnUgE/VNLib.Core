@@ -150,6 +150,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 servers.AddLast(server);
             }
 
+            return new(servers, sd, GetPluginStack(sd));
+        }
+
+        private PluginStackInitializer GetPluginStack(ServiceDomain domain)
+        {
             //Always init manual array
             manualPlugins ??= Array.Empty<IManualPlugin>();
 
@@ -160,9 +165,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             plugins ??= new EmptyPluginStack();
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
-            IPluginInitializer init = new PluginStackInitializer(plugins, manualPlugins);
-
-            return new(servers, sd, init);
+            return new (domain.GetListener(), plugins, manualPlugins);
         }
 
         /*

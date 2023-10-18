@@ -29,8 +29,6 @@ using VNLib.Utils;
 using VNLib.Utils.Async;
 using VNLib.Utils.Memory;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Users
 {
     /// <summary>

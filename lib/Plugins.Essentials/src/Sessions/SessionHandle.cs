@@ -26,8 +26,6 @@ using System.Threading.Tasks;
 
 using VNLib.Net.Http;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Sessions
 {
     /// <summary>

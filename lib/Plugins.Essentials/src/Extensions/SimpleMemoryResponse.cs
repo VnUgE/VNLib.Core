@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -24,10 +24,9 @@
 
 using System;
 using System.Text;
-using VNLib.Net.Http;
 using System.Buffers;
 
-#nullable enable
+using VNLib.Net.Http;
 
 namespace VNLib.Plugins.Essentials.Extensions
 {
@@ -70,12 +69,14 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         ///<inheritdoc/>
         public int Remaining { get; private set; }
+
         ///<inheritdoc/>
         void IMemoryResponseReader.Advance(int written)
         {
             Remaining -= written;
             _written += written;
         }
+
         ///<inheritdoc/>
         void IMemoryResponseReader.Close()
         {
@@ -83,6 +84,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             ArrayPool<byte>.Shared.Return(_buffer!);
             _buffer = null;
         }
+
         ///<inheritdoc/>
         ReadOnlyMemory<byte> IMemoryResponseReader.GetMemory() => _buffer!.AsMemory(_written, Remaining);
     }

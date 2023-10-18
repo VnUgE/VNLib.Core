@@ -33,8 +33,6 @@ using VNLib.Net.Http;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
 
-#nullable enable
-
 /*
  * HttpEntity was converted to an object as during profiling
  * it was almost always heap allcated due to async opertaions
@@ -53,16 +51,20 @@ namespace VNLib.Plugins.Essentials
     /// </summary>
     public sealed class HttpEntity : IHttpEvent
     {
+
         /// <summary>
         /// The connection event entity
         /// </summary>
         private readonly IHttpEvent Entity;
 
-        public HttpEntity(IHttpEvent entity, IWebProcessor root, in SessionHandle session, CancellationToken cancellation)
+        private readonly CancellationTokenSource EventCts;
+
+        public HttpEntity(IHttpEvent entity, IWebProcessor root)
         {
             Entity = entity;
             RequestedRoot = root;
-            EventCancellation = cancellation;
+            //Init event cts
+            EventCts = new(root.Options.ExecutionTimeout);
           
             //See if the connection is coming from an downstream server
             IsBehindDownStreamServer = root.Options.DownStreamServers.Contains(entity.Server.RemoteEndpoint.Address);
@@ -72,8 +74,6 @@ namespace VNLib.Plugins.Essentials
             * otherwise use the remote ep ip address
             */
             TrustedRemoteIp = entity.Server.GetTrustedIp(IsBehindDownStreamServer);
-            //Initialize the session
-            Session = session.IsSet ? new(session.SessionData, entity.Server, TrustedRemoteIp) : new();
             //Local connection
             IsLocalConnection = entity.Server.LocalEndpoint.Address.IsLocalSubnet(TrustedRemoteIp);
             //Cache value
@@ -83,14 +83,38 @@ namespace VNLib.Plugins.Essentials
             RequestedTimeUtc = DateTimeOffset.UtcNow;
         }
 
+        private SessionInfo _session;
+        internal FileProcessArgs EventArgs;
+        internal SessionHandle EventSessionHandle;
+
+        /// <summary>
+        /// Internal call to attach a new session to the entity from the 
+        /// internal session handle
+        /// </summary>
+        internal void AttachSession()
+        {
+            if (EventSessionHandle.IsSet)
+            {
+                _session = new(EventSessionHandle.SessionData!, Entity.Server, TrustedRemoteIp);
+            }
+        }
+
+        /// <summary>
+        /// Internal call to cleanup any internal resources
+        /// </summary>
+        internal void Dispose()
+        {
+            EventCts.Dispose();
+        }
+
         /// <summary>
         /// A token that has a scheduled timeout to signal the cancellation of the entity event
         /// </summary>
-        public readonly CancellationToken EventCancellation;
+        public CancellationToken EventCancellation => EventCts.Token;
         /// <summary>
-        /// The session assocaited with the event
+        /// The session associated with the event
         /// </summary>
-        public readonly SessionInfo Session;
+        public ref readonly SessionInfo Session => ref _session;
         /// <summary>
         /// A value that indicates if the connecion came from a trusted downstream server
         /// </summary>

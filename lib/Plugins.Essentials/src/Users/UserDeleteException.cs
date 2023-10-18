@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,6 +23,7 @@
 */
 
 using System;
+
 using VNLib.Utils.Resources;
 
 namespace VNLib.Plugins.Essentials.Users
@@ -36,9 +37,9 @@ namespace VNLib.Plugins.Essentials.Users
         public UserDeleteException(string message, Exception cause) : base(message, cause) { }
 
         public UserDeleteException()
-        {}
+        { }
 
         public UserDeleteException(string message) : base(message)
-        {}
+        { }
     }
 }

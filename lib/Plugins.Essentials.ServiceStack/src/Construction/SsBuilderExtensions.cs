@@ -316,10 +316,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             public override bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity) => Hooks.ErrorHandler(errorCode, entity);
 
             ///<inheritdoc/>
-            public override void PostProcessFile(HttpEntity entity, in FileProcessArgs chosenRoutine) => Hooks.PostProcessFile(entity, chosenRoutine);
+            public override void PreProcessEntity(HttpEntity entity, out FileProcessArgs preProcArgs) => Hooks.PreProcessEntityAsync(entity, out preProcArgs);
 
             ///<inheritdoc/>
-            public override ValueTask<FileProcessArgs> PreProcessEntityAsync(HttpEntity entity) => Hooks.PreProcessEntityAsync(entity);
+            public override void PostProcessEntity(HttpEntity entity, ref FileProcessArgs chosenRoutine) => Hooks.PostProcessFile(entity, ref chosenRoutine);
 
             ///<inheritdoc/>
             public override string TranslateResourcePath(string requestPath) => Hooks.TranslateResourcePath(requestPath);

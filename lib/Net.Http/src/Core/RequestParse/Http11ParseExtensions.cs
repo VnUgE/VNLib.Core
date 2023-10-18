@@ -555,21 +555,15 @@ namespace VNLib.Net.Http.Core
                  * with null
                  */
 
+                ref InitDataBuffer? initData = ref Request.InputStream.Prepare(parseState.ContentLength);
+
                 if (available > 0)
                 {
-                    //Creates the new initial data buffer
-                    InitDataBuffer initData = InitDataBuffer.AllocBuffer(InputDataBufferPool, available);
+                    //Alloc the buffer and asign it
+                    initData = InitDataBuffer.AllocBuffer(InputDataBufferPool, available);
 
                     //Read remaining data into the buffer's data segment
-                    _ = reader.ReadRemaining(initData.DataSegment);
-
-                    //Setup the input stream and capture the initial data from the reader, and wrap the transport stream to read data directly
-                    Request.InputStream.Prepare(parseState.ContentLength, initData);
-                }
-                else
-                {                    
-                    //Empty input stream
-                    Request.InputStream.Prepare(parseState.ContentLength);
+                    _ = reader.ReadRemaining(initData.Value.DataSegment);
                 }
 
                 Request.HasEntityBody = true;

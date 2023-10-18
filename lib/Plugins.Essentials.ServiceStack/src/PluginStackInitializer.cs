@@ -40,13 +40,12 @@ using VNLib.Plugins.Attributes;
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
 
-    internal sealed record class PluginStackInitializer(IPluginStack Stack, IManualPlugin[] ManualPlugins) : IPluginInitializer
+    internal sealed record class PluginStackInitializer(PluginLoadEventListener Listener, IPluginStack Stack, IManualPlugin[] ManualPlugins) : IPluginInitializer
     {
         private readonly LinkedList<IManagedPlugin> _managedPlugins = new();
         private readonly LinkedList<ManualPluginWrapper> _manualPlugins = new();
- 
-        ///<inheritdoc/>
-        public void PrepareStack(IPluginEventListener listener)
+       
+        private void PrepareStack()
         {
             /*
             * Since we own the plugin stack, it is safe to build it here.
@@ -62,7 +61,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             Array.ForEach(wrapper, p => _managedPlugins.AddLast(p));
 
             //Register for all plugins and pass the plugin instance as the state object
-            Array.ForEach(wrapper, p => p.Plugin.Controller.Register(listener, p));
+            Array.ForEach(wrapper, p => p.Plugin.Controller.Register(Listener, p));
 
             //Add manual plugins to list of managed plugins
             Array.ForEach(ManualPlugins, p => _manualPlugins.AddLast(new ManualPluginWrapper(p)));
@@ -71,6 +70,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         ///<inheritdoc/>
         public IManagedPlugin[] InitializePluginStack(ILogProvider debugLog)
         {
+            //Prepare the plugin stack before initializing
+            PrepareStack();
+
             //single thread initialziation
             LinkedList<IManagedPlugin> _loadedPlugins = new();
 
@@ -96,6 +98,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         public void UnloadPlugins()
         {
             Stack.UnloadAll();
+
+            //Unload manual plugins in listener
+            _managedPlugins.TryForeach(mp => Listener.OnPluginUnloaded(mp));
             _manualPlugins.TryForeach(static mp => mp.Unload());
         }
 
@@ -104,9 +109,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             Stack.ReloadAll();
 
-            //Reload manual plugins
+            //Unload manual plugins in listener, then call the unload method
+            _managedPlugins.TryForeach(mp => Listener.OnPluginUnloaded(mp));
             _manualPlugins.TryForeach(static mp => mp.Unload());
+
+            //Load, then invoke on-loaded events 
             _manualPlugins.TryForeach(static mp => mp.Load());
+            _managedPlugins.TryForeach(mp => Listener.OnPluginLoaded(mp));
         }
 
         ///<inheritdoc/>
@@ -155,7 +164,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             return false;
         }
 
-        private static void LoadPlugin(IManagedPlugin plugin, ILogProvider debugLog)
+        private void LoadPlugin(IManagedPlugin plugin, ILogProvider debugLog)
         {
             Stopwatch sw = new();
             try
@@ -170,6 +179,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 else if (plugin is ManualPluginWrapper mpw)
                 {
                     mpw.Load();
+                    //Call the on-load event in listener explicitly
+                    Listener.OnPluginLoaded(plugin);
                 }
                 else
                 {
@@ -313,13 +324,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
                 return false;
             }
+          
+            void IManagedPlugin.OnPluginLoaded() 
+            { }
 
-
-            /*
-             * SHOULD NEVER BE CALLED
-             */
-            void IManagedPlugin.OnPluginLoaded() => throw new NotImplementedException();
-            void IManagedPlugin.OnPluginUnloaded() => throw new NotImplementedException();
+            void IManagedPlugin.OnPluginUnloaded()
+            { }
 
             ///<inheritdoc/>
             public override string ToString() => Plugin.Name;

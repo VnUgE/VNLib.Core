@@ -26,8 +26,6 @@ using System;
 
 using VNLib.Net.Http;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Extensions
 {
     /// <summary>

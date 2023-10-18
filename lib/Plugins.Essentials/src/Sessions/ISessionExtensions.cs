@@ -30,6 +30,8 @@ using VNLib.Net.Http;
 using VNLib.Utils;
 using VNLib.Utils.Extensions;
 
+#nullable disable
+
 namespace VNLib.Plugins.Essentials.Sessions
 {
     public static class ISessionExtensions

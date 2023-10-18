@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -35,15 +35,18 @@ namespace VNLib.Plugins.Essentials.Users
     {
         ///<inheritdoc/>
         public UserExistsException()
-        {}
+        { }
+
         ///<inheritdoc/>
         public UserExistsException(string message) : base(message)
-        {}
+        { }
+
         ///<inheritdoc/>
         public UserExistsException(string message, Exception innerException) : base(message, innerException)
-        {}
+        { }
+
         ///<inheritdoc/>
         protected UserExistsException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {}
+        { }
     }
 }

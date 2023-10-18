@@ -660,7 +660,7 @@ namespace VNLib.Utils.Memory
         {
             if (offset + count > (ulong)block.LongLength)
             {
-                throw new ArgumentOutOfRangeException("The offset or count is outside of the range of the block of memory");
+                throw new ArgumentOutOfRangeException(nameof(offset), "The offset or count is outside of the range of the block of memory");
             }
         }
 

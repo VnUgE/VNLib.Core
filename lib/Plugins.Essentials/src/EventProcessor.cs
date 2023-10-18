@@ -41,7 +41,7 @@ using VNLib.Plugins.Essentials.Extensions;
 using VNLib.Plugins.Essentials.Middleware;
 using VNLib.Plugins.Essentials.Endpoints;
 
-#nullable enable
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
 namespace VNLib.Plugins.Essentials
 {
@@ -105,18 +105,24 @@ namespace VNLib.Plugins.Essentials
         public abstract bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity);
 
         /// <summary>
-        /// For pre-processing a request entity before all endpoint lookups are performed
+        /// For pre-processing a request entity before all processing happens, but after 
+        /// a session is attached to the entity.
         /// </summary>
         /// <param name="entity">The http entity to process</param>
-        /// <returns>The results to return to the file processor, or null of the entity requires further processing</returns>
-        public abstract ValueTask<FileProcessArgs> PreProcessEntityAsync(HttpEntity entity);
+        /// <param name="result">The results to return to the file processor, or <see cref="FileProcessArgs.Continue"/> to continue further processing</param>
+        public abstract void PreProcessEntity(HttpEntity entity, out FileProcessArgs result);
 
         /// <summary>
         /// Allows for post processing of a selected <see cref="FileProcessArgs"/> for the given entity
+        /// <para>
+        /// Post processing may mutate the <paramref name="chosenRoutine"/> to change the 
+        /// result of the operation. Consider events with the <see cref="FileProcessArgs.VirtualSkip"/>
+        /// have already been responded to.
+        /// </para>
         /// </summary>
         /// <param name="entity">The http entity to process</param>
         /// <param name="chosenRoutine">The selected file processing routine for the given request</param>
-        public abstract void PostProcessFile(HttpEntity entity, in FileProcessArgs chosenRoutine);
+        public abstract void PostProcessEntity(HttpEntity entity, ref FileProcessArgs chosenRoutine);
 
         ///<inheritdoc/>
         public abstract IAccountSecurityProvider AccountSecurity { get; }
@@ -163,129 +169,126 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="router"><see cref="IPageRouter"/> to route incomming connections</param>
         public void SetPageRouter(IPageRouter? router) => _ = Interlocked.Exchange(ref Router, router);
-    
-   
 
         ///<inheritdoc/>
         public virtual async ValueTask ClientConnectedAsync(IHttpEvent httpEvent)
         {
-            //load ref to session provider
+            //read local ref to session provider and page router
             ISessionProvider? _sessions = Sessions;
+            IPageRouter? router = Router;
+
+            //event cancellation token
+            HttpEntity entity = new(httpEvent, this);
             
+            LinkedListNode<IHttpMiddleware>? mwNode;
+
             //Set ambient processor context
             _currentProcessor.Value = this;
 
-            //Start cancellation token
-            CancellationTokenSource timeout = new(Options.ExecutionTimeout);
-
-            FileProcessArgs args;
-
             try
             {
-                //Session handle, default to the shared empty session
-                SessionHandle sessionHandle = SessionHandle.Empty;
-                
                 //If sessions are set, get a session for the current connection
                 if (_sessions != null)
                 {
                     //Get the session
-                    sessionHandle = await _sessions.GetSessionAsync(httpEvent, timeout.Token);
+                    entity.EventSessionHandle = await _sessions.GetSessionAsync(httpEvent, entity.EventCancellation);
+
                     //If the processor had an error recovering the session, return the result to the processor
-                    if (sessionHandle.EntityStatus != FileProcessArgs.Continue)
+                    if (entity.EventSessionHandle.EntityStatus != FileProcessArgs.Continue)
                     {
-                        ProcessFile(httpEvent, sessionHandle.EntityStatus);
+                        ProcessFile(httpEvent, entity.EventSessionHandle.EntityStatus);
                         return;
                     }
+
+                    //Attach the new session to the entity
+                    entity.AttachSession();
                 }
+
                 try
                 {
-                    //Setup entity
-                    HttpEntity entity = new(httpEvent, this, in sessionHandle, timeout.Token);
-
                     //Pre-process entity
-                    args = await PreProcessEntityAsync(entity);
+                    PreProcessEntity(entity, out entity.EventArgs);
 
                     //If preprocess returned a value, exit
-                    if (args != FileProcessArgs.Continue)
+                    if (entity.EventArgs != FileProcessArgs.Continue)
                     {
-                        ProcessFile(httpEvent, in args);
-                        return;
+                        goto RespondAndExit;
                     }
 
                     //Handle middleware before file processing
-                    LinkedListNode<IHttpMiddleware>? mwNode = MiddlewareChain.GetCurrentHead();
+                    mwNode = MiddlewareChain.GetCurrentHead();
 
-                    //Loop though nodes
+                    //Loop through nodes
                     while(mwNode != null)
                     {
                         //Process
-                        args = await mwNode.ValueRef.ProcessAsync(entity);
+                        entity.EventArgs = await mwNode.ValueRef.ProcessAsync(entity);
                         
-                        switch (args.Routine)
+                        switch (entity.EventArgs.Routine)
                         {
                             //move next if continue is returned
                             case FpRoutine.Continue:
-                                mwNode = mwNode.Next;
                                 break;
 
                             //Middleware completed the connection, time to exit
                             default:
-                                goto MwExit;
+                                goto RespondAndExit;
                         }
-                    }                
+
+                        mwNode = mwNode.Next;
+                    }             
 
                     if (!EndpointTable.IsEmpty)
                     {
                         //See if the virtual file is servicable
-                        if (!EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
-                        {
-                            args = FileProcessArgs.Continue;
-                        }
-                        else
+                        if (EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
                         {
                             //Invoke the page handler process method
                             VfReturnType rt = await vf.Process(entity);
 
                             //Process a virtual file
-                            args = GetArgsFromReturn(entity, rt);
-                        }                      
+                            GetArgsFromVirtualReturn(entity, rt, out entity.EventArgs);
 
-                        //If the entity was processed, exit
-                        if (args != FileProcessArgs.Continue)
-                        {
-                            ProcessFile(httpEvent, in args);
-                            return;
+                            //If the entity was processed, exit
+                            if (entity.EventArgs != FileProcessArgs.Continue)
+                            {
+                                goto RespondAndExit;
+                            }
                         }
                     }              
 
                     //If no virtual processor handled the ws request, deny it
                     if (entity.Server.IsWebSocketRequest)
                     {
-                        ProcessFile(httpEvent, in FileProcessArgs.Deny);
-                        return;
+                        entity.EventArgs = FileProcessArgs.Deny;
+                    }
+                    else
+                    {
+                        //Finally route the connection as a file
+                        entity.EventArgs = await RouteFileAsync(router, entity);
                     }
 
-                    //Finally process as file
-                    args = await RouteFileAsync(entity);
+                RespondAndExit:
 
-                MwExit:
-
-                    //Finally process the file
-                    ProcessFile(httpEvent, in args);
+                    //Call post processor method
+                    PostProcessEntity(entity, ref entity.EventArgs);
                 }
-                finally
+                finally 
                 {
                     //Capture all session release exceptions 
                     try
                     {
                         //Release the session
-                        await sessionHandle.ReleaseAsync(httpEvent);
+                        await entity.EventSessionHandle.ReleaseAsync(httpEvent);
                     }
                     catch (Exception ex)
                     {
                         Log.Error(ex, "Exception raised while releasing the assocated session");
                     }
                 }
+
+                //Finally process the file
+                ProcessFile(httpEvent, in entity.EventArgs);
             }
             catch (ContentTypeUnacceptableException)
             {
@@ -309,7 +312,6 @@ namespace VNLib.Plugins.Essentials
             {
                 Log.Warn(se, "An exception was raised while attempting to get or save a session");
                 CloseWithError(HttpStatusCode.ServiceUnavailable, httpEvent);
-                return;
             }
             catch (OperationCanceledException oce)
             {
@@ -328,7 +330,7 @@ namespace VNLib.Plugins.Essentials
             }
             finally
             {
-                timeout.Dispose();
+                entity.Dispose();
                 _currentProcessor.Value = null;
             }
         }
@@ -485,17 +487,19 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="entity">The entity to be processed</param>
         /// <param name="returnType">The virtual file processor return type</param>
-        /// <returns>The process args to end processing for the virtual endpoint</returns>
-        protected virtual FileProcessArgs GetArgsFromReturn(HttpEntity entity, VfReturnType returnType)
+        /// <param name="args">The process args to end processing for the virtual endpoint</param>
+        protected virtual void GetArgsFromVirtualReturn(HttpEntity entity, VfReturnType returnType, out FileProcessArgs args)
         {
             if (returnType == VfReturnType.VirtualSkip)
             {
                 //Virtual file was handled by the handler
-                return FileProcessArgs.VirtualSkip;
+                args = FileProcessArgs.VirtualSkip;
+                return;
             }
             else if (returnType == VfReturnType.ProcessAsFile)
             {
-                return FileProcessArgs.Continue;
+                args = FileProcessArgs.Continue;
+                return;
             }
 
             //If not a get request, process it directly
@@ -504,11 +508,14 @@ namespace VNLib.Plugins.Essentials
                 switch (returnType)
                 {
                     case VfReturnType.Forbidden:
-                        return FileProcessArgs.Deny;
+                        args = FileProcessArgs.Deny;
+                        return;
                     case VfReturnType.NotFound:
-                        return FileProcessArgs.NotFound;
+                        args = FileProcessArgs.NotFound;
+                        return;
                     case VfReturnType.Error:
-                        return FileProcessArgs.Error;
+                        args = FileProcessArgs.Error;
+                        return;
                     default:
                         break;
                 }
@@ -531,31 +538,31 @@ namespace VNLib.Plugins.Essentials
                     break;
             }
 
-            return FileProcessArgs.VirtualSkip;
+            args = FileProcessArgs.VirtualSkip;
         }
       
         /// <summary>
         /// Determines the best <see cref="FileProcessArgs"/> processing response for the given connection.
         /// Alternativley may respond to the entity directly.
         /// </summary>
+        /// <param name="router">A reference to the current <see cref="IPageRouter"/> instance if cofigured</param>
         /// <param name="entity">The http entity to process</param>
         /// <returns>The results to return to the file processor, this method must return an argument</returns>
-        protected virtual async ValueTask<FileProcessArgs> RouteFileAsync(HttpEntity entity)
+        protected virtual async ValueTask<FileProcessArgs> RouteFileAsync(IPageRouter? router, HttpEntity entity)
         {
-            //Read local copy of the router            
-            IPageRouter? router = Router;
-
-            //Make sure router is set
-            if (router == null)
+            if(router != null)
+            {
+                //Get a file routine
+                FileProcessArgs routine = await router.RouteAsync(entity);
+                //Call post processor method
+                PostProcessEntity(entity, ref routine);
+                //Return the routine
+                return routine;
+            }
+            else
             {
                 return FileProcessArgs.Continue;
             }
-            //Get a file routine 
-            FileProcessArgs routine = await router.RouteAsync(entity);
-            //Call post processor method
-            PostProcessFile(entity, in routine);
-            //Return the routine
-            return routine;
         }      
 
         /// <summary>

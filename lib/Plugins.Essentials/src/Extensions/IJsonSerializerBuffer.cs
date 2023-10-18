@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -24,14 +24,12 @@
 
 using System.IO;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Extensions
 {
     /// <summary>
     /// Interface for a buffer that can be used to serialize objects to JSON
     /// </summary>
-    interface IJsonSerializerBuffer
+    internal interface IJsonSerializerBuffer
     {
         /// <summary>
         /// Gets a stream used for writing serialzation data to

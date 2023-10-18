@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,8 +27,6 @@ using System.Text.Json;
 
 using VNLib.Plugins.Essentials.Users;
 using VNLib.Plugins.Essentials.Accounts;
-
-#nullable enable
 
 namespace VNLib.Plugins.Essentials.Extensions
 {
@@ -62,6 +60,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             profile.EmailAddress = null;
             ud.SetObject(PROFILE_ENTRY, profile);
         }
+
         /// <summary>
         /// Stores the serialized string user's profile to their entry.
         /// <br/>
@@ -70,6 +69,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="ud"></param>
         /// <param name="jsonProfile">The JSON serialized "raw" profile data</param>
         public static void SetProfile(this IUser ud, string jsonProfile) => ud[PROFILE_ENTRY] = jsonProfile;
+
         /// <summary>
         /// Recovers the user's stored profile
         /// </summary> 

@@ -30,8 +30,6 @@ using System.Threading.Tasks;
 
 using VNLib.Net.Http;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials
 {
     /// <summary>
@@ -134,24 +132,16 @@ namespace VNLib.Plugins.Essentials
         /// <param name="buffer">The buffer to store read data</param>
         /// <returns>A task that resolves a <see cref="WebSocketReceiveResult"/> which contains the status of the operation</returns>
         /// <exception cref="OperationCanceledException"></exception>
-        public Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer)
-        {
-            //Begin receive operation only with the internal token
-            return WsHandle!.ReceiveAsync(buffer, CancellationToken.None);
-        }
-        
+        public Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer) => WsHandle!.ReceiveAsync(buffer, CancellationToken.None);
+
         /// <summary>
         /// Asynchronously receives data from the Websocket and copies the data to the specified buffer
         /// </summary>
         /// <param name="buffer">The buffer to store read data</param>
         /// <returns></returns>
         /// <exception cref="OperationCanceledException"></exception>
-        public ValueTask<ValueWebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer)
-        {
-            //Begin receive operation only with the internal token
-            return WsHandle!.ReceiveAsync(buffer, CancellationToken.None);
-        }
-        
+        public ValueTask<ValueWebSocketReceiveResult> ReceiveAsync(Memory<byte> buffer) => WsHandle!.ReceiveAsync(buffer, CancellationToken.None);
+
         /// <summary>
         /// Asynchronously sends the specified buffer to the client of the specified type
         /// </summary>
@@ -160,12 +150,8 @@ namespace VNLib.Plugins.Essentials
         /// <param name="endOfMessage">A value that indicates this message is the final message of the transaction</param>
         /// <returns></returns>
         /// <exception cref="OperationCanceledException"></exception>
-        public Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType type, bool endOfMessage)
-        {
-            //Create a send request with 
-            return WsHandle!.SendAsync(buffer, type, endOfMessage, CancellationToken.None);
-        }
-     
+        public Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType type, bool endOfMessage) => WsHandle!.SendAsync(buffer, type, endOfMessage, CancellationToken.None);
+
 
         /// <summary>
         /// Asynchronously sends the specified buffer to the client of the specified type
@@ -189,11 +175,7 @@ namespace VNLib.Plugins.Essentials
         /// <param name="flags">Websocket message flags</param>
         /// <returns></returns>
         /// <exception cref="OperationCanceledException"></exception>
-        public ValueTask SendAsync(ReadOnlyMemory<byte> buffer, WebSocketMessageType type, WebSocketMessageFlags flags)
-        {
-            //Create a send request with 
-            return WsHandle!.SendAsync(buffer, type, flags, CancellationToken.None);
-        }
+        public ValueTask SendAsync(ReadOnlyMemory<byte> buffer, WebSocketMessageType type, WebSocketMessageFlags flags) => WsHandle!.SendAsync(buffer, type, flags, CancellationToken.None);
 
 
         /// <summary>
@@ -202,11 +184,8 @@ namespace VNLib.Plugins.Essentials
         /// <param name="status">Set the close status</param>
         /// <param name="reason">Set the close reason</param>
         /// <exception cref="ObjectDisposedException"></exception>
-        public Task CloseSocketAsync(WebSocketCloseStatus status, string reason)
-        {
-            return WsHandle!.CloseAsync(status, reason, CancellationToken.None);
-        }
-        
+        public Task CloseSocketAsync(WebSocketCloseStatus status, string reason) => WsHandle!.CloseAsync(status, reason, CancellationToken.None);
+
         /// <summary>
         /// 
         /// </summary>

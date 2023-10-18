@@ -28,6 +28,8 @@ using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 
+#nullable disable
+
 namespace VNLib.Plugins.Essentials.Sessions
 {
     /// <summary>

@@ -8,6 +8,7 @@
     <EnableNETAnalyzers>True</EnableNETAnalyzers>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -17,8 +18,8 @@
     <Product>VNLib Essentials Plugin Library</Product>
     <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
     <Description>Provides essential web, sessions, users abstractions for building extensable web applications with satefull sessions, user based intraction with login and account security extensions.</Description>
-    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <PackageTags>VNLib, Plugins, VNLib.Plugins.Essentials, Essentials, Essential Plugins, HTTP Essentials, OAuth2</PackageTags>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.Essentials</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>

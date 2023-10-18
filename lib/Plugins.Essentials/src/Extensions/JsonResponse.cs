@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,16 +23,14 @@
 */
 
 using System;
-using System.Buffers;
 using System.IO;
+using System.Buffers;
 
 using VNLib.Net.Http;
-using VNLib.Utils.Extensions;
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
+using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
-
-#nullable enable
 
 namespace VNLib.Plugins.Essentials.Extensions
 {
@@ -99,6 +97,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             _written += written;
             Remaining -= written;
         }
+
         ///<inheritdoc/>
         void IMemoryResponseReader.Close()
         {
@@ -110,10 +109,6 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
 
         ///<inheritdoc/>
-        ReadOnlyMemory<byte> IMemoryResponseReader.GetMemory()
-        {
-            //Get memory from the memory owner and offet the slice,
-            return _memoryOwner.Memory.Slice(_written, Remaining);
-        }
+        ReadOnlyMemory<byte> IMemoryResponseReader.GetMemory() => _memoryOwner.Memory.Slice(_written, Remaining);
     }
 }

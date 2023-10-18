@@ -74,28 +74,12 @@ namespace VNLib.Net.Http.Core
         /// and initial data buffer
         /// </summary>
         /// <param name="contentLength">The number of bytes to allow being read from the transport or initial buffer</param>
-        /// <param name="initial">Entity body data captured on initial read</param>
-        internal void Prepare(long contentLength, in InitDataBuffer initial)
+        internal ref InitDataBuffer? Prepare(long contentLength)
         {
-            ContentLength = contentLength;
-            _initalData = initial;
-            
-            //Cache transport
+            ContentLength = contentLength;            
+            //Cache transport stream
             InputStream = ContextInfo.GetTransport();
-        }
-
-        /// <summary>
-        /// Prepares the input stream for reading from the transport with the specified content length
-        /// amount of data
-        /// </summary>
-        /// <param name="contentLength">The number of bytes to allow being read from the transport</param>
-        internal void Prepare(long contentLength)
-        {
-            ContentLength = contentLength;
-            _initalData = null;
-
-            //Cache transport
-            InputStream = ContextInfo.GetTransport();
+            return ref _initalData;
         }
 
         public override void Close() => throw new NotSupportedException("The HTTP input stream should never be closed!");

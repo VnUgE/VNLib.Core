@@ -44,8 +44,6 @@ using static VNLib.Plugins.Essentials.Statics;
 
 #pragma warning disable CA1051 // Do not declare visible instance fields
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Sessions
 {   
     /// <summary>

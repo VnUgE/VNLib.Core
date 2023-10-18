@@ -65,7 +65,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             _servers = servers;
             _serviceDomain = serviceDomain;
-            _plugins = new(serviceDomain, plugins);
+            _plugins = new(plugins);
             WaitForAllTask = Task.CompletedTask;
         }
 

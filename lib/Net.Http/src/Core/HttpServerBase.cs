@@ -79,6 +79,7 @@ namespace VNLib.Net.Http
         private readonly ITransportProvider Transport;
         private readonly IReadOnlyDictionary<string, IWebRoot> ServerRoots;
         private readonly IWebRoot? _wildcardRoot;
+        private readonly HttpConfig _config;
 
         #region caches
         /// <summary>
@@ -98,7 +99,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// The <see cref="HttpConfig"/> for the current server
         /// </summary>
-        public HttpConfig Config { get; }
+        public ref readonly HttpConfig Config => ref _config;
 
         /// <summary>
         /// Gets a value indicating whether the server is listening for connections
@@ -129,11 +130,11 @@ namespace VNLib.Net.Http
             //Validate the configuration
             ValidateConfig(in config);
 
-            Config = config;
+            _config = config;
             //Configure roots and their directories
             ServerRoots = sites.ToDictionary(static r => r.Hostname, static tv => tv, StringComparer.OrdinalIgnoreCase);
             //Compile and store the timeout keepalive header
-            KeepAliveTimeoutHeaderValue = $"timeout={(int)Config.ConnectionKeepAlive.TotalSeconds}";
+            KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
             //Create a new context store
             ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this));
             //Setup config copy with the internal http pool
@@ -303,7 +304,7 @@ namespace VNLib.Net.Http
             //Set running flag
             Running = true;
             
-            Config.ServerLog.Information("HTTP server {hc} listening for connections", GetHashCode());
+            _config.ServerLog.Information("HTTP server {hc} listening for connections", GetHashCode());
 
             //Listen for connections until canceled
             while (true)
@@ -323,15 +324,15 @@ namespace VNLib.Net.Http
                 }
                 catch(AuthenticationException ae) when(ae.HResult == INVALID_FRAME_HRESULT)
                 {
-                    Config.ServerLog.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
+                    _config.ServerLog.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
                 }
                 catch (AuthenticationException ae)
                 {
-                    Config.ServerLog.Error(ae);
+                    _config.ServerLog.Error(ae);
                 }
                 catch (Exception ex)
                 {
-                    Config.ServerLog.Error(ex);
+                    _config.ServerLog.Error(ex);
                 }
             }
 
@@ -340,7 +341,7 @@ namespace VNLib.Net.Http
 
             //Clear running flag
             Running = false;
-            Config.ServerLog.Information("HTTP server {hc} exiting", GetHashCode());
+            _config.ServerLog.Information("HTTP server {hc} exiting", GetHashCode());
         }
        
 
@@ -365,13 +366,13 @@ namespace VNLib.Net.Http
                 case SocketError.ConnectionAborted:
                     break;
                 case SocketError.ConnectionReset:
-                    Config.ServerLog.Debug("Connecion reset by client");
+                    _config.ServerLog.Debug("Connecion reset by client");
                     break;
                 case SocketError.TimedOut:
-                    Config.ServerLog.Debug("Socket operation timed out");
+                    _config.ServerLog.Debug("Socket operation timed out");
                     break;
                 default:
-                    Config.ServerLog.Information(se);
+                    _config.ServerLog.Information(se);
                     break;
             }
         }

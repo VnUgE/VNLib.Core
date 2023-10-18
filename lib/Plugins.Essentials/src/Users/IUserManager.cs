@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -29,8 +29,6 @@ using System.Threading.Tasks;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 
-#nullable enable
-
 namespace VNLib.Plugins.Essentials.Users
 {
     /// <summary>
@@ -46,6 +44,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
         Task<IUser?> GetUserFromIDAsync(string userId, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Attempts to get a user object without their password from the database asynchronously
         /// </summary>
@@ -54,6 +53,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
         Task<IUser?> GetUserFromEmailAsync(string emailAddress, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Attempts to get a user object with their password from the database on the current thread
         /// </summary>
@@ -62,6 +62,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
         Task<IUser?> GetUserAndPassFromIDAsync(string userid, CancellationToken cancellation = default);
+
         /// <summary>
         /// Attempts to get a user object with their password from the database asynchronously
         /// </summary>
@@ -70,6 +71,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
         Task<IUser?> GetUserAndPassFromEmailAsync(string emailAddress, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Creates a new user in the current user's table and if successful returns the new user object (without password)
         /// </summary>
@@ -83,6 +85,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="UserCreationFailedException"></exception>
         Task<IUser> CreateUserAsync(string userid, string emailAddress, ulong privileges, PrivateString passHash, CancellationToken cancellation = default);
+
         /// <summary>
         /// Updates a password associated with the specified user. If the update fails, the transaction
         /// is rolled back.
