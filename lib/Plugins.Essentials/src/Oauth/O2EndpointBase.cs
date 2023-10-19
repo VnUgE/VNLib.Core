@@ -43,10 +43,6 @@ namespace VNLib.Plugins.Essentials.Oauth
     /// </summary>
     public abstract class O2EndpointBase : ResourceEndpointBase
     {
-        //Disable browser only protection
-        ///<inheritdoc/>
-        protected override ProtectionSettings EndpointProtectionSettings { get; } = new() { DisableBrowsersOnly = true };
-
         ///<inheritdoc/>
         public override async ValueTask<VfReturnType> Process(HttpEntity entity)
         {

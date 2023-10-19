@@ -260,7 +260,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 //Add all services
                 plugin.OnPluginServiceEvent<ISessionProvider>(Instance.SetSessionProvider);
                 plugin.OnPluginServiceEvent<IPageRouter>(Instance.SetPageRouter);
-                plugin.OnPluginServiceEvent<IAccountSecurityProvider>(p => Instance.SetAccountSecProvider(p));
+                plugin.OnPluginServiceEvent<IAccountSecurityProvider>(Instance.SetAccountSecProvider);
 
                 //Add all middleware to the chain
                 plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => Array.ForEach(p, mw => Instance.MiddlewareChain.AddLast(mw)));

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,8 +23,8 @@
 */
 
 using System;
-using System.Runtime.CompilerServices;
 using System.Security.Authentication;
+using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
 using VNLib.Utils;
@@ -41,8 +41,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         public const string REFER_ENTRY = "__.rfr";
         public const string SECURE_ENTRY = "__.sec";
         public const string CROSS_ORIGIN = "__.cor";
-        public const string LOCAL_TIME_ENTRY = "__.lot";
-        public const string LOGIN_TOKEN_ENTRY = "__.lte";
+        public const string LOCAL_TIME_ENTRY = "__.lot";     
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetUserAgent(this ISession session) => session[USER_AGENT_ENTRY];
@@ -61,10 +60,8 @@ namespace VNLib.Plugins.Essentials.Sessions
         public static void SetRefer(this ISession session, string refer) => session[REFER_ENTRY] = refer;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SslProtocols GetSecurityProtocol(this ISession session)
-        {
-            return (SslProtocols)session.GetValueType<string, int>(SECURE_ENTRY);
-        }
+        public static SslProtocols GetSecurityProtocol(this ISession session) => (SslProtocols)session.GetValueType<string, int>(SECURE_ENTRY);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void SetSecurityProtocol(this ISession session, SslProtocols protocol) => session[SECURE_ENTRY] = VnEncoding.ToBase32String((int)protocol);
 
@@ -72,11 +69,6 @@ namespace VNLib.Plugins.Essentials.Sessions
         public static bool IsCrossOrigin(this ISession session) => session[CROSS_ORIGIN] == bool.TrueString;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void IsCrossOrigin(this ISession session, bool crossOrign) => session[CROSS_ORIGIN] = crossOrign.ToString();
-       
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string GetLoginToken(this ISession session) => session[LOGIN_TOKEN_ENTRY];
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetLoginToken(this ISession session, string loginToken) => session[LOGIN_TOKEN_ENTRY] = loginToken;
 
         /// <summary>
         /// Initializes a "new" session with initial varaibles from the current connection

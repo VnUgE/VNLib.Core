@@ -50,13 +50,6 @@ namespace VNLib.Plugins.Essentials.Endpoints
         public readonly bool DisableRefererMatch { get; init; }
 
         /// <summary>
-        /// Requires all connections to have pass an IsBrowser() check
-        /// (requires a valid user-agent header that contains Mozilla in
-        /// the string)
-        /// </summary>
-        public readonly bool DisableBrowsersOnly { get; init; } 
-
-        /// <summary>
         /// Disables response caching, by setting the cache control headers appropriatly.
         /// Default is disabled
         /// </summary>

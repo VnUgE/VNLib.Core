@@ -210,9 +210,10 @@ namespace VNLib.Hashing
         }
 
         /// <summary>
-        /// Fill the buffer with non-zero bytes 
+        /// Fill the buffer with cryptographically secure non-zero bytes 
         /// </summary>
         /// <param name="data">Buffer to fill</param>
+        [MethodImpl(MethodImplOptions.NoOptimization)]
         public static void GetRandomBytes(Span<byte> data) => RandomNumberGenerator.Fill(data);
     }
 }

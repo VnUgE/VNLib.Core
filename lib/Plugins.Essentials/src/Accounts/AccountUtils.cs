@@ -387,7 +387,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             IClientAuthorization auth = GenerateAuthorization(entity, secInfo, user);
 
             //Set client token
-            response.Token = auth.SecurityToken.ClientToken;
+            response.Token = auth.GetClientAuthDataString();
         }
 
         /// <summary>
@@ -421,7 +421,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             IClientAuthorization auth = prov.ReAuthorizeClient(entity);
 
             //Store the client token in response message
-            response.Token = auth.SecurityToken.ClientToken;
+            response.Token = auth.GetClientAuthDataString();
 
             //Regen session id also
             entity.Session.RegenID();

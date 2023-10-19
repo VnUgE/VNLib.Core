@@ -129,14 +129,8 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="constructor">The constructor function invoked to create new instances of the <see cref="IReusable"/> type</param>
         /// <param name="quota">The maximum number of elements that will be cached</param>
         /// <returns></returns>
-        public static ObjectRental<T> CreateReusable<T>(Func<T> constructor, int quota = 0) where T : class, IReusable
-        {
-            //Rent/return callbacks
-            static void Rent(T item) => item.Prepare();
-            static void Return(T item) => item.Release();
-
-            return Create(constructor, Rent, Return, quota);
-        }
+        public static ObjectRental<T> CreateReusable<T>(Func<T> constructor, int quota = 0) where T : class, IReusable 
+            => Create(constructor, StaticOnReusablePrepare, StaticOnReusableRelease, quota);
 
         /// <summary>
         /// Creates a new <see cref="ThreadLocalObjectStorage{T}"/> instance with a parameterless constructor
@@ -155,11 +149,11 @@ namespace VNLib.Utils.Memory.Caching
         /// <typeparam name="T">The <see cref="IReusable"/> type</typeparam>
         /// <param name="constructor">The constructor function invoked to create new instances of the <see cref="IReusable"/> type</param>
         /// <returns></returns>
-        public static ThreadLocalObjectStorage<T> CreateThreadLocalReusable<T>(Func<T> constructor) where T : class, IReusable
-        {
-            static void Rent(T item) => item.Prepare();
-            static void Return(T item) => item.Release();
-            return new ThreadLocalObjectStorage<T>(constructor, Rent, Return);
-        }
+        public static ThreadLocalObjectStorage<T> CreateThreadLocalReusable<T>(Func<T> constructor) where T : class, IReusable 
+            => new(constructor, StaticOnReusablePrepare, StaticOnReusableRelease);
+
+        private static void StaticOnReusablePrepare<T>(T item) where T: IReusable => item.Prepare();
+
+        private static void StaticOnReusableRelease<T>(T item) where T : IReusable => item.Release();
     }
 }

@@ -255,7 +255,7 @@ namespace VNLib.Plugins.Essentials
                                 goto RespondAndExit;
                             }
                         }
-                    }              
+                    }
 
                     //If no virtual processor handled the ws request, deny it
                     if (entity.Server.IsWebSocketRequest)
@@ -548,20 +548,16 @@ namespace VNLib.Plugins.Essentials
         /// <param name="router">A reference to the current <see cref="IPageRouter"/> instance if cofigured</param>
         /// <param name="entity">The http entity to process</param>
         /// <returns>The results to return to the file processor, this method must return an argument</returns>
-        protected virtual async ValueTask<FileProcessArgs> RouteFileAsync(IPageRouter? router, HttpEntity entity)
+        protected virtual ValueTask<FileProcessArgs> RouteFileAsync(IPageRouter? router, HttpEntity entity)
         {
             if(router != null)
             {
-                //Get a file routine
-                FileProcessArgs routine = await router.RouteAsync(entity);
-                //Call post processor method
-                PostProcessEntity(entity, ref routine);
-                //Return the routine
-                return routine;
+                //Route file async from the router reference
+                return router.RouteAsync(entity);
             }
             else
             {
-                return FileProcessArgs.Continue;
+                return ValueTask.FromResult(FileProcessArgs.Continue);
             }
         }      
 

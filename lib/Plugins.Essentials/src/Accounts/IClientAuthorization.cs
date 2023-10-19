@@ -31,13 +31,17 @@ namespace VNLib.Plugins.Essentials.Accounts
     public interface IClientAuthorization
     {
         /// <summary>
-        /// A security token that may be set as a cookie or used
+        /// Gets the client specific authorization data as a string, may be serialized
+        /// and will be sent to the client.
         /// </summary>
-        string? LoginSecurityString { get; }
+        /// <returns>A string representation of the client's authorization data</returns>
+        string GetClientAuthDataString();
 
         /// <summary>
-        /// The clients security token information
+        /// Gets the client specific authorization data raw object and may be serialized
+        /// as needed.
         /// </summary>
-        ClientSecurityToken SecurityToken { get; }
+        /// <returns>The authorization object to send to the client</returns>
+        object GetClientAuthData();
     }
 }

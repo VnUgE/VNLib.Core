@@ -149,18 +149,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.Created;
-        }   
-        
-        /// <summary>
-        /// Gets or sets the session's login hash, if set to a non-empty/null value, will trigger an upgrade on close
-        /// </summary>
-        public readonly string LoginHash
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.GetLoginToken();
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => UserSession.SetLoginToken(value);
-        }
+        }  
 
         /// <summary>
         /// Gets or sets the session's login token, if set to a non-empty/null value, will trigger an upgrade on close

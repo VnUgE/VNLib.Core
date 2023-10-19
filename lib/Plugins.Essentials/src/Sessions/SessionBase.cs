@@ -28,8 +28,6 @@ using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 
-#nullable disable
-
 namespace VNLib.Plugins.Essentials.Sessions
 {
     /// <summary>
@@ -73,6 +71,8 @@ namespace VNLib.Plugins.Essentials.Sessions
         ///<inheritdoc/>
         public abstract DateTimeOffset Created { get; set; }
 
+#nullable disable
+
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
         public string this[string index]
@@ -80,13 +80,14 @@ namespace VNLib.Plugins.Essentials.Sessions
             get => IndexerGet(index);
             set => IndexerSet(index, value);
         }
+
         ///<inheritdoc/>
         public virtual IPAddress UserIP
         {
             get
             {
                 //try to parse the IP address, otherwise return null
-                _ = IPAddress.TryParse(this[IP_ADDRESS_ENTRY], out IPAddress ip);
+                _ = IPAddress.TryParse(this[IP_ADDRESS_ENTRY], out IPAddress? ip);
                 return ip;
             }
             protected set
@@ -138,6 +139,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => this[TOKEN_ENTRY] = value;
         }
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual void Invalidate(bool all = false)

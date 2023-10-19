@@ -332,7 +332,7 @@ namespace VNLib.Utils.IO
             _position++;
 
             //Return value
-            return ptr[0];
+            return *ptr;
         }
 
         /*

@@ -150,12 +150,6 @@ namespace VNLib.Plugins.Essentials.Endpoints
                 return false;
             }
 
-            //Enforce browser check
-            if (!EndpointProtectionSettings.DisableBrowsersOnly && !entity.Server.IsBrowser())
-            {
-                return false;
-            }
-
             //Enforce refer check
             if (!EndpointProtectionSettings.DisableRefererMatch && entity.Server.Referer != null && !entity.Server.RefererMatch())
             {
