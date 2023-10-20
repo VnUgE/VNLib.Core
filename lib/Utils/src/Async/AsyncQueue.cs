@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -30,11 +30,12 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace VNLib.Utils.Async
 {
+
     /// <summary>
     /// Provides a <see cref="Channel{T}"/> based asynchronous queue
     /// </summary>
     /// <typeparam name="T">The event object type</typeparam>
-    public class AsyncQueue<T>
+    public class AsyncQueue<T> : IAsyncQueue<T>
     {
         private readonly Channel<T> _channel;
 
@@ -45,12 +46,13 @@ namespace VNLib.Utils.Async
         /// </summary>
         /// <param name="capacity">The maxium number of items to allow in the queue</param>
         public AsyncQueue(int capacity):this(false, false, capacity)
-        {}
+        { }
+
         /// <summary>
         /// Initalizes a new multi-threaded unbound channel queue
         /// </summary>
         public AsyncQueue():this(false, false)
-        {}
+        { }
 
         /// <summary>
         /// Initalizes a new queue that allows specifying concurrency requirements 
@@ -105,39 +107,22 @@ namespace VNLib.Utils.Async
             _channel = Channel.CreateBounded<T>(options);
         }
 
-        /// <summary>
-        /// Attemts to enqeue an item if the queue has the capacity
-        /// </summary>
-        /// <param name="item">The item to eqneue</param>
-        /// <returns>True if the queue can accept another item, false otherwise</returns>
+        /// <inheritdoc/>
         public bool TryEnque(T item) => _channel.Writer.TryWrite(item);
-        /// <summary>
-        /// Enqueues an item to the end of the queue and notifies a waiter that an item was enqueued
-        /// </summary>
-        /// <param name="item">The item to enqueue</param>
-        /// <param name="cancellationToken"></param>
+
+        /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public ValueTask EnqueueAsync(T item, CancellationToken cancellationToken = default) => _channel.Writer.WriteAsync(item, cancellationToken);
-        /// <summary>
-        /// Asynchronously waits for an item to be Enqueued to the end of the queue.
-        /// </summary>
-        /// <returns>The item at the begining of the queue</returns>
+
+        /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public ValueTask<T> DequeueAsync(CancellationToken cancellationToken = default) => _channel.Reader.ReadAsync(cancellationToken);
-        /// <summary>
-        /// Removes the object at the beginning of the queue and stores it to the result parameter. Without waiting for a change 
-        /// event. 
-        /// </summary>
-        /// <param name="result">The item that was at the begining of the queue</param>
-        /// <returns>True if the queue could be read synchronously, false if the lock could not be entered, or the queue contains no items</returns>
+
+        /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public bool TryDequeue([MaybeNullWhen(false)] out T result) => _channel.Reader.TryRead(out result);
-        /// <summary>
-        /// Peeks the object at the beginning of the queue and stores it to the result parameter. Without waiting for a change 
-        /// event. 
-        /// </summary>
-        /// <param name="result">The item that was at the begining of the queue</param>
-        /// <returns>True if the queue could be read synchronously, false if the lock could not be entered, or the queue contains no items</returns>
+
+        /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public bool TryPeek([MaybeNullWhen(false)] out T result) => _channel.Reader.TryPeek(out result);
     }

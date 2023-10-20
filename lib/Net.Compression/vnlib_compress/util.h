@@ -41,8 +41,8 @@
 #define ERR_INVALID_PTR -1
 #define ERR_OUT_OF_MEMORY -2
 
-#define TRUE 1;
-#define FALSE 0;
+#define TRUE 1
+#define FALSE 0
 
 #ifndef NULL
 #define NULL 0
@@ -52,11 +52,54 @@
 #define _In_
 #endif
 
+#if defined(VNLIB_CUSTOM_MALLOC_ENABLE)
+
+/*
+* Add rpmalloc overrides
+*/
+
+#include <NativeHeapApi.h>
+
+/*
+* Add debug runtime assertions
+*/
+#ifdef DEBUG
+  #define NDEBUG
+  #include <assert.h>
+#else
+  #define assert(x)
+#endif
+
+/*
+* Add overrides for malloc, calloc, and free that use
+* the nativeheap api to allocate memory
+*/
+
+static inline void* vnmalloc(size_t num, size_t size)
+{
+	return heapAlloc(heapGetSharedHeapHandle(), num, size, FALSE);
+}
+
+static inline void* vncalloc(size_t num, size_t size)
+{
+	return heapAlloc(heapGetSharedHeapHandle(), num , size, TRUE);
+}
+
+static inline void vnfree(void* ptr)
+{
+	ERRNO result;
+	result = heapFree(heapGetSharedHeapHandle(), ptr);
+
+	//track failed free results
+	assert(result > 0);
+}
+
+#else
 
 /*
 * Stub method for malloc. All calls to vnmalloc should be freed with vnfree.
 */
-#define vnmalloc(size) malloc(size)
+#define vnmalloc(num, size) malloc(num * size)
 
 /*
 * Stub method for free
@@ -68,5 +111,6 @@
 */
 #define vncalloc(num, size) calloc(num, size)
 
+#endif
 
 #endif /* !UTIL_H_ */

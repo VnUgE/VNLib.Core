@@ -26,14 +26,18 @@ using System;
 using System.IO;
 using System.Buffers;
 using System.Threading;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Runtime.Versioning;
+using System.IO.IsolatedStorage;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
-
 using static VNLib.Utils.Memory.MemoryUtil;
+
+//Disable configure await warning
+#pragma warning disable CA2007
 
 namespace VNLib.Utils.Extensions
 {
@@ -103,6 +107,7 @@ namespace VNLib.Utils.Extensions
             //Wait for copy to complete
             await CopyToAsync(source, dest, buffer.Memory, token);
         }
+
         /// <summary>
         /// Provides an async wrapper for copying data from the current stream to another with a 
         /// buffer from the <paramref name="heap"/>
@@ -186,6 +191,7 @@ namespace VNLib.Utils.Extensions
                 dest.Write(buffer.Span[..read]);
             } while (true);
         }
+
         /// <summary>
         /// Copies data from one stream to another, using self managed buffers. May allocate up to 2MB.
         /// </summary>
@@ -439,6 +445,76 @@ namespace VNLib.Utils.Extensions
                 string path = Path.Combine(OffsetPath, filePath);
                 return Parent.WriteFileAsync(path, data, contentType, cancellation);
             }
+        }
+
+        /// <summary>
+        /// The maximum buffer size to use when copying files
+        /// </summary>
+        public const long MaxCopyBufferSize = 0x10000; //64k
+
+        /// <summary>
+        /// The minimum buffer size to use when copying files
+        /// </summary>
+        public const long MinCopyBufferSize = 0x1000; //4k
+
+        /// <summary>
+        /// Creates a new <see cref="ISimpleFilesystem"/> wrapper for the given <see cref="IsolatedStorageDirectory"/>
+        /// <para>
+        /// Buffers are clamped to <see cref="MaxCopyBufferSize"/> and <see cref="MinCopyBufferSize"/>
+        /// </para>
+        /// </summary>
+        /// <param name="dir"></param>
+        /// <returns>A <see cref="ISimpleFilesystem"/> wrapper around the <see cref="IsolatedStorageDirectory"/></returns>
+        public static ISimpleFilesystem CreateSimpleFs(this IsolatedStorageDirectory dir) => new IsolatedStorageSimpleFs(dir);
+
+        private sealed record class IsolatedStorageSimpleFs(IsolatedStorageDirectory Directory) : ISimpleFilesystem
+        {
+            ///<inheritdoc/>
+            public string GetExternalFilePath(string filePath) => Directory.GetFullFilePath(filePath);
+
+            ///<inheritdoc/>
+            public Task DeleteFileAsync(string filePath, CancellationToken cancellation)
+            {
+                Directory.DeleteFile(filePath);
+                return Task.CompletedTask;
+            }
+
+            ///<inheritdoc/>
+            public async Task WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation)
+            {
+                //For when I forget and increase the buffer size
+                Debug.Assert(MaxCopyBufferSize < int.MaxValue, "MaxCopyBufferSize is too large to be cast to an int");
+
+                //Try to calculate a buffer size
+                long bufferSize = data.CanSeek ? Math.Clamp(data.Length, MinCopyBufferSize, MaxCopyBufferSize) : MinCopyBufferSize;
+
+                //Open the local file
+                await using IsolatedStorageFileStream output = Directory.OpenFile(filePath, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+
+                //Copy file
+                await CopyToAsync(data, output, (int)bufferSize, Shared, cancellation);
+
+                //All done
+            }
+
+            ///<inheritdoc/>
+            public async Task<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation)
+            {
+                //For when I forget and increase the buffer size
+                Debug.Assert(MaxCopyBufferSize < int.MaxValue, "MaxCopyBufferSize is too large to be cast to an int");
+
+                //Open the local file
+                await using IsolatedStorageFileStream local = Directory.OpenFile(filePath, FileMode.Open, FileAccess.Read);
+
+                //Try to calculate a buffer size
+                long bufferSize = Math.Clamp(local.Length, MinCopyBufferSize, MaxCopyBufferSize);
+
+                //Copy file
+                await CopyToAsync(local, output, (int)bufferSize, Shared, cancellation);
+
+                return local.Length;
+            }
+
         }
     }
 }

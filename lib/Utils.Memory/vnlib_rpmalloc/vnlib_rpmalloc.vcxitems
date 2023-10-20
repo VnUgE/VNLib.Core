@@ -19,9 +19,6 @@
     <Text Include="$(MSBuildThisFileDirectory)license.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)vnlib_rpmalloc.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)vnlib_rpmalloc.c" />
   </ItemGroup>
   <ItemGroup>

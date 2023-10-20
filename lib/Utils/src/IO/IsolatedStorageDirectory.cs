@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -35,18 +35,23 @@ namespace VNLib.Utils.IO
     {
         private readonly string DirectoryPath;
         private readonly IsolatedStorageFile Storage;
+
         /// <summary>
         /// Creates a new <see cref="IsolatedStorageDirectory"/> within the specified file using the directory name.
         /// </summary>
         /// <param name="storage">A configured and open <see cref="IsolatedStorageFile"/></param>
         /// <param name="dir">The directory name to open or create within the store</param>
+        /// <exception cref="ArgumentException"></exception>
         public IsolatedStorageDirectory(IsolatedStorageFile storage, string dir)
         {
-            this.Storage = storage;
-            this.DirectoryPath = dir;
+            Storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            DirectoryPath = dir ?? throw new ArgumentNullException(nameof(dir));
+
             //If the directory doesnt exist, create it
-            if (!this.Storage.DirectoryExists(dir))
-                this.Storage.CreateDirectory(dir);
+            if (!Storage.DirectoryExists(dir))
+            {
+                Storage.CreateDirectory(dir);
+            }
         }
       
         private IsolatedStorageDirectory(IsolatedStorageDirectory parent, string dirName)
@@ -54,9 +59,9 @@ namespace VNLib.Utils.IO
             //Store ref to parent dir
             Parent = parent;
             //Referrence store
-            this.Storage = parent.Storage;
+            Storage = parent.Storage;
             //Add the name of this dir to the end of the specified dir path
-            this.DirectoryPath = Path.Combine(parent.DirectoryPath, dirName);
+            DirectoryPath = Path.Combine(parent.DirectoryPath, dirName);
         }
 
         /// <summary>
@@ -67,19 +72,15 @@ namespace VNLib.Utils.IO
         /// <exception cref="IsolatedStorageException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="DirectoryNotFoundException"></exception>
-        public IsolatedStorageFileStream CreateFile(string fileName)
-        {
-            return this.Storage.CreateFile(Path.Combine(DirectoryPath, fileName));
-        }
+        public IsolatedStorageFileStream CreateFile(string fileName) => Storage.CreateFile(GetFullFilePath(fileName));
+
         /// <summary>
         /// Removes a file from the current directory 
         /// </summary>
         /// <param name="fileName">The path of the file to remove</param>
         /// <exception cref="IsolatedStorageException"></exception>
-        public void DeleteFile(string fileName)
-        {
-            this.Storage.DeleteFile(Path.Combine(this.DirectoryPath, fileName));
-        }
+        public void DeleteFile(string fileName) => Storage.DeleteFile(GetFullFilePath(fileName));
+
         /// <summary>
         /// Opens a file that exists within the current directory
         /// </summary>
@@ -87,10 +88,9 @@ namespace VNLib.Utils.IO
         /// <param name="mode">File mode</param>
         /// <param name="access">File access</param>
         /// <returns>The open <see cref="IsolatedStorageFileStream"/> from the current directory</returns>
-        public IsolatedStorageFileStream OpenFile(string fileName, FileMode mode, FileAccess access)
-        {
-            return this.Storage.OpenFile(Path.Combine(DirectoryPath, fileName), mode, access);
-        }
+        public IsolatedStorageFileStream OpenFile(string fileName, FileMode mode, FileAccess access) 
+            => Storage.OpenFile(GetFullFilePath(fileName), mode, access);
+
         /// <summary>
         /// Opens a file that exists within the current directory
         /// </summary>
@@ -99,10 +99,8 @@ namespace VNLib.Utils.IO
         /// <param name="access">File access</param>
         /// <param name="share">The file shareing mode</param>
         /// <returns>The open <see cref="IsolatedStorageFileStream"/> from the current directory</returns>
-        public IsolatedStorageFileStream OpenFile(string fileName, FileMode mode, FileAccess access, FileShare share)
-        {
-            return this.Storage.OpenFile(Path.Combine(DirectoryPath, fileName), mode, access, share);
-        }
+        public IsolatedStorageFileStream OpenFile(string fileName, FileMode mode, FileAccess access, FileShare share) 
+            => Storage.OpenFile(GetFullFilePath(fileName), mode, access, share);
 
         /// <summary>
         /// Determiens if the specified file path refers to an existing file within the directory
@@ -113,25 +111,22 @@ namespace VNLib.Utils.IO
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="IsolatedStorageException"></exception>
         /// <exception cref="InvalidOperationException"></exception> 
-        public bool FileExists(string fileName)
-        {
-            return this.Storage.FileExists(Path.Combine(this.DirectoryPath, fileName));
-        }
+        public bool FileExists(string fileName) => Storage.FileExists(GetFullFilePath(fileName));
 
         /// <summary>
         /// Removes the directory and its contents from the store
         /// </summary>
-        public override void Remove()
-        {
-            Storage.DeleteDirectory(this.DirectoryPath);
-        }
+        public override void Remove() => Storage.DeleteDirectory(DirectoryPath);
 
         ///<inheritdoc/>
         public override long AvailableFreeSpace => Storage.AvailableFreeSpace;
+
         ///<inheritdoc/>
         public override long Quota => Storage.Quota;
+
         ///<inheritdoc/>
         public override long UsedSize => Storage.UsedSize;
+
         ///<inheritdoc/>
         public override bool IncreaseQuotaTo(long newQuotaSize) => Storage.IncreaseQuotaTo(newQuotaSize);
 
@@ -139,9 +134,7 @@ namespace VNLib.Utils.IO
         /// The parent <see cref="IsolatedStorageDirectory"/> this directory is a child within. null if there are no parent directories 
         /// above this dir
         /// </summary>
-
         public IsolatedStorageDirectory? Parent { get; }
-#nullable disable
 
         /// <summary>
         /// Creates a child directory within the current directory
@@ -150,9 +143,23 @@ namespace VNLib.Utils.IO
         /// <returns>A new <see cref="IsolatedStorageDirectory"/> for which <see cref="IsolatedStorageFileStream"/>s can be opened/created</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        public IsolatedStorageDirectory CreateChildDirectory(string directoryName)
+        public IsolatedStorageDirectory CreateChildDirectory(string directoryName) => new (this, directoryName);
+
+        /// <summary>
+        /// Gets the IsolatedStorage file path localized to the current directory, including th path
+        /// of any parent directories. NOTE: it's not possible to get the full filesystem path due to 
+        /// isolated storage security restrictions.
+        /// </summary>
+        /// <param name="filePath">
+        /// The relative path to the file within the directory to recover the file path from
+        /// </param>
+        /// <returns>The localized relative file path within the current directory</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public string GetFullFilePath(string filePath)
         {
-            return new IsolatedStorageDirectory(this, directoryName);
+            return Path.IsPathRooted(filePath)
+                ? throw new ArgumentException("The file path may not be fully rooted, it must be a relative", nameof(filePath))
+                : Path.Combine(DirectoryPath, filePath);
         }
     }
 }

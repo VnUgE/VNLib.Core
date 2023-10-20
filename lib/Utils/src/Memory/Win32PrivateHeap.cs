@@ -110,7 +110,7 @@ namespace VNLib.Utils.Memory
         /// </remarks>
         public static Win32PrivateHeap Create(nuint initialSize, HeapCreation cFlags, nuint maxHeapSize = 0, DWORD flags = HEAP_NO_FLAGS)
         {
-            if (cFlags.HasFlag(HeapCreation.IsSharedHeap))
+            if (cFlags.HasFlag(HeapCreation.Shared))
             {
                 //Clear the synchronization flag because we don't need it for a process heap
                 cFlags &= ~HeapCreation.UseSynchronization;

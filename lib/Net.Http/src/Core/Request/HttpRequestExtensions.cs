@@ -368,7 +368,7 @@ namespace VNLib.Net.Http.Core
                 bytes = info.Encoding.GetBytes(data, buffHandle);
 
                 //Create a new memory stream encapsulating the file data
-                VnMemoryStream vms = VnMemoryStream.ConsumeHandle(buffHandle, bytes, true);
+                VnMemoryStream vms = VnMemoryStream.FromHandle(buffHandle, true, bytes, true);
 
                 //Create new upload wrapper that owns the stream
                 return new(vms, true, ct, filename);

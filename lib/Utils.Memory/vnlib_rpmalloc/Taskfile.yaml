@@ -31,9 +31,12 @@ tasks:
       TAR_FILES: "license.txt readme.txt rpmalloc_license.txt"
     
     cmds:
-      #make bin dir
+    #make bin dir
     - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
       ignore_error: true
+      
+    #pack source code
+    - task: packsource
 
     #get licenses for debug
     - task: licenses
@@ -63,6 +66,14 @@ tasks:
      - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
      #add readme file
      - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
+ 
+  packsource:
+    dir: '{{.USER_WORKING_DIR}}'
+    internal: true
+    cmds:
+    #copy source code to target
+    - powershell -Command "Get-ChildItem -Exclude *.yaml,build,bin | Resolve-Path -Relative | tar --files-from - -cvzf 'bin/src.tgz'"
+
 
   clean:
     ignore_error: true

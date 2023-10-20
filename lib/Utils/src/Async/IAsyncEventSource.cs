@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: HeapCreation.cs 
+* File: IAsyncEventSource.cs 
 *
-* HeapCreation.cs is part of VNLib.Utils which is part of the larger 
+* IAsyncEventSource.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -22,33 +22,24 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
-using System;
-
-namespace VNLib.Utils.Memory
+namespace VNLib.Utils.Async
 {
     /// <summary>
-    /// Internal heap creation flags passed to the heap creation method
-    /// on initialization
+    /// A type that publishes events to asynchronous event queues
     /// </summary>
-    [Flags]
-    public enum HeapCreation : int
+    /// <typeparam name="T">The event item type to publish</typeparam>
+    public interface IAsyncEventSource<T>
     {
         /// <summary>
-        /// Default/no flags
+        /// Subscribes a new queue to publish events to
         /// </summary>
-        None,
+        /// <param name="queue">The queue instance to publish new events to</param>
+        void Subscribe(IAsyncQueue<T> queue);
+
         /// <summary>
-        /// Specifies that all allocations be zeroed before returning to caller
+        /// Unsubscribes a previously subscribed queue from receiving events
         /// </summary>
-        GlobalZero = 0x01,
-        /// <summary>
-        /// Specifies that the heap should use internal locking, aka its not thread safe
-        /// and needs to be made thread safe
-        /// </summary>
-        UseSynchronization = 0x02,
-        /// <summary>
-        /// Specifies that the requested heap will be a shared heap for the process/library
-        /// </summary>
-        Shared = 0x04
+        /// <param name="queue">The queue instance to unregister from events</param>
+        void Unsubscribe(IAsyncQueue<T> queue);
     }
 }

@@ -45,11 +45,11 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// <inheritdoc/>
         /// <para>
-        /// Is always <see cref="HeapCreation.IsSharedHeap"/> as this heap is the default 
+        /// Is always <see cref="HeapCreation.Shared"/> as this heap is the default 
         /// process heap. Meaining memory will be shared across the process
         /// </para>
         /// </summary>
-        public HeapCreation CreationFlags { get; } = HeapCreation.IsSharedHeap;
+        public HeapCreation CreationFlags { get; } = HeapCreation.Shared;
 
         /// <summary>
         /// Initalizes a new global (cross platform) process heap

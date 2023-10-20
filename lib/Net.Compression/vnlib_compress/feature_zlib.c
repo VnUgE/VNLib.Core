@@ -25,10 +25,25 @@
 #include "feature_zlib.h"
 #include <zlib.h>
 
+
 #define validateCompState(state) \
 	if (!state) return ERR_INVALID_PTR; \
 	if (!state->compressor) return ERR_GZ_INVALID_STATE; \
 
+/*
+* Stream memory management functions
+*/
+static void* _gzAllocCallback(void* opaque, uint32_t items, uint32_t size)
+{
+	(void)opaque;
+	return vnmalloc(items, size);
+}
+
+static void _gzFreeCallback(void* opaque, void* address)
+{
+	(void)opaque;
+	vnfree(address);
+}
 
 int DeflateAllocCompressor(CompressorState* state)
 {	
@@ -46,8 +61,8 @@ int DeflateAllocCompressor(CompressorState* state)
 		return ERR_OUT_OF_MEMORY;
 	}
 
-	stream->zalloc = Z_NULL;
-	stream->zfree = Z_NULL;
+	stream->zalloc = &_gzAllocCallback;
+	stream->zfree = &_gzFreeCallback;
 	stream->opaque = Z_NULL;
 
 	/*

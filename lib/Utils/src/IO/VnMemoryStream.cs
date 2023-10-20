@@ -56,12 +56,25 @@ namespace VNLib.Utils.IO
         /// <param name="readOnly">Should the stream be readonly?</param>
         /// <exception cref="ArgumentException"></exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
-        public static VnMemoryStream ConsumeHandle(MemoryHandle<byte> handle, nint length, bool readOnly)
+        public static VnMemoryStream ConsumeHandle(MemoryHandle<byte> handle, nint length, bool readOnly) => FromHandle(handle, true, length, readOnly);
+
+        /// <summary>
+        /// Creates a new <see cref="VnMemoryStream"/> from the supplied memory handle 
+        /// of the initial length. This function also accepts a value that indicates if this stream 
+        /// owns the memory handle, which will cause it to be disposed when the stream is disposed.
+        /// </summary>
+        /// <param name="handle"><see cref="MemoryHandle{T}"/> to consume</param>
+        /// <param name="length">The initial length of the stream</param>
+        /// <param name="readOnly">Should the stream be readonly?</param>
+        /// <param name="ownsHandle">A value that indicates if the current stream owns the memory handle</param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
+        public static VnMemoryStream FromHandle(MemoryHandle<byte> handle, bool ownsHandle, nint length, bool readOnly)
         {
             handle.ThrowIfClosed();
-            return new VnMemoryStream(handle, length, readOnly, true);
+            return new VnMemoryStream(handle, length, readOnly, ownsHandle);
         }
-        
+
         /// <summary>
         /// Converts a writable <see cref="VnMemoryStream"/> to readonly to allow shallow copies
         /// </summary>
@@ -258,6 +271,7 @@ namespace VNLib.Utils.IO
         /// </para>
         /// </summary>
         public override bool CanRead => true;
+
         /// <summary>
         /// <inheritdoc/>
         /// <para>
@@ -265,13 +279,16 @@ namespace VNLib.Utils.IO
         /// </para>
         /// </summary>
         public override bool CanSeek => true;
+
         /// <summary>
         /// True unless the stream is (or has been converted to) a readonly
         /// stream.
         /// </summary>
         public override bool CanWrite => !_isReadonly;
+
         ///<inheritdoc/>
         public override long Length => _length;
+
         ///<inheritdoc/>
         public override bool CanTimeout => false;
        
@@ -281,6 +298,7 @@ namespace VNLib.Utils.IO
             get => _position;
             set => Seek(value, SeekOrigin.Begin);
         }
+
         /// <summary>
         /// Closes the stream and frees the internal allocated memory blocks
         /// </summary>
@@ -292,13 +310,17 @@ namespace VNLib.Utils.IO
                 _buffer.Dispose();
             }
         }
+
         ///<inheritdoc/>
         public override void Flush() { }
+
         // Override to reduce base class overhead
         ///<inheritdoc/>
         public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
         ///<inheritdoc/>
         public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
         ///<inheritdoc/>
         public override int Read(Span<byte> buffer)
         {
@@ -317,6 +339,7 @@ namespace VNLib.Utils.IO
             
             return bytesToRead;
         }
+
         ///<inheritdoc/>
         public override unsafe int ReadByte()
         {
@@ -346,6 +369,7 @@ namespace VNLib.Utils.IO
             int read = Read(buffer.Span);
             return ValueTask.FromResult(read);
         }
+
         ///<inheritdoc/>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -353,6 +377,7 @@ namespace VNLib.Utils.IO
             int read = Read(buffer.AsSpan(offset, count));
             return Task.FromResult(read);
         }
+
         ///<inheritdoc/>
         public override long Seek(long offset, SeekOrigin origin)
         {
@@ -384,8 +409,7 @@ namespace VNLib.Utils.IO
                 default:
                     throw new ArgumentException("Stream operation is not supported on current stream");
             }
-        }
-        
+        }        
 
         /// <summary>
         /// Resizes the internal buffer to the exact size (in bytes) of the 
@@ -423,8 +447,10 @@ namespace VNLib.Utils.IO
             //Make sure the position is not pointing outside of the buffer after resize
             _position = Math.Min(_position, _length);
         }
+
         ///<inheritdoc/>
         public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
         ///<inheritdoc/>
         public override void Write(ReadOnlySpan<byte> buffer)
         {
@@ -447,6 +473,7 @@ namespace VNLib.Utils.IO
             //Update the position
             _position = newPos;
         }
+
         ///<inheritdoc/>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -454,6 +481,7 @@ namespace VNLib.Utils.IO
             Write(buffer, offset, count);
             return Task.CompletedTask;
         }
+
         ///<inheritdoc/>
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
@@ -461,6 +489,7 @@ namespace VNLib.Utils.IO
             Write(buffer.Span);
             return ValueTask.CompletedTask;
         }
+
         ///<inheritdoc/>
         public override void WriteByte(byte value)
         {
@@ -504,19 +533,5 @@ namespace VNLib.Utils.IO
         /// <exception cref="NotSupportedException"></exception>
         public object Clone() => GetReadonlyShallowCopy();
 
-        /*
-         * Override the Dispose async method to avoid the base class overhead
-         * and task allocation since this will always be a syncrhonous
-         * operation (freeing memory)
-         */
-
-        ///<inheritdoc/>
-        public override ValueTask DisposeAsync()
-        {
-            //Dispose and return completed task
-            base.Dispose(true);
-            GC.SuppressFinalize(this);
-            return ValueTask.CompletedTask;
-        }
     }
 }

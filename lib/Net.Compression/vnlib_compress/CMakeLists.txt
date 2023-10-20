@@ -11,6 +11,7 @@ set(VNLIB_COMPRESS_SOURCES compression.c)
 #set options for enable botli and zlib
 option(ENABLE_BROTLI "Enable brotli compression" ON)
 option(ENABLE_ZLIB "Enable zlib compression" ON)
+option(ENABLE_RPMALLOC "Link local vnlib_rpmalloc allocator" ON)
 
 #add feature specific source files to the project
 if(ENABLE_BROTLI)
@@ -32,7 +33,7 @@ add_library(${CMAKE_PROJECT_NAME}_static STATIC ${VNLIB_COMPRESS_SOURCES} ${COMP
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
-	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME vn_compress)
+	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME _vncompress)
 endif()
 
 
@@ -280,3 +281,53 @@ if(ENABLE_ZLIB)
 	target_link_libraries(${CMAKE_PROJECT_NAME} lib_deflate)
 endif()
 
+#Add support for rpmalloc memmory allocator
+if(ENABLE_RPMALLOC)
+
+	#Include the nativeheap api header
+	include_directories(../../Utils.Memory/NativeHeapApi/src)
+
+	if(MSVC)
+
+		#find the rpmalloc static library for windows builds
+		find_library(VNLIB_RPMALLOC_DEBUG_LIB
+			NAMES vnlib_rpmalloc_static
+			PATHS ../../Utils.Memory/vnlib_rpmalloc/build/Debug
+		)
+
+		find_library(VNLIB_RPMALLOC_RELEASE_LIB
+			NAMES vnlib_rpmalloc_static
+			PATHS ../../Utils.Memory/vnlib_rpmalloc/build/Release
+		)
+
+		#target static libraries for all configs
+		target_link_libraries(${CMAKE_PROJECT_NAME} 
+			$<$<CONFIG:Debug>:${VNLIB_RPMALLOC_DEBUG_LIB}>
+			#set release for all release configs
+			$<$<CONFIG:MinSizeRel>:${VNLIB_RPMALLOC_RELEASE_LIB}>
+			$<$<CONFIG:RelWithDepInfo>:${VNLIB_RPMALLOC_RELEASE_LIB}>
+			$<$<CONFIG:Release>:${VNLIB_RPMALLOC_RELEASE_LIB}>
+		)
+
+	elseif(UNIX)
+
+		#find the rpmalloc library for unix builds
+		find_library(VNLIB_RPMALLOC_LIB
+			NAMES _vnrpmalloc
+			PATHS ../../Utils.Memory/vnlib_rpmalloc/build
+		)
+
+		#add the rpmalloc library to the project
+		target_link_libraries(${CMAKE_PROJECT_NAME} ${VNLIB_RPMALLOC_LIB})
+
+	else()
+
+		#failure 
+		message(FATAL_ERROR "Unsupported platform configuration for rpmalloc")
+
+	endif()	
+
+	#add defintion to enable custom malloc heap overrides
+	target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE VNLIB_CUSTOM_MALLOC_ENABLE)
+
+endif()

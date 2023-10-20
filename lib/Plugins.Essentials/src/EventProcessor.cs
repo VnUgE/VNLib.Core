@@ -569,7 +569,11 @@ namespace VNLib.Plugins.Essentials
         public bool FindResourceInRoot(string resourcePath, bool fullyQualified, out string path)
         {
             //Special case where user's can specify a fullly qualified path (meant to reach a remote file, eg UNC/network share or other disk)
-            if (fullyQualified && Path.IsPathRooted(resourcePath) && Path.IsPathFullyQualified(resourcePath) && FileOperations.FileExists(resourcePath))
+            if (fullyQualified 
+                && Path.IsPathRooted(resourcePath) 
+                && Path.IsPathFullyQualified(resourcePath) 
+                && FileOperations.FileExists(resourcePath)
+            )
             {
                 path = resourcePath;
                 return true;

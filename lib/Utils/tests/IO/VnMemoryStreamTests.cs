@@ -23,7 +23,7 @@ namespace VNLib.Utils.IO.Tests
             }
 
             //Test heap
-            IUnmangedHeap privateHeap = MemoryUtil.InitializeNewHeapForProcess();
+            using IUnmangedHeap privateHeap = MemoryUtil.InitializeNewHeapForProcess();
 
             using (VnMemoryStream vms = new(privateHeap, 1024, false))
             {
@@ -38,7 +38,7 @@ namespace VNLib.Utils.IO.Tests
             //Create from mem handle
             MemoryHandle<byte> handle = privateHeap.Alloc<byte>(byte.MaxValue);
 
-            using (VnMemoryStream vms = VnMemoryStream.ConsumeHandle(handle, handle.GetIntLength(), false))
+            using (VnMemoryStream vms = VnMemoryStream.FromHandle(handle, true, handle.GetIntLength(), false))
             {
                 Assert.IsTrue(vms.Length == byte.MaxValue);
                 Assert.IsTrue(vms.Position == 0);

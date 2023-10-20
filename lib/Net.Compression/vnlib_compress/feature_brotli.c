@@ -26,6 +26,26 @@
 	if (!state) return ERR_INVALID_PTR; \
 	if (!state->compressor) return ERR_BR_INVALID_STATE; \
 
+/*
+* Stream memory management functions
+*/
+static void* _brAllocCallback(void* opaque, size_t size)
+{
+	(void)opaque;
+	return vnmalloc(size, 1);
+}
+
+static void _brFreeCallback(void* opaque, void* address)
+{
+	(void)opaque;
+	
+	//Brotli may pass a null address to the free callback
+	if (address)
+	{
+		vnfree(address);
+	}
+}
+
 
 int BrAllocCompressor(CompressorState* state)
 {
@@ -40,7 +60,11 @@ int BrAllocCompressor(CompressorState* state)
 		return ERR_COMP_LEVEL_NOT_SUPPORTED;
 	}
 	
-	comp = BrotliEncoderCreateInstance(0, 0, 0);
+	comp = BrotliEncoderCreateInstance(
+		&_brAllocCallback, 
+		&_brFreeCallback,
+		NULL
+	);
 
 	if (!comp)
 	{
@@ -62,7 +86,7 @@ int BrAllocCompressor(CompressorState* state)
 	/*
 	* Capture the block size as a size hint if it is greater than 0
 	*/
-	if (state->blockSize > 0) 
+	if (state->blockSize > 0)
 	{
 		BrotliEncoderSetParameter(comp, BROTLI_PARAM_SIZE_HINT, state->blockSize);
 	}

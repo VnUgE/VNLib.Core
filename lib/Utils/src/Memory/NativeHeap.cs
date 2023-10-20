@@ -177,9 +177,9 @@ namespace VNLib.Utils.Memory
         {
             public IntPtr HeapPointer;
 
-            public HeapCreation CreationFlags;
-
             public ERRNO Flags;
+
+            public HeapCreation CreationFlags;
         }
 
         readonly record struct HeapMethods

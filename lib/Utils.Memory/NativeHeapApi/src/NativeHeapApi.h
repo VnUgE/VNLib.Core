@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #ifndef NATIVE_HEAP_API
 #define NATIVE_HEAP_API
 
@@ -35,7 +37,6 @@
  #endif // WIN32
 #endif // !HEAP_METHOD_CC
 
-
 /*
 * Decorator for exporting methods for dll usage
 */
@@ -47,8 +48,7 @@
  #endif
 #endif // HEAP_METHOD_EXPORT!
 
-#ifndef WIN32
-typedef unsigned long DWORD;
+#ifdef WIN32
 typedef void* LPVOID;
 #endif // !WIN32
 
@@ -83,14 +83,25 @@ typedef enum HeapCreationFlags
 typedef void* ERRNO;
 
 /// <summary>
+/// A pointer to a heap structure that was stored during heap creation
+/// </summary>
+typedef void* HeapHandle;
+
+/// <summary>
 /// A structure for heap initialization
 /// </summary>
 typedef struct UnmanagedHeapDescriptor
 {
-    LPVOID HeapPointer;
+    HeapHandle HeapPointer;
+    ERRNO Flags;
     HeapCreationFlags CreationFlags;
-    ERRNO Flags;    
 } UnmanagedHeapDescriptor;
+
+/// <summary>
+/// Gets the shared heap handle for the process/library
+/// </summary>
+/// <returns>A pointer to the shared heap</returns>
+HEAP_METHOD_EXPORT HeapHandle HEAP_METHOD_CC heapGetSharedHeapHandle(void);
 
 /// <summary>
 /// The heap creation method. You must set the flags->HeapPointer = your heap
@@ -104,7 +115,7 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flag
 /// Destroys a previously created heap
 /// </summary>
 /// <param name="heap">The pointer to your custom heap structure from heap creation</param>
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(LPVOID heap);
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(HeapHandle heap);
 
 /// <summary>
 /// Allocates a block from the desired heap and returns a pointer 
@@ -115,7 +126,7 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(LPVOID heap);
 /// <param name="alignment">The alignment (or size) of each element in bytes</param>
 /// <param name="zero">A flag to zero the block before returning the block</param>
 /// <returns>A pointer to the allocated block</returns>
-HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapAlloc(LPVOID heap, size_t elements, size_t alignment, BOOL zero);
+HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapAlloc(HeapHandle heap, uint64_t elements, uint64_t alignment, int zero);
 
 /// <summary>
 /// Reallocates a block on the desired heap and returns a pointer to the new block. If reallocation
@@ -128,7 +139,7 @@ HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapAlloc(LPVOID heap, size_t elements,
 /// <param name="alignment">The element size or block alignment</param>
 /// <param name="zero">A flag to zero the block (or the new size) before returning.</param>
 /// <returns>A pointer to the reallocated block, or zero if the operation failed or is not supported</returns>
-HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapRealloc(LPVOID heap, LPVOID block, size_t elements, size_t alignment, BOOL zero);
+HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapRealloc(HeapHandle heap, void* block, uint64_t elements, uint64_t alignment, int zero);
 
 /// <summary>
 /// Frees a previously allocated block on the desired heap.
@@ -136,6 +147,6 @@ HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapRealloc(LPVOID heap, LPVOID block, 
 /// <param name="heap">A pointer to your heap structure</param>
 /// <param name="block">A pointer to the block to free</param>
 /// <returns>A value that indicates the result of the operation, nonzero if success, 0 if a failure occurred </returns>
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(LPVOID heap, LPVOID block);
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(HeapHandle heap, void* block);
 
 #endif // !NATIVE_HEAP_API

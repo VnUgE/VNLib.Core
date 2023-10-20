@@ -57,8 +57,8 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Alloc buffer
             _handle = MemoryUtil.Shared.Alloc<byte>(4096, false);
             
-            //Consume handle for stream, but make sure not to dispose the stream
-            _asStream = VnMemoryStream.ConsumeHandle(_handle, 0, false);
+            //Create stream around handle and not own it
+            _asStream = VnMemoryStream.FromHandle(_handle, false, 0, false);
             
             //Get memory owner from handle
             _memoryOwner = _handle.ToMemoryManager(false);

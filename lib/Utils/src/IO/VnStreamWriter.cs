@@ -33,6 +33,8 @@ using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
 
+#pragma warning disable CA2215, CA2007, CS8765 // Dispose methods should call base class dispose
+
 namespace VNLib.Utils.IO
 {
     /// <summary>

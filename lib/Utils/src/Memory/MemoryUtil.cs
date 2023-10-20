@@ -109,8 +109,8 @@ namespace VNLib.Utils.Memory
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_GLOBAL_ZERO), out ERRNO globalZero);
            
-            Trace.WriteIf(diagEnable, "Shared heap diagnostics enabled");
-            Trace.WriteIf(globalZero, "Shared heap global zero enabled");
+            Trace.WriteLineIf(diagEnable, "Shared heap diagnostics enabled");
+            Trace.WriteLineIf(globalZero, "Shared heap global zero enabled");
             
             Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true, diagEnable, globalZero), LazyThreadSafetyMode.PublicationOnly);
             
@@ -173,7 +173,7 @@ namespace VNLib.Utils.Memory
             * The heap impl may reset the synchronziation flag if it does not 
             * need serialziation
             */
-            cFlags |= isShared ? HeapCreation.IsSharedHeap : HeapCreation.None;
+            cFlags |= isShared ? HeapCreation.Shared : HeapCreation.None;
 
             //Set global zero flag if requested
             cFlags |= globalZero ? HeapCreation.GlobalZero : HeapCreation.None;

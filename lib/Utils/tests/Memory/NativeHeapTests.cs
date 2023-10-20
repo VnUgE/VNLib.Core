@@ -10,10 +10,10 @@ namespace VNLib.Utils.Memory.Tests
         const string RpMallocLibPath = "../../../../../Utils.Memory/vnlib_rpmalloc/build/Debug/vnlib_rpmalloc.dll";
 
         [TestMethod()]
-        public void LoadHeapTest()
+        public void LoadInTreeRpmallocTest()
         {
-            //Try to load the global heap
-            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories, HeapCreation.None, 0);
+            //Try to load the shared heap
+            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories, HeapCreation.Shared, 0);
 
             Assert.IsFalse(heap.IsInvalid);
 
@@ -26,7 +26,6 @@ namespace VNLib.Utils.Memory.Tests
 
             //confirm the pointer it zeroed
             Assert.IsTrue(block == IntPtr.Zero);
-
         }
     }
 }

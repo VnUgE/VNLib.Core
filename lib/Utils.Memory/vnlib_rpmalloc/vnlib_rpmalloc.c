@@ -22,12 +22,28 @@
 * along with vnlib_rpmalloc. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "vnlib_rpmalloc.h"
+/*
+* Top level linux definitions
+*/
+#ifdef __GNUC__
+
+#define _GNU_SOURCE 
+#define TRUE 1
+#define FALSE 0
+
+#endif
+
 #include <NativeHeapApi.h>
 #include <rpmalloc.h>
-#include <stdint.h>
 
 #if defined(_WIN32)
+
+/*
+* setup windows api incudes
+*/
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -56,11 +72,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 }
 
 #else
-
-/*
-* Nuts and bolts from rpmalloc/malloc.c for pthread hooks
-* for thread and process heap initializations
-*/
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -128,10 +139,16 @@ int pthread_create(pthread_t* thread,
 
 #endif
 
-#define GLOBAL_HEAP_HANDLE_VALUE -10
+#define SHARED_HEAP_HANDLE_VALUE ((HeapHandle)1)
 #define GLOBAL_HEAP_INIT_CHECK if (!rpmalloc_is_thread_initialized()) { rpmalloc_thread_initialize(); }
 
 //Define the heap methods
+
+HEAP_METHOD_EXPORT HeapHandle HEAP_METHOD_CC heapGetSharedHeapHandle(void)
+{
+    //Return the shared heap pointer
+	return SHARED_HEAP_HANDLE_VALUE;
+}
 
 HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flags)
 {
@@ -141,8 +158,8 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flag
         //User requested the global heap, synchronziation is not required, so we can clear the sync flag
         flags->CreationFlags &= ~(HEAP_CREATION_SERIALZE_ENABLED);
 
-        //Set the heap pointer as the global heap value
-        flags->HeapPointer = (LPVOID)GLOBAL_HEAP_HANDLE_VALUE;
+        //For shared heap set pointer to null
+        flags->HeapPointer = heapGetSharedHeapHandle();
 
         //Success
         return (ERRNO)TRUE;
@@ -158,32 +175,29 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flag
 }
 
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(LPVOID heap)
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(HeapHandle heap)
 {
-    //Destroy the heap
-    if ((int64_t)heap == GLOBAL_HEAP_HANDLE_VALUE)
+    //Destroy non-shared heaps
+    if (heap != SHARED_HEAP_HANDLE_VALUE)
     {
-        //Gloal heap, do nothing, and allow the entrypoint cleanup
-        return (ERRNO)TRUE;
+        //Free all before destroy
+        rpmalloc_heap_free_all(heap);
+
+        //Destroy the heap
+        rpmalloc_heap_release(heap);
     }
-
-    //Free all before destroy
-    rpmalloc_heap_free_all(heap);
-
-    //Destroy the heap
-    rpmalloc_heap_release(heap);
 
     return (ERRNO)TRUE;
 }
 
 
-HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapAlloc(LPVOID heap, size_t elements, size_t alignment, BOOL zero)
+HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapAlloc(HeapHandle heap, size_t elements, size_t alignment, int zero)
 {
     //Multiply for element size
     size_t size = elements * alignment;
 
     //Check for global heap
-    if ((int64_t)heap == GLOBAL_HEAP_HANDLE_VALUE)
+    if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         /*
         * When called from the dotnet CLR the thread may not call the DLL
@@ -219,14 +233,14 @@ HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapAlloc(LPVOID heap, size_t elements,
 }
 
 
-HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapRealloc(LPVOID heap, LPVOID block, size_t elements, size_t alignment, BOOL zero)
+HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapRealloc(HeapHandle heap, void* block, size_t elements, size_t alignment, int zero)
 {
     //Multiply for element size
     size_t size = elements * alignment;
     (void)zero;
 
     //Check for global heap
-    if ((int64_t)heap == GLOBAL_HEAP_HANDLE_VALUE)
+    if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         /*
         * When called from the dotnet CLR the thread may not call the DLL
@@ -246,10 +260,10 @@ HEAP_METHOD_EXPORT LPVOID HEAP_METHOD_CC heapRealloc(LPVOID heap, LPVOID block, 
 }
 
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(LPVOID heap, LPVOID block)
+HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(HeapHandle heap, void* block)
 {
     //Check for global heap
-    if ((int64_t)heap == GLOBAL_HEAP_HANDLE_VALUE)
+    if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         /*
         * If free happens on a different thread, we must allocate the heap

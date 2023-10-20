@@ -51,10 +51,15 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="data">Data to be encoded</param>
         /// <param name="encoding"><see cref="Encoding"/> to encode data with</param>
+        /// <param name="heap">Heap to allocate memory from</param>
         /// <returns>A <see cref="Stream"/> contating the encoded data</returns>
-        public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding)
+        public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding, IUnmangedHeap? heap = null)
         {
             _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
+
+            //Assign default heap if not specified
+            heap ??= MemoryUtil.Shared;
+            
             //Create new memory handle to copy data to
             MemoryHandle<byte>? handle = null;
             try
@@ -62,7 +67,7 @@ namespace VNLib.Utils
                 //get number of bytes
                 int byteCount = encoding.GetByteCount(data);
                 //resize the handle to fit the data
-                handle = MemoryUtil.Shared.Alloc<byte>(byteCount);
+                handle = heap.Alloc<byte>(byteCount);
                 //encode
                 int size = encoding.GetBytes(data, handle);
                 //Consume the handle into a new vnmemstream and return it

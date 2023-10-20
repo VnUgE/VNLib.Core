@@ -25,7 +25,7 @@ add_library(${CMAKE_PROJECT_NAME}_static STATIC ${VNLIB_RPMALLOC_SOURCES} ${HEAD
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
-	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME _rpmalloc)
+	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME _vnrpmalloc)
 endif()
 
 #Setup the compiler options 
