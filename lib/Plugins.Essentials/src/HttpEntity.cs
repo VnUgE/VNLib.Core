@@ -111,23 +111,28 @@ namespace VNLib.Plugins.Essentials
         /// A token that has a scheduled timeout to signal the cancellation of the entity event
         /// </summary>
         public CancellationToken EventCancellation => EventCts.Token;
+
         /// <summary>
         /// The session associated with the event
         /// </summary>
         public ref readonly SessionInfo Session => ref _session;
+
         /// <summary>
         /// A value that indicates if the connecion came from a trusted downstream server
         /// </summary>
         public readonly bool IsBehindDownStreamServer;
+
         /// <summary>
         /// Determines if the connection came from the local network to the current server
         /// </summary>
         public readonly bool IsLocalConnection;
+
         /// <summary>
         /// Gets a value that determines if the connection is using tls, locally 
         /// or behind a trusted downstream server that is using tls.
         /// </summary>
         public readonly bool IsSecure;
+
         /// <summary>
         /// Caches a <see cref="DateTimeOffset"/> that was created when the connection was created.
         /// The approximate current UTC time
@@ -138,26 +143,32 @@ namespace VNLib.Plugins.Essentials
         /// The connection info object assocated with the entity
         /// </summary>
         public IConnectionInfo Server => Entity.Server;
+
         /// <summary>
         /// User's ip. If the connection is behind a local proxy, returns the users actual IP. Otherwise returns the connection ip. 
         /// </summary>
         public readonly IPAddress TrustedRemoteIp;
+
         /// <summary>
         /// The requested web root. Provides additional site information
         /// </summary>
         public readonly IWebProcessor RequestedRoot;
+
         /// <summary>
         /// If the request has query arguments they are stored in key value format
         /// </summary>
         public IReadOnlyDictionary<string, string> QueryArgs => Entity.QueryArgs;
+
         /// <summary>
         /// If the request body has form data or url encoded arguments they are stored in key value format
         /// </summary>
         public IReadOnlyDictionary<string, string> RequestArgs => Entity.RequestArgs;
+
         /// <summary>
         /// Contains all files upladed with current request
         /// </summary>
         public IReadOnlyList<FileUpload> Files => Entity.Files;
+
         ///<inheritdoc/>
         HttpServer IHttpEvent.OriginServer => Entity.OriginServer;
 

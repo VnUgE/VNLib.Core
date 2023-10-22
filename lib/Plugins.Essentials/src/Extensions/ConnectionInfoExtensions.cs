@@ -25,6 +25,7 @@
 using System;
 using System.Net;
 using System.Linq;
+using System.Security.Authentication;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -419,18 +420,32 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         internal static bool IsSecure(this IConnectionInfo server, bool isTrusted)
         {
+            bool isSecure = GetSslProtocol(server) != SslProtocols.None;
+
             //If the connection is not trusted, then ignore header parsing
             if (isTrusted)
             {
                 //Standard https protocol header
                 string? protocol = server.Headers[X_FORWARDED_PROTO_HEADER];
                 //If the header is set and equals https then tls is being used
-                return string.IsNullOrWhiteSpace(protocol) ? server.IsSecure : "https".Equals(protocol, StringComparison.OrdinalIgnoreCase);
+                return string.IsNullOrWhiteSpace(protocol) ? isSecure : "https".Equals(protocol, StringComparison.OrdinalIgnoreCase);
             }
             else
             {
-                return server.IsSecure;
+                return isSecure;
             }
+        }
+
+        /// <summary>
+        /// Gets the ssl protocol used for the connection, or <see cref="SslProtocols.None"/>
+        /// if transport security is not being used
+        /// </summary>
+        /// <param name="server"></param>
+        /// <returns>The <see cref="SslProtocols"/> the current connection is using</returns>
+        public static SslProtocols GetSslProtocol(this IConnectionInfo server)
+        {
+            ref readonly TransportSecurityInfo? tsi = ref server.GetTransportSecurityInfo();
+            return tsi.HasValue ? tsi.Value.SslProtocol : SslProtocols.None;
         }
 
         /// <summary>

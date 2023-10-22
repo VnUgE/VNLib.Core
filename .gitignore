@@ -363,5 +363,4 @@ MigrationBackup/
 
 
 *.filters
-/lib/Net.Compression/vnlib_compress/build
-/lib/Utils.Memory/vnlib_rpmalloc/build
+**/build/*

@@ -9,34 +9,56 @@
 version: '3'
 
 vars:
-  INT_DIR: '{{.SCRATCH_DIR}}/obj/{{.MODULE_NAME}}/'
   MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
+  PROJECT_NAME: 'vnlib_rpmalloc'
+  MODULE_NAME: 'vnlib.core'
 
 tasks:
+
+  default:
+    desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    cmds:
+      #build with defaults
+      - task: build
+      - cmd: echo "Your vnlib_rpmalloc dll file can be found in '{{.USER_WORKING_DIR}}/build'"
+        silent: true
   
   build:
     cmds:
      #init cmake build with greedy enabled
      - cmake -B./build -DENABLE_GREEDY=1
 
+     #build the rpmalloc library in debug mode first 
+     - task: build-rpmalloc-win
+     - task: build-rpmalloc-gnumake  
+
+  #build using msbuild for rpmalloc libraries for debug and release modes
+  build-rpmalloc-win:
+    platforms: ['windows']
+    internal: true
+    cmds:
      #build solution in debug mode
      - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=debug {{.BUILD_FLAGS}} {{.MS_ARGS}} 
-
      #build in release
      - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=release {{.BUILD_FLAGS}} {{.MS_ARGS}} 
-
+  
+  #build using gnu make
+  build-rpmalloc-gnumake:
+    platforms: ['linux']
+    internal: true
+    cmds:
+     #build project with make
+     - cd build && make
+ 
   postbuild_success:
     vars:
       #required files to include in tar
       TAR_FILES: "license.txt readme.txt rpmalloc_license.txt"
     
     cmds:
-    #make bin dir
+      #make bin dir
     - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
       ignore_error: true
-      
-    #pack source code
-    - task: packsource
 
     #get licenses for debug
     - task: licenses
@@ -46,17 +68,20 @@ tasks:
     - task: licenses
       vars:
         TARGET: './build/Release'
-
+   
 
     #static debug lib
     - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
     #dynamic debug lib
     - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
-
+    
     #release static lib
     - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
     #release dll
     - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+
+    #source code
+    - task: pack_source
 
   licenses:
     cmds:
@@ -66,13 +91,21 @@ tasks:
      - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
      #add readme file
      - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
- 
-  packsource:
+  
+  pack_source:
     dir: '{{.USER_WORKING_DIR}}'
-    internal: true
     cmds:
-    #copy source code to target
-    - powershell -Command "Get-ChildItem -Exclude *.yaml,build,bin | Resolve-Path -Relative | tar --files-from - -cvzf 'bin/src.tgz'"
+     #pack rpmalloc source code and create the archive
+     - cd .. && powershell -Command "tar --exclude */build/* --exclude */.git/* -cvf 'vnlib_rpmalloc/bin/src.tar' ./rpmalloc/*"
+     #append the nativeheapapi directory
+     - cd .. && powershell -Command "tar -rvf vnlib_rpmalloc/bin/src.tar ./NativeHeapApi/*"
+     #append the current directory
+     - cd .. && powershell -Command "tar --exclude */build/* --exclude */bin/* -rvf vnlib_rpmalloc/bin/src.tar ./vnlib_rpmalloc/*"
+     #use tar to gzip the archive
+     - cd bin && tar -czvf src.tgz src.tar
+     # delete the tar archive
+     - cmd: powershell -Command "Remove-Item bin/src.tar -Force"
+       ignore_error: true
 
 
   clean:

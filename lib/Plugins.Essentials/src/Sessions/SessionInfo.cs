@@ -30,6 +30,7 @@ using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
+using VNLib.Plugins.Essentials.Extensions;
 using static VNLib.Plugins.Essentials.Statics;
 
 
@@ -264,7 +265,7 @@ namespace VNLib.Plugins.Essentials.Sessions
                 //Since all values will be the same as the connection, cache the connection values
                 UserAgent = ci.UserAgent;
                 SpecifiedOrigin = ci.Origin;
-                SecurityProcol = ci.SecurityProtocol;
+                SecurityProcol = ci.GetSslProtocol();
 
                 flags |= ci.CrossOrigin ? SessionFlags.IsCrossOrigin : SessionFlags.None;
             }
@@ -287,12 +288,16 @@ namespace VNLib.Plugins.Essentials.Sessions
 
         ///<inheritdoc/>
         public bool Equals(SessionInfo other) => SessionID.Equals(other.SessionID, StringComparison.Ordinal);
+
         ///<inheritdoc/>
         public override bool Equals(object? obj) => obj is SessionInfo si && Equals(si);
+
         ///<inheritdoc/>
         public override int GetHashCode() => SessionID.GetHashCode(StringComparison.Ordinal);
+
         ///<inheritdoc/>
         public static bool operator ==(SessionInfo left, SessionInfo right) => left.Equals(right);
+
         ///<inheritdoc/>
         public static bool operator !=(SessionInfo left, SessionInfo right) => !(left == right);
         

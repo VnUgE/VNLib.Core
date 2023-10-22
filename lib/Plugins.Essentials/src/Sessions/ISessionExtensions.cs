@@ -29,8 +29,7 @@ using System.Runtime.CompilerServices;
 using VNLib.Net.Http;
 using VNLib.Utils;
 using VNLib.Utils.Extensions;
-
-#nullable disable
+using VNLib.Plugins.Essentials.Extensions;
 
 namespace VNLib.Plugins.Essentials.Sessions
 {
@@ -81,7 +80,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             session.IsCrossOrigin(ci.CrossOrigin);
             session.SetOrigin(ci.Origin?.ToString());
             session.SetRefer(ci.Referer?.ToString());
-            session.SetSecurityProtocol(ci.SecurityProtocol);
+            session.SetSecurityProtocol(ci.GetSslProtocol());
             session.SetUserAgent(ci.UserAgent);
         }
        

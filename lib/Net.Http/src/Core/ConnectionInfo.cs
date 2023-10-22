@@ -26,7 +26,6 @@ using System;
 using System.Net;
 using System.Text;
 using System.Collections.Generic;
-using System.Security.Authentication;
 
 using VNLib.Net.Http.Core;
 
@@ -63,19 +62,6 @@ namespace VNLib.Net.Http
 
         ///<inheritdoc/>
         public HttpVersion ProtocolVersion => Context.Request.HttpVersion;
-
-        ///<inheritdoc/>
-        public bool IsSecure => SecurityProtocol != SslProtocols.None;
-
-        ///<inheritdoc/>
-        public SslProtocols SecurityProtocol
-        {
-            get
-            {
-                ref readonly TransportSecurityInfo? securityInfo = ref Context.GetSecurityInfo();
-                return securityInfo.HasValue ? securityInfo.Value.SslProtocol : SslProtocols.None;
-            }
-        }
 
         ///<inheritdoc/>
         public Uri? Origin => Context.Request.Origin;

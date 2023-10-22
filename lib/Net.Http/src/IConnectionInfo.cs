@@ -26,7 +26,6 @@ using System;
 using System.Net;
 using System.Text;
 using System.Collections.Generic;
-using System.Security.Authentication;
 
 namespace VNLib.Net.Http
 {
@@ -82,16 +81,6 @@ namespace VNLib.Net.Http
         /// The current connection's HTTP protocol version
         /// </summary>
         HttpVersion ProtocolVersion { get; }
-
-        /// <summary>
-        /// Is the connection using transport security? 
-        /// </summary>
-        bool IsSecure { get; }
-
-        /// <summary>
-        /// The negotiated transport protocol for the current connection
-        /// </summary>
-        SslProtocols SecurityProtocol { get; }
 
         /// <summary>
         /// Origin header of current connection if specified, null otherwise
