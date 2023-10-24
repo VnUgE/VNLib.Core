@@ -365,3 +365,6 @@ MigrationBackup/
 *.filters
 **/build/*
 /.editorconfig
+
+#allow mimalloc included win binaries
+!lib/Utils.Memory/mimalloc/bin/mimalloc-*
