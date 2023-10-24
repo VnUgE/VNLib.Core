@@ -24,6 +24,7 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.InteropServices;
 
 using VNLib.Net.Http;
 
@@ -78,6 +79,55 @@ namespace VNLib.Net.Compression
                 BytesRead = (int)op->bytesRead,
                 BytesWritten = (int)op->bytesWritten
             };
+        }
+
+        /// <summary>
+        /// Compresses a block using the compressor context pointer provided
+        /// </summary>
+        /// <param name="nativeLib"></param>
+        /// <param name="comp">A pointer to the compressor context</param>
+        /// <param name="output">A buffer to write the result to</param>
+        /// <param name="input">The input block of memory to compress</param>
+        /// <param name="finalBlock">A value that indicates if a flush is requested</param>
+        /// <returns>The results of the compression operation</returns>
+        public static unsafe CompressionResult CompressBlock(this LibraryWrapper nativeLib, IntPtr comp, Span<byte> output, ReadOnlySpan<byte> input, bool finalBlock)
+        {
+            /*
+             * Since .NET only supports int32 size memory blocks
+             * we dont need to worry about integer overflow.
+             * 
+             * Output sizes can never be larger than input 
+             * sizes (read/written)
+             */
+
+            fixed(byte* inputPtr = &MemoryMarshal.GetReference(input),
+                outPtr = &MemoryMarshal.GetReference(output))
+            {
+                //Create the operation struct
+                CompressionOperation operation;
+                CompressionOperation* op = &operation;
+
+                op->flush = finalBlock ? 1 : 0;
+                op->bytesRead = 0;
+                op->bytesWritten = 0;
+
+                //Configure the input and output buffers
+                op->inputBuffer = inputPtr;
+                op->inputSize = (uint)input.Length;
+
+                op->outputBuffer = outPtr;
+                op->outputSize = (uint)output.Length;
+
+                //Call the native compress function
+                nativeLib!.CompressBlock(comp, &operation);
+
+                //Return the number of bytes written
+                return new()
+                {
+                    BytesRead = (int)op->bytesRead,
+                    BytesWritten = (int)op->bytesWritten
+                };
+            }
         }
     }
 }

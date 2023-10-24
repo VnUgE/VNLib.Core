@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
@@ -58,6 +59,103 @@ namespace VNLib.Net.Compression.Tests
 
             //Test for supported methods
             TestCompressionForSupportedMethods(cp);
+        }
+
+        [TestMethod()]
+        public void CompressorPerformanceTest()
+        {
+            //Set test level
+            const CompressionLevel testLevel = CompressionLevel.Fastest;
+            const int testItterations = 5;
+
+            PrintSystemInformation();
+
+            //Load native library
+            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories);
+
+            //Huge array of random data to compress
+            byte[] testData = RandomNumberGenerator.GetBytes(10 * 1024 * 1024);
+
+            LibTestComp cp = new(lib, testLevel);
+
+            CompressionMethod supported = cp.GetSupportedMethods();
+
+            for (int itterations = 0; itterations < testItterations; itterations++)
+            {
+                if ((supported & CompressionMethod.Gzip) > 0)
+                {
+                    TestSingleCompressor(cp, CompressionMethod.Gzip, testLevel, testData);
+                }
+
+                if ((supported & CompressionMethod.Deflate) > 0)
+                {
+                    TestSingleCompressor(cp, CompressionMethod.Deflate, testLevel, testData);
+                }
+
+                if ((supported & CompressionMethod.Brotli) > 0)
+                {
+                    TestSingleCompressor(cp, CompressionMethod.Brotli, testLevel, testData);
+                }
+            }
+        }
+
+        private static void TestSingleCompressor(LibTestComp comp, CompressionMethod method, CompressionLevel level, byte[] testData) 
+        {
+            byte[] outputBlock = new byte[8 * 1024];
+            long ms;
+
+            Stopwatch stopwatch = new ();
+            {
+                //Start sw
+                stopwatch.Start();
+                comp.InitCompressor(method);
+                try
+                {
+                    ForwardOnlyReader<byte> reader = new(outputBlock);
+
+                    while (true)
+                    {
+                        CompressionResult result = comp.CompressBlock(reader.Window, outputBlock);
+                        reader.Advance(result.BytesRead);
+
+                        if (reader.WindowSize == 0)
+                        {
+                            break;
+                        }
+                    }
+
+                    //Flush all data
+                    while (comp.Flush(outputBlock) != 0)
+                    { }
+                }
+                finally
+                {
+                    //Include deinit
+                    comp.DeinitCompressor();
+                    stopwatch.Stop();
+                    ms = stopwatch.ElapsedTicks / (TimeSpan.TicksPerMillisecond / 1000);
+                }
+            }
+
+            using (Stream compStream = GetEncodeStream(Stream.Null, method, level))
+            {
+                stopwatch.Restart();
+                try
+                {
+                    //Write the block to the compression stream
+                    compStream.Write(testData, 0, testData.Length);
+                }
+                finally
+                {
+                    stopwatch.Stop();
+                }
+            }
+
+            long streamMicroseconds = stopwatch.ElapsedTicks / (TimeSpan.TicksPerMillisecond / 1000);
+
+            string winner = ms < streamMicroseconds ? "native" : "stream";
+
+            Debug.WriteLine($"{method}: {testData.Length} bytes, {ms}misec vs {streamMicroseconds}misec. Winner {winner}");
         }
 
         private static CompressorManager InitCompressorUnderTest()
@@ -128,7 +226,7 @@ namespace VNLib.Net.Compression.Tests
             Assert.ThrowsException<NotSupportedException>(() => { compressor.InitCompressor(CompressionMethod.None); });
 
             //test out of range, this should be a native lib error
-            Assert.ThrowsException<NotSupportedException>(() => { compressor.InitCompressor((CompressionMethod)24); });
+            Assert.ThrowsException<NotSupportedException>(() => { compressor.InitCompressor((CompressionMethod)4500); });
 
             //Test all 3 compression methods
             CompressionMethod supported = compressor.GetSupportedMethods();
@@ -254,6 +352,34 @@ namespace VNLib.Net.Compression.Tests
             };
         }
 
+        private static Stream GetEncodeStream(Stream output, CompressionMethod method, CompressionLevel level)
+        {
+            return method switch
+            {
+                CompressionMethod.Gzip => new GZipStream(output, level, true),
+                CompressionMethod.Deflate => new DeflateStream(output, level, true),
+                CompressionMethod.Brotli => new BrotliStream(output, level, true),
+                _ => throw new ArgumentException("Unsupported compression method", nameof(method)),
+            };
+        }
+
+        private static void PrintSystemInformation()
+        {
+
+
+            string sysInfo = @$"
+OS: {RuntimeInformation.OSDescription}
+Framework: {RuntimeInformation.FrameworkDescription}
+Processor: {RuntimeInformation.ProcessArchitecture}
+Platform ID: {Environment.OSVersion.Platform}
+Is 64 bit: {Environment.Is64BitOperatingSystem}
+Is 64 bit process: {Environment.Is64BitProcess}
+Processor Count: {Environment.ProcessorCount}
+Page Size: {Environment.SystemPageSize}
+";
+            Debug.WriteLine(sysInfo);
+        }
+
         interface ITestCompressor
         {
             int InitCompressor(CompressionMethod method);
@@ -281,11 +407,13 @@ namespace VNLib.Net.Compression.Tests
 
         }
 
-        sealed record class LibTestComp(NativeCompressionLib Library, CompressionLevel level) : ITestCompressor
+        sealed record class LibTestComp(NativeCompressionLib Library, CompressionLevel Level) : ITestCompressor
         {
             private INativeCompressor? _comp;
 
             public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) => _comp!.Compress(input, output);
+
+            public CompressionResult CompressBlock(ReadOnlySpan<byte> input, Span<byte> output) => _comp!.Compress(input, output);
 
             public void DeinitCompressor()
             {
@@ -299,7 +427,7 @@ namespace VNLib.Net.Compression.Tests
 
             public int InitCompressor(CompressionMethod method)
             {
-                _comp = Library.AllocCompressor(method, level);
+                _comp = Library.AllocCompressor(method, Level);
                 return (int)_comp.GetBlockSize();
             }
         }

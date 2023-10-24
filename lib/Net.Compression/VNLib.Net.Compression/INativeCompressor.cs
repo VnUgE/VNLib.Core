@@ -54,11 +54,25 @@ namespace VNLib.Net.Compression
         int Flush(Memory<byte> buffer);
 
         /// <summary>
+        /// Flushes all remaining data in the compressor to the output buffer
+        /// </summary>
+        /// <param name="buffer">The output buffer to write flushed compressor data to</param>
+        /// <returns>The number of bytes written to the output buffer</returns>
+        int Flush(Span<byte> buffer);
+
+        /// <summary>
         /// Compresses the input block and writes the compressed data to the output block
         /// </summary>
         /// <param name="input">The input buffer to compress</param>
         /// <param name="output">The output buffer to write compressed data to</param>
         CompressionResult Compress(ReadOnlyMemory<byte> input, Memory<byte> output);
+
+        /// <summary>
+        /// Compresses the input block and writes the compressed data to the output block
+        /// </summary>
+        /// <param name="input">The input buffer to compress</param>
+        /// <param name="output">The output buffer to write compressed data to</param>
+        CompressionResult Compress(ReadOnlySpan<byte> input, Span<byte> output);
 
         /// <summary>
         /// Gets the compressor block size if configured

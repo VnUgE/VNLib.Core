@@ -99,6 +99,14 @@ namespace VNLib.Net.Compression
             }
 
             ///<inheritdoc/>
+            public CompressionResult Compress(ReadOnlySpan<byte> input, Span<byte> output)
+            {
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
+                return LibComp.CompressBlock(compressor, output, input, false);
+            }
+
+            ///<inheritdoc/>
             public void Dispose() => CompressorHandle.Dispose();
 
             ///<inheritdoc/>
@@ -106,7 +114,16 @@ namespace VNLib.Net.Compression
             {
                 CompressorHandle.ThrowIfClosed();
                 IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                CompressionResult result = LibComp.CompressBlock(compressor, buffer, ReadOnlyMemory<byte>.Empty, true);
+                CompressionResult result = LibComp.CompressBlock(compressor, buffer, default, true);
+                return result.BytesWritten;
+            }
+
+            ///<inheritdoc/>
+            public int Flush(Span<byte> buffer)
+            {
+                CompressorHandle.ThrowIfClosed();
+                IntPtr compressor = CompressorHandle.DangerousGetHandle();
+                CompressionResult result = LibComp.CompressBlock(compressor, buffer, default, true);
                 return result.BytesWritten;
             }
 
