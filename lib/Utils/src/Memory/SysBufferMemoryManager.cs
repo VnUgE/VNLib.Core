@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -25,8 +25,6 @@
 using System;
 using System.Buffers;
 
-using VNLib.Utils.Extensions;
-
 namespace VNLib.Utils.Memory
 {
     /// <summary>
@@ -34,7 +32,7 @@ namespace VNLib.Utils.Memory
     /// as a memory provider which implements a <see cref="System.Runtime.InteropServices.SafeHandle"/>
     /// </summary>
     /// <typeparam name="T">Unmanaged memory type</typeparam>
-    public sealed class SysBufferMemoryManager<T> : MemoryManager<T> where T :unmanaged
+    public sealed class SysBufferMemoryManager<T> : MemoryManager<T>
     {
         private readonly IMemoryHandle<T> BackingMemory;
         private readonly bool _ownsHandle;
@@ -45,30 +43,19 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="existingHandle">The existing handle to consume</param>
         /// <param name="ownsHandle">A value that indicates if the memory manager owns the handle reference</param>
-        internal SysBufferMemoryManager(IMemoryHandle<T> existingHandle, bool ownsHandle)
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="OverflowException"></exception>
+        public SysBufferMemoryManager(IMemoryHandle<T> existingHandle, bool ownsHandle)
         {
-            BackingMemory = existingHandle;
+            BackingMemory = existingHandle ?? throw new ArgumentNullException(nameof(existingHandle));
+            
+            //check for overflow
+            if(existingHandle.Length > Int32.MaxValue)
+            {
+                throw new OverflowException("This memory manager does not accept handles larger than Int32.MaxValue");
+            }
+
             _ownsHandle = ownsHandle;
-        }
-
-        /// <summary>
-        /// Allocates a fized size buffer from the specified unmanaged <see cref="Win32PrivateHeap"/>
-        /// </summary>
-        /// <param name="heap">The heap to perform allocations from</param>
-        /// <param name="elements">The number of elements to allocate</param>
-        /// <param name="zero">Zero allocations</param>
-        public SysBufferMemoryManager(IUnmangedHeap heap, nuint elements, bool zero)
-        {
-            BackingMemory = heap.Alloc<T>(elements, zero);
-            _ownsHandle = true;
-        }
-
-        ///<inheritdoc/>
-        protected override bool TryGetArray(out ArraySegment<T> segment)
-        {
-            //Always false since no array is available
-            segment = default;
-            return false;
         }
 
         ///<inheritdoc/>
@@ -81,11 +68,8 @@ namespace VNLib.Utils.Memory
         /// </summary> 
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public unsafe override MemoryHandle Pin(int elementIndex = 0)
-        {
-            return BackingMemory.Pin(elementIndex);
-        }
-        
+        public unsafe override MemoryHandle Pin(int elementIndex = 0) => BackingMemory.Pin(elementIndex);
+
         ///<inheritdoc/>
         public override void Unpin()
         {}

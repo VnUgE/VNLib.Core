@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -24,14 +24,12 @@
 
 using System;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 using VNLib.Net.Http;
 using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
-using VNLib.Net.Messaging.FBM.Client;
 
 namespace VNLib.Net.Messaging.FBM.Server
 {
@@ -41,9 +39,9 @@ namespace VNLib.Net.Messaging.FBM.Server
     /// </summary>
     public sealed class FBMResponseMessage : IReusable, IFBMMessage
     {
-        internal FBMResponseMessage(int internalBufferSize, Encoding headerEncoding)
+        internal FBMResponseMessage(int internalBufferSize, Encoding headerEncoding, IFBMMemoryManager manager)
         {
-            _headerAccumulator = new HeaderDataAccumulator(internalBufferSize);
+            _headerAccumulator = new HeaderDataAccumulator(internalBufferSize, manager);
             _headerEncoding = headerEncoding;
             _messageEnumerator = new(this);
         }
@@ -134,92 +132,76 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <summary>
         /// Gets the internal message body enumerator and prepares the message for sending
         /// </summary>
-        /// <param name="cancellationToken">A cancellation token</param>
         /// <returns>A value task that returns the message body enumerator</returns>
-        internal async ValueTask<IAsyncMessageReader> GetResponseDataAsync(CancellationToken cancellationToken)
-        {
-            //try to buffer as much data in the header segment first
-            if(MessageBody?.RemainingSize > 0 && _headerAccumulator.RemainingSize > 0)
-            {
-                //Read data from the message
-                int read = await MessageBody.ReadAsync(_headerAccumulator.RemainingBuffer, cancellationToken);
-
-                //Advance accumulator to the read bytes
-                _headerAccumulator.Advance(read);
-            }
-            //return reusable enumerator
-            return _messageEnumerator;
-        }
+        internal IAsyncMessageReader GetResponseData() => _messageEnumerator;
 
         private sealed class MessageSegmentEnumerator : IAsyncMessageReader
         {
             private readonly FBMResponseMessage _message;
+            private readonly ISlindingWindowBuffer<byte> _accumulator;
 
             bool HeadersRead;
 
             public MessageSegmentEnumerator(FBMResponseMessage message)
             {
                 _message = message;
+                _accumulator = _message._headerAccumulator;
             }
 
-            public ReadOnlyMemory<byte> Current { get; private set; }
+            ///<inheritdoc/>
+            public ReadOnlyMemory<byte> Current => _accumulator.AccumulatedBuffer;
 
-            public bool DataRemaining { get; private set; }
+            ///<inheritdoc/>
+            public bool DataRemaining => _message.MessageBody?.RemainingSize > 0;
            
+            ///<inheritdoc/>
             public async ValueTask<bool> MoveNextAsync()
             {
                 //Attempt to read header segment first
                 if (!HeadersRead)
                 {
-                    //Set the accumulated buffer
-                    Current = _message._headerAccumulator.AccumulatedBuffer;
+                    /*
+                     * If headers have not been read yet, we can attempt to buffer as much 
+                     * of the message body into the header accumulator buffer as possible. This will 
+                     * reduce message fragmentation.
+                     */
+                    if (DataRemaining && _accumulator.RemainingSize > 0)
+                    {
+                        int read = await _message.MessageBody.ReadAsync(_accumulator.RemainingBuffer).ConfigureAwait(false);
 
-                    //Update data remaining flag
-                    DataRemaining = _message.MessageBody?.RemainingSize > 0;
+                        //Advance accumulator to the read bytes
+                        _accumulator.Advance(read);
+                    }
 
                     //Set headers read flag
                     HeadersRead = true;
                     
                     return true;
                 }
-                else if (_message.MessageBody?.RemainingSize > 0)
+                else if (DataRemaining)
                 {
-                    //Use the header buffer as the buffer for the message body
-                    Memory<byte> buffer = _message._headerAccumulator.Buffer;
+                    //Reset the accumulator so we can read another segment
+                    _accumulator.Reset();
 
                     //Read body segment
-                    int read = await _message.MessageBody.ReadAsync(buffer);
+                    int read = await _message.MessageBody.ReadAsync(_accumulator.RemainingBuffer);
 
-                    //Update data remaining flag
-                    DataRemaining = _message.MessageBody.RemainingSize > 0;
+                    //Advance accumulator to the read bytes
+                    _accumulator.Advance(read);
 
-                    if (read > 0)
-                    {
-                        //Store the read segment
-                        Current = buffer[..read];
-                        return true;
-                    }
+                    return read > 0;
                 }
                 return false;
             }
 
+            ///<inheritdoc/>
             public ValueTask DisposeAsync()
             {
-                //Clear current segment
-                Current = default;
-
                 //Reset headers read flag
                 HeadersRead = false;
-                
+
                 //Dispose the message body if set
-                if (_message.MessageBody != null)
-                {
-                    return _message.MessageBody.DisposeAsync();
-                }
-                else
-                {
-                    return ValueTask.CompletedTask;
-                }
+                return _message.MessageBody != null ? _message.MessageBody.DisposeAsync() : ValueTask.CompletedTask;
             }
         }
     }

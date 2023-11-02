@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -24,7 +24,6 @@
 
 using System;
 using System.IO;
-using System.Buffers;
 using System.Threading;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
@@ -32,22 +31,11 @@ using System.Threading.Tasks;
 using VNLib.Utils.IO;
 using VNLib.Utils.Async;
 using VNLib.Utils.Memory;
-using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
 using VNLib.Plugins.Essentials;
 
 namespace VNLib.Net.Messaging.FBM.Server
 {
-
-    /// <summary>
-    /// Method delegate for processing FBM messages from an <see cref="FBMListener"/>
-    /// when messages are received
-    /// </summary>
-    /// <param name="context">The message/connection context</param>
-    /// <param name="userState">The state parameter passed on client connected</param>
-    /// <param name="cancellationToken">A token that reflects the state of the listener</param>
-    /// <returns>A <see cref="Task"/> that resolves when processing is complete</returns>
-    public delegate Task RequestHandler(FBMContext context, object? userState, CancellationToken cancellationToken);
 
     /// <summary>
     /// A FBM protocol listener. Listens for messages on a <see cref="WebSocketSession"/>
@@ -58,22 +46,16 @@ namespace VNLib.Net.Messaging.FBM.Server
 
         public const int SEND_SEMAPHORE_TIMEOUT_MS = 10 * 1000;
 
-        private readonly IUnmangedHeap Heap;
-
-        /// <summary>
-        /// Raised when a response processing error occured
-        /// </summary>
-        public event EventHandler<Exception>? OnProcessError;
+        private readonly IFBMMemoryManager MemoryManger;
 
         /// <summary>
         /// Creates a new <see cref="FBMListener"/> instance ready for 
         /// processing connections
         /// </summary>
         /// <param name="heap">The heap to alloc buffers from</param>
-        public FBMListener(IUnmangedHeap heap)
-        {
-            Heap = heap;
-        }
+        /// <exception cref="ArgumentNullException"></exception>
+        public FBMListener(IFBMMemoryManager heap) => MemoryManger = heap ?? throw new ArgumentNullException(nameof(heap));
+
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
         /// <summary>
@@ -83,31 +65,38 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <param name="wss">The <see cref="WebSocketSession"/> to receive messages on</param>
         /// <param name="handler">The callback method to handle incoming requests</param>
         /// <param name="args">The arguments used to configured this listening session</param>
-        /// <param name="userState">A state parameter</param>
         /// <returns>A <see cref="Task"/> that completes when the connection closes</returns>
-        public async Task ListenAsync(WebSocketSession wss, RequestHandler handler, FBMListenerSessionParams args, object? userState)
+        public async Task ListenAsync(WebSocketSession wss, IFBMServerMessageHandler handler, FBMListenerSessionParams args)
         {
             _ = wss ?? throw new ArgumentNullException(nameof(wss));
             _ = handler ?? throw new ArgumentNullException(nameof(handler));
 
-            ListeningSession session = new(wss, handler, in args, userState);
-
-            //Alloc a recieve buffer
-            using IMemoryOwner<byte> recvBuffer = Heap.DirectAlloc<byte>(args.RecvBufferSize);
+            ListeningSession session = new(wss, handler, in args, MemoryManger);
 
             //Init new queue for dispatching work
             AsyncQueue<VnMemoryStream> workQueue = new(true, true);
             
             //Start a task to process the queue
             Task queueWorker = QueueWorkerDoWork(workQueue, session);
-            
+
+            //Alloc buffer
+            IFBMMemoryHandle memHandle = MemoryManger.InitHandle();
+            MemoryManger.AllocBuffer(memHandle, args.RecvBufferSize);
+
             try
             {
+                if(!MemoryManger.TryGetHeap(out IUnmangedHeap? heap))
+                {
+                    throw new NotSupportedException("The memory manager must export an unmanaged heap");
+                }
+
+                Memory<byte> recvBuffer = memHandle.GetMemory();
+
                 //Listen for incoming messages
                 while (true)
                 {
                     //Receive a message
-                    ValueWebSocketReceiveResult result = await wss.ReceiveAsync(recvBuffer.Memory);
+                    ValueWebSocketReceiveResult result = await wss.ReceiveAsync(recvBuffer);
                     //If a close message has been received, we can gracefully exit
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
@@ -118,13 +107,13 @@ namespace VNLib.Net.Messaging.FBM.Server
                     }
 
                     //create buffer for storing data, pre alloc with initial data
-                    VnMemoryStream request = new(Heap, recvBuffer.Memory[..result.Count]);
+                    VnMemoryStream request = new(heap, recvBuffer[..result.Count]);
 
                     //Streaming read
                     while (!result.EndOfMessage)
                     {
                         //Read more data
-                        result = await wss.ReceiveAsync(recvBuffer.Memory);
+                        result = await wss.ReceiveAsync(recvBuffer);
                         //Make sure the request is small enough to buffer
                         if (request.Length + result.Count > args.MaxMessageSize)
                         {
@@ -135,8 +124,9 @@ namespace VNLib.Net.Messaging.FBM.Server
                             //break listen loop
                             goto Exit;
                         }
+
                         //write to buffer
-                        request.Write(recvBuffer.Memory.Span[..result.Count]);
+                        request.Write(memHandle.GetSpan()[..result.Count]);
                     }
                     //Make sure data is available
                     if (request.Length == 0)
@@ -195,14 +185,19 @@ namespace VNLib.Net.Messaging.FBM.Server
 
                 if ((context.Request.ParseStatus & HeaderParseError.InvalidId) > 0)
                 {
-                    OnProcessError?.Invoke(this, new FBMException($"Invalid messageid {context.Request.MessageId}, message length {data.Length}"));
-                    return;
+                    Exception cause = new FBMException($"Invalid messageid {context.Request.MessageId}, message length {data.Length}");
+                    _ = session.Handler.OnInvalidMessage(context, cause);
+                    return; //Cannot continue on invalid message id
                 }
                 
                 //Check parse status flags
                 if ((context.Request.ParseStatus & HeaderParseError.HeaderOutOfMem) > 0)
                 {
-                    OnProcessError?.Invoke(this, new FBMException("Packet received with not enough space to store headers"));
+                    Exception cause = new FBMException("Packet received with not enough space to store headers");
+                    if(!session.Handler.OnInvalidMessage(context, cause))
+                    {
+                        return;
+                    }
                 }
                 //Determine if request is an out-of-band message
                 else if (context.Request.MessageId == Helpers.CONTROL_FRAME_MID)
@@ -213,18 +208,15 @@ namespace VNLib.Net.Messaging.FBM.Server
                 else
                 {
                     //Invoke normal message handler
-                    await session.OnRecieved.Invoke(context, session.UserState, session.CancellationToken);
+                    await session.Handler.HandleMessage(context, session.CancellationToken);
                 }
 
-                //Get response data
-
-                await using IAsyncMessageReader messageEnumerator = await context.Response.GetResponseDataAsync(session.CancellationToken);
-
+                //Get response data reader
+                await using IAsyncMessageReader messageEnumerator = context.Response.GetResponseData();
 
                 //Load inital segment
                 if (await messageEnumerator.MoveNextAsync() && !session.CancellationToken.IsCancellationRequested)
-                {
-                    ValueTask sendTask;
+                {                  
 
                     //Syncrhonize access to send data because we may need to stream data to the client
                     await session.ResponseLock.WaitAsync(SEND_SEMAPHORE_TIMEOUT_MS);
@@ -233,10 +225,8 @@ namespace VNLib.Net.Messaging.FBM.Server
                     {
                         do
                         {
-                            bool eof = !messageEnumerator.DataRemaining;
-                            
-                            //Send first segment
-                            sendTask = session.Socket.SendAsync(messageEnumerator.Current, WebSocketMessageType.Binary, eof);
+                            //Send current segment
+                            await session.Socket.SendAsync(messageEnumerator.Current, WebSocketMessageType.Binary, !messageEnumerator.DataRemaining);
 
                             /* 
                              * WARNING!
@@ -250,9 +240,6 @@ namespace VNLib.Net.Messaging.FBM.Server
                             {
                                 break;
                             }
-                            
-                            //Await previous send
-                            await sendTask;
 
                         } while (true);
                     }
@@ -261,15 +248,13 @@ namespace VNLib.Net.Messaging.FBM.Server
                         //release semaphore
                         session.ResponseLock.Release();
                     }
-
-                    await sendTask;
                 }
 
                 //No data to send
             }
             catch (Exception ex)
             {
-                OnProcessError?.Invoke(this, ex);
+                session.Handler.OnProcessError(ex);
             }
             finally
             {
@@ -295,25 +280,23 @@ namespace VNLib.Net.Messaging.FBM.Server
             private readonly CancellationTokenSource Cancellation;
             private readonly CancellationTokenRegistration Registration;
             private readonly FBMListenerSessionParams Params;
+            private readonly IFBMMemoryManager MemManager;
 
-
-            public readonly object? UserState;
 
             public readonly SemaphoreSlim ResponseLock;
 
             public readonly WebSocketSession Socket;
 
-            public readonly RequestHandler OnRecieved;
+            public readonly IFBMServerMessageHandler Handler;
 
             public CancellationToken CancellationToken => Cancellation.Token;
 
-
-            public ListeningSession(WebSocketSession session, RequestHandler onRecieved, in FBMListenerSessionParams args, object? userState)
+            public ListeningSession(WebSocketSession session, IFBMServerMessageHandler handler, in FBMListenerSessionParams args, IFBMMemoryManager memManager)
             {
                 Params = args;
                 Socket = session;
-                UserState = userState;
-                OnRecieved = onRecieved;
+                Handler = handler;
+                MemManager = memManager;
 
                 //Create cancellation and register for session close
                 Cancellation = new();
@@ -323,7 +306,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                 CtxStore = ObjectRental.CreateReusable(ContextCtor);
             }
 
-            private FBMContext ContextCtor() => new(Params.MaxHeaderBufferSize, Params.ResponseBufferSize, Params.HeaderEncoding);
+            private FBMContext ContextCtor() => new(Params.MaxHeaderBufferSize, Params.ResponseBufferSize, Params.HeaderEncoding, MemManager);
 
             /// <summary>
             /// Cancels any pending opreations relating to the current session
@@ -358,7 +341,6 @@ namespace VNLib.Net.Messaging.FBM.Server
             /// <exception cref="ObjectDisposedException"></exception>
             public FBMContext RentContext()
             {
-
                 if (Cancellation.IsCancellationRequested)
                 {
                     throw new ObjectDisposedException("The instance has been disposed");

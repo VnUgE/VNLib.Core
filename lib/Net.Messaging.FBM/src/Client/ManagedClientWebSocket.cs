@@ -43,7 +43,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         private readonly int TxBufferSize;
         private readonly int RxBufferSize;
         private readonly TimeSpan KeepAliveInterval;
-        private readonly VnTempBuffer<byte> _dataBuffer;
+        private readonly ArrayPoolBuffer<byte> _dataBuffer;
         private readonly string? _subProtocol;
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             try
             {
                 //Set buffer
-                _socket.Options.SetBuffer(RxBufferSize, TxBufferSize, _dataBuffer);
+                _socket.Options.SetBuffer(RxBufferSize, TxBufferSize, _dataBuffer.AsArraySegment());
                 //Set remaining stored options
                 _socket.Options.ClientCertificates = Certificates;
                 _socket.Options.KeepAliveInterval = KeepAliveInterval;

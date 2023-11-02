@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -27,65 +27,27 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using VNLib.Utils.Logging;
-using VNLib.Utils.Memory;
 using VNLib.Plugins.Essentials;
 
 namespace VNLib.Net.Messaging.FBM.Server
 {
+
     /// <summary>
     /// Provides a simple base class for an <see cref="FBMListener"/>
     /// processor
     /// </summary>
-    public abstract class FBMListenerBase
+    public abstract class FBMListenerBase<T> : IFBMServerErrorHandler
     {
 
         /// <summary>
         /// The initialzied listener
         /// </summary>
-        protected FBMListener? Listener { get; private set; }
+        protected abstract FBMListener Listener { get; }
+
         /// <summary>
         /// A provider to write log information to
         /// </summary>
         protected abstract ILogProvider Log { get; }
-
-        /// <summary>
-        /// Initializes the <see cref="FBMListener"/>
-        /// </summary>
-        /// <param name="heap">The heap to alloc buffers from</param>
-        protected void InitListener(IUnmangedHeap heap)
-        {
-            Listener = new(heap);
-            //Attach service handler
-            Listener.OnProcessError += Listener_OnProcessError;
-        }
-
-        /// <summary>
-        /// A single event service routine for servicing errors that occur within
-        /// the listener loop
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e">The exception that was raised</param>
-        protected virtual void Listener_OnProcessError(object? sender, Exception e)
-        {
-            //Write the error to the log
-            Log.Error(e);
-        }
-
-        private async Task OnReceivedAsync(FBMContext context, object? userState, CancellationToken token)
-        {
-            try
-            {
-                await ProcessAsync(context, userState, token);
-            }
-            catch (OperationCanceledException)
-            {
-                Log.Debug("Async operation cancelled");
-            }
-            catch(Exception ex)
-            {
-                Log.Error(ex);
-            }
-        }
 
         /// <summary>
         /// Begins listening for requests on the current websocket until 
@@ -95,10 +57,13 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <param name="args">The arguments used to configured this listening session</param>
         /// <param name="userState">A state token to use for processing events for this connection</param>
         /// <returns>A <see cref="Task"/> that completes when the connection closes</returns>
-        public virtual async Task ListenAsync(WebSocketSession wss, FBMListenerSessionParams args, object? userState)
+        /// <exception cref="InvalidOperationException"></exception>
+        public virtual Task ListenAsync(WebSocketSession wss, T userState, FBMListenerSessionParams args)
         {
             _ = Listener ?? throw new InvalidOperationException("The listener has not been intialized");
-            await Listener.ListenAsync(wss, OnReceivedAsync, args, userState);
+            //Initn new event handler
+            FBMEventHandler handler = new(userState, this);
+            return Listener.ListenAsync(wss, handler, args);
         }
 
         /// <summary>
@@ -108,6 +73,30 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <param name="userState">A state token passed on client connected</param>
         /// <param name="exitToken">A token that reflects the state of the listener</param>
         /// <returns>A task that completes when the message has been serviced</returns>
-        protected abstract Task ProcessAsync(FBMContext context, object? userState, CancellationToken exitToken);
+        protected abstract Task ProcessAsync(FBMContext context, T? userState, CancellationToken exitToken);
+
+        ///<inheritdoc/>
+        public virtual bool OnInvalidMessage(FBMContext context, Exception ex)
+        {
+            Log.Error("Invalid message received for session {ses}\n{ex}", context.Request.ConnectionId, ex);
+            //Invalid id should be captured already, so if oom, do not allow, but if a single header is invalid, it will be ignored by default
+            return !context.Request.ParseStatus.HasFlag(HeaderParseError.HeaderOutOfMem);
+        }
+
+        ///<inheritdoc/>
+        public virtual void OnProcessError(Exception ex) => Log.Error(ex);
+
+
+        private sealed record class FBMEventHandler(T State, FBMListenerBase<T> Lb) : IFBMServerMessageHandler
+        {
+            ///<inheritdoc/>
+            public Task HandleMessage(FBMContext context, CancellationToken cancellationToken) => Lb.ProcessAsync(context, State, cancellationToken);
+
+            ///<inheritdoc/>
+            public bool OnInvalidMessage(FBMContext context, Exception ex) => Lb.OnInvalidMessage(context, ex);
+
+            ///<inheritdoc/>
+            public void OnProcessError(Exception ex) => Lb.OnProcessError(ex);
+        }
     }
 }

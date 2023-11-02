@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -28,27 +28,49 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using VNLib.Utils.IO;
+using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Messaging.FBM.Client
 {
     /// <summary>
     /// Represents a shared internal character and bianry buffer for
     /// </summary>
-    internal sealed class FBMBuffer : IFBMHeaderBuffer, IDisposable
+    internal sealed class FBMBuffer : IFBMHeaderBuffer, IDisposable, IReusable
     {
-        private readonly IMemoryOwner<byte> Handle;
+        private readonly IFBMMemoryHandle Handle;
+        private readonly IFBMMemoryManager _memoryManager;
+        private readonly int _size;
 
         private readonly BufferWriter _writer;
         private readonly BinaryRequestAccumulator _requestAccumulator;
 
 
-        internal FBMBuffer(IMemoryOwner<byte> handle)
+        internal FBMBuffer(IFBMMemoryManager manager, int bufferSize)
         {
-            Handle = handle;
+            _memoryManager = manager;
+            Handle = manager.InitHandle();
             _writer = new(this);
-            _requestAccumulator = new(handle.Memory);
+            _size = bufferSize;
+            _requestAccumulator = new(this, bufferSize);
         }
 
+
+        /*
+         * Reusable methods will alloc and free buffers during 
+         * normal operation. 
+         */
+
+        ///<inheritdoc/>
+        public void Prepare() => _memoryManager.AllocBuffer(Handle, _size);
+
+        ///<inheritdoc/>
+        public bool Release()
+        {
+            _memoryManager.FreeBuffer(Handle);
+            return true;
+        }
+
+        public void Dispose() => _ = Release();
 
         /// <summary>
         /// Gets the internal request data accumulator
@@ -73,13 +95,6 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Return the internal writer
             return _writer;
         }
-       
-
-        public void Dispose()
-        {
-            //Dispose handle
-            Handle.Dispose();
-        }
 
         /// <summary>
         /// Resets the request accumulator and writes the initial message id
@@ -91,7 +106,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             _requestAccumulator.Reset();
 
             //Write message id to accumulator, it should already be reset
-            Helpers.WriteMessageid(RequestBuffer, messageId);
+            Helpers.WriteMessageid(_requestAccumulator, messageId);
         }
 
         ///<inheritdoc/>
@@ -99,24 +114,24 @@ namespace VNLib.Net.Messaging.FBM.Client
         Span<char> IFBMHeaderBuffer.GetSpan(int offset, int count)
         {
             //Get the character span
-            Span<char> span = MemoryMarshal.Cast<byte, char>(Handle.Memory.Span);
+            Span<char> span = MemoryMarshal.Cast<byte, char>(Handle.GetSpan());
             return span.Slice(offset, count);
         }
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        Span<char> IFBMHeaderBuffer.GetSpan() => MemoryMarshal.Cast<byte, char>(Handle.Memory.Span);
+        Span<char> IFBMHeaderBuffer.GetSpan() => MemoryMarshal.Cast<byte, char>(Handle.GetSpan());
 
 
         private sealed class BinaryRequestAccumulator : IDataAccumulator<byte>
         {
             private readonly int Size;
-            private readonly Memory<byte> Buffer;
+            private readonly FBMBuffer Buffer;
 
-            internal BinaryRequestAccumulator(Memory<byte> buffer)
+            internal BinaryRequestAccumulator(FBMBuffer buffer, int size)
             {
                 Buffer = buffer;
-                Size = buffer.Length;
+                Size = size;
             }
 
             ///<inheritdoc/>
@@ -126,52 +141,47 @@ namespace VNLib.Net.Messaging.FBM.Client
             public int RemainingSize => Size - AccumulatedSize;
 
             ///<inheritdoc/>
-            public Span<byte> Remaining => Buffer.Span.Slice(AccumulatedSize, RemainingSize);
+            public Span<byte> Remaining => Buffer.Handle.GetSpan().Slice(AccumulatedSize, RemainingSize);
+
             ///<inheritdoc/>
-            public Span<byte> Accumulated => Buffer.Span[..AccumulatedSize];
+            public Span<byte> Accumulated => Buffer.Handle.GetSpan()[..AccumulatedSize];
 
             /// <summary>
             /// Gets the accumulated data as a memory segment
             /// </summary>
-            public Memory<byte> AccumulatedMemory => Buffer[..AccumulatedSize];
+            public Memory<byte> AccumulatedMemory => Buffer.Handle.GetMemory()[..AccumulatedSize];
 
             /// <summary>
             /// Gets the remaining buffer segment as a memory segment
             /// </summary>
-            public Memory<byte> RemainingMemory => Buffer.Slice(AccumulatedSize, RemainingSize);
+            public Memory<byte> RemainingMemory => Buffer.Handle.GetMemory().Slice(AccumulatedSize, RemainingSize);
 
             ///<inheritdoc/>
             public void Advance(int count) => AccumulatedSize += count;
+
             ///<inheritdoc/>
             public void Reset() => AccumulatedSize = 0;
         }
 
+        /*
+         * A buffer writer that wraps the request accumulator to allow 
+         * a finite amount of data to be written to the accumulator since
+         * it uses a fixed size internal buffer.
+         */
         private sealed class BufferWriter : IBufferWriter<byte>
         {
             private readonly FBMBuffer Buffer;
 
-            public BufferWriter(FBMBuffer buffer)
-            {
-                Buffer = buffer;
-            }
+            public BufferWriter(FBMBuffer buffer) => Buffer = buffer;
 
-            public void Advance(int count)
-            {
-                //Advance the writer
-                Buffer.RequestBuffer.Advance(count);
-            }
+            ///<inheritdoc/>
+            public void Advance(int count) => Buffer._requestAccumulator.Advance(count);
 
-            public Memory<byte> GetMemory(int sizeHint = 0)
-            {
-                //Get the remaining memory segment
-                return Buffer._requestAccumulator.RemainingMemory;
-            }
+            ///<inheritdoc/>
+            public Memory<byte> GetMemory(int sizeHint = 0) => Buffer._requestAccumulator.RemainingMemory;
 
-            public Span<byte> GetSpan(int sizeHint = 0)
-            {
-                //Get the remaining data segment
-                return Buffer.RequestBuffer.Remaining;
-            }
+            ///<inheritdoc/>
+            public Span<byte> GetSpan(int sizeHint = 0) => Buffer._requestAccumulator.Remaining;
         }
     }
 }

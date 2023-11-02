@@ -92,7 +92,7 @@ namespace VNLib.Utils.Memory
             }
 
             //Round to nearest page (in bytes)
-            nint np = NearestPage(elements * sizeof(T));
+            nint np = NearestPage(ByteCount<T>(elements));
 
             //Resize to element size
             np /= sizeof(T);
@@ -131,7 +131,7 @@ namespace VNLib.Utils.Memory
             }
             else
             {
-                return new VnTempBuffer<T>(ArrayPool<T>.Shared, elements, zero);
+                return new ArrayPoolBuffer<T>(ArrayPool<T>.Shared, elements, zero);
             }
         }
 
@@ -154,7 +154,7 @@ namespace VNLib.Utils.Memory
             }
 
             //Round to nearest page (in bytes)
-            nint np = NearestPage(elements * sizeof(T));
+            nint np = NearestPage(ByteCount<T>(elements));
 
             //Resize to element size
             np /= sizeof(T);
@@ -258,7 +258,7 @@ namespace VNLib.Utils.Memory
             }
             else
             {
-                return new VnTempBuffer<byte>(ArrayPool<byte>.Shared, elements, zero);
+                return new ArrayPoolBuffer<byte>(ArrayPool<byte>.Shared, elements, zero);
             }
         }
 

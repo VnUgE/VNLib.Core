@@ -48,11 +48,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="size">The minimum size array to allocate</param>
         /// <param name="zero">Should elements from 0 to size be set to default(T)</param>
         /// <returns>A new <see cref="OpenResourceHandle{T}"/> encapsulating the rented array</returns>
-        public static UnsafeMemoryHandle<T> Lease<T>(this ArrayPool<T> pool, int size, bool zero = false) where T: unmanaged
-        {
-            //Pool buffer handles are considered "safe" so im reusing code for now
-            return new(pool, size, zero);
-        }
+        public static UnsafeMemoryHandle<T> Lease<T>(this ArrayPool<T> pool, int size, bool zero = false) where T : unmanaged => new(pool, size, zero);
 
         /// <summary>
         /// Retreives a buffer that is at least the reqested length, and clears the array from 0-size. 
@@ -81,13 +77,10 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <returns>The string representation of the buffer</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string ToString<T>(this T charBuffer) where T: IMemoryHandle<char>
-        {
-            return charBuffer.Span.ToString();
-        }
+        public static string ToString<T>(this T charBuffer) where T : IMemoryHandle<char> => charBuffer.Span.ToString();
 
         /// <summary>
-        /// Wraps the <see cref="MemoryHandle{T}"/> instance in System.Buffers.MemoryManager 
+        /// Wraps the <see cref="IMemoryHandle{T}"/> instance in System.Buffers.MemoryManager 
         /// wrapper to provide <see cref="Memory{T}"/> buffers from umanaged handles.
         /// </summary>
         /// <typeparam name="T">The unmanaged data type</typeparam>
@@ -98,34 +91,12 @@ namespace VNLib.Utils.Extensions
         /// </param>
         /// <returns>The <see cref="MemoryManager{T}"/> wrapper</returns>
         /// <remarks>NOTE: This wrapper now manages the lifetime of the current handle</remarks>
+        /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryManager<T> ToMemoryManager<T>(this MemoryHandle<T> handle, bool ownsHandle = true) where T : unmanaged
-        {
-            _ = handle ?? throw new ArgumentNullException(nameof(handle));
-            return new SysBufferMemoryManager<T>(handle, ownsHandle);
-        }
+        public static MemoryManager<T> ToMemoryManager<T>(this IMemoryHandle<T> handle, bool ownsHandle) => new SysBufferMemoryManager<T>(handle, ownsHandle);
 
         /// <summary>
-        /// Wraps the <see cref="VnTempBuffer{T}"/> instance in System.Buffers.MemoryManager 
-        /// wrapper to provide <see cref="Memory{T}"/> buffers from umanaged handles.
-        /// </summary>
-        /// <typeparam name="T">The unmanaged data type</typeparam>
-        /// <param name="handle"></param>
-        /// <param name="ownsHandle">
-        /// A value that indicates if the new <see cref="MemoryManager{T}"/> owns the handle. 
-        /// When <c>true</c>, the new <see cref="MemoryManager{T}"/> maintains the lifetime of the handle.
-        /// </param>
-        /// <returns>The <see cref="MemoryManager{T}"/> wrapper</returns>
-        /// <remarks>NOTE: This wrapper now manages the lifetime of the current handle</remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryManager<T> ToMemoryManager<T>(this VnTempBuffer<T> handle, bool ownsHandle = true) where T : unmanaged
-        {
-            _ = handle ?? throw new ArgumentNullException(nameof(handle));
-            return new SysBufferMemoryManager<T>(handle, ownsHandle);
-        }
-
-        /// <summary>
-        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="Win32PrivateHeap"/> instance
+        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="IUnmangedHeap"/> instance
         /// of the specified number of elements
         /// </summary>
         /// <typeparam name="T">The unmanaged data type</typeparam>
@@ -133,10 +104,14 @@ namespace VNLib.Utils.Extensions
         /// <param name="size">The number of elements to allocate on the heap</param>
         /// <param name="zero">Optionally zeros conents of the block when allocated</param>
         /// <returns>The <see cref="MemoryManager{T}"/> wrapper around the block of memory</returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static MemoryManager<T> DirectAlloc<T>(this IUnmangedHeap heap, nuint size, bool zero = false) where T : unmanaged
         {
-            return new SysBufferMemoryManager<T>(heap, size, zero);
+            MemoryHandle<T> handle = heap.Alloc<T>(size, zero);
+            return new SysBufferMemoryManager<T>(handle, true);
         }
 
         /// <summary>
@@ -163,10 +138,10 @@ namespace VNLib.Utils.Extensions
         /// </returns>
         //Method only exists for consistancy since unsafe handles are always 32bit
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetIntLength<T>(this in UnsafeMemoryHandle<T> handle) where T: unmanaged => handle.IntLength;
+        public static int GetIntLength<T>(this in UnsafeMemoryHandle<T> handle) where T : unmanaged => handle.IntLength;
 
         /// <summary>
-        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="Win32PrivateHeap"/> instance
+        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="IUnmangedHeap"/> instance
         /// of the specified number of elements
         /// </summary>
         /// <typeparam name="T">The unmanaged data type</typeparam>
@@ -181,6 +156,7 @@ namespace VNLib.Utils.Extensions
         {
             return size >= 0 ? DirectAlloc<T>(heap, (nuint)size, zero) : throw new ArgumentOutOfRangeException(nameof(size), "The size paramter must be a positive integer");
         }
+        
         /// <summary>
         /// Gets an offset pointer from the base postion to the number of bytes specified. Performs bounds checks
         /// </summary>
@@ -194,6 +170,7 @@ namespace VNLib.Utils.Extensions
         {
             return elements >= 0 ? memory.GetOffset((nuint)elements) : throw new ArgumentOutOfRangeException(nameof(elements), "The elements paramter must be a positive integer");
         }
+
         /// <summary>
         /// Resizes the current handle on the heap
         /// </summary>
@@ -204,7 +181,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Resize<T>(this MemoryHandle<T> memory, nint elements) where T : unmanaged
+        public static void Resize<T>(this IResizeableMemoryHandle<T> memory, nint elements)
         {
             if (elements < 0)
             {
@@ -224,7 +201,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ResizeIfSmaller<T>(this MemoryHandle<T> handle, nint count) where T : unmanaged
+        public static void ResizeIfSmaller<T>(this IResizeableMemoryHandle<T> handle, nint count)
         {
             if(count < 0)
             {
@@ -244,7 +221,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ResizeIfSmaller<T>(this MemoryHandle<T> handle, nuint count) where T : unmanaged
+        public static void ResizeIfSmaller<T>(this IResizeableMemoryHandle<T> handle, nuint count)
         {
             //Check handle size
             if(handle.Length < count)
@@ -254,6 +231,52 @@ namespace VNLib.Utils.Extensions
             }
         }
 
+        /// <summary>
+        /// Gets a reference to the element at the specified offset from the base 
+        /// address of the <see cref="MemoryHandle{T}"/>
+        /// </summary>
+        /// <param name="block"></param>
+        /// <param name="offset">The element offset from the base address to add to the returned reference</param>
+        /// <returns>The reference to the item at the desired offset</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T GetOffsetRef<T>(this IMemoryHandle<T> block, nuint offset) 
+        {
+            _ = block ?? throw new ArgumentNullException(nameof(block));
+            
+            if (offset >= block.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            }
+
+            return ref Unsafe.Add(ref block.GetReference(), offset);
+        }
+
+        /// <summary>
+        /// Gets a reference to the element at the specified offset from the base
+        /// address of the <see cref="MemoryHandle{T}"/> and casts it to a byte reference
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="block"></param>
+        /// <param name="offset">The number of elements to offset the base reference by</param>
+        /// <returns>The reinterpreted byte reference at the first byte of the element offset</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref byte GetByteOffsetRef<T>(this IMemoryHandle<T> block, nuint offset) 
+        {
+            _ = block ?? throw new ArgumentNullException(nameof(block));
+
+            if (offset >= block.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            }
+
+            //Get the base reference, then offset by the desired number of elements and cast to a byte reference
+            ref T baseRef = ref block.GetReference();
+            ref T offsetRef = ref Unsafe.Add(ref baseRef, offset);
+            return ref Unsafe.As<T, byte>(ref offsetRef);
+        }
 
         /// <summary>
         /// Gets a 64bit friendly span offset for the current <see cref="MemoryHandle{T}"/>
@@ -265,7 +288,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The offset span</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe Span<T> GetOffsetSpan<T>(this MemoryHandle<T> block, nuint offset, int size) where T: unmanaged
+        public static Span<T> GetOffsetSpan<T>(this IMemoryHandle<T> block, nuint offset, int size) 
         {
             _ = block ?? throw new ArgumentNullException(nameof(block));
             
@@ -282,9 +305,10 @@ namespace VNLib.Utils.Extensions
             MemoryUtil.CheckBounds(block, offset, (nuint)size);
             
             //Get long offset from the destination handle
-            void* ofPtr = block.GetOffset(offset);
-            return new Span<T>(ofPtr, size);
+            ref T ofPtr = ref GetOffsetRef(block, offset);
+            return MemoryMarshal.CreateSpan(ref ofPtr, size);
         }
+
         /// <summary>
         /// Gets a 64bit friendly span offset for the current <see cref="MemoryHandle{T}"/>
         /// </summary>
@@ -295,7 +319,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The offset span</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe Span<T> GetOffsetSpan<T>(this MemoryHandle<T> block, nint offset, int size) where T : unmanaged
+        public static unsafe Span<T> GetOffsetSpan<T>(this IMemoryHandle<T> block, nint offset, int size)
         {
             return offset >= 0 ? block.GetOffsetSpan((nuint)offset, size) : throw new ArgumentOutOfRangeException(nameof(offset));
         }
@@ -310,7 +334,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The new <see cref="SubSequence{T}"/> within the block</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SubSequence<T> GetSubSequence<T>(this MemoryHandle<T> block, nuint offset, int size) where T : unmanaged => new (block, offset, size);
+        public static SubSequence<T> GetSubSequence<T>(this IMemoryHandle<T> block, nuint offset, int size) => new (block, offset, size);
         
         /// <summary>
         /// Gets a <see cref="SubSequence{T}"/> window within the current block
@@ -322,7 +346,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The new <see cref="SubSequence{T}"/> within the block</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SubSequence<T> GetSubSequence<T>(this MemoryHandle<T> block, nint offset, int size) where T : unmanaged
+        public static SubSequence<T> GetSubSequence<T>(this IMemoryHandle<T> block, nint offset, int size)
         {
             return offset >= 0 ? new (block, (nuint)offset, size) : throw new ArgumentOutOfRangeException(nameof(offset));
         }
@@ -334,10 +358,7 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T">The unmanged data type to provide allocations from</typeparam>
         /// <returns>The new <see cref="MemoryPool{T}"/> heap wrapper.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryPool<T> ToPool<T>(this IUnmangedHeap heap, int maxBufferSize = int.MaxValue) where T : unmanaged
-        {
-            return new PrivateBuffersMemoryPool<T>(heap, maxBufferSize);
-        }
+        public static MemoryPool<T> ToPool<T>(this IUnmangedHeap heap, int maxBufferSize = int.MaxValue) where T : unmanaged => new PrivateBuffersMemoryPool<T>(heap, maxBufferSize);
 
         /// <summary>
         /// Allocates a structure of the specified type on the current unmanged heap and zero's its memory
@@ -349,14 +370,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe T* StructAlloc<T>(this IUnmangedHeap heap) where T : unmanaged
-        {
-            //Allocate the struct on the heap and zero memory it points to
-            IntPtr handle = heap.Alloc(1, (nuint)sizeof(T), true);
-            //returns the handle
-            return (T*)handle;
-        }
-        
+        public static unsafe T* StructAlloc<T>(this IUnmangedHeap heap) where T : unmanaged => (T*)heap.Alloc(1, (nuint)sizeof(T), true);
+
         /// <summary>
         /// Frees a structure at the specified address from the this heap. 
         /// This must be the same heap the structure was allocated from
@@ -468,7 +483,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void WriteAndResize<T>(this MemoryHandle<T> handle, ReadOnlySpan<T> input) where T: unmanaged
+        public static void WriteAndResize<T>(this IResizeableMemoryHandle<T> handle, ReadOnlySpan<T> input) where T: unmanaged
         {
             handle.Resize(input.Length);
             MemoryUtil.Copy(input, handle, 0);
@@ -618,6 +633,7 @@ namespace VNLib.Utils.Extensions
         {
             return GetBytes(enc, chars.AsSpan(offset, charCount), ref writer, flush);
         }
+
         /// <summary>
         /// Encodes a set of characters in the input characters span and any characters
         /// in the internal buffer into a sequence of bytes that are stored in the input
@@ -639,6 +655,7 @@ namespace VNLib.Utils.Extensions
             writer.Advance(written);
             return written;
         }
+
         /// <summary>
         /// Encodes a set of characters in the input characters span and any characters
         /// in the internal buffer into a sequence of bytes that are stored in the input
@@ -657,6 +674,7 @@ namespace VNLib.Utils.Extensions
             writer.Advance(written);
             return written;
         }
+
         /// <summary>
         /// Decodes a character buffer in the input characters span and any characters
         /// in the internal buffer into a sequence of bytes that are stored in the input
@@ -683,6 +701,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>A <see cref="PrivateString"/> instance that owns the underlying string memory</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PrivateString ToPrivate(this ref ForwardOnlyWriter<char> buffer) => new(buffer.ToString(), true);
+
         /// <summary>
         /// Gets a <see cref="Span{T}"/> over the modified section of the internal buffer
         /// </summary>
@@ -711,6 +730,7 @@ namespace VNLib.Utils.Extensions
             Range sliceRange = new(start, arr.Length - start);
             return RuntimeHelpers.GetSubArray(arr, sliceRange);
         }
+
         /// <summary>
         /// Slices the current array by the specified starting offset to including the 
         /// speciifed number of items

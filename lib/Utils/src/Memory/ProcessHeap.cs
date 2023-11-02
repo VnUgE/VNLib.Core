@@ -49,7 +49,7 @@ namespace VNLib.Utils.Memory
         /// process heap. Meaining memory will be shared across the process
         /// </para>
         /// </summary>
-        public HeapCreation CreationFlags { get; } = HeapCreation.Shared;
+        public HeapCreation CreationFlags { get; } = HeapCreation.Shared | HeapCreation.SupportsRealloc;
 
         /// <summary>
         /// Initalizes a new global (cross platform) process heap

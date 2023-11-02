@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -90,17 +90,16 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <summary>
         /// Releases any resources associated with the response message
         /// </summary>
-        public void Dispose() => _onDispose?.Invoke();
+        public readonly void Dispose() => _onDispose?.Invoke();
         ///<inheritdoc/>
         public override bool Equals(object? obj) => obj is FBMResponse response && Equals(response);
+        ///<inheritdoc/>
+        public bool Equals(FBMResponse other) => IsSet && other.IsSet && ReferenceEquals(MessagePacket, other.MessagePacket);
         ///<inheritdoc/>
         public override int GetHashCode() => IsSet ? MessagePacket!.GetHashCode() : 0;
         ///<inheritdoc/>
         public static bool operator ==(FBMResponse left, FBMResponse right) => left.Equals(right);
         ///<inheritdoc/>
         public static bool operator !=(FBMResponse left, FBMResponse right) => !(left == right);
-        ///<inheritdoc/>
-        public bool Equals(FBMResponse other) => IsSet && other.IsSet && MessagePacket == other.MessagePacket;
-
     }
 }

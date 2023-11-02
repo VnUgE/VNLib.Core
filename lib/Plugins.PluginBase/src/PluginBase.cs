@@ -107,6 +107,11 @@ namespace VNLib.Plugins
         protected virtual string LogTemplate => $"{{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}} [{{Level:u3}}] {PluginName}: {{Message:lj}}{{NewLine}}{{Exception}}";
 
         /// <summary>
+        /// Arguments passed to the plugin by the host application
+        /// </summary>
+        public ArgumentList HostArgs { get; private set; }
+
+        /// <summary>
         /// The host application may invoke this method when the assembly is loaded and this plugin is constructed to pass
         /// a configuration object to the instance. This method populates the configuration objects if applicable.
         /// </summary>
@@ -133,16 +138,16 @@ namespace VNLib.Plugins
         [LogInitializer]
         public virtual void InitLog(string[] cmdArgs)
         {
-            ArgumentList args = new(cmdArgs);
+            HostArgs = new(cmdArgs);
             //Open new logger config
             LoggerConfiguration logConfig = new();
             //Check for verbose
-            if (args.HasArgument("-v"))
+            if (HostArgs.HasArgument("-v"))
             {
                 logConfig.MinimumLevel.Verbose();
             }
             //Check for debug mode
-            else if (args.HasArgument("-d"))
+            else if (HostArgs.HasArgument("-d"))
             {
                 logConfig.MinimumLevel.Debug();
             }
@@ -153,7 +158,7 @@ namespace VNLib.Plugins
             }
 
             //Init console log
-            InitConsoleLog(args, logConfig);
+            InitConsoleLog(logConfig);
 
             //Init file log
             InitFileLog(logConfig);
@@ -162,10 +167,10 @@ namespace VNLib.Plugins
             Log = new VLogProvider(logConfig);
         }
 
-        private void InitConsoleLog(ArgumentList args, LoggerConfiguration logConfig)
+        private void InitConsoleLog(LoggerConfiguration logConfig)
         {
             //If silent arg is not specified, open log to console
-            if (!(args.HasArgument("--silent") || args.HasArgument("-s")))
+            if (!(HostArgs.HasArgument("--silent") || HostArgs.HasArgument("-s")))
             {
                 _ = logConfig.WriteTo.Console(outputTemplate: LogTemplate, formatProvider:null);
             }

@@ -25,7 +25,6 @@
 using System;
 using System.Text;
 
-using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 
 namespace VNLib.Net.Messaging.FBM.Client
@@ -59,7 +58,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <summary>
         /// The heap to allocate internal (and message) buffers from
         /// </summary>
-        public readonly IUnmangedHeap BufferHeap { get; init; }
+        public readonly IFBMMemoryManager MemoryManager { get; init; }
         /// <summary>
         /// The websocket keepalive interval to use (leaving this property default disables keepalives)
         /// </summary>

@@ -24,6 +24,8 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 using VNLib.Utils.Extensions;
 
@@ -33,7 +35,7 @@ namespace VNLib.Utils.Memory
     /// A disposable temporary buffer from shared ArrayPool
     /// </summary>
     /// <typeparam name="T">Type of buffer to create</typeparam>
-    public sealed class VnTempBuffer<T> : VnDisposeable, IIndexable<int, T>, IMemoryHandle<T>, IMemoryOwner<T>
+    public sealed class ArrayPoolBuffer<T> : VnDisposeable, IIndexable<int, T>, IMemoryHandle<T>, IMemoryOwner<T>
     {
         private readonly ArrayPool<T> Pool;
 
@@ -64,25 +66,29 @@ namespace VNLib.Utils.Memory
         }
 
         ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetReference() => ref MemoryMarshal.GetArrayDataReference(Buffer);
+
+        ///<inheritdoc/>
         Memory<T> IMemoryOwner<T>.Memory => AsMemory();
 
         /// <summary>
-        /// Allocates a new <see cref="VnTempBuffer{BufType}"/> with a new buffer from shared array-pool
+        /// Allocates a new <see cref="ArrayPoolBuffer{BufType}"/> with a new buffer from shared array-pool
         /// </summary>
         /// <param name="minSize">Minimum size of the buffer</param>
         /// <param name="zero">Set the zero memory flag on close</param>
-        public VnTempBuffer(int minSize, bool zero = false) :this(ArrayPool<T>.Shared, minSize, zero)
-        {}
+        public ArrayPoolBuffer(int minSize, bool zero = false) :this(ArrayPool<T>.Shared, minSize, zero)
+        { }
         
         /// <summary>
-        /// Allocates a new <see cref="VnTempBuffer{BufType}"/> with a new buffer from specified array-pool
+        /// Allocates a new <see cref="ArrayPoolBuffer{BufType}"/> with a new buffer from specified array-pool
         /// </summary>
         /// <param name="pool">The <see cref="ArrayPool{T}"/> to allocate from and return to</param>
         /// <param name="minSize">Minimum size of the buffer</param>
         /// <param name="zero">Set the zero memory flag on close</param>
-        public VnTempBuffer(ArrayPool<T> pool, int minSize, bool zero = false)
+        public ArrayPoolBuffer(ArrayPool<T> pool, int minSize, bool zero = false)
         {
-            Pool = pool;
+            Pool = pool ?? throw new ArgumentNullException(nameof(pool));
             Buffer = pool.Rent(minSize, zero);
             InitSize = minSize;
         }
@@ -126,7 +132,16 @@ namespace VNLib.Utils.Memory
             Check();
             return new Memory<T>(Buffer, 0, InitSize);
         }
-        
+
+        /// <summary>
+        /// Gets a memory structure around the internal buffer
+        /// </summary>
+        /// <param name="count">The number of elements included in the result</param>
+        /// <returns>A memory structure over the buffer</returns>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public Memory<T> AsMemory(int count) => AsMemory()[..count];
+
         /// <summary>
         /// Gets a memory structure around the internal buffer
         /// </summary>
@@ -135,35 +150,46 @@ namespace VNLib.Utils.Memory
         /// <returns>A memory structure over the buffer</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public Memory<T> AsMemory(int start, int count)
-        {
-            Check();
-            return new Memory<T>(Buffer, start, count);
-        }
+        public Memory<T> AsMemory(int start, int count) => AsMemory().Slice(start, count);
 
         /// <summary>
-        /// Gets a memory structure around the internal buffer
+        /// Gets an array segment around the internal buffer
         /// </summary>
-        /// <param name="count">The number of elements included in the result</param>
-        /// <returns>A memory structure over the buffer</returns>
+        /// <returns>The internal array segment</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public Memory<T> AsMemory(int count)
+        public ArraySegment<T> AsArraySegment()
         {
             Check();
-            return new Memory<T>(Buffer, 0, count);
+            return new ArraySegment<T>(Buffer, 0, InitSize);
+        }
+        
+        /// <summary>
+        /// Gets an array segment around the internal buffer
+        /// </summary>
+        /// <returns>The internal array segment</returns>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public ArraySegment<T> AsArraySegment(int start, int count)
+        {
+            if(start< 0 || count < 0)
+            {
+                throw new ArgumentOutOfRangeException(start < 0 ? nameof(start) : nameof(count), "Cannot be less than zero");
+            }
+
+            MemoryUtil.CheckBounds(Buffer, (uint)start, (uint)count);
+
+            Check();
+            return new ArraySegment<T>(Buffer, start, count);
         }
 
-        /*
-         * Allow implict casts to span/arrayseg/memory 
-         */
-        public static implicit operator Memory<T>(VnTempBuffer<T> buf) => buf == null ? Memory<T>.Empty : buf.ToMemory();
-        public static implicit operator Span<T>(VnTempBuffer<T> buf) => buf == null ? Span<T>.Empty : buf.ToSpan();
-        public static implicit operator ArraySegment<T>(VnTempBuffer<T> buf) => buf == null ? ArraySegment<T>.Empty : buf.ToArraySegment();
-        
-        public Memory<T> ToMemory() => Disposed ? Memory<T>.Empty : Buffer.AsMemory(0, InitSize);
-        public Span<T> ToSpan() => Disposed ? Span<T>.Empty : Buffer.AsSpan(0, InitSize);
-        public ArraySegment<T> ToArraySegment() => Disposed ? ArraySegment<T>.Empty : new(Buffer, 0, InitSize);
+        //Pin, will also check bounds
+        ///<inheritdoc/>
+        public MemoryHandle Pin(int elementIndex) => MemoryUtil.PinArrayAndGetHandle(Buffer, elementIndex);
+
+        void IPinnable.Unpin()
+        {
+            //Gchandle will manage the unpin
+        }
 
         /// <summary>
         /// Returns buffer to shared array-pool
@@ -179,16 +205,7 @@ namespace VNLib.Utils.Memory
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
 
-        //Pin, will also check bounds
         ///<inheritdoc/>
-        public MemoryHandle Pin(int elementIndex) => MemoryUtil.PinArrayAndGetHandle(Buffer, elementIndex);
-
-        void IPinnable.Unpin()
-        {
-            //Gchandle will manage the unpin
-        }
-
-        ///<inheritdoc/>
-        ~VnTempBuffer() => Free();     
+        ~ArrayPoolBuffer() => Free();     
     }
 }

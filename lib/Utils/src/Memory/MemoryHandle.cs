@@ -40,8 +40,16 @@ namespace VNLib.Utils.Memory
     /// Handles are configured to address blocks larger than 2GB,
     /// so some properties may raise exceptions if large blocks are used.
     /// </remarks>
-    public sealed class MemoryHandle<T> : SafeHandleZeroOrMinusOneIsInvalid, IMemoryHandle<T>, IEquatable<MemoryHandle<T>> where T : unmanaged
+    public sealed class MemoryHandle<T> : 
+        SafeHandleZeroOrMinusOneIsInvalid, 
+        IResizeableMemoryHandle<T>, 
+        IMemoryHandle<T>,
+        IEquatable<MemoryHandle<T>> 
+        where T : unmanaged
     {
+        private readonly bool ZeroMemory;
+        private readonly IUnmangedHeap Heap;
+        private nuint _length;
 
         /// <summary>
         /// New <typeparamref name="T"/>* pointing to the base of the allocated block
@@ -79,15 +87,11 @@ namespace VNLib.Utils.Memory
             }
         }
 
-        private readonly bool ZeroMemory;
-        private readonly IUnmangedHeap Heap;
-        private nuint _length;
-
         ///<inheritdoc/>
-        public nuint Length 
+        public nuint Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _length; 
+            get => _length;
         }
 
         /// <summary>
@@ -99,6 +103,13 @@ namespace VNLib.Utils.Memory
             //Check for overflows when converting to bytes (should run out of memory before this is an issue, but just incase)
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => MemoryUtil.ByteCount<T>(_length);
+        }
+
+        ///<inheritdoc/>
+        public bool CanRealloc
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Heap != null && Heap.CreationFlags.HasFlag(HeapCreation.SupportsRealloc);
         }
 
         /// <summary>
@@ -128,7 +139,7 @@ namespace VNLib.Utils.Memory
         /// when accessed, however <see cref="IMemoryHandle{T}"/> operations are 
         /// considered "safe" meaning they should never raise excpetions
         /// </summary>
-        public MemoryHandle():base(false)
+        public MemoryHandle() : base(false)
         {
             _length = 0;
             Heap = null!;
@@ -151,7 +162,7 @@ namespace VNLib.Utils.Memory
                  * If resize raises an exception the current block pointer
                  * should still be valid, if its not, the pointer should 
                  * be set to 0/-1, which will be considered invalid anyway
-                 */            
+                 */
 
                 Heap.Resize(ref handle, elements, (nuint)sizeof(T), ZeroMemory);
 
@@ -161,14 +172,14 @@ namespace VNLib.Utils.Memory
             //Catch the disposed exception so we can invalidate the current ptr
             catch (ObjectDisposedException)
             {
-                base.handle = IntPtr.Zero;
+                SetHandle(IntPtr.Zero);
                 //Set as invalid so release does not get called
-                base.SetHandleAsInvalid();
+                SetHandleAsInvalid();
                 //Propagate the exception
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Gets an offset pointer from the base postion to the number of bytes specified. Performs bounds checks
         /// </summary>
@@ -190,7 +201,14 @@ namespace VNLib.Utils.Memory
             T* bs = ((T*)handle) + elements;
             return bs;
         }
-        
+
+        ///<inheritdoc/>
+        public ref T GetReference()
+        {
+            this.ThrowIfClosed();
+            return ref MemoryUtil.GetRef<T>(handle);
+        }
+
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
         ///<exception cref="ArgumentOutOfRangeException"></exception>
@@ -200,14 +218,14 @@ namespace VNLib.Utils.Memory
         ///</remarks>
         public unsafe MemoryHandle Pin(int elementIndex)
         {
-            if(elementIndex < 0)
+            if (elementIndex < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(elementIndex));
             }
 
             //Get ptr and guard checks before adding the referrence
             T* ptr = GetOffset((nuint)elementIndex);
-            
+
             bool addRef = false;
             //use the pinned field as success val
             DangerousAddRef(ref addRef);
@@ -216,7 +234,7 @@ namespace VNLib.Utils.Memory
                 ? throw new ObjectDisposedException("Failed to increase referrence count on the memory handle because it was released")
                 : new MemoryHandle(ptr, pinnable: this);
         }
-        
+
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
         public void Unpin()
@@ -226,11 +244,7 @@ namespace VNLib.Utils.Memory
         }
 
         ///<inheritdoc/>
-        protected override bool ReleaseHandle()
-        {
-            //Return result of free, only if the handle is valid
-            return Heap.Free(ref handle);
-        }      
+        protected override bool ReleaseHandle() => Heap.Free(ref handle);
 
         /// <summary>
         /// Determines if the memory blocks are equal by comparing their base addresses.
@@ -243,14 +257,13 @@ namespace VNLib.Utils.Memory
         {
             return other != null && (IsClosed | other.IsClosed) == false && _length == other._length && handle == other.handle;
         }
-        
+
         ///<inheritdoc/>
         public override bool Equals(object? obj) => obj is MemoryHandle<T> oHandle && Equals(oHandle);
-        
+
         ///<inheritdoc/>
         public override int GetHashCode() => base.GetHashCode();
 
-       
         ///<inheritdoc/>
         public static implicit operator Span<T>(MemoryHandle<T> handle)
         {

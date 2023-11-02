@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: IHttpMiddleware.cs 
+* File: MiddlewareImplOptions.cs 
 *
-* IHttpMiddleware.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+* MiddlewareImplOptions.cs is part of VNLib.Plugins.Essentials which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
@@ -22,23 +22,25 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.Threading.Tasks;
+using System;
+
 
 namespace VNLib.Plugins.Essentials.Middleware
 {
-
     /// <summary>
-    /// Represents a low level intermediate request processor with high privilages, meant to add 
-    /// functionality to entity processing.
+    /// Implementation flags for midleware implementations
     /// </summary>
-    public interface IHttpMiddleware
+    [Flags]
+    public enum MiddlewareImplOptions
     {
         /// <summary>
-        /// Processes the <see cref="HttpEntity"/> and returns a <see cref="FileProcessArgs"/> 
-        /// indicating the result of the process operation
+        /// No flags
         /// </summary>
-        /// <param name="entity">The entity to process</param>
-        /// <returns>The result of the operation</returns>
-        ValueTask<FileProcessArgs> ProcessAsync(HttpEntity entity);
+        None = 0x00,
+        /// <summary>
+        /// Prioritizes a middleware instance in the chain because
+        /// it is required for security purposes
+        /// </summary>
+        SecurityCritical = 0x01
     }
 }

@@ -35,7 +35,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Net.Http\src\VNLib.Net.Http.csproj" />
     <ProjectReference Include="..\..\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
   </ItemGroup>

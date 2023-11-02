@@ -48,9 +48,9 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// or a timeout
         /// </summary>
         /// <param name="timeout">The maxium time to wait for the server to respond (may be default/0)</param>
-        /// <param name="cancellation">The cancellation token to observe</param>
+        /// <param name="cancellation">A token to cancel the wait task</param>
         /// <returns>A task that completes when the server responds</returns>
-        Task WaitAsync(TimeSpan timeout, CancellationToken cancellation);
+        Task GetTask(TimeSpan timeout, CancellationToken cancellation);
 
         /// <summary>
         /// Called by the client to cleanup the waiter when the request is completed
@@ -63,7 +63,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// Set by the client when the response has been successfully received by the client
         /// </summary>
         /// <param name="ms">The response data to pass to the response</param>
-        void Complete(VnMemoryStream ms);
+        bool Complete(VnMemoryStream ms);
 
         /// <summary>
         /// Called to invoke a manual cancellation of a request waiter. This method should

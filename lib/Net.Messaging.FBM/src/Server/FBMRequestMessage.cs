@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -24,13 +24,12 @@
 
 using System;
 using System.Text;
-using System.Buffers;
-using System.Text.Json;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.IO;
-using VNLib.Utils.Extensions;
+using VNLib.Utils.Memory;
 using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Messaging.FBM.Server
@@ -42,18 +41,21 @@ namespace VNLib.Net.Messaging.FBM.Server
     {
         private readonly List<FBMMessageHeader> _headers;
         private readonly int HeaderBufferSize;
+        private readonly IFBMMemoryManager _memoryManager;
+        private readonly IFBMSpanOnlyMemoryHandle _memHandle;
 
         /// <summary>
         /// Creates a new resusable <see cref="FBMRequestMessage"/>
         /// </summary>
         /// <param name="headerBufferSize">The size of the buffer to alloc during initialization</param>
-        internal FBMRequestMessage(int headerBufferSize)
+        /// <param name="manager">The memory manager to use for the message</param>
+        internal FBMRequestMessage(int headerBufferSize, IFBMMemoryManager manager)
         {
             HeaderBufferSize = headerBufferSize;
             _headers = new();
+            _memoryManager = manager;
+            _memHandle = _memoryManager.InitSpanOnly();
         }
-
-        private char[]? _headerBuffer;
         
         /// <summary>
         /// The ID of the current message
@@ -115,35 +117,13 @@ namespace VNLib.Net.Messaging.FBM.Server
             //Parse headers
             ParseStatus = Helpers.ParseHeaders(vms, this, _headers, dataEncoding);
         }
-        
-        /// <summary>
-        /// Deserializes the request body into a new specified object type
-        /// </summary>
-        /// <typeparam name="T">The type of the object to deserialize</typeparam>
-        /// <param name="jso">The <see cref="JsonSerializerOptions"/> to use while deserializing data</param>
-        /// <returns>The deserialized object from the request body</returns>
-        /// <exception cref="JsonException"></exception>
-        public T? DeserializeBody<T>(JsonSerializerOptions? jso = default)
-        {
-            return BodyData.IsEmpty ? default : BodyData.AsJsonObject<T>(jso);
-        }
-        
-        /// <summary>
-        /// Gets a <see cref="JsonDocument"/> of the request body
-        /// </summary>
-        /// <returns>The parsed <see cref="JsonDocument"/> if parsed successfully, or null otherwise</returns>
-        /// <exception cref="JsonException"></exception>
-        public JsonDocument? GetBodyAsJson()
-        {
-            Utf8JsonReader reader = new(BodyData);
-            return JsonDocument.TryParseValue(ref reader, out JsonDocument? jdoc) ? jdoc : default;
-        }
+      
 
         void IReusable.Prepare()
         {
             ParseStatus = HeaderParseError.None;
             //Alloc header buffer
-            _headerBuffer = ArrayPool<char>.Shared.Rent(HeaderBufferSize);
+            _memoryManager.AllocBuffer(_memHandle, MemoryUtil.ByteCount<char>(HeaderBufferSize));
         }
         
        
@@ -155,8 +135,7 @@ namespace VNLib.Net.Messaging.FBM.Server
             //Clear headers before freeing buffer
             _headers.Clear();
             //Free header-buffer
-            ArrayPool<char>.Shared.Return(_headerBuffer!);
-            _headerBuffer = null;
+            _memoryManager.FreeBuffer(_memHandle);
             ConnectionId = null;
             MessageId = 0;
             IsControlFrame = false;
@@ -165,11 +144,16 @@ namespace VNLib.Net.Messaging.FBM.Server
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        Span<char> IFBMHeaderBuffer.GetSpan(int offset, int count) 
-            => _headerBuffer != null ? _headerBuffer.AsSpan(offset, count) : throw new InvalidOperationException("The buffer is no longer available");
+        Span<char> IFBMHeaderBuffer.GetSpan(int offset, int count)
+        {
+            //Cast to char buffer
+            Span<char> chars = MemoryMarshal.Cast<byte, char>(_memHandle.GetSpan());
+            //Return the requested span
+            return chars.Slice(offset, count);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        Span<char> IFBMHeaderBuffer.GetSpan() => _headerBuffer ?? throw new InvalidOperationException("The buffer is no longer available");
+        Span<char> IFBMHeaderBuffer.GetSpan() => MemoryMarshal.Cast<byte, char>(_memHandle.GetSpan());
 
     }
 }

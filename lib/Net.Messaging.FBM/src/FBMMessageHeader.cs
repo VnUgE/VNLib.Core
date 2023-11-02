@@ -87,6 +87,7 @@ namespace VNLib.Net.Messaging.FBM
 
         ///<inheritdoc/>
         public static bool operator ==(FBMMessageHeader left, FBMMessageHeader right) => left.Equals(right);
+
         ///<inheritdoc/>
         public static bool operator !=(FBMMessageHeader left, FBMMessageHeader right) => !(left == right);
 

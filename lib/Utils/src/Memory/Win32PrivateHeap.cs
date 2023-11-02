@@ -177,8 +177,7 @@ namespace VNLib.Utils.Memory
                 //validate the block on the current heap
                 result = HeapValidate(handle, HEAP_NO_FLAGS, block);
             }
-            return result;
-           
+            return result;           
         }
 
         /// <summary>

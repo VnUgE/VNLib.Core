@@ -43,13 +43,7 @@ namespace VNLib.Plugins.Essentials.Middleware
         /// Adds a middleware handler to the end of the chain
         /// </summary>
         /// <param name="middleware">The middleware processor to add</param>
-        void AddLast(IHttpMiddleware middleware);
-
-        /// <summary>
-        /// Adds a middleware handler to the beginning of the chain
-        /// </summary>
-        /// <param name="middleware">The middleware processor to add</param>
-        void AddFirst(IHttpMiddleware middleware);
+        void Add(IHttpMiddleware middleware);
 
         /// <summary>
         /// Removes a middleware handler from the chain

@@ -44,7 +44,7 @@ namespace VNLib.Utils.Memory
     [ImmutableObject(true)]
     public sealed class VnString : VnDisposeable, IEquatable<VnString>, IEquatable<string>, IEquatable<char[]>, IComparable<VnString>, IComparable<string>
     {
-        private readonly MemoryHandle<char>? Handle;
+        private readonly IMemoryHandle<char>? Handle;
 
         private readonly SubSequence<char> _stringSequence;
 
@@ -63,7 +63,7 @@ namespace VNLib.Utils.Memory
             _stringSequence = sequence;
         }
 
-        private VnString(MemoryHandle<char> handle, nuint start, int length)
+        private VnString(IMemoryHandle<char> handle, nuint start, int length)
         {
             Handle = handle ?? throw new ArgumentNullException(nameof(handle));
             //get sequence
@@ -517,14 +517,10 @@ namespace VNLib.Utils.Memory
         /// </remarks>
         /// <exception cref="ObjectDisposedException"></exception>
         public int GetHashCode(StringComparison stringComparison) => string.GetHashCode(AsSpan(), stringComparison);
-        
+
         ///<inheritdoc/>
-        protected override void Free()
-        {
-            //Dispose the handle if we own it (null if we do not have the parent handle)
-            Handle?.Dispose();
-        }
-      
+        protected override void Free() => Handle?.Dispose();
+
         public static bool operator ==(VnString left, VnString right) => left is null ? right is not null : left.Equals(right, StringComparison.Ordinal);
 
         public static bool operator !=(VnString left, VnString right) => !(left == right);

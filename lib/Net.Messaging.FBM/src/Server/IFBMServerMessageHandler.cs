@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
-* File: IAsyncMessageReader.cs 
+* File: IFBMServerMessageHandler.cs 
 *
-* IAsyncMessageReader.cs is part of VNLib.Net.Messaging.FBM which is part of the larger 
+* IFBMServerMessageHandler.cs is part of VNLib.Net.Messaging.FBM which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Messaging.FBM is free software: you can redistribute it and/or modify 
@@ -22,21 +22,22 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
-using System.Collections.Generic;
-
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace VNLib.Net.Messaging.FBM.Server
 {
     /// <summary>
-    /// Internal message body reader/enumerator for FBM messages
+    /// A server side FBM protocol handler 
     /// </summary>
-    internal interface IAsyncMessageReader : IAsyncEnumerator<ReadOnlyMemory<byte>>
+    public interface IFBMServerMessageHandler : IFBMServerErrorHandler
     {
         /// <summary>
-        /// A value that indicates if there is data remaining after a read
+        /// Handles processing of a normal incoming message
         /// </summary>
-        bool DataRemaining { get; }
+        /// <param name="context">The context to process for this new message</param>
+        /// <param name="cancellationToken">A token that signals the session has been cancelled</param>
+        /// <returns>A task representing the asynchronous work</returns>
+        Task HandleMessage(FBMContext context, CancellationToken cancellationToken);
     }
-    
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -26,7 +26,7 @@ using System;
 
 using VNLib.Net.Http;
 
-namespace VNLib.Net.Messaging.FBM.Client
+namespace VNLib.Net.Messaging.FBM
 {
     /// <summary>
     /// Represents basic Fixed Buffer Message protocol operations

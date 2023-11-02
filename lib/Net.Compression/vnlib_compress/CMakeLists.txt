@@ -11,7 +11,7 @@ set(VNLIB_COMPRESS_SOURCES compression.c)
 #set options for enable botli and zlib
 option(ENABLE_BROTLI "Enable brotli compression" ON)
 option(ENABLE_ZLIB "Enable zlib compression" ON)
-option(ENABLE_RPMALLOC "Link local vnlib_rpmalloc allocator" ON)
+option(ENABLE_RPMALLOC "Link local vnlib_rpmalloc allocator" OFF)
 
 #add feature specific source files to the project
 if(ENABLE_BROTLI)

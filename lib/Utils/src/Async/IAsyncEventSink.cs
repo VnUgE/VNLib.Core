@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: IReusable.cs 
+* File: IAsyncEventSink.cs 
 *
-* IReusable.cs is part of VNLib.Utils which is part of the larger 
+* IAsyncEventSink.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -22,27 +22,27 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Utils.Memory.Caching
+namespace VNLib.Utils.Async
 {
     /// <summary>
-    /// Allows for use within a <see cref="ObjectRental{T}"/>, this object is intended to be reused heavily
+    /// A type that receives events from asynchronous event sources and publishes 
+    /// them to subscribers.
     /// </summary>
-    public interface IReusable
+    /// <typeparam name="T">The event type</typeparam>
+    public interface IAsyncEventSink<T>
     {
         /// <summary>
-        /// The instance should prepare itself for use (or re-use)
-        /// <para>
-        /// This method is guarunteed to be called directly after a constructor 
-        /// when a new instance is allocated and before it is ever returned to a
-        /// caller.
-        /// </para>
+        /// Publishes a single event to all subscribers
         /// </summary>
-        void Prepare();
+        /// <param name="evnt">The event to publish</param>
+        /// <returns>A value that indicates if the event was successfully published to subscribers</returns>
+        bool PublishEvent(T evnt);
 
         /// <summary>
-        /// The intance is being returned and should determine if it's state is reusabled
+        /// Publishes an array of events to all subscribers
         /// </summary>
-        /// <returns>true if the instance can/should be reused, false if it should not be reused</returns>
-        bool Release();
+        /// <param name="events">The array of events to publish</param>
+        /// <returns>A value that indicates if the events were successfully published to subscribers</returns>
+        bool PublishEvents(T[] events);
     }
 }

@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Runtime.CompilerServices;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -197,6 +198,8 @@ namespace VNLib.Utils.Memory.Tests
 
                 //Pin should throw
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = thandle.Pin(0));
+
+                Assert.ThrowsException<ObjectDisposedException>(() => _ = thandle.GetReference());
             }
 
             //Full ref to mhandle check status
@@ -217,6 +220,8 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.ThrowsException<ObjectDisposedException>(() => mHandle.Resize(10));
 
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => mHandle.BasePtr);
+
+                Assert.ThrowsException<ObjectDisposedException>(() => _ = mHandle.GetReference());
             }
         }
     }

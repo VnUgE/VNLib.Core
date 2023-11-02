@@ -25,6 +25,9 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
@@ -36,8 +39,17 @@ namespace VNLib.Net.Http.Core
     /// <summary>
     /// Structure implementation of <see cref="IVnTextReader"/>
     /// </summary>
-    internal struct TransportReader : IVnTextReader
+    internal readonly struct TransportReader : IVnTextReader
     {
+        /*
+         * To make this structure read-only we can store the 
+         * mutable values in a private segment of the internal
+         * buffer. 8 bytes are reserved at the beining and an 
+         * additional word is added for padding incase small/wild
+         * under/over run occurs.
+         */
+        const int PrivateBufferOffset = 4 * sizeof(int);
+
         ///<inheritdoc/>
         public readonly Encoding Encoding { get; }
 
@@ -47,10 +59,25 @@ namespace VNLib.Net.Http.Core
         ///<inheritdoc/>
         public readonly Stream BaseStream { get; }
 
+        /*
+         * Store the window start/end in the begging of the 
+         * data buffer. Then use a constant offset to get the
+         * start of the buffer
+         */
+        private readonly int BufWindowStart
+        {
+            get => MemoryMarshal.Read<int>(Buffer.GetBinSpan());
+            set => MemoryMarshal.Write(Buffer.GetBinSpan(), ref value);
+        }
+
+        private readonly int BufWindowEnd
+        {
+            get => MemoryMarshal.Read<int>(Buffer.GetBinSpan()[sizeof(int)..]);
+            set => MemoryMarshal.Write(Buffer.GetBinSpan()[sizeof(int)..], ref value);
+        }
+
         private readonly IHttpHeaderParseBuffer Buffer;
-      
-        private int BufWindowStart;
-        private int BufWindowEnd;
+        private readonly int MAxBufferSize;
 
         /// <summary>
         /// Initializes a new <see cref="TransportReader"/> for reading text lines from the transport stream
@@ -61,29 +88,50 @@ namespace VNLib.Net.Http.Core
         /// <param name="lineTermination">The line delimiter to search for</param>
         public TransportReader(Stream transport, IHttpHeaderParseBuffer buffer, Encoding encoding, ReadOnlyMemory<byte> lineTermination)
         {
-            BufWindowEnd = 0;
-            BufWindowStart = 0;
             Encoding = encoding;
             BaseStream = transport;
             LineTermination = lineTermination;
             Buffer = buffer;
+            MAxBufferSize = buffer.BinSize - PrivateBufferOffset;
+
+            //Initialize the buffer window
+            SafeZeroPrivateSegments(Buffer);
+
+            Debug.Assert(BufWindowEnd == 0 && BufWindowStart == 0);
         }
+
+        /// <summary>
+        /// Clears the initial window start/end values with the 
+        /// extra padding 
+        /// </summary>
+        /// <param name="buffer">The buffer segment to initialize</param>
+        private static void SafeZeroPrivateSegments(IHttpHeaderParseBuffer buffer)
+        {
+            ref byte start = ref MemoryMarshal.GetReference(buffer.GetBinSpan());
+            Unsafe.InitBlock(ref start, 0, PrivateBufferOffset);
+        }
+
+        /// <summary>
+        /// Gets the data segment of the buffer after the private segment
+        /// </summary>
+        /// <returns></returns>
+        private readonly Span<byte> GetDataSegment() => Buffer.GetBinSpan()[PrivateBufferOffset..];
         
         ///<inheritdoc/>
         public readonly int Available => BufWindowEnd - BufWindowStart;
 
         ///<inheritdoc/>
-        public readonly Span<byte> BufferedDataWindow => Buffer.GetBinSpan()[BufWindowStart..BufWindowEnd];
+        public readonly Span<byte> BufferedDataWindow => GetDataSegment()[BufWindowStart..BufWindowEnd];
       
 
         ///<inheritdoc/>
-        public void Advance(int count) => BufWindowStart += count;
+        public readonly void Advance(int count) => BufWindowStart += count;
 
         ///<inheritdoc/>
-        public void FillBuffer()
+        public readonly void FillBuffer()
         {
             //Get a buffer from the end of the current window to the end of the buffer
-            Span<byte> bufferWindow = Buffer.GetBinSpan()[BufWindowEnd..];
+            Span<byte> bufferWindow = GetDataSegment()[BufWindowEnd..];
 
             //Read from stream
             int read = BaseStream.Read(bufferWindow);
@@ -93,15 +141,15 @@ namespace VNLib.Net.Http.Core
         }
 
         ///<inheritdoc/>
-        public ERRNO CompactBufferWindow()
+        public readonly ERRNO CompactBufferWindow()
         {
             //No data to compact if window is not shifted away from start
             if (BufWindowStart > 0)
             {
                 //Get span over engire buffer
-                Span<byte> buffer = Buffer.GetBinSpan();
+                Span<byte> buffer = GetDataSegment();
                 
-                //Get data within window
+                //Get used data segment within window
                 Span<byte> usedData = buffer[BufWindowStart..BufWindowEnd];
                 
                 //Copy remaining to the begining of the buffer
@@ -115,7 +163,7 @@ namespace VNLib.Net.Http.Core
             }
 
             //Return the number of bytes of available space from the end of the current window
-            return Buffer.BinSize - BufWindowEnd;
+            return MAxBufferSize - BufWindowEnd;
         }
     }
 }

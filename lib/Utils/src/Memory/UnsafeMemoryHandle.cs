@@ -165,8 +165,7 @@ namespace VNLib.Utils.Memory
             if (elementIndex < 0 || elementIndex >= IntLength)
             {
                 throw new ArgumentOutOfRangeException(nameof(elementIndex));
-            }
-           
+            }           
             
             if (_handleType == HandleType.Pool)
             {
@@ -174,10 +173,11 @@ namespace VNLib.Utils.Memory
             }
             else
             {
-                //Get offset pointer and pass self as pinnable argument, (nothing happens but support it)
-                void* basePtr = Unsafe.Add<T>(_memoryPtr.ToPointer(), elementIndex);
+                //Add an offset to the base address of the memory block
+                int byteOffset = MemoryUtil.ByteCount<T>(elementIndex);
+                IntPtr offset = IntPtr.Add(_memoryPtr, byteOffset);
                 //Unmanaged memory is always pinned, so no need to pass this as IPinnable, since it will cause a box
-                return new (basePtr);
+                return MemoryUtil.GetMemoryHandleFromPointer(offset);
             }
         }
         ///<inheritdoc/>
@@ -186,6 +186,20 @@ namespace VNLib.Utils.Memory
             //Nothing to do since gc handle takes care of array, and unmanaged pointers are not pinned
         }
         
+        ///<inheritdoc/>
+        public readonly ref T GetReference()
+        {
+            switch (_handleType)
+            {
+                case HandleType.Pool:
+                    return ref MemoryMarshal.GetArrayDataReference(_poolArr!);
+                case HandleType.PrivateHeap:
+                    return ref MemoryUtil.GetRef<T>(_memoryPtr);
+                default:
+                    throw new InvalidOperationException("The handle is empty, and cannot capture a reference");
+            }
+        }
+
         /// <summary>
         /// Determines if the other handle represents the same memory block as the 
         /// current handle. 

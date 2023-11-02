@@ -26,6 +26,8 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+using VNLib.Utils.Memory;
+
 namespace VNLib.Net.Http.Core.Buffering
 {
     internal abstract class SplitHttpBufferElement : HttpBufferElement, ISplitHttpBuffer
@@ -65,6 +67,6 @@ namespace VNLib.Net.Http.Core.Buffering
         /// </summary>
         /// <param name="binSize">The desired size of the binary buffer</param>
         /// <returns>The total size of the binary buffer required to store the binary and character buffer</returns>
-        public static int GetfullSize(int binSize) => binSize + (binSize * sizeof(char));
+        public static int GetfullSize(int binSize) => binSize + MemoryUtil.ByteCount<char>(binSize);
     }
 }

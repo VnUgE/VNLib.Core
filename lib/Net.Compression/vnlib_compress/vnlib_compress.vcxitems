@@ -27,4 +27,7 @@
   <ItemGroup>
     <Text Include="$(MSBuildThisFileDirectory)CMakeLists.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
+  </ItemGroup>
 </Project>

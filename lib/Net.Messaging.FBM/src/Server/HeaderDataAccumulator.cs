@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -23,25 +23,28 @@
 */
 
 using System;
-using System.Buffers;
 
 using VNLib.Utils.IO;
 
 
 namespace VNLib.Net.Messaging.FBM.Server
 {
+
     /// <summary>
     /// Reusable sliding window impl
     /// </summary>
     internal sealed class HeaderDataAccumulator : ISlindingWindowBuffer<byte>
     {
-        private readonly int BufferSize;
+        private readonly int _bufferSize;
+        private readonly IFBMMemoryManager _memManager;
+        private readonly IFBMMemoryHandle _handle;
+     
 
-        private byte[]? _memHandle;
-
-        public HeaderDataAccumulator(int bufferSize)
+        public HeaderDataAccumulator(int bufferSize, IFBMMemoryManager memManager)
         {
-            BufferSize = bufferSize;
+            _bufferSize = bufferSize;
+            _memManager = memManager;
+            _handle = memManager.InitHandle();
         }
 
         ///<inheritdoc/>
@@ -49,7 +52,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         ///<inheritdoc/>
         public int WindowEndPos { get; private set; }
         ///<inheritdoc/>
-        public Memory<byte> Buffer => _memHandle.AsMemory();
+        public Memory<byte> Buffer => _handle.GetMemory();
 
         ///<inheritdoc/>
         public void Advance(int count) => WindowEndPos += count;
@@ -67,22 +70,13 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <summary>
         /// Allocates the internal message buffer
         /// </summary>
-        public void Prepare()
-        {
-            _memHandle ??= ArrayPool<byte>.Shared.Rent(BufferSize);
-        }
+        public void Prepare() => _memManager.AllocBuffer(_handle, _bufferSize);
 
         ///<inheritdoc/>
         public void Close()
         {
             Reset();
-
-            if (_memHandle != null)
-            {
-                //Return the buffer to the pool
-                ArrayPool<byte>.Shared.Return(_memHandle);
-                _memHandle = null;
-            }
+            _memManager.FreeBuffer(_handle);
         }
     }
     

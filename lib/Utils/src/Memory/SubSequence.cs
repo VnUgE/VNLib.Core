@@ -32,14 +32,14 @@ namespace VNLib.Utils.Memory
     /// Represents a subset (or window) of data within a <see cref="MemoryHandle{T}"/>
     /// </summary>
     /// <typeparam name="T">The unmanaged type to wrap</typeparam>
-    public readonly record struct SubSequence<T> where T: unmanaged 
+    public readonly record struct SubSequence<T>
     {
         readonly nuint _offset;
 
         /// <summary>
         /// The handle that owns the memory block
         /// </summary>
-        public readonly MemoryHandle<T> Handle { get; }
+        public readonly IMemoryHandle<T> Handle { get; }
 
         /// <summary>
         /// The number of elements in the current sequence
@@ -54,7 +54,7 @@ namespace VNLib.Utils.Memory
         /// <param name="size"></param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public SubSequence(MemoryHandle<T> block, nuint offset, int size)
+        public SubSequence(IMemoryHandle<T> block, nuint offset, int size)
         {
             Handle = block ?? throw new ArgumentNullException(nameof(block));
             Size = size >= 0 ? size : throw new ArgumentOutOfRangeException(nameof(size));

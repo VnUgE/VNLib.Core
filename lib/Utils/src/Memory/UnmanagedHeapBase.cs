@@ -39,21 +39,12 @@ namespace VNLib.Utils.Memory
     /// </summary>
     public abstract class UnmanagedHeapBase : SafeHandleZeroOrMinusOneIsInvalid, IUnmangedHeap
     {
+        private readonly HeapCreation _flags;
+
         /// <summary>
         /// The heap synchronization handle
         /// </summary>
         protected readonly object HeapLock;
-        
-        /// <summary>
-        /// The global heap zero flag
-        /// </summary>
-        protected readonly bool GlobalZero;
-
-        /// <summary>
-        /// A value that inidicates that locking will 
-        /// be used when invoking heap operations
-        /// </summary>
-        protected readonly bool UseSynchronization;
 
         /// <summary>
         /// Initalizes the unmanaged heap base class (init synchronization handle)
@@ -63,13 +54,11 @@ namespace VNLib.Utils.Memory
         protected UnmanagedHeapBase(HeapCreation flags, bool ownsHandle) : base(ownsHandle)
         {
             HeapLock = new();
-            GlobalZero = flags.HasFlag(HeapCreation.GlobalZero);
-            UseSynchronization = flags.HasFlag(HeapCreation.UseSynchronization);
-            CreationFlags = flags;
+            _flags = flags;
         }
 
         ///<inheritdoc/>
-        public HeapCreation CreationFlags { get; }
+        public HeapCreation CreationFlags => _flags;
 
         ///<inheritdoc/>
         ///<remarks>Increments the handle count, free must be called to decrement the handle count</remarks>
@@ -82,7 +71,7 @@ namespace VNLib.Utils.Memory
             _ = checked(elements *  size);
 
             //Force zero if global flag is set
-            zero |= GlobalZero;
+            zero |= (_flags & HeapCreation.GlobalZero) > 0;
             bool handleCountIncremented = false;
 
             //Increment handle count to prevent premature release
@@ -99,7 +88,7 @@ namespace VNLib.Utils.Memory
                 LPVOID block;
 
                 //Check if lock should be used
-                if (UseSynchronization)
+                if ((_flags & HeapCreation.UseSynchronization) > 0)
                 {
                     //Enter lock
                     lock(HeapLock)
@@ -138,7 +127,7 @@ namespace VNLib.Utils.Memory
                 return true;
             }
 
-            if (UseSynchronization)
+            if ((_flags & HeapCreation.UseSynchronization) > 0)
             {
                 //wait for lock
                 lock (HeapLock)
@@ -173,7 +162,7 @@ namespace VNLib.Utils.Memory
             LPVOID newBlock;
 
             //Global zero flag will cause a zero
-            zero |= GlobalZero;
+            zero |= (_flags & HeapCreation.GlobalZero) > 0;
 
             /*
              * Realloc may return a null pointer if allocation fails
@@ -182,7 +171,7 @@ namespace VNLib.Utils.Memory
              * be left untouched
              */
 
-            if (UseSynchronization)
+            if ((_flags & HeapCreation.UseSynchronization) > 0)
             {
                 lock (HeapLock)
                 {

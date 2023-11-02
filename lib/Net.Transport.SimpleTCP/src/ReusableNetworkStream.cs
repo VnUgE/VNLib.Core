@@ -56,6 +56,10 @@ namespace VNLib.Net.Transport.Tcp
         public override long Position { get => throw new NotSupportedException(); set => throw new NotImplementedException(); }
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();
+        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+            => throw new NotSupportedException("CopyToAsync is not supported");
+
+        public override void CopyTo(Stream destination, int bufferSize) => throw new NotSupportedException("CopyTo is not supported");
         #endregion
 
         //Read timeout to use when receiving data
@@ -84,70 +88,54 @@ namespace VNLib.Net.Transport.Tcp
 
         ///<inheritdoc/>
         public override void Close() 
-        { }
-        ///<inheritdoc/>
-        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        ///<inheritdoc/>
-        public override void Flush() 
-        { }
-
-        ///<inheritdoc/>
-        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
-        ///<inheritdoc/>
-        public override int Read(Span<byte> buffer) => Transport.Recv(buffer);
-
-        ///<inheritdoc/>
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            //Since read returns a value, it isnt any cheaper not to alloc a task around the value-task
-            return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-        }
-        ///<inheritdoc/>
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            return Transport.RecvAsync(buffer, cancellationToken);
-        }
-
-        ///<inheritdoc/>
-        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
-        ///<inheritdoc/>
-        public override void Write(ReadOnlySpan<byte> buffer) => Transport.Send(buffer);
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            //Allow synchronous complete to avoid alloc
-            return WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-        }
-
-        ///<inheritdoc/>
-        ///<exception cref="IOException"></exception>
-        ///<exception cref="ObjectDisposedException"></exception>
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellation = default)
-        {
-            return Transport.SendAsync(buffer, cancellation);
-        }
-
-        /*
-         * Override dispose to intercept base cleanup until the internal release
-         */
-        /// <summary>
-        /// Not supported
-        /// </summary>
-        public new void Dispose()
         {
             //Call sync
             Task closing = Transport.CloseAsync();
             closing.GetAwaiter().GetResult();
         }
 
-        public override ValueTask DisposeAsync() 
-        {
-            return new ValueTask(Transport.CloseAsync());
-        }
-      
-        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
-        {
-            throw new NotSupportedException("CopyToAsync is not supported");
-        }
+        ///<inheritdoc/>
+        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        ///<inheritdoc/>
+        public override void Flush() 
+        { }
+
+        ///<inheritdoc/>
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
+        ///<inheritdoc/>
+        public override int Read(Span<byte> buffer) => Transport.Recv(buffer);
+
+        ///<inheritdoc/>
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+          //Since read returns a value, it isnt any cheaper not to alloc a task around the value-task
+          => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        ///<inheritdoc/>
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) 
+            => Transport.RecvAsync(buffer, cancellationToken);
+
+        ///<inheritdoc/>
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
+        ///<inheritdoc/>
+        public override void Write(ReadOnlySpan<byte> buffer) => Transport.Send(buffer);
+
+        ///<inheritdoc/>
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) 
+            => WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        ///<inheritdoc/>
+        ///<exception cref="IOException"></exception>
+        ///<exception cref="ObjectDisposedException"></exception>
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellation = default) 
+            => Transport.SendAsync(buffer, cancellation);
+
+        /*
+         * Override dispose to intercept base cleanup until the internal release
+         */
+
+        public override ValueTask DisposeAsync() => new (Transport.CloseAsync());
     }
 }

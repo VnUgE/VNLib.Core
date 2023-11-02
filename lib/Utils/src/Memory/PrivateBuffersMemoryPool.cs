@@ -25,6 +25,8 @@
 using System;
 using System.Buffers;
 
+using VNLib.Utils.Extensions;
+
 namespace VNLib.Utils.Memory
 {
     /// <summary>
@@ -48,7 +50,7 @@ namespace VNLib.Utils.Memory
         ///<exception cref="OutOfMemoryException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
         ///<exception cref="ArgumentOutOfRangeException"></exception>
-        public override IMemoryOwner<T> Rent(int minBufferSize = 0) => new SysBufferMemoryManager<T>(Heap, (uint)minBufferSize, false);
+        public override IMemoryOwner<T> Rent(int minBufferSize = 0) => Heap.DirectAlloc<T>(minBufferSize, false);
 
         /// <summary>
         /// Allocates a new <see cref="MemoryManager{T}"/> of a different data type from the pool
@@ -56,7 +58,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="TDifType">The unmanaged data type to allocate for</typeparam>
         /// <param name="minBufferSize">Minumum size of the buffer</param>
         /// <returns>The memory owner of a different data type</returns>
-        public IMemoryOwner<TDifType> Rent<TDifType>(int minBufferSize = 0) where TDifType : unmanaged => new SysBufferMemoryManager<TDifType>(Heap, (uint)minBufferSize, false);
+        public IMemoryOwner<TDifType> Rent<TDifType>(int minBufferSize = 0) where TDifType : unmanaged => Heap.DirectAlloc<TDifType>(minBufferSize, false);
 
         ///<inheritdoc/>
         protected override void Dispose(bool disposing)

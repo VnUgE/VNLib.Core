@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: HeapCreation.cs 
+* File: IResizeableMemoryHandle.cs 
 *
-* HeapCreation.cs is part of VNLib.Utils which is part of the larger 
+* IResizeableMemoryHandle.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -26,33 +26,27 @@ using System;
 
 namespace VNLib.Utils.Memory
 {
+
     /// <summary>
-    /// Internal heap creation flags passed to the heap creation method
-    /// on initialization
+    /// Represents a memory handle that can be resized in place.
     /// </summary>
-    [Flags]
-    public enum HeapCreation : int
+    /// <typeparam name="T">The data type</typeparam>
+    public interface IResizeableMemoryHandle<T> : IMemoryHandle<T>
     {
         /// <summary>
-        /// Default/no flags
+        /// Gets a value indicating whether the handle supports resizing in place
         /// </summary>
-        None,
+        bool CanRealloc { get; }
+
         /// <summary>
-        /// Specifies that all allocations be zeroed before returning to caller
+        /// Resizes a memory handle to a new number of elements. 
         /// </summary>
-        GlobalZero = 0x01,
-        /// <summary>
-        /// Specifies that the heap should use internal locking, aka its not thread safe
-        /// and needs to be made thread safe
-        /// </summary>
-        UseSynchronization = 0x02,
-        /// <summary>
-        /// Specifies that the requested heap will be a shared heap for the process/library
-        /// </summary>
-        Shared = 0x04,
-        /// <summary>
-        /// Specifies that the heap will support block reallocation
-        /// </summary>
-        SupportsRealloc = 0x08,
+        /// <remarks>
+        /// Even if a handle is resizable resizing may not be supported for all types of handles.
+        /// </remarks>
+        /// <param name="elements">The new number of elements to resize the handle to</param>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
+        void Resize(nuint elements);
     }
 }

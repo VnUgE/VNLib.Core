@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: IHttpMiddleware.cs 
+* File: MiddlewareImplAttribute.cs 
 *
-* IHttpMiddleware.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+* MiddlewareImplAttribute.cs is part of VNLib.Plugins.Essentials which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
@@ -22,23 +22,27 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.Threading.Tasks;
+using System;
 
 namespace VNLib.Plugins.Essentials.Middleware
 {
-
     /// <summary>
-    /// Represents a low level intermediate request processor with high privilages, meant to add 
-    /// functionality to entity processing.
+    /// Specifies optional implementation flags for a middleware instance
+    /// that loaders may use during soriting of the middleware chain
     /// </summary>
-    public interface IHttpMiddleware
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class MiddlewareImplAttribute : Attribute
     {
         /// <summary>
-        /// Processes the <see cref="HttpEntity"/> and returns a <see cref="FileProcessArgs"/> 
-        /// indicating the result of the process operation
+        /// The option flags for a middleware instance
         /// </summary>
-        /// <param name="entity">The entity to process</param>
-        /// <returns>The result of the operation</returns>
-        ValueTask<FileProcessArgs> ProcessAsync(HttpEntity entity);
+        public MiddlewareImplOptions ImplOptions { get; }
+
+        /// <summary>
+        /// Creates a new <see cref="MiddlewareImplAttribute"/> instance
+        /// with the specified <see cref="MiddlewareImplOptions"/>
+        /// </summary>
+        /// <param name="implOptions">Implementation option flags</param>
+        public MiddlewareImplAttribute(MiddlewareImplOptions implOptions) => ImplOptions = implOptions;
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -42,6 +42,12 @@ namespace VNLib.Utils.Memory
         /// Gets the internal block as a span
         /// </summary>
         Span<T> Span { get; }
+
+        /// <summary>
+        /// Gets a reference to the first element in the block
+        /// </summary>
+        /// <returns>The reference</returns>
+        ref T GetReference();
     }
 
 }

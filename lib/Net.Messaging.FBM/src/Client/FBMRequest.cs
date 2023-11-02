@@ -26,6 +26,7 @@ using System;
 using System.Text;
 using System.Buffers;
 using System.Threading;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -36,7 +37,6 @@ using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
-
 
 namespace VNLib.Net.Messaging.FBM.Client
 {
@@ -97,29 +97,29 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="messageId">The custom message id</param>
         /// <param name="config">The fbm client config storing required config variables</param>
         public FBMRequest(int messageId, in FBMClientConfig config)
-        :this(messageId, config.BufferHeap, config.MessageBufferSize, config.HeaderEncoding)
+        :this(messageId, config.MemoryManager, config.MessageBufferSize, config.HeaderEncoding)
         { }
 
         /// <summary>
         /// Initializes a new <see cref="FBMRequest"/> with the sepcified message buffer size and a custom MessageId
         /// </summary>
         /// <param name="messageId">The custom message id</param>
-        /// <param name="heap">The heap to allocate the internal buffer from</param>
+        /// <param name="manager">The memory manager used to allocate the internal buffers</param>
         /// <param name="bufferSize">The size of the internal buffer</param>
         /// <param name="headerEncoding">The encoding instance used for header character encoding</param>
-        public FBMRequest(int messageId, IUnmangedHeap heap, int bufferSize, Encoding headerEncoding)
+        public FBMRequest(int messageId, IFBMMemoryManager manager, int bufferSize, Encoding headerEncoding)
         {
             MessageId = messageId;
-            HeaderEncoding = headerEncoding;
+            HeaderEncoding = headerEncoding ?? throw new ArgumentNullException(nameof(headerEncoding));
+            _ = manager ?? throw new ArgumentNullException(nameof(manager));
 
             //Configure waiter
             Waiter = new FBMMessageWaiter(this);
-
-            //Alloc the buffer as a memory owner so a memory buffer can be used
-            IMemoryOwner<byte> HeapBuffer = heap.DirectAlloc<byte>(bufferSize);
-            Buffer = new(HeapBuffer);
+           
+            Buffer = new(manager, bufferSize);
 
             //Prepare the message incase the request is fresh
+            Buffer.Prepare();
             Reset();
         }
 
@@ -152,19 +152,13 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// The request message packet, this may cause side effects
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ReadOnlyMemory<byte> GetRequestData()
-        {
-            return Buffer.RequestData;
-        }
+        public ReadOnlyMemory<byte> GetRequestData() => Buffer.RequestData;
 
         /// <summary>
         /// Resets the internal buffer and allows for writing a new message with
         /// the same message-id
         /// </summary>
-        public void Reset()
-        {
-            Buffer.Reset(MessageId);
-        }
+        public void Reset() => Buffer.Reset(MessageId);
 
         ///<inheritdoc/>
         protected override void Free()
@@ -175,7 +169,12 @@ namespace VNLib.Net.Messaging.FBM.Client
             (Waiter as FBMMessageWaiter)!.Dispose();
         }
 
-        void IReusable.Prepare() => Reset();
+        void IReusable.Prepare()
+        {
+            //MUST BE CALLED FIRST!
+            Buffer.Prepare();
+            Reset();
+        }
 
         bool IReusable.Release()
         {
@@ -186,6 +185,9 @@ namespace VNLib.Net.Messaging.FBM.Client
             Response?.Dispose();
             Response = null;
 
+            //Free buffer
+            Buffer.Release();
+
             return true;
         }
 
@@ -195,7 +197,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// Gets the response of the sent message
         /// </summary>
         /// <returns>The response message for the current request</returns>
-        internal FBMResponse GetResponse()
+        internal void GetResponse(ref FBMResponse response)
         {
             if (Response != null)
             {
@@ -215,11 +217,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 HeaderParseError statusFlags = Helpers.ParseHeaders(Response, Buffer, ResponseHeaderList, HeaderEncoding);
 
                 //return response structure
-                return new(Response, statusFlags, ResponseHeaderList, OnResponseDisposed);
-            }
-            else
-            {
-                return new();
+                response = new(Response, statusFlags, ResponseHeaderList, OnResponseDisposed);
             }
         }
 
@@ -272,12 +270,13 @@ namespace VNLib.Net.Messaging.FBM.Client
         #endregion
 
         #region waiter
-        private sealed class FBMMessageWaiter : IFBMMessageWaiter, IDisposable
+        private sealed class FBMMessageWaiter : IFBMMessageWaiter, IDisposable, IThreadPoolWorkItem
         {
             private readonly Timer _timer;
             private readonly FBMRequest _request;
 
             private TaskCompletionSource? _tcs;
+            private CancellationTokenRegistration _token;
 
             public FBMMessageWaiter(FBMRequest request)
             {
@@ -298,79 +297,89 @@ namespace VNLib.Net.Messaging.FBM.Client
             public void OnEndRequest()
             {
                 //Cleanup tcs ref
-                _ = Interlocked.Exchange(ref _tcs, null);
+                _tcs = null;
 
-                //Stop timer if set
+                //Always stop timer if set
                 _timer.Stop();
+
+                //Cleanup cancellation token
+                _token.Dispose();
             }
 
             ///<inheritdoc/>
-            public void Complete(VnMemoryStream ms)
+            public bool Complete(VnMemoryStream ms)
             {
-                //Read the current state of the tcs
                 TaskCompletionSource? tcs = _tcs;
 
-                if (tcs == null)
+                //Work is done/cancelled
+                if (tcs != null && tcs.Task.IsCompleted)
                 {
-                    //Work is done/cancelled, dispose the ms and leave
-                    ms.Dispose();
+                    return false;
                 }
 
                 //Store response
                 _request.Response = ms;
 
-                //Transition to completed state in background thread
-                static void OnTpCallback(object? state)
-                {
-                    _ = (state as TaskCompletionSource)!.TrySetResult();
-                }
-
                 /*
                  * The calling thread may be a TP thread proccessing an async event loop.
                  * We do not want to block this worker thread.
                  */
-                ThreadPool.UnsafeQueueUserWorkItem(OnTpCallback, tcs);
+                return ThreadPool.UnsafeQueueUserWorkItem(this, true);
             }
 
+            /*
+             * Called when scheduled on the TP thread pool
+             */
             ///<inheritdoc/>
-            public async Task WaitAsync(TimeSpan timeout, CancellationToken cancellation)
+            public void Execute() => _tcs?.TrySetResult();
+
+            
+            ///<inheritdoc/>
+            public Task GetTask(TimeSpan timeout, CancellationToken cancellation)
             {
-                if (timeout.Ticks > 0)
+                TaskCompletionSource? tcs = _tcs;
+
+                Debug.Assert(tcs != null, "A call to GetTask was made outside of the request flow, the TaskCompletionSource was null");
+
+                /*
+                 * Get task will only be called after the message has been sent.
+                 * The Complete method may have already scheduled a completion by 
+                 * the time this method is called, so we may avoid setting up the 
+                 * timer and cancellation if possible. Also since this mthod is 
+                 * called from the request side, we know the tcs cannot be null
+                 */
+
+                if (!tcs.Task.IsCompleted)
                 {
-                    //Restart timer if timeout is configured
-                    _timer.Restart(timeout);
+                    if (timeout.Ticks > 0)
+                    {
+                        //Restart timer if timeout is configured
+                        _timer.Restart(timeout);
+                    }
+
+                    if (cancellation.CanBeCanceled)
+                    {
+                        //Register cancellation
+                        _token = cancellation.Register(OnCancelled, this);
+                    }
                 }
 
-                //Confim the token may be cancelled
-                if (cancellation.CanBeCanceled)
-                {
-                    //Register cancellation
-                    using CancellationTokenRegistration reg = cancellation.Register(OnCancelled, this, false);
-
-                    //await task that may be canclled
-                    await _tcs.Task.ConfigureAwait(false);
-                }
-                else
-                {
-                    //await the task directly
-                    await _tcs.Task.ConfigureAwait(false);
-                }
+                return tcs.Task;
             }
 
             ///<inheritdoc/>
             public void ManualCancellation() => OnCancelled(this);
 
-            private void OnCancelled(object? state)
-            {
-                //Set cancelled state if exists
-                _ = _tcs?.TrySetCanceled();
-            }
+            //Set cancelled state if exists, the task may have already completed
+            private void OnCancelled(object? state) => _tcs?.TrySetCanceled();
 
             ///<inheritdoc/>
             public void Dispose()
             {
                 _timer.Dispose();
+                _token.Dispose();
             }
+
         }
 
         #endregion

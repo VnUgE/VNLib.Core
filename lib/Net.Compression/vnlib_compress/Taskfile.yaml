@@ -8,14 +8,50 @@
 
 version: '3'
 
+vars:
+  THIRD_PARTY_DIR: '../third-party'
+  PROJECT_NAME: 'vnlib_compress'
+
 tasks:
-  
+
+  default:
+    cmds:
+     - cmd: echo "Building vnlib_compress"
+       silent: true
+
+     #make dirs on non-win
+     - cmd: mkdir {{.THIRD_PARTY_DIR}}
+       platforms: ['linux', 'darwin']
+
+     #make dirs on windows
+     - cmd: powershell -Command "mkdir {{.THIRD_PARTY_DIR}} -Force"
+       platforms: ['windows']
+
+     #clone libs
+     - cmd: cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/cloudflare/zlib.git
+       ignore_error: true
+
+     - cmd: cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/google/brotli.git
+       ignore_error: true
+ 
+     #invoke cmake for build
+     - cmake -B./build -DCMAKE_BUILD_TYPE=RELEASE {{.CMAKE_ARGS}}
+ 
+     #build for Windows
+     - cmd: cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=release {{.BUILD_FLAGS}}
+       platforms: ['windows']
+
+     #using make
+     - cmd: cd build && make
+       platforms: ['linux', 'darwin']
+          
+
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
     cmds:
      - cmd: powershell mkdir -Force './bin'
      #copy source code to target
-     - powershell -Command "Get-ChildItem -Include *.c,*.h,*.txt -Path * | Resolve-Path -Relative | tar --files-from - -czf 'bin/src.tgz'"
+     - powershell -Command "tar --exclude build/* --exclude .vs/* --exclude bin/* -czvf bin/src.tgz ."
 
   postbuild_failed:
     cmds: []

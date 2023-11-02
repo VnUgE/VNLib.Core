@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -55,10 +55,11 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <param name="requestHeaderBufferSize">The size in characters of the request header buffer</param>
         /// <param name="responseBufferSize">The size in characters of the response header buffer</param>
         /// <param name="headerEncoding">The message header encoding instance</param>
-        public FBMContext(int requestHeaderBufferSize, int responseBufferSize, Encoding headerEncoding)
+        /// <param name="manager">The context memory manager</param>
+        public FBMContext(int requestHeaderBufferSize, int responseBufferSize, Encoding headerEncoding, IFBMMemoryManager manager)
         {
-            _request = Request = new(requestHeaderBufferSize);
-            _response = Response = new(responseBufferSize, headerEncoding);
+            _request = Request = new(requestHeaderBufferSize, manager);
+            _response = Response = new(responseBufferSize, headerEncoding, manager);
             _headerEncoding = headerEncoding;
         }
 

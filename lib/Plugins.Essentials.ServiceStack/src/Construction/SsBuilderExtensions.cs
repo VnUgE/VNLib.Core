@@ -241,7 +241,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 //Add middleware to the chain
                 foreach (IHttpMiddleware mw in Config.CustomMiddleware)
                 {
-                    Instance.MiddlewareChain.AddLast(mw);
+                    Instance.MiddlewareChain.Add(mw);
                 }
             }
 
@@ -263,7 +263,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 plugin.OnPluginServiceEvent<IAccountSecurityProvider>(Instance.SetAccountSecProvider);
 
                 //Add all middleware to the chain
-                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => Array.ForEach(p, mw => Instance.MiddlewareChain.AddLast(mw)));
+                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => Array.ForEach(p, mw => Instance.MiddlewareChain.Add(mw)));
             }
 
             ///<inheritdoc/>

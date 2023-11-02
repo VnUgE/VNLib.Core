@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -30,7 +30,7 @@ namespace VNLib.Net.Messaging.FBM.Server
     /// Represents a configuration structure for an <see cref="FBMListener"/>
     /// listening session
     /// </summary>
-    public readonly struct FBMListenerSessionParams
+    public readonly record struct FBMListenerSessionParams
     {
         /// <summary>
         /// The size of the buffer to use while reading data from the websocket

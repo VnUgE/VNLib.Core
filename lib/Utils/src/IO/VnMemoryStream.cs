@@ -24,7 +24,9 @@
 
 using System;
 using System.IO;
+using System.Buffers;
 using System.Threading;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
@@ -33,6 +35,7 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Utils.IO
 {
+
     /// <summary>
     /// Provides an unmanaged memory stream. Desigend to help reduce garbage collector load for 
     /// high frequency memory operations. Similar to <see cref="UnmanagedMemoryStream"/>
@@ -44,35 +47,39 @@ namespace VNLib.Utils.IO
         private bool _isReadonly;
         
         //Memory
-        private readonly MemoryHandle<byte> _buffer;
+        private readonly IResizeableMemoryHandle<byte> _buffer;
         //Default owns handle
         private readonly bool OwnsHandle = true;
 
         /// <summary>
         /// Creates a new <see cref="VnMemoryStream"/> pointing to the begining of memory, and consumes the handle.
         /// </summary>
-        /// <param name="handle"><see cref="MemoryHandle{T}"/> to consume</param>
+        /// <param name="handle"><see cref="IResizeableMemoryHandle{T}"/> to consume</param>
         /// <param name="length">Length of the stream</param>
         /// <param name="readOnly">Should the stream be readonly?</param>
         /// <exception cref="ArgumentException"></exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
-        public static VnMemoryStream ConsumeHandle(MemoryHandle<byte> handle, nint length, bool readOnly) => FromHandle(handle, true, length, readOnly);
+        public static VnMemoryStream ConsumeHandle(IResizeableMemoryHandle<byte> handle, nint length, bool readOnly) => FromHandle(handle, true, length, readOnly);
 
         /// <summary>
         /// Creates a new <see cref="VnMemoryStream"/> from the supplied memory handle 
         /// of the initial length. This function also accepts a value that indicates if this stream 
         /// owns the memory handle, which will cause it to be disposed when the stream is disposed.
         /// </summary>
-        /// <param name="handle"><see cref="MemoryHandle{T}"/> to consume</param>
+        /// <param name="handle"><see cref="IResizeableMemoryHandle{T}"/> to consume</param>
         /// <param name="length">The initial length of the stream</param>
         /// <param name="readOnly">Should the stream be readonly?</param>
         /// <param name="ownsHandle">A value that indicates if the current stream owns the memory handle</param>
         /// <exception cref="ArgumentException"></exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
-        public static VnMemoryStream FromHandle(MemoryHandle<byte> handle, bool ownsHandle, nint length, bool readOnly)
+        public static VnMemoryStream FromHandle(IResizeableMemoryHandle<byte> handle, bool ownsHandle, nint length, bool readOnly)
         {
-            handle.ThrowIfClosed();
-            return new VnMemoryStream(handle, length, readOnly, ownsHandle);
+            //Check the handle
+            _ = handle ?? throw new ArgumentNullException(nameof(handle));
+
+            return handle.CanRealloc || readOnly
+                ? new VnMemoryStream(handle, length, readOnly, ownsHandle)
+                : throw new ArgumentException("The supplied memory handle must be resizable on a writable stream", nameof(handle));
         }
 
         /// <summary>
@@ -155,8 +162,11 @@ namespace VNLib.Utils.IO
         /// <param name="length">The length property of the stream</param>
         /// <param name="readOnly">Is the stream readonly (should mostly be true!)</param>
         /// <param name="ownsHandle">Does the new stream own the memory -> <paramref name="buffer"/></param>
-        private VnMemoryStream(MemoryHandle<byte> buffer, nint length, bool readOnly, bool ownsHandle)
+        private VnMemoryStream(IResizeableMemoryHandle<byte> buffer, nint length, bool readOnly, bool ownsHandle)
         {
+            Debug.Assert(length >= 0, "Length must be positive");
+            Debug.Assert(buffer.CanRealloc || readOnly, "The supplied buffer is not resizable on a writable stream");
+
             OwnsHandle = ownsHandle;
             _buffer = buffer;                  //Consume the handle
             _length = length;                  //Store length of the buffer
@@ -200,8 +210,8 @@ namespace VNLib.Utils.IO
             {
                 throw new IOException("The destinaion stream is not writeable");
             }
-            
-            do
+
+            while (LenToPosDiff > 0)
             {
                 //Calc the remaining bytes to read no larger than the buffer size
                 int bytesToRead = (int)Math.Min(LenToPosDiff, bufferSize);
@@ -213,8 +223,7 @@ namespace VNLib.Utils.IO
 
                 //Update position
                 _position += bytesToRead;
-                
-            } while (LenToPosDiff > 0);
+            }
         }
 
         /// <summary>
@@ -231,37 +240,47 @@ namespace VNLib.Utils.IO
         public override async Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
         {
             _ = destination ?? throw new ArgumentNullException(nameof(destination));
-            
+
+            if (bufferSize < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bufferSize), "Buffer size must be greater than 0");
+            }
+
             if (!destination.CanWrite)
             {
                 throw new IOException("The destinaion stream is not writeable");
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();            
 
-            /*
-             * Alloc temp copy buffer. This is a requirement because
-             * the stream may be larger than an int32 so it must be 
-             * copied by segment
-             */
-
-            using VnTempBuffer<byte> copyBuffer = new(bufferSize);
-
-            do
+            if(_length < Int32.MaxValue)
             {
-                //read from internal stream
-                int read = Read(copyBuffer);
+                //Safe to alloc a memory manager to do copy
+                using MemoryManager<byte> asMemManager = _buffer.ToMemoryManager(false);
 
-                if(read <= 0)
+                /*
+                 * CopyTo starts at the current position, as if calling Read() 
+                 * so the reader must be offset to match and the _length gives us the 
+                 * actual length of the stream and therefor the segment size
+                 */              
+
+                while(LenToPosDiff > 0)
                 {
-                    break;
+                    int blockSize = Math.Min((int)LenToPosDiff, bufferSize);
+                    Memory<byte> window = asMemManager.Memory.Slice((int)_position, blockSize);
+
+                    //write async
+                    await destination.WriteAsync(window, cancellationToken);
+
+                    //Update position
+                    _position+= bufferSize;
                 }
-
-                //write async
-                await destination.WriteAsync(copyBuffer.AsMemory(0, read), cancellationToken);
-
-            } while (true);
-            
+            }
+            else
+            {
+                //TODO support 64bit memory stream copy
+                throw new NotSupportedException("64bit async copies are currently not supported");
+            }
         }
 
         /// <summary>
@@ -349,13 +368,13 @@ namespace VNLib.Utils.IO
             }
 
             //get the value at the current position
-            byte* ptr = _buffer.GetOffset(_position);
+            ref byte ptr = ref _buffer.GetByteOffsetRef((nuint)_position);
             
             //Increment position
             _position++;
 
             //Return value
-            return *ptr;
+            return ptr;
         }
 
         /*

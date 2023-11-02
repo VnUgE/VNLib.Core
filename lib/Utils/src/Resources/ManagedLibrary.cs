@@ -28,6 +28,7 @@ using System.Linq;
 using System.Threading;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 using VNLib.Utils.IO;
@@ -76,11 +77,8 @@ namespace VNLib.Utils.Resources
             _lazyAssembly = new(LoadAssembly, LazyThreadSafetyMode.PublicationOnly);
         }
 
-        private Assembly LoadAssembly()
-        {
-            //Load the assembly into the parent context
-            return _loadContext.LoadFromAssemblyPath(AssemblyPath);
-        }
+        //Load the assembly into the parent context
+        private Assembly LoadAssembly() => _loadContext.LoadFromAssemblyPath(AssemblyPath);
 
         /// <summary>
         /// Raised when the load context that owns this assembly 
@@ -136,18 +134,50 @@ namespace VNLib.Utils.Resources
         /// <exception cref="EntryPointNotFoundException"></exception>
         public T LoadTypeFromAssembly<T>()
         {
-            Type resourceType = typeof(T);
-
             //See if the type is exported
-            Type exp = (from type in Assembly.GetExportedTypes()
-                        where resourceType.IsAssignableFrom(type)
-                        select type)
-                        .FirstOrDefault()
-                        ?? throw new EntryPointNotFoundException($"Imported assembly does not export desired type {resourceType.FullName}");
+            Type exp = TryGetExportedType<T>() ?? throw new EntryPointNotFoundException($"Imported assembly does not export desired type {typeof(T).FullName}");
 
             //Create instance
             return (T)Activator.CreateInstance(exp)!;
-        }        
+        }
+
+        /// <summary>
+        /// Gets the type exported from the current assembly that is 
+        /// assignable to the desired type.
+        /// </summary>
+        /// <typeparam name="T">The desired base type to get the exported type of</typeparam>
+        /// <returns>The exported type that matches the desired type from the current assembly</returns>
+        public Type? TryGetExportedType<T>() => TryGetExportedType(typeof(T));
+
+        /// <summary>
+        /// Gets the type exported from the current assembly that is 
+        /// assignable to the desired type.
+        /// </summary>
+        /// <param name="resourceType">The desired base type to get the exported type of</param>
+        /// <returns>The exported type that matches the desired type from the current assembly</returns>
+        public Type? TryGetExportedType(Type resourceType) => TryGetAllMatchingTypes(resourceType).FirstOrDefault();
+
+        /// <summary>
+        /// Gets all exported types from the current assembly that are 
+        /// assignable to the desired type.
+        /// </summary>
+        /// <typeparam name="T">The desired resource type</typeparam>
+        /// <returns>An enumeration of acceptable types</returns>
+        public IEnumerable<Type> TryGetAllMatchingTypes<T>() => TryGetAllMatchingTypes(typeof(T));
+
+        /// <summary>
+        /// Gets all exported types from the current assembly that are 
+        /// assignable to the desired type.
+        /// </summary>
+        /// <param name="resourceType">The desired resource type</param>
+        /// <returns>An enumeration of acceptable types</returns>
+        public IEnumerable<Type> TryGetAllMatchingTypes(Type resourceType)
+        {
+            //try to get all exported types that match the desired type
+            return from type in Assembly.GetExportedTypes()
+                   where resourceType.IsAssignableFrom(type)
+                   select type;
+        }
 
         /// <summary>
         /// Creates a new loader for the desired assembly. The assembly and its dependencies
@@ -170,6 +200,88 @@ namespace VNLib.Utils.Resources
             //Init file info the get absolute path
             FileInfo fi = new(assemblyName);
             return new(fi.FullName, loadContext);
+        }
+
+        /// <summary>
+        /// A helper method that will attempt to get a named method of the desired 
+        /// delegate type from the specified object. 
+        /// </summary>
+        /// <typeparam name="TDelegate">The method delegate that matches the signature of the desired method</typeparam>
+        /// <param name="obj">The object to discover and bind the found method to</param>
+        /// <param name="methodName">The name of the method to capture</param>
+        /// <param name="flags">The method binding flags</param>
+        /// <returns>The namaed method delegate for the object type, or null if the method was not found</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static TDelegate? TryGetMethod<TDelegate>(
+            object obj, 
+            string methodName, 
+            BindingFlags flags = BindingFlags.Public
+        ) where TDelegate : Delegate
+        {
+            _ = obj ?? throw new ArgumentNullException(nameof(obj));
+           return TryGetMethodInternal<TDelegate>(obj.GetType(), methodName, obj, flags | BindingFlags.Instance);
+        }
+
+        /// <summary>
+        /// A helper method that will attempt to get a named method of the desired 
+        /// delegate type from the specified object. 
+        /// </summary>
+        /// <typeparam name="TDelegate">The method delegate that matches the signature of the desired method</typeparam>
+        /// <param name="obj">The object to discover and bind the found method to</param>
+        /// <param name="methodName">The name of the method to capture</param>
+        /// <param name="flags">The method binding flags</param>
+        /// <returns>The namaed method delegate for the object type or an exception if not found</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="MissingMethodException"></exception>
+        public static TDelegate GetMethod<TDelegate>(
+           object obj,
+           string methodName,
+           BindingFlags flags = BindingFlags.Public
+        ) where TDelegate : Delegate
+        {
+            return TryGetMethod<TDelegate>(obj, methodName, flags)
+                ?? throw new MissingMethodException($"Type {obj.GetType().FullName} is missing desired method {methodName}");
+        }
+
+        /// <summary>
+        /// A helper method that will attempt to get a named static method of the desired
+        /// delegate type from the specified type.
+        /// </summary>
+        /// <typeparam name="TDelegate"></typeparam>
+        /// <param name="type">The type to get the static method for</param>
+        /// <param name="methodName">The name of the static method</param>
+        /// <param name="flags">The optional method binind flags</param>
+        /// <returns>The delegate if found <see langword="null"/> otherwise</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static TDelegate? TryGetStaticMethod<TDelegate>(Type type, string methodName, BindingFlags flags = BindingFlags.Public) where TDelegate : Delegate
+            => TryGetMethodInternal<TDelegate>(type, methodName, null, flags | BindingFlags.Static);
+
+        /// <summary>
+        /// A helper method that will attempt to get a named static method of the desired
+        /// delegate type from the specified type.
+        /// </summary>
+        /// <typeparam name="TDelegate">The delegate method type</typeparam>
+        /// <typeparam name="TType">The type to get the static method for</typeparam>
+        /// <param name="methodName">The name of the static method</param>
+        /// <param name="flags">The optional method binind flags</param>
+        /// <returns>The delegate if found <see langword="null"/> otherwise</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static TDelegate? TryGetStaticMethod<TDelegate, TType>(string methodName,BindingFlags flags = BindingFlags.Public) where TDelegate : Delegate 
+            => TryGetMethodInternal<TDelegate>(typeof(TType), methodName, null, flags | BindingFlags.Static);
+
+        private static TDelegate? TryGetMethodInternal<TDelegate>(Type type, string methodName, object? target, BindingFlags flags) where TDelegate : Delegate
+        {
+            _ = type ?? throw new ArgumentNullException(nameof(type));
+
+            //Get delegate argument types incase of a method overload
+            Type[] delegateArgs = typeof(TDelegate).GetMethod("Invoke")!
+                    .GetParameters()
+                    .Select(static p => p.ParameterType)
+                    .ToArray();
+
+            //get the named method and always add the static flag
+            return type.GetMethod(methodName, flags, delegateArgs)
+                ?.CreateDelegate<TDelegate>(target);
         }
     }
 }

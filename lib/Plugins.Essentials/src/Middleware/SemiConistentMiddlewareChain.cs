@@ -22,6 +22,7 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System.Reflection;
 using System.Collections.Generic;
 
 namespace VNLib.Plugins.Essentials.Middleware
@@ -36,20 +37,23 @@ namespace VNLib.Plugins.Essentials.Middleware
         private LinkedList<IHttpMiddleware> _middlewares = new();
 
         ///<inheritdoc/>
-        public void AddFirst(IHttpMiddleware middleware)
+        public void Add(IHttpMiddleware middleware)
         {
-            lock (_middlewares)
-            {
-                _middlewares.AddFirst(middleware);
-            }
-        }
+            //Get security critical flag
+            bool isSecCritical = middleware.GetType().GetCustomAttribute<MiddlewareImplAttribute>()
+                ?.ImplOptions.HasFlag(MiddlewareImplOptions.SecurityCritical) ?? false;
 
-        ///<inheritdoc/>
-        public void AddLast(IHttpMiddleware middleware)
-        {
             lock (_middlewares)
             {
-                _middlewares.AddLast(middleware);
+                //Always add security critical middleware to the front of the chain
+                if (isSecCritical)
+                {
+                    _middlewares.AddFirst(middleware);
+                }
+                else
+                {
+                    _middlewares.AddLast(middleware);
+                }
             }
         }
 
