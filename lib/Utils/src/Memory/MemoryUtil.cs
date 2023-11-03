@@ -294,6 +294,32 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InitializeBlock<T>(Memory<T> block) where T : struct => UnsafeZeroMemory<T>(block);
 
+
+        /// <summary>
+        /// Zeroes a block of memory of the given unmanaged type
+        /// </summary>
+        /// <typeparam name="T">The unmanaged type to zero</typeparam>
+        /// <param name="block">A pointer to the block of memory to zero</param>
+        /// <param name="itemCount">The number of elements in the block to zero</param>
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        public static void InitializeBlock<T>(ref T block, int itemCount) where T : struct
+        {
+            if (Unsafe.IsNullRef(ref block))
+            {
+                throw new ArgumentNullException(nameof(block));
+            }
+
+            if (itemCount <= 0)
+            {
+                return;
+            }
+
+            //To bytereference
+            ref byte byteRef = ref Unsafe.As<T, byte>(ref block);
+            //Zero block
+            Unsafe.InitBlock(ref byteRef, 0, ByteCount<T>((uint)itemCount));
+        }
+
         /// <summary>
         /// Zeroes a block of memory of the given unmanaged type
         /// </summary>
@@ -303,13 +329,12 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void InitializeBlock<T>(T* block, int itemCount) where T : unmanaged
         {
-            if (itemCount <= 0 || block == null)
+            if (block == null)
             {
-                return;
+                throw new ArgumentNullException(nameof(block));
             }
 
-            //Zero block
-            Unsafe.InitBlock(block, 0, ByteCount<T>((uint)itemCount));
+            InitializeBlock(ref *block, itemCount);
         }
 
         /// <summary>
@@ -327,7 +352,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="structPtr">The pointer to the allocated structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(void* structPtr) => Unsafe.InitBlock(structPtr, 0, (uint)Unsafe.SizeOf<T>());
+        public static void ZeroStruct<T>(void* structPtr) where T: unmanaged => InitializeBlock((T*)structPtr, Unsafe.SizeOf<T>());
 
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
@@ -335,7 +360,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="block">The pointer to the allocated structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(IntPtr block) => ZeroStruct<T>(block.ToPointer());
+        public static void ZeroStruct<T>(IntPtr block) where T : unmanaged => ZeroStruct<T>(block.ToPointer());
 
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
@@ -345,6 +370,22 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ZeroStruct<T>(T* structPtr) where T : unmanaged => ZeroStruct<T>((void*)structPtr);
 
+        /// <summary>
+        /// Zeroes a block of memory pointing to the structure
+        /// </summary>
+        /// <typeparam name="T">The structure type</typeparam>
+        /// <param name="structRef">The reference to the allocated structure</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ZeroStruct<T>(ref T structRef) where T : unmanaged
+        {
+            if(Unsafe.IsNullRef(ref structRef))
+            {
+                throw new ArgumentNullException(nameof(structRef));
+            }
+
+            Unsafe.InitBlock(ref Unsafe.As<T, byte>(ref structRef), 0, (uint)sizeof(T));
+        }
+        
         #endregion
 
         #region Copy
@@ -355,7 +396,275 @@ namespace VNLib.Utils.Memory
          * guards are in place.
          */
         private delegate void BigMemmove(ref byte dest, ref byte src, nuint len);
-        private static readonly BigMemmove? _sysMemmove = ManagedLibrary.TryGetStaticMethod<BigMemmove>(typeof(Buffer), "Memmove", System.Reflection.BindingFlags.NonPublic);
+        private static readonly BigMemmove? _clrMemmove = ManagedLibrary.TryGetStaticMethod<BigMemmove>(typeof(Buffer), "Memmove", System.Reflection.BindingFlags.NonPublic);
+        
+        /// <summary>
+        /// Copies structure data from a source byte reference that points to a sequence of 
+        /// of data to the target structure reference.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="target">An initialized target structure to copy data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void CopyStruct<T>(ref byte source, ref T target) where T : unmanaged
+        {
+            if (Unsafe.IsNullRef(ref target))
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+            if (Unsafe.IsNullRef(ref source))
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            //Recover byte reference of target struct
+            ref byte dst = ref Unsafe.As<T, byte>(ref target);
+
+            //Memmove
+            bool result = MemmoveByRef(ref source, 0, ref dst, 0, (nuint)sizeof(T));
+            Debug.Assert(result, "Memmove 32bit copy failed");
+        }
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source reference to the target 
+        /// reference data sequence
+        /// </summary>
+        /// <remarks>
+        /// Warning: This is a low level api that cannot do bounds checking on the target sequence. It must 
+        /// be large enough to hold the structure data.
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void CopyStruct<T>(ref T source, ref byte target) where T : unmanaged
+        {
+            if (Unsafe.IsNullRef(ref source))
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            if (Unsafe.IsNullRef(ref target))
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            //Recover byte reference to struct
+            ref byte src = ref Unsafe.As<T, byte>(ref source);
+
+            //Memmove
+            bool result = MemmoveByRef(ref src, 0, ref target, 0, (nuint)sizeof(T));
+            Debug.Assert(result, "Memmove 32bit copy failed");
+        }
+
+
+        /// <summary>
+        /// Copies structure data from a source byte reference that points to a sequence of 
+        /// of data to the target structure reference.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="target">A pointer to initialized target structure to copy data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(ref byte source, T* target) where T : unmanaged
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+            CopyStruct(ref source, ref *target);
+        }
+
+        /// <summary>
+        /// Copies structure data from a source byte reference that points to a sequence of 
+        /// of data to the target structure reference.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="target">A pointer to initialized target structure to copy data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(ref byte source, void* target) where T : unmanaged => CopyStruct(ref source, (T*)target);
+
+        /// <summary>
+        /// Copies structure data from a source sequence of data to the target structure reference.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sourceData">A referrence to the first byte of source data to copy from</param>
+        /// <param name="target">A pointer to initialized target structure to copy data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, ref T target) where T : unmanaged
+        {
+            if (sourceData.Length < sizeof(T))
+            {
+                throw new ArgumentException("Source data is smaller than the size of the structure");
+            }
+
+            CopyStruct(ref MemoryMarshal.GetReference(sourceData), ref target);
+        }
+
+        /// <summary>
+        /// Copies structure data from a source sequence of data to the target structure reference.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sourceData">A referrence to the first byte of source data to copy from</param>
+        /// <param name="target">A pointer to initialized target structure to copy data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, T* target) where T : unmanaged => CopyStruct(sourceData, ref *target);
+
+        /// <summary>
+        /// Copies structure data from a source sequence of data to the target structure reference.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sourceData">A referrence to the first byte of source data to copy from</param>
+        /// <param name="target">A pointer to initialized target structure to copy data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, void* target) where T: unmanaged => CopyStruct(sourceData, (T*)target);
+
+
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source pointer to the target 
+        /// reference data sequence
+        /// </summary>
+        /// <remarks>
+        /// Warning: This is a low level api that cannot do bounds checking on the target sequence. It must 
+        /// be large enough to hold the structure data.
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A pointer to the first byte of source data to copy from</param>
+        /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(T* source, ref byte target) where T : unmanaged
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            CopyStruct(ref *source, ref target);
+        }
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source pointer to the target 
+        /// reference data sequence
+        /// </summary>
+        /// <remarks>
+        /// Warning: This is a low level api that cannot do bounds checking on the target sequence. It must 
+        /// be large enough to hold the structure data.
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A pointer to the first byte of source data to copy from</param>
+        /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(void* source, ref byte target) where T : unmanaged => CopyStruct((T*)source, ref target);
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source pointer to the target 
+        /// reference data sequence
+        /// </summary>
+        /// <remarks>
+        /// Warning: This is a low level api that cannot do bounds checking on the target sequence. It must 
+        /// be large enough to hold the structure data.
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A pointer to the first byte of source data to copy from</param>
+        /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(ref T source, Span<byte> target) where T : unmanaged
+        {
+            //check that the span is large enough to hold the structure
+            if (target.Length < sizeof(T))
+            {
+                throw new ArgumentException("Target span is smaller than the size of the structure");
+            }
+
+            CopyStruct(ref source, ref MemoryMarshal.AsRef<byte>(target));
+        }
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source pointer to the target 
+        /// reference data sequence
+        /// </summary>
+        /// <remarks>
+        /// Warning: This is a low level api that cannot do bounds checking on the target sequence. It must 
+        /// be large enough to hold the structure data.
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A pointer to the first byte of source data to copy from</param>
+        /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(T* source, Span<byte> target) where T : unmanaged
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            CopyStruct(ref *source, target);
+        }
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source pointer to the target 
+        /// reference data sequence
+        /// </summary>
+        /// <remarks>
+        /// Warning: This is a low level api that cannot do bounds checking on the target sequence. It must 
+        /// be large enough to hold the structure data.
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A pointer to the first byte of source data to copy from</param>
+        /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(void* source, Span<byte> target) where T : unmanaged => CopyStruct((T*)source, target);
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source pointer to the target 
+        /// reference data sequence
+        /// </summary>
+        /// <remarks>
+        /// Warning: This is a low level api that cannot do bounds checking on the target sequence. It must 
+        /// be large enough to hold the structure data.
+        /// </remarks>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A pointer to the first byte of source data to copy from</param>
+        /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CopyStruct<T>(IntPtr source, ref byte target) where T : unmanaged => CopyStruct<T>(source.ToPointer(), ref target);
+        
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source reference to the target
+        /// structure reference
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A reference to the source structure to copy from</param>
+        /// <param name="target">A reference to the target structure to copy to</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CloneStruct<T>(ref T source, ref T target) where T : struct => Memmove(ref source, 0, ref target, 0, 1);
+
+        /// <summary>
+        /// Copies the memory of the structure pointed to by the source pointer to the target
+        /// structure pointer
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">A pointer to the source structure to copy from</param>
+        /// <param name="target">A pointer to the target structure to copy to</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void CloneStruct<T>(T* source, T* target) where T : unmanaged => Unsafe.CopyBlockUnaligned(target, source, (uint)sizeof(T));
+
 
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
@@ -363,30 +672,33 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">Unmanged type</typeparam>
         /// <param name="source">Source data <see cref="ReadOnlySpan{T}"/></param>
         /// <param name="dest">Destination <see cref="MemoryHandle{T}"/></param>
+        /// <param name="count">Number of elements to copy</param>
+        /// <param name="sourceOffset">Source offset</param>
         /// <param name="destOffset">Dest offset</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(ReadOnlySpan<T> source, IMemoryHandle<T> dest, nuint destOffset) where T: struct
+        public static void Copy<T>(ReadOnlySpan<T> source, int sourceOffset, IMemoryHandle<T> dest, nuint destOffset, int count) where T: struct
         {
             if (dest is null)
             {
                 throw new ArgumentNullException(nameof(dest));
             }
 
-            if (source.IsEmpty)
+            if (count == 0)
             {
                 return;
             }
 
-            //Check memhandle bounds
-            CheckBounds(dest, destOffset, (uint)source.Length);
+            //Check bounds
+            CheckBounds(source, sourceOffset, count);
+            CheckBounds(dest, destOffset, (uint)count);
 
             //Get byte ref and byte count
-            nuint byteCount = ByteCount<T>((uint)source.Length);
+            nuint byteCount = ByteCount<T>((uint)count);
             ref T src = ref MemoryMarshal.GetReference(source);
             ref T dst = ref dest.GetReference();
 
             //Use memmove by ref
-            bool success = MemmoveByRef(ref src, 0, ref dst, (uint)destOffset, byteCount);
+            bool success = MemmoveByRef(ref src, (uint)sourceOffset, ref dst, (uint)destOffset, byteCount);
             Debug.Assert(success, "Memmove by ref call failed during a 32bit copy");
         }
 
@@ -395,10 +707,14 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <typeparam name="T">Unmanged type</typeparam>
         /// <param name="source">Source data <see cref="ReadOnlyMemory{T}"/></param>
-        /// <param name="dest">Destination <see cref="MemoryHandle{T}"/></param>
-        /// <param name="destOffset">Dest offset</param>
+        /// <param name="sourceOffset">The element offset in the source memory</param>
+        /// <param name="dest">Destination <see cref="IMemoryHandle{T}"/></param>
+        /// <param name="destOffset">Dest element offset</param>
+        /// <param name="count">The number of elements to copy</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(ReadOnlyMemory<T> source, IMemoryHandle<T> dest, nuint destOffset) where T : struct => Copy(source.Span, dest, destOffset);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Copy<T>(ReadOnlyMemory<T> source, int sourceOffset, IMemoryHandle<T> dest, nuint destOffset, int count) where T : struct 
+            => Copy(source.Span, sourceOffset, dest, destOffset, count);
 
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
@@ -425,6 +741,7 @@ namespace VNLib.Utils.Memory
 
             //Check source bounds
             CheckBounds(source, (nuint)sourceOffset, (nuint)count);
+            CheckBounds(dest, destOffset, count);
 
             //Get byte ref and byte count
             nuint byteCount = ByteCount<T>((uint)count);
@@ -523,7 +840,7 @@ namespace VNLib.Utils.Memory
         /// <param name="count">The number of elements to copy</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(IMemoryHandle<T> source, nuint sourceOffset, T[] dest, nuint destOffset, nuint count) where T : unmanaged
+        public static void CopyArray<T>(IMemoryHandle<T> source, nuint sourceOffset, T[] dest, nuint destOffset, nuint count) where T : unmanaged
         {
             if (source is null)
             {
@@ -566,7 +883,106 @@ namespace VNLib.Utils.Memory
                 Buffer.MemoryCopy(srcOffset, dstOffset, byteCount, byteCount);
             }
         }
-       
+
+
+        /// <summary>
+        /// Preforms a fast referrence based copy on very large blocks of memory 
+        /// using pinning and pointers only when the number of bytes to copy is 
+        /// larger than <see cref="UInt32.MaxValue"/>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source">The source memory handle to copy data from</param>
+        /// <param name="sourceOffset">The element offset to begin reading from</param>
+        /// <param name="dest">The destination array to write data to</param>
+        /// <param name="destOffset"></param>
+        /// <param name="count">The number of elements to copy</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static void CopyArray<T>(T[] source, nuint sourceOffset, IMemoryHandle<T> dest, nuint destOffset, nuint count) where T : unmanaged
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (dest is null)
+            {
+                throw new ArgumentNullException(nameof(dest));
+            }
+
+            if (count == 0)
+            {
+                return;
+            }
+
+            //Check source bounds
+            CheckBounds(source, sourceOffset, count);
+
+            //Check dest bounds
+            CheckBounds(dest, destOffset, count);
+
+            //Get byte refs and byte count
+            nuint byteCount = ByteCount<T>(count);
+            ref T src = ref MemoryMarshal.GetArrayDataReference(source);
+            ref T dst = ref dest.GetReference();
+
+            //Try to memove by ref first, otherwise fallback to pinning
+            if (!MemmoveByRef(ref src, sourceOffset, ref dst, destOffset, byteCount))
+            {
+                //Copying block larger than 32bit must be done with pointers
+                using MemoryHandle srcH = PinArrayAndGetHandle(source, 0);
+                using MemoryHandle dstH = dest.Pin(0);
+
+                //Get pointers and add offsets
+                T* srcOffset = ((T*)srcH.Pointer) + sourceOffset;
+                T* dstOffset = ((T*)dstH.Pointer) + destOffset;
+
+                //Copy memory
+                Buffer.MemoryCopy(srcOffset, dstOffset, byteCount, byteCount);
+            }
+        }
+
+        /// <summary>
+        /// Low level api for copying data from source memory to destination memory of an
+        /// umanged data type.
+        /// </summary>
+        /// <remarks>
+        /// WARNING: It's not possible to do bounds checking when using references. Be sure you 
+        /// know what you are doing!
+        /// </remarks>
+        /// <typeparam name="T">The unmanaged or structure type to copy</typeparam>
+        /// <param name="src">A reference to the source data to copy from</param>
+        /// <param name="srcOffset">The offset (in elements) from the reference to begin the copy from</param>
+        /// <param name="dst">The detination</param>
+        /// <param name="dstOffset"></param>
+        /// <param name="elementCount"></param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void Memmove<T>(ref T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint elementCount) where T : struct
+        {
+            if(Unsafe.IsNullRef(ref src))
+            {
+                throw new ArgumentNullException(nameof(src));
+            }
+
+            if(Unsafe.IsNullRef(ref dst))
+            {
+                throw new ArgumentNullException(nameof(dst));
+            }
+
+            if(elementCount == 0)
+            {
+                return;
+            }
+
+            //compute the byte count from the element count
+            nuint byteCount = ByteCount<T>(elementCount);
+
+            if(!MemmoveByRef(ref src, srcOffset, ref dst, dstOffset, byteCount))
+            {
+                throw new ArgumentException("The number of bytes to copy was larger than Uint32.MaxValue and was unsupported on this platform", nameof(elementCount));
+            }
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         private static bool MemmoveByRef<T>(ref T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint byteCount) where T : struct
@@ -582,10 +998,10 @@ namespace VNLib.Utils.Memory
             ref byte srcByte = ref Unsafe.As<T, byte>(ref srcOffsetPtr);
             ref byte dstByte = ref Unsafe.As<T, byte>(ref dstOffsetPtr);
 
-            if (_sysMemmove != null)
+            if (_clrMemmove != null)
             {
                 //Call sysinternal memmove
-                _sysMemmove(ref dstByte, ref srcByte, byteCount);
+                _clrMemmove(ref dstByte, ref srcByte, byteCount);
                 return true;
             }
             else if(byteCount < uint.MaxValue)
@@ -697,8 +1113,11 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(ReadOnlySpan<T> block, int offset, int count)
         {
-            //Call slice and discard to raise exception
-            _ = block.Slice(offset, count);
+            //Check span bounds
+            if (offset < 0 || count < 0 || offset + count > block.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset), "Offset or count are beyond the range of the supplied memory handle");
+            }
         }
 
         /// <summary>
@@ -713,8 +1132,11 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(Span<T> block, int offset, int count)
         {
-            //Call slice and discard to raise exception
-            _ = block.Slice(offset, count);
+            //Check span bounds
+            if (offset < 0 || count < 0 || offset + count > block.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset), "Offset or count are beyond the range of the supplied memory handle");
+            }
         }
 
         /// <summary>

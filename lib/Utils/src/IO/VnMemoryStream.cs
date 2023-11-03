@@ -368,7 +368,7 @@ namespace VNLib.Utils.IO
             }
 
             //get the value at the current position
-            ref byte ptr = ref _buffer.GetByteOffsetRef((nuint)_position);
+            ref byte ptr = ref _buffer.GetOffsetByteRef((nuint)_position);
             
             //Increment position
             _position++;
@@ -488,7 +488,7 @@ namespace VNLib.Utils.IO
                 _length = newPos;
             }
             //Copy the input buffer to the internal buffer
-            MemoryUtil.Copy(buffer, _buffer, (nuint)_position);
+            MemoryUtil.Copy(buffer, 0, _buffer, (nuint)_position, buffer.Length);
             //Update the position
             _position = newPos;
         }
@@ -527,7 +527,7 @@ namespace VNLib.Utils.IO
             byte[] data = new byte[_length];
             
             //Copy the internal buffer to the new array
-            MemoryUtil.Copy(_buffer, 0, data, 0, (nuint)_length);
+            MemoryUtil.CopyArray(_buffer, 0, data, 0, (nuint)_length);
             
             return data;
         }

@@ -24,6 +24,7 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Extensions;
@@ -160,6 +161,86 @@ namespace VNLib.Utils.Memory
             np /= sizeof(T);
 
             return SafeAlloc<T>((int)np, zero);
+        }
+
+        /// <summary>
+        /// Allocates a structure of the specified type on the specified 
+        /// unmanged heap and optionally zero's it's memory
+        /// </summary>
+        /// <typeparam name="T">The structure type</typeparam>
+        /// <param name="heap">The heap to allocate structure memory from</param>
+        /// <param name="zero">A value that indicates if the structure memory should be zeroed before returning</param>
+        /// <returns>A pointer to the structure ready for use.</returns>
+        /// <remarks>Allocations must be freed with <see cref="StructFree{T}(IUnmangedHeap, T*)"/></remarks>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* StructAlloc<T>(IUnmangedHeap heap, bool zero) where T : unmanaged
+        {
+            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            return (T*)heap.Alloc(1, (nuint)sizeof(T), zero);
+        }
+
+        /// <summary>
+        /// Allocates a structure of the specified type on the specified 
+        /// unmanged heap and optionally zero's it's memory, then returns
+        /// and reference to the heap allocated structure.
+        /// </summary>
+        /// <typeparam name="T">The structure type</typeparam>
+        /// <param name="heap">The heap to allocate structure memory from</param>
+        /// <param name="zero">A value that indicates if the structure memory should be zeroed before returning</param>
+        /// <returns>A reference to the heap allocated structure</returns>
+        /// <remarks>Allocations must be freed with <see cref="StructFreeRef{T}(IUnmangedHeap, ref T)"/></remarks>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T StructAllocRef<T>(IUnmangedHeap heap, bool zero) where T : unmanaged
+        {
+            //Alloc structure
+            T* ptr = StructAlloc<T>(heap, zero);
+            //Get a reference and assign it
+            return ref Unsafe.AsRef<T>(ptr);
+        }
+
+        /// <summary>
+        /// Frees a structure allocated with <see cref="StructAlloc{T}(IUnmangedHeap, bool)"/>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="heap">Heap the structure was allocated from to free it back to</param>
+        /// <param name="structPtr">A pointer to the unmanaged structure to free</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void StructFree<T>(IUnmangedHeap heap, T* structPtr) where T : unmanaged => StructFree(heap, (void*)structPtr);
+
+        /// <summary>
+        /// Frees a structure allocated with <see cref="StructAllocRef{T}(IUnmangedHeap, bool)"/>
+        /// by its reference.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="heap">Heap the structure was allocated from to free it back to</param>
+        /// <param name="structRef">A reference to the unmanaged structure to free</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void StructFreeRef<T>(IUnmangedHeap heap, ref T structRef) where T : unmanaged => StructFree(heap, Unsafe.AsPointer(ref structRef));
+
+        /// <summary>
+        /// Frees a structure allocated with <see cref="StructAlloc{T}(IUnmangedHeap, bool)"/>
+        /// </summary>
+        /// <param name="heap">Heap the structure was allocated from to free it back to</param>
+        /// <param name="structPtr">A pointer to the unmanaged structure to free</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void StructFree(IUnmangedHeap heap, void* structPtr)
+        {
+            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            if(structPtr == null)
+            { 
+                throw new ArgumentNullException(nameof(structPtr)); 
+            }
+            //Get intpointer
+            IntPtr ptr = (IntPtr)structPtr;
+            //Free
+            bool isFree = heap.Free(ref ptr);
+            Debug.Assert(isFree, $"Structure free failed for heap {heap.GetHashCode()}, struct address {ptr:x}");
         }
 
         #endregion

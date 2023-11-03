@@ -35,9 +35,15 @@ namespace VNLib.Net.Http.Core.Buffering
      * as we are pinning the block. The block is pinned once for the lifetime 
      * of the connection, so we have access to the raw memory for faster 
      * span access.
+     * 
+     * It is suggested to use an Unmanaged memory pool for zero-cost memory
+     * pinning
     */
     internal abstract class HttpBufferElement : IHttpBuffer
     {
+        private MemoryHandle Pinned;
+        private int _size;
+        protected Memory<byte> Buffer;
 
         public virtual void FreeBuffer()
         {
@@ -45,7 +51,7 @@ namespace VNLib.Net.Http.Core.Buffering
             Pinned.Dispose();
             Pinned = default;
             Buffer = default;
-            Size = 0;
+            _size = 0;
         }
 
         public virtual void SetBuffer(Memory<byte> buffer)
@@ -55,18 +61,15 @@ namespace VNLib.Net.Http.Core.Buffering
             //Pin buffer and hold handle
             Pinned = buffer.Pin();
             //Set size to length of buffer
-            Size = buffer.Length;
+            _size = buffer.Length;
         }
 
         ///<inheritdoc/>
-        public int Size { get; private set; }
-
-        private MemoryHandle Pinned;
-        protected Memory<byte> Buffer;
+        public int Size => _size;
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual Span<byte> GetBinSpan() => MemoryUtil.GetSpan<byte>(ref Pinned, Size);
+        public virtual Span<byte> GetBinSpan() => MemoryUtil.GetSpan<byte>(ref Pinned, _size);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -75,7 +78,7 @@ namespace VNLib.Net.Http.Core.Buffering
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected virtual Span<byte> GetBinSpan(int maxSize)
         {
-            return maxSize > Size ? throw new ArgumentOutOfRangeException(nameof(maxSize)) : MemoryUtil.GetSpan<byte>(ref Pinned, maxSize);
+            return maxSize > _size ? throw new ArgumentOutOfRangeException(nameof(maxSize)) : MemoryUtil.GetSpan<byte>(ref Pinned, maxSize);
         }
     }
 }

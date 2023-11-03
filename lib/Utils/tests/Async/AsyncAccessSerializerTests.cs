@@ -147,12 +147,14 @@ namespace VNLib.Utils.Async.Tests
             int maxCount = 128;
             string serialized = "";
 
-            using CancellationTokenSource cts = new(500);
+            using CancellationTokenSource cts = new(10000);
 
             Task[] asyncArr = new int[maxCount].Select(p => Task.Run(async () =>
             {
                 //Take a lock then random delay, then release
                 await serializer.WaitAsync(DEFAULT_KEY, cts.Token);
+
+                await Task.Delay(1);
 
                 //Increment count 
                 serialized += "0";
@@ -171,9 +173,7 @@ namespace VNLib.Utils.Async.Tests
         public void SimplePerformanceComparisonTest()
         {
             const string DEFAULT_KEY = "default";
-
-            //Alloc serailzer base on string 
-            IAsyncAccessSerializer<string> serializer = new AsyncAccessSerializer<string>(100, 100, StringComparer.Ordinal);
+           
 
             const int maxCount = 128;
             const int itterations = 20;
@@ -181,31 +181,6 @@ namespace VNLib.Utils.Async.Tests
             Stopwatch timer = new();
 
             using CancellationTokenSource cts = new(500);
-
-            for (int i = 0; i < itterations; i++)
-            {
-                test = "";
-                timer.Restart();              
-
-                Task[] asyncArr = new int[maxCount].Select(p => Task.Run(async () =>
-                {
-                    //Take a lock then random delay, then release
-                    await serializer.WaitAsync(DEFAULT_KEY, cts.Token);
-
-                    //Increment count 
-                    test += "0";
-
-                    serializer.Release(DEFAULT_KEY);
-
-                })).ToArray();
-
-                Task.WaitAll(asyncArr);
-
-                timer.Stop();
-
-                Trace.WriteLine($"Async serialzier test completed in {timer.ElapsedTicks / 10} microseconds");
-                Assert.AreEqual(maxCount, test.Length);
-            }          
 
             using SemaphoreSlim slim = new(1,1);
 
@@ -231,6 +206,36 @@ namespace VNLib.Utils.Async.Tests
 
                 Trace.WriteLine($"SemaphoreSlim test completed in {timer.ElapsedTicks / 10} microseconds");
 
+                Assert.AreEqual(maxCount, test.Length);
+
+            }
+
+            //Alloc serailzer base on string 
+            IAsyncAccessSerializer<string> serializer = new AsyncAccessSerializer<string>(100, 100, StringComparer.Ordinal);
+
+            for (int i = 0; i < itterations; i++)
+            {
+
+                test = "";
+                timer.Restart();
+
+                Task[] asyncArr = new int[maxCount].Select(p => Task.Run(async () =>
+                {
+                    //Take a lock then random delay, then release
+                    await serializer.WaitAsync(DEFAULT_KEY, cts.Token);
+
+                    //Increment count 
+                    test += "0";
+
+                    serializer.Release(DEFAULT_KEY);
+
+                })).ToArray();
+
+                Task.WaitAll(asyncArr);
+
+                timer.Stop();
+
+                Trace.WriteLine($"Async serialzier test completed in {timer.ElapsedTicks / 10} microseconds");
                 Assert.AreEqual(maxCount, test.Length);
             }
         }

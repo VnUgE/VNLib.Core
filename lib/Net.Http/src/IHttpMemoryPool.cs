@@ -47,6 +47,6 @@ namespace VNLib.Net.Http
         /// <typeparam name="T"></typeparam>
         /// <param name="initialSize">The initial size of the buffer to allocate, which may be expanded as needed</param>
         /// <returns>The allocated block of memory</returns>
-        MemoryHandle<T> AllocFormDataBuffer<T>(int initialSize) where T: unmanaged;
+        IResizeableMemoryHandle<T> AllocFormDataBuffer<T>(int initialSize) where T: unmanaged;
     }
 }

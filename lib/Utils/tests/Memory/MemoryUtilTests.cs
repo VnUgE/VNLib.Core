@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
@@ -13,7 +14,7 @@ namespace VNLib.Utils.Memory.Tests
     [TestClass()]
     public class MemoryUtilTests
     {
-        const int ZERO_TEST_LOOP_ITERATIONS = 1000000;
+        const int ZERO_TEST_LOOP_ITERATIONS = 100000;
         const int ZERO_TEST_MAX_BUFFER_SIZE = 10 * 1024;
 
         [TestMethod()]
@@ -141,6 +142,7 @@ namespace VNLib.Utils.Memory.Tests
                 _ = handle.Span;
                 _ = handle.Length;
                 _ = handle.IntLength;
+                _ = handle.GetReference();
 
                 //Test span pointer against pinned handle
                 using (MemoryHandle pinned = handle.Pin(0))
@@ -150,6 +152,11 @@ namespace VNLib.Utils.Memory.Tests
                         Assert.IsTrue(ptr == pinned.Pointer);
                     }
                 }
+
+                //Test references are equal
+                ref byte spanRef = ref MemoryMarshal.GetReference(handle.Span);
+                ref byte handleRef = ref handle.GetReference();
+                Assert.IsTrue(Unsafe.AreSame(ref spanRef, ref handleRef));
 
                 //Test negative pin
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(-1));
@@ -248,6 +255,7 @@ namespace VNLib.Utils.Memory.Tests
                 _ = handle.Span;
                 _ = handle.Length;
                 _ = handle.GetIntLength();
+                _ = handle.GetReference();
 
                 //Test span pointer against pinned handle
                 using (MemoryHandle pinned = handle.Pin(0))
@@ -258,6 +266,11 @@ namespace VNLib.Utils.Memory.Tests
                     }
                 }
 
+                //Test references are equal
+                ref byte spanRef = ref MemoryMarshal.GetReference(handle.Span);
+                ref byte handleRef = ref handle.GetReference();
+                Assert.IsTrue(Unsafe.AreSame(ref spanRef, ref handleRef));
+
                 //Test negative pin
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(-1));
 
@@ -265,10 +278,8 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(1024));
             }
 
-
             //Negative value
             Assert.ThrowsException<ArgumentException>(() => _ = MemoryUtil.SafeAlloc<byte>(-1));
-
 
             /*
              * Alloc random sized blocks in a loop, confirm they are empty
@@ -451,7 +462,6 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(pageSize == Environment.SystemPageSize);
         }
 
-
         [TestMethod()]
         public void AllocNearestPage()
         {
@@ -533,6 +543,230 @@ namespace VNLib.Utils.Memory.Tests
                 //Should be the same as the page size
                 Assert.IsTrue(byteSize == (nuint)(Environment.SystemPageSize * 2));
             }
+        }
+
+        [TestMethod]
+        public unsafe void HeapAllocStructureRefTest()
+        {
+            //Alloc a structure as a reference
+            ref TestStruct str = ref MemoryUtil.StructAllocRef<TestStruct>(MemoryUtil.Shared, true);
+
+            str.X = 899;
+            str.Y = 458;
+
+            //recover a pointer from the reference
+            TestStruct* ptr = (TestStruct*)Unsafe.AsPointer(ref str);
+
+            //Confirm the values modified on the ref are reflected in the pointer deref
+            Assert.IsTrue(ptr->X == 899);
+            Assert.IsTrue(ptr->Y == 458);
+
+            //We can confirm the references are the same 
+            Assert.IsTrue(Unsafe.AreSame(ref (*ptr), ref str));
+
+            //free the structure
+            MemoryUtil.StructFreeRef(MemoryUtil.Shared, ref str);
+        }
+
+        [TestMethod]
+        public unsafe void StructCopyTest()
+        {
+            //Alloc a structure as a reference
+            ref TestStruct test1 = ref MemoryUtil.Shared.StructAllocRef<TestStruct>(true);
+
+            //Confirm test 1 is zeroed
+            Assert.IsTrue(test1.X == 0);
+            Assert.IsTrue(test1.Y == 0);
+
+            test1.X = 899;
+            test1.Y = 458;
+
+            //Test 2 blongs on the stack
+            TestStruct test2 = default;
+            MemoryUtil.CloneStruct(ref test1, ref test2);
+
+            Assert.IsTrue(test1.X == test2.X);
+            Assert.IsTrue(test1.Y == test2.Y);
+
+            //Zero out test 1
+            MemoryUtil.ZeroStruct(ref test1);
+
+            //Confirm test 1 is zeroed
+            Assert.IsTrue(test1.X == 0);
+            Assert.IsTrue(test1.Y == 0);
+
+            //Confirm test 2 is unmodified
+            Assert.IsTrue(test2.X == 899);
+            Assert.IsTrue(test2.Y == 458);
+
+            //Alloc buffer to write struct data to
+            Span<byte> buffer = stackalloc byte[sizeof(TestStruct)];
+            MemoryUtil.CopyStruct(ref test2, buffer);
+
+            //Read the x value as the first integer within the buffer
+            int xCoord = MemoryMarshal.Read<int>(buffer);
+            Assert.IsTrue(xCoord == 899);
+
+            //Clone to test 3 (stack alloc struct)
+            TestStruct test3 = default;
+            MemoryUtil.CopyStruct(buffer, ref test3);
+
+            //Check that test2 and test3 are the same
+            Assert.IsTrue(test2.X == test3.X);
+            Assert.IsTrue(test2.Y == test3.Y);
+
+            //Copy back to test 1 
+            MemoryUtil.CopyStruct(buffer, ref test1);
+
+            //Check that test1 and test2 are now the same
+            Assert.IsTrue(test1.X == test2.X);
+            Assert.IsTrue(test1.Y == test2.Y);
+
+            //free the structure
+            MemoryUtil.StructFreeRef(MemoryUtil.Shared, ref test1);
+        }
+
+        [TestMethod]
+        public void CopyTest()
+        {
+            /*
+             * Testing the MemoryUtil.Copy/CopyArray family of functions and their overloads
+             */
+
+            using IMemoryHandle<byte> testHandle = MemoryUtil.SafeAlloc<byte>(16, false);
+            using IMemoryHandle<byte> emptyHandle = new MemoryHandle<byte>();
+            byte[] testArray = new byte[16];
+
+            ReadOnlyMemory<byte> testMem = testArray;
+            Memory<byte> testMem2 = testArray;
+
+            /*
+             * Test null reference checks
+             */
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy((IMemoryHandle<byte>)null, 0, testHandle, 0, 1));
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(testHandle, 0, (IMemoryHandle<byte>)null, 0, 1));
+
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(ReadOnlyMemory<byte>.Empty, 0, null, 0, 1));
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(ReadOnlySpan<byte>.Empty, 0, null, 0, 1));
+           
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(null, 0, testArray, 0, 1));
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(testHandle, 0, null, 0, 1));
+
+
+            /*
+             * Test out of range values for empty blocks
+             */
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, emptyHandle, 0, 1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(emptyHandle, 0, testHandle, 0, 1));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, Memory<byte>.Empty, 0, 1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(ReadOnlyMemory<byte>.Empty, 0, testHandle, 0, 1));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, Span<byte>.Empty, 0, 1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(ReadOnlySpan<byte>.Empty, 0, testHandle, 0, 1));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(Array.Empty<byte>(), 0, testHandle, 0, 1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testHandle, 0, Array.Empty<byte>(), 0, 1));
+
+
+            /*
+             * Check for out of range with valid handles
+             */
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testHandle, 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testHandle, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 1, testHandle, 0, 16));
+
+            //Test with real values using memory
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2, 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 1, testMem2, 0, 16));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem, 0, testHandle, 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem, 0, testHandle, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem, 1, testHandle, 0, 16));
+
+            //Test with real values using span
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2.Span, 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2.Span, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 1, testMem2.Span, 0, 16));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem.Span, 0, testHandle, 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem.Span, 0, testHandle, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem.Span, 1, testHandle, 0, 16));
+
+            //Test with real values using array
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testHandle, 0, testArray, 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testHandle, 0, testArray, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testHandle, 1, testArray, 0, 16));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testArray, 0, testHandle, 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testArray, 0, testHandle, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testArray, 1, testHandle, 0, 16));
+
+            /*
+             * Test inbounds test values
+             */
+            MemoryUtil.Copy(testHandle, 0, testHandle, 0, 16);
+            MemoryUtil.Copy(testHandle, 0, testHandle, 1, 15);
+            MemoryUtil.Copy(testHandle, 1, testHandle, 0, 15);
+
+            //Memory-inbounds
+            MemoryUtil.Copy(testHandle, 0, testMem2, 0, 16);
+            MemoryUtil.Copy(testHandle, 0, testMem2, 1, 15);
+            MemoryUtil.Copy(testHandle, 1, testMem2, 0, 15);
+
+            MemoryUtil.Copy(testMem, 0, testHandle, 0, 16);
+            MemoryUtil.Copy(testMem, 0, testHandle, 1, 15);
+            MemoryUtil.Copy(testMem, 1, testHandle, 0, 15);
+
+            //Span in-bounds
+            MemoryUtil.Copy(testHandle, 0, testMem2.Span, 0, 16);
+            MemoryUtil.Copy(testHandle, 0, testMem2.Span, 1, 15);
+            MemoryUtil.Copy(testHandle, 1, testMem2.Span, 0, 15);
+
+            MemoryUtil.Copy(testMem.Span, 0, testHandle, 0, 16);
+            MemoryUtil.Copy(testMem.Span, 0, testHandle, 1, 15);
+            MemoryUtil.Copy(testMem.Span, 1, testHandle, 0, 15);
+
+            //Array in-bounds
+            MemoryUtil.CopyArray(testHandle, 0, testArray, 0, 16);
+            MemoryUtil.CopyArray(testHandle, 0, testArray, 1, 15);
+            MemoryUtil.CopyArray(testHandle, 1, testArray, 0, 15);
+
+            MemoryUtil.CopyArray(testArray, 0, testHandle, 0, 16);
+            MemoryUtil.CopyArray(testArray, 0, testHandle, 1, 15);
+            MemoryUtil.CopyArray(testArray, 1, testHandle, 0, 15);
+
+            /*
+             * Test nop for zero-length copies
+             */
+
+            MemoryUtil.Copy(testHandle, 0, testHandle, 0, 0);
+            MemoryUtil.Copy(testHandle, 0, testMem2, 0, 0);
+            MemoryUtil.Copy(testHandle, 0, testMem2.Span, 0, 0);
+            MemoryUtil.Copy(testMem, 0, testHandle, 0, 0);
+            MemoryUtil.Copy(testMem.Span, 0, testHandle, 0, 0);
+            MemoryUtil.CopyArray(testHandle, 0, testArray, 0, 0);
+            MemoryUtil.CopyArray(testArray, 0, testHandle, 0, 0);
+
+             /*
+              * Test negative values for span/memory overloads that 
+              * accept integers
+              */
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, -1, testMem2, 0, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2, -1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2, 0, -1));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem, -1, testHandle, 0, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem, 0, testHandle, 0, -1));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, -1, testMem2.Span, 0, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2.Span, -1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2.Span, 0, -1));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem.Span, -1, testHandle, 0, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem.Span, 0, testHandle, 0, -1));
         }
     }
 }

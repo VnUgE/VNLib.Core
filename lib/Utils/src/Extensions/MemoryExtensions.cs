@@ -263,7 +263,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ref byte GetByteOffsetRef<T>(this IMemoryHandle<T> block, nuint offset) 
+        public static ref byte GetOffsetByteRef<T>(this IMemoryHandle<T> block, nuint offset) 
         {
             _ = block ?? throw new ArgumentNullException(nameof(block));
 
@@ -361,16 +361,31 @@ namespace VNLib.Utils.Extensions
         public static MemoryPool<T> ToPool<T>(this IUnmangedHeap heap, int maxBufferSize = int.MaxValue) where T : unmanaged => new PrivateBuffersMemoryPool<T>(heap, maxBufferSize);
 
         /// <summary>
-        /// Allocates a structure of the specified type on the current unmanged heap and zero's its memory
+        /// Allocates a structure of the specified type on the current unmanged heap and optionally zero's its memory
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap"></param>
+        /// <param name="zero">A value that indicates if the structure memory should be zeroed before returning</param>
         /// <returns>A pointer to the structure ready for use.</returns>
         /// <remarks>Allocations must be freed with <see cref="StructFree{T}(IUnmangedHeap, T*)"/></remarks>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe T* StructAlloc<T>(this IUnmangedHeap heap) where T : unmanaged => (T*)heap.Alloc(1, (nuint)sizeof(T), true);
+        public static unsafe T* StructAlloc<T>(this IUnmangedHeap heap, bool zero = true) where T : unmanaged => MemoryUtil.StructAlloc<T>(heap, zero);
+
+        /// <summary>
+        /// Allocates a structure of the specified type on the current unmanged heap and optionally zero's its memory
+        /// </summary>
+        /// <typeparam name="T">The structure type</typeparam>
+        /// <param name="heap"></param>
+        /// <param name="zero">A value that indicates if the structure memory should be zeroed before returning</param>
+        /// <returns>A reference/pointer to the structure ready for use.</returns>
+        /// <remarks>Allocations must be freed with <see cref="StructFreeRef{T}(IUnmangedHeap, ref T)"/></remarks>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref T StructAllocRef<T>(this IUnmangedHeap heap, bool zero = true) where T : unmanaged => ref MemoryUtil.StructAllocRef<T>(heap, zero);
+
 
         /// <summary>
         /// Frees a structure at the specified address from the this heap. 
@@ -378,17 +393,20 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap"></param>
-        /// <param name="structPtr">A pointer to the structure</param>
+        /// <param name="structPtr">A reference/pointer to the structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void StructFree<T>(this IUnmangedHeap heap, T* structPtr) where T : unmanaged
-        {
-            IntPtr block = new(structPtr);
-            //Free block from heap
-            heap.Free(ref block);
-            //Clear ref
-            *structPtr = default;
-        }
-        
+        public static unsafe void StructFree<T>(this IUnmangedHeap heap, T* structPtr) where T : unmanaged => MemoryUtil.StructFree(heap, structPtr);
+
+        /// <summary>
+        /// Frees a structure at the specified address from the this heap. 
+        /// This must be the same heap the structure was allocated from
+        /// </summary>
+        /// <typeparam name="T">The structure type</typeparam>
+        /// <param name="heap"></param>
+        /// <param name="structRef">A reference to the structure</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void StructFreeRef<T>(this IUnmangedHeap heap, ref T structRef) where T : unmanaged => MemoryUtil.StructFreeRef(heap, ref structRef);
+
         /// <summary>
         /// Allocates a block of unmanaged memory of the number of elements to store of an unmanged type
         /// </summary>
@@ -406,10 +424,8 @@ namespace VNLib.Utils.Extensions
             _ = heap ?? throw new ArgumentNullException(nameof(heap));
             //Minimum of one element
             elements = Math.Max(elements, 1);
-            //Get element size
-            nuint elementSize = (nuint)sizeof(T);
             //If zero flag is set then specify zeroing memory
-            IntPtr block = heap.Alloc(elements, elementSize, zero);
+            IntPtr block = heap.Alloc(elements, (nuint)sizeof(T), zero);
             //Return handle wrapper
             return new MemoryHandle<T>(heap, block, elements, zero);
         }
@@ -430,7 +446,7 @@ namespace VNLib.Utils.Extensions
         {
             return elements >= 0 ? Alloc<T>(heap, (nuint)elements, zero) : throw new ArgumentOutOfRangeException(nameof(elements));
         }
-        
+
         /// <summary>
         /// Allocates a buffer from the current heap and initialzies it by copying the initial data buffer
         /// </summary>
@@ -441,13 +457,13 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryHandle<T> AllocAndCopy<T>(this IUnmangedHeap heap, ReadOnlySpan<T> initialData) where T:unmanaged
+        public static MemoryHandle<T> AllocAndCopy<T>(this IUnmangedHeap heap, ReadOnlySpan<T> initialData) where T : unmanaged
         {
             //Aloc block
             MemoryHandle<T> handle = heap.Alloc<T>(initialData.Length);
-            
+
             //Copy initial data
-            MemoryUtil.Copy(initialData, handle, 0);
+            MemoryUtil.Copy(initialData, 0, handle, 0, initialData.Length);
 
             return handle;
         }
@@ -468,7 +484,7 @@ namespace VNLib.Utils.Extensions
             MemoryHandle<T> handle = heap.Alloc<T>(initialData.Length);
 
             //Copy initial data
-            MemoryUtil.Copy(initialData, handle, 0);
+            MemoryUtil.Copy(initialData, 0, handle, 0, initialData.Length);
 
             return handle;
         }
@@ -486,7 +502,7 @@ namespace VNLib.Utils.Extensions
         public static void WriteAndResize<T>(this IResizeableMemoryHandle<T> handle, ReadOnlySpan<T> input) where T: unmanaged
         {
             handle.Resize(input.Length);
-            MemoryUtil.Copy(input, handle, 0);
+            MemoryUtil.Copy(input, 0, handle, 0, input.Length);
         }
 
         /// <summary>

@@ -157,6 +157,12 @@ namespace VNLib.Net.Http.Core
             //Gets the max form data buffer size to help calculate the initial char buffer size
             int maxBufferSize = context.ParentServer.Config.BufferConfig.FormDataBufferSize;
 
+            //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
+            int bufferSize = (int)Math.Min(request.InputStream.Length, maxBufferSize);
+
+            //Get the form data buffer (should be cost free)
+            Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
+
             switch (request.ContentType)
             {
                 //CT not supported, dont read it
@@ -164,14 +170,8 @@ namespace VNLib.Net.Http.Core
                     break;
                 case ContentType.UrlEncoded:
                     {
-                        //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
-                        int bufferSize = (int)Math.Min(request.InputStream.Length, maxBufferSize);
-
                         //Alloc the form data character buffer, this will need to grow if the form data is larger than the buffer
-                        using MemoryHandle<char> urlbody = pool.AllocFormDataBuffer<char>(bufferSize);
-
-                        //Get a buffer for the form data
-                        Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
+                        using IResizeableMemoryHandle<char> urlbody = pool.AllocFormDataBuffer<char>(bufferSize);
 
                         //Load char buffer from stream
                         int chars = await BufferInputStream(request.InputStream, urlbody, formBuffer, info.Encoding);
@@ -190,14 +190,8 @@ namespace VNLib.Net.Http.Core
                             break;
                         }
 
-                        //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
-                        int bufferSize = (int)Math.Min(request.InputStream.Length, maxBufferSize);
-
                         //Alloc the form data buffer
-                        using MemoryHandle<char> formBody = pool.AllocFormDataBuffer<char>(bufferSize);
-
-                        //Get a buffer for the form data
-                        Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
+                        using IResizeableMemoryHandle<char> formBody = pool.AllocFormDataBuffer<char>(bufferSize);
 
                         //Load char buffer from stream
                         int chars = await BufferInputStream(request.InputStream, formBody, formBuffer, info.Encoding);
@@ -223,7 +217,7 @@ namespace VNLib.Net.Http.Core
          * We assume the parsing method checked the size of the input stream so we can assume its safe to read
          * all of it into memory.
          */
-        private static async ValueTask<int> BufferInputStream(Stream stream, MemoryHandle<char> charBuffer, Memory<byte> binBuffer, Encoding encoding)
+        private static async ValueTask<int> BufferInputStream(Stream stream, IResizeableMemoryHandle<char> charBuffer, Memory<byte> binBuffer, Encoding encoding)
         {
             int length = 0;
             do
@@ -361,11 +355,11 @@ namespace VNLib.Net.Http.Core
             int bytes = info.Encoding.GetByteCount(data);
 
             //get a buffer from the HTTP heap
-            MemoryHandle<byte> buffHandle = pool.AllocFormDataBuffer<byte>(bytes);
+            IResizeableMemoryHandle<byte> buffHandle = pool.AllocFormDataBuffer<byte>(bytes);
             try
             {
                 //Convert back to binary
-                bytes = info.Encoding.GetBytes(data, buffHandle);
+                bytes = info.Encoding.GetBytes(data, buffHandle.Span);
 
                 //Create a new memory stream encapsulating the file data
                 VnMemoryStream vms = VnMemoryStream.FromHandle(buffHandle, true, bytes, true);

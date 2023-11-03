@@ -143,7 +143,7 @@ namespace VNLib.Net.Http.Core
         {
             _ctx = ctx;
 
-            //Alloc buffers
+            //Alloc buffers during context init incase exception occurs in user-code
             Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
 
             //Init new connection
