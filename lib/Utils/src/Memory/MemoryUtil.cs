@@ -350,9 +350,33 @@ namespace VNLib.Utils.Memory
         /// Zeroes a block of memory pointing to the structure
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
+        /// <param name="structRef">The reference to the allocated structure</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ZeroStruct<T>(ref T structRef) where T : unmanaged => InitializeBlock(ref structRef, 1);
+
+        /// <summary>
+        /// Zeroes a block of memory pointing to the structure
+        /// </summary>
+        /// <typeparam name="T">The structure type</typeparam>
         /// <param name="structPtr">The pointer to the allocated structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(void* structPtr) where T: unmanaged => InitializeBlock((T*)structPtr, Unsafe.SizeOf<T>());
+        public static void ZeroStruct<T>(T* structPtr) where T : unmanaged
+        {
+            if (structPtr == null)
+            {
+                throw new ArgumentNullException(nameof(structPtr));
+            }
+
+            ZeroStruct(ref *structPtr);
+        }
+
+        /// <summary>
+        /// Zeroes a block of memory pointing to the structure
+        /// </summary>
+        /// <typeparam name="T">The structure type</typeparam>
+        /// <param name="structPtr">The pointer to the allocated structure</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ZeroStruct<T>(void* structPtr) where T: unmanaged => ZeroStruct((T*)structPtr);
 
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
@@ -362,30 +386,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ZeroStruct<T>(IntPtr block) where T : unmanaged => ZeroStruct<T>(block.ToPointer());
 
-        /// <summary>
-        /// Zeroes a block of memory pointing to the structure
-        /// </summary>
-        /// <typeparam name="T">The structure type</typeparam>
-        /// <param name="structPtr">The pointer to the allocated structure</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(T* structPtr) where T : unmanaged => ZeroStruct<T>((void*)structPtr);
 
-        /// <summary>
-        /// Zeroes a block of memory pointing to the structure
-        /// </summary>
-        /// <typeparam name="T">The structure type</typeparam>
-        /// <param name="structRef">The reference to the allocated structure</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(ref T structRef) where T : unmanaged
-        {
-            if(Unsafe.IsNullRef(ref structRef))
-            {
-                throw new ArgumentNullException(nameof(structRef));
-            }
-
-            Unsafe.InitBlock(ref Unsafe.As<T, byte>(ref structRef), 0, (uint)sizeof(T));
-        }
-        
         #endregion
 
         #region Copy
@@ -524,7 +525,6 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, void* target) where T: unmanaged => CopyStruct(sourceData, (T*)target);
-
 
 
         /// <summary>

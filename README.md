@@ -37,7 +37,7 @@ Again, go to my website below, my email address is available, go ahead and send 
 - [Net.Messaging.FBM](lib/Net.Messaging.FBM/#) - Fixed Buffer Messaging protocol, high performance, request/response architecture, client & server library, built atop http and web-sockets. As implied, relies on fixed sized internal buffers that are negotiated to transfer data with minimal overhead for known messaging architectures.
 - [Utils.Memory](lib/Utils.Memory/#) - Utilty libraries for native memory management framework for VNLib, including an x64 CMake build of rpmalloc.
 - [Net.Compression](lib/Net.Compression/#) - A cross platform native compression provider and IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
-- [Net.Rest.Client](lib/Net.Rest.Client/#) - A minimal library that provides a RestSharp client resource pool for concurrent usage with async support, along with an OAuth2 client credentials IAuthenticator implementation for use with Oauth2 plugins.
+- [Net.Rest.Client](lib/Net.Rest.Client/#) - A library for defining REST api clients via a fluent api by defining sites and endpoints, OAuth2 authenticator for RestSharp, and a simple RestSharp client pool.
 
 ## Builds & Source
 Builds contain the individual components listed below packaged per-project, available for download on my website. Build packages will be tgz archives (except for nuget packages). You can obtain debug and release builds, along with per-project source code 

@@ -46,19 +46,20 @@ namespace VNLib.Utils.Memory
             Pool,
             PrivateHeap
         }
-       
-        private readonly T[]? _poolArr;
+
         private readonly IntPtr _memoryPtr;
+        private readonly int _length;
+        private readonly HandleType _handleType;
+
+        private readonly T[]? _poolArr;
         private readonly ArrayPool<T>? _pool;
         private readonly IUnmangedHeap? _heap;
-        private readonly HandleType _handleType;
-        private readonly int _length;
 
         ///<inheritdoc/>
         public readonly Span<T> Span
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _handleType == HandleType.Pool ? _poolArr.AsSpan(0, IntLength) : MemoryUtil.GetSpan<T>(_memoryPtr, IntLength);
+            get => _handleType == HandleType.Pool ? _poolArr.AsSpan(0, _length) : MemoryUtil.GetSpan<T>(_memoryPtr, _length);
         }
         /// <summary>
         /// Gets the integer number of elements of the block of memory pointed to by this handle
@@ -153,7 +154,7 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         public readonly override int GetHashCode() => _handleType == HandleType.Pool ? _poolArr!.GetHashCode() : _memoryPtr.GetHashCode();
         ///<inheritdoc/>
-        public readonly unsafe MemoryHandle Pin(int elementIndex)
+        public readonly MemoryHandle Pin(int elementIndex)
         {
             //guard empty handle
             if (_handleType == HandleType.None)
@@ -162,7 +163,7 @@ namespace VNLib.Utils.Memory
             }
             
             //Guard size
-            if (elementIndex < 0 || elementIndex >= IntLength)
+            if (elementIndex < 0 || elementIndex >= _length)
             {
                 throw new ArgumentOutOfRangeException(nameof(elementIndex));
             }           
