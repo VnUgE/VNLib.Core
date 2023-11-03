@@ -69,7 +69,7 @@ namespace VNLib.Hashing.IdentityUtility
             using MemoryHandle<byte> binBuffer = heap.Alloc<byte>(utf8Size, true);
 
             //Decode to utf8
-            utf8Size = textEncoding.GetBytes(urlEncJwtString, binBuffer);
+            utf8Size = textEncoding.GetBytes(urlEncJwtString, binBuffer.Span);
             
             //Parse and return the jwt
             return ParseRaw(binBuffer.Span[..utf8Size], heap);

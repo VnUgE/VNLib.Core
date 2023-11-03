@@ -103,7 +103,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 //Alloc heap buffer
                 using UnsafeMemoryHandle<byte> secretBuffer = MemoryUtil.UnsafeAlloc(_secret.BufferSize, true);
 
-                return VerifyInternal(passHash, password, secretBuffer);
+                return VerifyInternal(passHash, password, secretBuffer.Span);
             }
         }
 

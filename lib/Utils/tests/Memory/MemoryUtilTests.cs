@@ -165,6 +165,10 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(1024));
             }
 
+            //Use the byte only overload
+            using (UnsafeMemoryHandle<byte> handle = MemoryUtil.UnsafeAlloc(1024))
+            { }
+
             //test against negative number
             Assert.ThrowsException<ArgumentException>(() => MemoryUtil.UnsafeAlloc<byte>(-1));
 
@@ -217,7 +221,7 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsTrue(0 == empty.IntLength);
 
                 //Test pinning while empty
-                Assert.ThrowsException<InvalidOperationException>(() => _ = empty.Pin(0));
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = empty.Pin(0));
             }
 
             //Negative value

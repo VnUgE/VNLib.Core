@@ -243,12 +243,9 @@ namespace VNLib.Utils.Memory
             }
 
             uint byteSize = ByteCount<T>((uint)block.Length);
-
             ref T r0 = ref MemoryMarshal.GetReference(block);
-            ref byte byteRef = ref Unsafe.As<T, byte>(ref r0);
-
             //Calls memset
-            Unsafe.InitBlock(ref byteRef, 0, byteSize);
+            ZeroByRef(ref r0, byteSize);
         }
 
         /// <summary>
@@ -270,6 +267,19 @@ namespace VNLib.Utils.Memory
             using MemoryHandle handle = block.Pin();
             //Calls memset
             Unsafe.InitBlock(handle.Pointer, 0, byteSize);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        private static void ZeroByRef<T>(ref T src, uint elements)
+        {
+            Debug.Assert(Unsafe.IsNullRef(ref src) == false, "Null reference passed to ZeroByRef");
+
+            //Convert to bytes
+            uint byteSize = ByteCount<T>(elements);
+            ref byte byteRef = ref Unsafe.As<T, byte>(ref src);
+
+            //Call init block
+            Unsafe.InitBlock(ref byteRef, 0, byteSize);
         }
 
         /*
@@ -294,6 +304,39 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InitializeBlock<T>(Memory<T> block) where T : struct => UnsafeZeroMemory<T>(block);
 
+        /// <summary>
+        /// Initializes the entire array with zeros 
+        /// </summary>
+        /// <typeparam name="T">A structure type to initialize</typeparam>
+        /// <param name="array">The array to zero</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void InitializeBlock<T>(T[] array) where T : struct => InitializeBlock(array, (uint)array.Length);
+
+        /// <summary>
+        /// Initializes the array with zeros up to the specified count
+        /// </summary>
+        /// <typeparam name="T">A structure type to initialize</typeparam>
+        /// <param name="array">The array to zero</param>
+        /// <param name="count">The number of elements in the array to zero</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void InitializeBlock<T>(T[] array, uint count) where T: struct
+        {
+            if(array == null)
+            {
+                throw new ArgumentNullException(nameof(array));
+            }
+
+            //Check bounds
+            CheckBounds(array, 0, count);
+
+            //Get array data reference
+            ref T arrRef = ref MemoryMarshal.GetArrayDataReference(array);
+            ZeroByRef(ref arrRef, count);
+        }
 
         /// <summary>
         /// Zeroes a block of memory of the given unmanaged type
@@ -314,10 +357,7 @@ namespace VNLib.Utils.Memory
                 return;
             }
 
-            //To bytereference
-            ref byte byteRef = ref Unsafe.As<T, byte>(ref block);
-            //Zero block
-            Unsafe.InitBlock(ref byteRef, 0, ByteCount<T>((uint)itemCount));
+            ZeroByRef(ref block, (uint)itemCount);
         }
 
         /// <summary>
@@ -1286,6 +1326,32 @@ namespace VNLib.Utils.Memory
 
             //Multiply back to page sizes
             return pages * SystemPageSize;
+        }
+
+        /// <summary>
+        /// Rounds the requested number of elements up to the nearest page
+        /// </summary>
+        /// <typeparam name="T">The unmanaged type</typeparam>
+        /// <param name="elements">The number of elements of size T to round</param>
+        /// <returns>The number of elements rounded to the nearest page in elements</returns>
+        public static nuint NearestPage<T>(nuint elements) where T : unmanaged
+        {
+            nuint elSize = (nuint)sizeof(T);
+            //Round to nearest page (in bytes)
+            return NearestPage(elements * elSize) / elSize;
+        }
+
+        /// <summary>
+        /// Rounds the requested number of elements up to the nearest page
+        /// </summary>
+        /// <typeparam name="T">The unmanaged type</typeparam>
+        /// <param name="elements">The number of elements of size T to round</param>
+        /// <returns>The number of elements rounded to the nearest page in elements</returns>
+        public static nint NearestPage<T>(nint elements) where T : unmanaged
+        {
+            nint elSize = sizeof(T);
+            //Round to nearest page (in bytes)
+            return NearestPage(elements * elSize) / elSize;
         }
     }
 }

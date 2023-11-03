@@ -42,7 +42,13 @@ namespace VNLib.Utils.Memory
     /// </summary>
     [ComVisible(false)]
     [ImmutableObject(true)]
-    public sealed class VnString : VnDisposeable, IEquatable<VnString>, IEquatable<string>, IEquatable<char[]>, IComparable<VnString>, IComparable<string>
+    public sealed class VnString : 
+        VnDisposeable, 
+        IEquatable<VnString>,
+        IEquatable<string>,
+        IEquatable<char[]>,
+        IComparable<VnString>, 
+        IComparable<string>
     {
         private readonly IMemoryHandle<char>? Handle;
 
@@ -58,10 +64,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         public bool IsEmpty => Length == 0;
 
-        private VnString(SubSequence<char> sequence)
-        {
-            _stringSequence = sequence;
-        }
+        private VnString(SubSequence<char> sequence) => _stringSequence = sequence;
 
         private VnString(IMemoryHandle<char> handle, nuint start, int length)
         {
@@ -97,7 +100,77 @@ namespace VNLib.Utils.Memory
             //Get subsequence over the whole copy of data
             _stringSequence = Handle.GetSubSequence(0, data.Length);
         }
-        
+
+        /// <summary>
+        /// Creates a new <see cref="VnString"/> from the binary data, using the specified encoding
+        /// and allocating the internal buffer from the desired heap, or <see cref="MemoryUtil.Shared"/>
+        /// heap instance if null. If the <paramref name="data"/> is empty, an empty <see cref="VnString"/>
+        /// is returned.
+        /// </summary>
+        /// <param name="data">The data to decode</param>
+        /// <param name="encoding"></param>
+        /// <param name="heap"></param>
+        /// <returns>The decoded string from the binary data, or an empty string if no data was provided</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static VnString FromBinary(ReadOnlySpan<byte> data, Encoding encoding, IUnmangedHeap? heap = null)
+        {
+            _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
+
+            if (data.IsEmpty)
+            {
+                return new VnString();
+            }
+
+            //Fall back to shared heap
+            heap ??= MemoryUtil.Shared;
+
+            //Get the number of characters
+            int numChars = encoding.GetCharCount(data);
+
+            //New handle for decoded data
+            MemoryHandle<char> charBuffer = heap.Alloc<char>(numChars);
+            try
+            {
+                //Write characters to character buffer
+                _ = encoding.GetChars(data, charBuffer.Span);
+                //Consume the new handle
+                return ConsumeHandle(charBuffer, 0, numChars);
+            }
+            catch
+            {
+                //If an error occured, dispose the buffer
+                charBuffer.Dispose();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Creates a new Vnstring from the <see cref="MemoryHandle{T}"/> buffer provided. This function "consumes"
+        /// a handle, meaning it now takes ownsership of the the memory it points to.
+        /// </summary>
+        /// <param name="handle">The <see cref="MemoryHandle{T}"/> to consume</param>
+        /// <param name="start">The offset from the begining of the buffer marking the begining of the string</param>
+        /// <param name="length">The number of characters this string points to</param>
+        /// <returns>The new <see cref="VnString"/></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static VnString ConsumeHandle(IMemoryHandle<char> handle, nuint start, int length)
+        {
+            if (handle is null)
+            {
+                throw new ArgumentNullException(nameof(handle));
+            }
+
+            if (length < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length));
+            }
+
+            //Check handle bounts
+            MemoryUtil.CheckBounds(handle, start, (nuint)length);
+
+            return new VnString(handle, start, length);
+        }
+
         /// <summary>
         /// Allocates a temporary buffer to read data from the stream until the end of the stream is reached.
         /// Decodes data from the user-specified encoding
@@ -111,7 +184,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public static VnString FromStream(Stream stream, Encoding encoding, IUnmangedHeap heap, uint bufferSize)
+        public static VnString FromStream(Stream stream, Encoding encoding, IUnmangedHeap heap, int bufferSize)
         {
             _ = stream ?? throw new ArgumentNullException(nameof(stream));
             _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
@@ -125,36 +198,27 @@ namespace VNLib.Utils.Memory
             //See if the stream is a vn memory stream
             if (stream is VnMemoryStream vnms)
             {
-                //Get the number of characters
-                int numChars = encoding.GetCharCount(vnms.AsSpan());
-                //New handle
-                MemoryHandle<char> charBuffer = heap.Alloc<char>(numChars);
-                try
-                {
-                    //Write characters to character buffer
-                    _ = encoding.GetChars(vnms.AsSpan(), charBuffer);
-                    //Consume the new handle
-                    return ConsumeHandle(charBuffer, 0, numChars);
-                }
-                catch
-                {
-                    //If an error occured, dispose the buffer
-                    charBuffer.Dispose();
-                    throw;
-                }
+               return FromBinary(vnms.AsSpan(), encoding, heap);
+            }
+            //Try to get the internal buffer from am memory span
+            else if (stream is MemoryStream ms && ms.TryGetBuffer(out ArraySegment<byte> arrSeg))
+            {
+                return FromBinary(arrSeg.AsSpan(), encoding, heap);
             }
             //Need to read from the stream old school with buffers
             else
             {
+                //Allocate a binary buffer 
+                using UnsafeMemoryHandle<byte> binBuffer = heap.UnsafeAlloc<byte>(bufferSize);
+
                 //Create a new char bufer that will expand dyanmically
                 MemoryHandle<char> charBuffer = heap.Alloc<char>(bufferSize);
-                //Allocate a binary buffer 
-                MemoryHandle<byte> binBuffer = heap.Alloc<byte>(bufferSize);
+
                 try
                 {
                     int length = 0;
                     //span ref to bin buffer
-                    Span<byte> buffer = binBuffer;
+                    Span<byte> buffer = binBuffer.Span;
                     //Run in checked context for overflows
                     checked
                     {
@@ -193,40 +257,8 @@ namespace VNLib.Utils.Memory
                     //We still want the exception to be propagated!
                     throw;
                 }
-                finally
-                {
-                    //Dispose the binary buffer
-                    binBuffer.Dispose();
-                }
             }
-        }
-        
-        /// <summary>
-        /// Creates a new Vnstring from the <see cref="MemoryHandle{T}"/> buffer provided. This function "consumes"
-        /// a handle, meaning it now takes ownsership of the the memory it points to.
-        /// </summary>
-        /// <param name="handle">The <see cref="MemoryHandle{T}"/> to consume</param>
-        /// <param name="start">The offset from the begining of the buffer marking the begining of the string</param>
-        /// <param name="length">The number of characters this string points to</param>
-        /// <returns>The new <see cref="VnString"/></returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static VnString ConsumeHandle(MemoryHandle<char> handle, nuint start, int length)
-        {
-            if (handle is null)
-            {
-                throw new ArgumentNullException(nameof(handle));
-            }
-
-            if (length < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(length));
-            }
-
-            //Check handle bounts
-            MemoryUtil.CheckBounds(handle, start, (nuint)length);
-
-            return new VnString(handle, start, length);
-        }        
+        }       
         
         /// <summary>
         /// Asynchronously reads data from the specified stream and uses the specified encoding 
@@ -251,36 +283,25 @@ namespace VNLib.Utils.Memory
                 throw new IOException("The input stream is not readable");
             }
 
-            //See if the stream is a vn memory stream
+            /*
+             * If the stream is some type of memory stream, we can just use 
+             * the underlying buffer if possible
+             */
             if (stream is VnMemoryStream vnms)
             {
-                //Get the number of characters
-                int numChars = encoding.GetCharCount(vnms.AsSpan());
-
-                //New handle
-                MemoryHandle<char> charBuffer = heap.Alloc<char>(numChars);
-
-                try
-                {
-                    //Write characters to character buffer
-                    _ = encoding.GetChars(vnms.AsSpan(), charBuffer);
-                    //Consume the new handle
-                    return ConsumeHandle(charBuffer, 0, numChars);
-                }
-                catch
-                {
-                    //If an error occured, dispose the buffer
-                    charBuffer.Dispose();
-                    throw;
-                }
+                return FromBinary(vnms.AsSpan(), encoding, heap);
+            }
+            else if(stream is MemoryStream ms && ms.TryGetBuffer(out ArraySegment<byte> arrSeg))
+            {
+                return FromBinary(arrSeg.AsSpan(), encoding, heap);
             }
             else
             {
-                //Create a new char bufer starting with the buffer size
-                MemoryHandle<char> charBuffer = heap.Alloc<char>(bufferSize);
-
                 //Rent a temp binary buffer
-                IMemoryOwner<byte> binBuffer = heap.DirectAlloc<byte>(bufferSize);
+                using MemoryManager<byte> binBuffer = heap.DirectAlloc<byte>(bufferSize);
+
+                //Create a new char buffer starting with the buffer size
+                MemoryHandle<char> charBuffer = heap.Alloc<char>(bufferSize);
 
                 try
                 {
@@ -302,14 +323,14 @@ namespace VNLib.Utils.Memory
                         //Guard for overflow
                         if (((ulong)(numChars + length)) >= int.MaxValue)
                         {
-                            throw new OverflowException();
+                            throw new OverflowException("The provided stream is larger than 2gb and is not supported");
                         }
 
                         //Re-alloc buffer
                         charBuffer.ResizeIfSmaller(length + numChars);
 
                         //Decode and update position
-                        _ = encoding.GetChars(binBuffer.Memory.Span[..read], charBuffer.Span.Slice(length, numChars));
+                        _ = encoding.GetChars(binBuffer.GetSpan()[..read], charBuffer.Span.Slice(length, numChars));
 
                         //Update char count
                         length += numChars;
@@ -322,11 +343,6 @@ namespace VNLib.Utils.Memory
                     charBuffer.Dispose();
                     //We still want the exception to be propagated!
                     throw;
-                }
-                finally
-                {
-                    //Dispose the binary buffer
-                    binBuffer.Dispose();
                 }
             }
         }

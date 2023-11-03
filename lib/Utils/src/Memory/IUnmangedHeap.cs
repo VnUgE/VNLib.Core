@@ -43,15 +43,19 @@ namespace VNLib.Utils.Memory
         /// <param name="elements">The number of elements to allocate</param>
         /// <param name="zero">An optional parameter to zero the block of memory</param>
         /// <returns></returns>
+        /// <exception cref="OutOfMemoryException"></exception>
         IntPtr Alloc(nuint elements, nuint size, bool zero);
 
         /// <summary>
-        /// Resizes the allocated block of memory to the new size
+        /// Resizes the allocated block of memory to the new size.
+        /// May not be supported by all heaps.
         /// </summary>
         /// <param name="block">The block to resize</param>
         /// <param name="elements">The new number of elements</param>
         /// <param name="size">The size (in bytes) of the type</param>
         /// <param name="zero">An optional parameter to zero the block of memory</param>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
         void Resize(ref IntPtr block, nuint elements, nuint size, bool zero);
 
         /// <summary>

@@ -163,7 +163,7 @@ namespace VNLib.Hashing.IdentityUtility
             using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(hashBufSize);
             
             //compute hash
-            if (!hmac.TryComputeHash(raw, buffer, out int hashBytesWritten))
+            if (!hmac.TryComputeHash(raw, buffer.Span, out int hashBytesWritten))
             {
                 throw new InternalBufferTooSmallException("Hash buffer size was too small");
             }
@@ -199,7 +199,7 @@ namespace VNLib.Hashing.IdentityUtility
             using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(buffSize, true);
             
             //Encode data
-            int converted = enc.GetBytes(data, buffer);
+            int converted = enc.GetBytes(data, buffer.Span);
             
             //Try encrypt
             return !alg.TryEncrypt(buffer.Span, output, padding, out int bytesWritten) ? ERRNO.E_FAIL : (ERRNO)bytesWritten;

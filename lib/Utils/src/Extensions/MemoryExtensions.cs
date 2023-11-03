@@ -48,7 +48,39 @@ namespace VNLib.Utils.Extensions
         /// <param name="size">The minimum size array to allocate</param>
         /// <param name="zero">Should elements from 0 to size be set to default(T)</param>
         /// <returns>A new <see cref="OpenResourceHandle{T}"/> encapsulating the rented array</returns>
-        public static UnsafeMemoryHandle<T> Lease<T>(this ArrayPool<T> pool, int size, bool zero = false) where T : unmanaged => new(pool, size, zero);
+        public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(this ArrayPool<T> pool, int size, bool zero = false) where T : unmanaged
+        {
+            T[] array = pool.Rent(size);
+
+            if (zero)
+            {
+                MemoryUtil.InitializeBlock(array, (uint)size);
+            }
+
+            return new(pool, array, size);
+        }
+
+        /// <summary>
+        /// Rents a new array and stores it as a resource within an <see cref="OpenResourceHandle{T}"/> to return the 
+        /// array when work is completed
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="pool"></param>
+        /// <param name="size">The minimum size array to allocate</param>
+        /// <param name="zero">Should elements from 0 to size be set to default(T)</param>
+        /// <returns>A new <see cref="OpenResourceHandle{T}"/> encapsulating the rented array</returns>
+        public static IMemoryHandle<T> SafeAlloc<T>(this ArrayPool<T> pool, int size, bool zero = false) where T : struct
+        {
+            T[] array = pool.Rent(size);
+
+            if (zero)
+            {
+                MemoryUtil.InitializeBlock(array, (uint)size);
+            }
+
+            //Use the array pool buffer wrapper to return the array to the pool when the handle is disposed
+            return new ArrayPoolBuffer<T>(pool, array, size);
+        }
 
         /// <summary>
         /// Retreives a buffer that is at least the reqested length, and clears the array from 0-size. 
@@ -60,14 +92,14 @@ namespace VNLib.Utils.Extensions
         /// <param name="zero">True if contents should be zeroed</param>
         /// <returns>The zeroed array</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T[] Rent<T>(this ArrayPool<T> pool, int size, bool zero) 
+        public static T[] Rent<T>(this ArrayPool<T> pool, int size, bool zero)
         {
             //Rent the array
             T[] arr = pool.Rent(size);
             //If zero flag is set, zero only the used section
             if (zero)
             {
-                arr.AsSpan().Clear();
+                Array.Clear(arr, 0, size);
             }
             return arr;
         }
@@ -405,7 +437,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="heap"></param>
         /// <param name="structRef">A reference to the structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void StructFreeRef<T>(this IUnmangedHeap heap, ref T structRef) where T : unmanaged => MemoryUtil.StructFreeRef(heap, ref structRef);
+        public static void StructFreeRef<T>(this IUnmangedHeap heap, ref T structRef) where T : unmanaged => MemoryUtil.StructFreeRef(heap, ref structRef);
 
         /// <summary>
         /// Allocates a block of unmanaged memory of the number of elements to store of an unmanged type
@@ -519,7 +551,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe UnsafeMemoryHandle<T> UnsafeAlloc<T>(this IUnmangedHeap heap, int elements, bool zero = false) where T : unmanaged
+        public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(this IUnmangedHeap heap, int elements, bool zero = false) where T : unmanaged
         {
             if (elements < 1)
             {
@@ -528,7 +560,7 @@ namespace VNLib.Utils.Extensions
             }
             
             //Get element size
-            nuint elementSize = (nuint)sizeof(T);
+            nuint elementSize = (nuint)Unsafe.SizeOf<T>();
             
             //If zero flag is set then specify zeroing memory (safe case because of the above check)
             IntPtr block = heap.Alloc((nuint)elements, elementSize, zero);

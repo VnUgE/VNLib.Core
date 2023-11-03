@@ -69,7 +69,7 @@ namespace VNLib.Utils
                 //resize the handle to fit the data
                 handle = heap.Alloc<byte>(byteCount);
                 //encode
-                int size = encoding.GetBytes(data, handle);
+                int size = encoding.GetBytes(data, handle.Span);
                 //Consume the handle into a new vnmemstream and return it
                 return VnMemoryStream.ConsumeHandle(handle, size, true);
             }
@@ -459,27 +459,28 @@ namespace VNLib.Utils
             string value;
             //Calculate the base32 entropy to alloc an appropriate buffer (minium buffer of 2 chars)
             int entropy = Base32CalcMaxBufferSize(binBuffer.Length);
+
             //Alloc buffer for enough size (2*long bytes) is not an issue
-            using (UnsafeMemoryHandle<char> charBuffer = MemoryUtil.UnsafeAlloc<char>(entropy))
+            using UnsafeMemoryHandle<char> charBuffer = MemoryUtil.UnsafeAlloc<char>(entropy);
+
+            //Encode
+            ERRNO encoded = TryToBase32Chars(binBuffer, charBuffer.Span);
+            if (!encoded)
             {
-                //Encode
-                ERRNO encoded = TryToBase32Chars(binBuffer, charBuffer.Span);
-                if (!encoded)
-                {
-                    throw new InternalBufferTooSmallException("Base32 char buffer was too small");
-                }
-                //Convert with or w/o padding
-                if (withPadding)
-                {
-                    value = charBuffer.Span[0..(int)encoded].ToString();
-                }
-                else
-                {
-                    value = charBuffer.Span[0..(int)encoded].Trim('=').ToString();
-                }
+                throw new InternalBufferTooSmallException("Base32 char buffer was too small");
             }
+            //Convert with or w/o padding
+            if (withPadding)
+            {
+                value = charBuffer.Span[0..(int)encoded].ToString();
+            }
+            else
+            {
+                value = charBuffer.Span[0..(int)encoded].Trim('=').ToString();
+            }
+
             return value;
-        }     
+        }   
         
         /// <summary>
         /// Converts the base32 character buffer to its structure representation
@@ -506,7 +507,6 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="base32">The character array to decode</param>
         /// <returns>The byte[] of the decoded binary data, or null if the supplied character array was empty</returns>
-        /// <exception cref="InternalBufferTooSmallException"></exception>
         public static byte[]? FromBase32String(ReadOnlySpan<char> base32)
         {
             if (base32.IsEmpty)
@@ -515,10 +515,12 @@ namespace VNLib.Utils
             }
             //Buffer size of the base32 string will always be enough buffer space
             using UnsafeMemoryHandle<byte> tempBuffer = MemoryUtil.UnsafeAlloc(base32.Length);
+
             //Try to decode the data
             ERRNO decoded = TryFromBase32Chars(base32, tempBuffer.Span);
-            
-            return decoded ? tempBuffer.Span[0..(int)decoded].ToArray() : throw new InternalBufferTooSmallException("Binbuffer was too small");
+            Debug.Assert(decoded > 0, "The supplied base32 buffer was too small to decode data into, but should not have been");
+
+            return tempBuffer.Span[0..(int)decoded].ToArray();
         }
 
         /// <summary>
@@ -942,16 +944,28 @@ namespace VNLib.Utils
             {
                 return ERRNO.E_FAIL;
             }
+
             //Set the encoding to utf8
             encoding ??= Encoding.UTF8;
             //get the number of bytes to alloc a buffer
             int decodedSize = encoding.GetByteCount(chars);
 
-            //alloc buffer
-            using UnsafeMemoryHandle<byte> decodeHandle = MemoryUtil.UnsafeAlloc(decodedSize);
-            //Get the utf8 binary data
-            int count = encoding.GetBytes(chars, decodeHandle);
-            return Base64UrlDecode(decodeHandle.Span[..count], output);
+            if(decodedSize > MAX_STACKALLOC)
+            {
+                //Alloc heap buffer
+                using UnsafeMemoryHandle<byte> decodeHandle = MemoryUtil.UnsafeAlloc(decodedSize);
+                //Get the utf8 binary data
+                int count = encoding.GetBytes(chars, decodeHandle.Span);
+                return Base64UrlDecode(decodeHandle.Span[..count], output);
+            }
+            else
+            {
+                //Alloc stack buffer
+                Span<byte> decodeBuffer = stackalloc byte[decodedSize];
+                //Get the utf8 binary data
+                int count = encoding.GetBytes(chars, decodeBuffer);
+                return Base64UrlDecode(decodeBuffer[..count], output);
+            }
         }
 
 
@@ -1036,16 +1050,14 @@ namespace VNLib.Utils
             
             if(maxBufSize > MAX_STACKALLOC)
             {
-                //alloc buffer
+                //Alloc heap buffer
                 using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage(maxBufSize);
-
                 return ConvertToBase64UrlStringInternal(rawData, buffer.Span, includePadding);
             }
             else
             {
                 //Stack alloc buffer
                 Span<byte> buffer = stackalloc byte[maxBufSize];
-
                 return ConvertToBase64UrlStringInternal(rawData, buffer, includePadding);
             }
         }
@@ -1116,24 +1128,37 @@ namespace VNLib.Utils
             //We need to alloc an intermediate buffer, get the base64 max size
             int maxSize = Base64.GetMaxEncodedToUtf8Length(input.Length);
 
-            //Alloc buffer
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(maxSize);
-
-            //Encode to url safe binary
-            ERRNO count = Base64UrlEncode(input, buffer.Span, includePadding);
-
-            if (count <= 0)
+            if (maxSize > MAX_STACKALLOC)
             {
-                return count;
+                //Alloc heap buffer
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(maxSize);
+                return Base64UrlEncodeCore(input, buffer.Span, output, encoding, includePadding);
+            }
+            else
+            {
+                //Alloc stack buffer
+                Span<byte> bufer = stackalloc byte[maxSize];
+                return Base64UrlEncodeCore(input, bufer, output, encoding, includePadding);
             }
 
-            //Get char count to return to caller
-            int charCount = encoding.GetCharCount(buffer.Span[..(int)count]);
+            static ERRNO Base64UrlEncodeCore(ReadOnlySpan<byte> input, Span<byte> buffer, Span<char> output, Encoding encoding, bool includePadding)
+            {
+                //Encode to url safe binary
+                ERRNO count = Base64UrlEncode(input, buffer, includePadding);
 
-            //Encode to characters
-            encoding.GetChars(buffer.AsSpan(0, count), output);
+                if (count <= 0)
+                {
+                    return count;
+                }
 
-            return charCount;
+                //Get char count to return to caller
+                int charCount = encoding.GetCharCount(buffer[..(int)count]);
+
+                //Encode to characters
+                encoding.GetChars(buffer[0..(int)count], output);
+
+                return charCount;
+            }
         }
 
         #endregion

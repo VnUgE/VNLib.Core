@@ -24,6 +24,7 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Diagnostics.CodeAnalysis;
@@ -32,6 +33,7 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Utils.Memory
 {
+
     /// <summary>
     /// Represents an unsafe handle to managed/unmanaged memory that should be used cautiously.
     /// A referrence counter is not maintained.
@@ -59,55 +61,51 @@ namespace VNLib.Utils.Memory
         public readonly Span<T> Span
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _handleType == HandleType.Pool ? _poolArr.AsSpan(0, _length) : MemoryUtil.GetSpan<T>(_memoryPtr, _length);
+            get
+            {
+                return _handleType switch
+                {
+                    HandleType.None => Span<T>.Empty,
+                    HandleType.Pool => _poolArr!.AsSpan(0, _length),
+                    HandleType.PrivateHeap => MemoryUtil.GetSpan<T>(_memoryPtr, _length),
+                    _ => throw new InvalidOperationException("Invalid handle type"),
+                };
+            }
         }
+
         /// <summary>
         /// Gets the integer number of elements of the block of memory pointed to by this handle
         /// </summary>
         public readonly int IntLength => _length;
+
         ///<inheritdoc/>
         public readonly nuint Length => (nuint)_length;
-
-        /// <summary>
-        /// Creates an empty <see cref="UnsafeMemoryHandle{T}"/>
-        /// </summary>
-        public UnsafeMemoryHandle()
-        {
-            _pool = null;
-            _heap = null;
-            _poolArr = null;
-            _memoryPtr = IntPtr.Zero;
-            _handleType = HandleType.None;
-            _length = 0;
-        }
 
         /// <summary>
         /// Inializes a new <see cref="UnsafeMemoryHandle{T}"/> using the specified
         /// <see cref="ArrayPool{T}"/>
         /// </summary>
         /// <param name="elements">The number of elements to store</param>
-        /// <param name="zero">Zero initial contents?</param>
+        /// <param name="array">The array reference to store/param>
         /// <param name="pool">The explicit pool to alloc buffers from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public UnsafeMemoryHandle(ArrayPool<T> pool, int elements, bool zero)
+        internal UnsafeMemoryHandle(ArrayPool<T> pool, T[] array, int elements)
         {
             if (elements < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(elements));
             }
-            //Pool is required
+            //Pool and array is required
             _pool = pool ?? throw new ArgumentNullException(nameof(pool));
-            //Rent the array from the pool and hold referrence to it
-            _poolArr = pool.Rent(elements, zero);
-            //Cant store ref to array becase GC can move it
-            _memoryPtr = IntPtr.Zero;
+            _poolArr = array ?? throw new ArgumentNullException(nameof(array));
             //Set pool handle type
             _handleType = HandleType.Pool;
             //No heap being loaded
             _heap = null;
             _length = elements;
+            _memoryPtr = IntPtr.Zero;
         }
 
         /// <summary>
@@ -129,8 +127,13 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Releases memory back to the pool or heap from which is was allocated.
+        /// <para>
+        /// After this method is called, this handle points to invalid memory
+        /// </para>
+        /// <para>
+        /// Warning: Double Free -> Do not call more than once. Using statment is encouraged 
+        /// </para>
         /// </summary>
-        /// <remarks>After this method is called, this handle points to invalid memory</remarks>
         public readonly void Dispose()
         {
             switch (_handleType)
@@ -145,42 +148,37 @@ namespace VNLib.Utils.Memory
                     {
                         IntPtr unalloc = _memoryPtr;
                         //Free the unmanaged handle
-                        _heap!.Free(ref unalloc);
+                        bool unsafeFreed = _heap!.Free(ref unalloc);
+                        Debug.Assert(unsafeFreed, "A previously allocated unsafe memhandle failed to free");
                     }
                     break;
             }
-        }
-
-        ///<inheritdoc/>
-        public readonly override int GetHashCode() => _handleType == HandleType.Pool ? _poolArr!.GetHashCode() : _memoryPtr.GetHashCode();
+        }      
+        
         ///<inheritdoc/>
         public readonly MemoryHandle Pin(int elementIndex)
         {
-            //guard empty handle
-            if (_handleType == HandleType.None)
-            {
-                throw new InvalidOperationException("The handle is empty, and cannot be pinned");
-            }
-            
             //Guard size
             if (elementIndex < 0 || elementIndex >= _length)
             {
                 throw new ArgumentOutOfRangeException(nameof(elementIndex));
-            }           
-            
-            if (_handleType == HandleType.Pool)
-            {
-                return MemoryUtil.PinArrayAndGetHandle(_poolArr!, elementIndex);
             }
-            else
+
+            switch (_handleType)
             {
-                //Add an offset to the base address of the memory block
-                int byteOffset = MemoryUtil.ByteCount<T>(elementIndex);
-                IntPtr offset = IntPtr.Add(_memoryPtr, byteOffset);
-                //Unmanaged memory is always pinned, so no need to pass this as IPinnable, since it will cause a box
-                return MemoryUtil.GetMemoryHandleFromPointer(offset);
+                case HandleType.Pool:
+                    return MemoryUtil.PinArrayAndGetHandle(_poolArr!, elementIndex);
+                case HandleType.PrivateHeap:
+                    //Add an offset to the base address of the memory block
+                    int byteOffset = MemoryUtil.ByteCount<T>(elementIndex);
+                    IntPtr offset = IntPtr.Add(_memoryPtr, byteOffset);
+                    //Unmanaged memory is always pinned, so no need to pass this as IPinnable, since it will cause a box
+                    return MemoryUtil.GetMemoryHandleFromPointer(offset);
+                default:
+                    throw new InvalidOperationException("The handle is empty, and cannot be pinned");
             }
         }
+        
         ///<inheritdoc/>
         public readonly void Unpin()
         {
@@ -188,6 +186,7 @@ namespace VNLib.Utils.Memory
         }
         
         ///<inheritdoc/>
+        ///<exception cref="InvalidOperationException"></exception>
         public readonly ref T GetReference()
         {
             switch (_handleType)
@@ -201,16 +200,36 @@ namespace VNLib.Utils.Memory
             }
         }
 
+        ///<inheritdoc/>
+        public readonly override int GetHashCode()
+        {
+            //Get hashcode for the proper memory type
+            return _handleType switch
+            {
+                HandleType.Pool => _poolArr!.GetHashCode(),
+                HandleType.PrivateHeap => _memoryPtr.GetHashCode(),
+                _ => base.GetHashCode(),
+            };
+        }
+
         /// <summary>
         /// Determines if the other handle represents the same memory block as the 
         /// current handle. 
         /// </summary>
         /// <param name="other">The other handle to test</param>
         /// <returns>True if the other handle points to the same block of memory as the current handle</returns>
-        public readonly bool Equals(UnsafeMemoryHandle<T> other)
+        public readonly bool Equals(in UnsafeMemoryHandle<T> other)
         {
             return _handleType == other._handleType && Length == other.Length && GetHashCode() == other.GetHashCode();
         }
+
+        /// <summary>
+        /// Determines if the other handle represents the same memory block as the 
+        /// current handle. 
+        /// </summary>
+        /// <param name="other">The other handle to test</param>
+        /// <returns>True if the other handle points to the same block of memory as the current handle</returns>
+        public readonly bool Equals(UnsafeMemoryHandle<T> other) => Equals(in other);
 
         /// <summary>
         /// Override for object equality operator, will cause boxing
@@ -222,13 +241,7 @@ namespace VNLib.Utils.Memory
         /// and uses the structure equality operator
         /// false otherwise.
         /// </returns>
-        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj is UnsafeMemoryHandle<T> other && Equals(other);
-
-        /// <summary>
-        /// Casts the handle to it's <see cref="Span{T}"/> representation
-        /// </summary>
-        /// <param name="handle">the handle to cast</param>
-        public static implicit operator Span<T>(in UnsafeMemoryHandle<T> handle) => handle.Span;
+        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj is UnsafeMemoryHandle<T> other && Equals(in other);
 
         /// <summary>
         /// Equality overload
@@ -237,6 +250,7 @@ namespace VNLib.Utils.Memory
         /// <param name="right"></param>
         /// <returns>True if handles are equal, flase otherwise</returns>
         public static bool operator ==(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => left.Equals(right);
+
         /// <summary>
         /// Equality overload
         /// </summary>

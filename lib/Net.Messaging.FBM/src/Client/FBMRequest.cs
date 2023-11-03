@@ -244,7 +244,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             
             using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAlloc<char>(charSize + 128);
             
-            ERRNO count = Compile(buffer);
+            ERRNO count = Compile(buffer.Span);
             
             return buffer.AsSpan(0, count).ToString();
         }

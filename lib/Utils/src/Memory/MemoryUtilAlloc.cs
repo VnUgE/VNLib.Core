@@ -52,6 +52,11 @@ namespace VNLib.Utils.Memory
                 throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
             }
 
+            if (elements == 0)
+            {
+                return default;
+            }
+
             /*
              * We may allocate from the share heap only if the heap is not using locks
              * or if the element size could cause performance issues because its too large
@@ -69,7 +74,8 @@ namespace VNLib.Utils.Memory
             }
             else
             {
-                return new(ArrayPool<T>.Shared, elements, zero);
+                //Rent the array from the pool
+                return ArrayPool<T>.Shared.UnsafeAlloc(elements, zero);
             }
         }
 
@@ -84,7 +90,6 @@ namespace VNLib.Utils.Memory
         /// <returns>A handle to the block of memory</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeMemoryHandle<T> UnsafeAllocNearestPage<T>(int elements, bool zero = false) where T : unmanaged
         {
             if (elements < 0)
@@ -93,11 +98,7 @@ namespace VNLib.Utils.Memory
             }
 
             //Round to nearest page (in bytes)
-            nint np = NearestPage(ByteCount<T>(elements));
-
-            //Resize to element size
-            np /= sizeof(T);
-
+            nint np = NearestPage<T>(elements);
             return UnsafeAlloc<T>((int)np, zero);
         }
 
@@ -155,11 +156,7 @@ namespace VNLib.Utils.Memory
             }
 
             //Round to nearest page (in bytes)
-            nint np = NearestPage(ByteCount<T>(elements));
-
-            //Resize to element size
-            np /= sizeof(T);
-
+            nint np = NearestPage<T>(elements);
             return SafeAlloc<T>((int)np, zero);
         }
 
@@ -247,7 +244,6 @@ namespace VNLib.Utils.Memory
 
         #region ByteOptimimzations
 
-
         /// <summary>
         /// Allocates a block of unmanaged, or pooled manaaged memory depending on
         /// compilation flags and runtime unamanged allocators.
@@ -262,6 +258,11 @@ namespace VNLib.Utils.Memory
             if (elements < 0)
             {
                 throw new ArgumentException("Number of elements must be a positive integer", nameof(elements));
+            }
+
+            if(elements == 0)
+            {
+                return default;
             }
 
             /*
@@ -281,7 +282,7 @@ namespace VNLib.Utils.Memory
             }
             else
             {
-                return new(ArrayPool<byte>.Shared, elements, zero);
+                return ArrayPool<byte>.Shared.UnsafeAlloc(elements, zero);
             }
         }
 
@@ -305,7 +306,6 @@ namespace VNLib.Utils.Memory
 
             //Round to nearest page (in bytes)
             nint np = NearestPage(elements);
-
             return UnsafeAlloc((int)np, zero);
         }
 
@@ -362,7 +362,6 @@ namespace VNLib.Utils.Memory
 
             //Round to nearest page (in bytes)
             nint np = NearestPage(elements);
-
             return SafeAlloc((int)np, zero);
         }
 

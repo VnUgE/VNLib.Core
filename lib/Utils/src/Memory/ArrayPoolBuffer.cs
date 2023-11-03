@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: VnTempBuffer.cs 
+* File: ArrayPoolBuffer.cs 
 *
-* VnTempBuffer.cs is part of VNLib.Utils which is part of the larger 
+* ArrayPoolBuffer.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -35,7 +35,11 @@ namespace VNLib.Utils.Memory
     /// A disposable temporary buffer from shared ArrayPool
     /// </summary>
     /// <typeparam name="T">Type of buffer to create</typeparam>
-    public sealed class ArrayPoolBuffer<T> : VnDisposeable, IIndexable<int, T>, IMemoryHandle<T>, IMemoryOwner<T>
+    public sealed class ArrayPoolBuffer<T> : 
+        VnDisposeable, 
+        IIndexable<int, T>,
+        IMemoryHandle<T>,
+        IMemoryOwner<T>
     {
         private readonly ArrayPool<T> Pool;
 
@@ -92,7 +96,28 @@ namespace VNLib.Utils.Memory
             Buffer = pool.Rent(minSize, zero);
             InitSize = minSize;
         }
-        
+
+        /// <summary>
+        /// Initialzies a new <see cref="ArrayPoolBuffer{T}"/> from the specified rented array
+        /// that belongs to the supplied pool
+        /// </summary>
+        /// <param name="pool">The pool the array was rented from</param>
+        /// <param name="array">The rented array</param>
+        /// <param name="size">The size of the buffer around the array. May be smaller or exact size of the array</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public ArrayPoolBuffer(ArrayPool<T> pool, T[] array, int size)
+        {
+            Pool = pool ?? throw new ArgumentNullException(nameof(pool));
+            Buffer = array ?? throw new ArgumentNullException(nameof(array));
+
+            if (size < 0 || size > array.Length)
+                throw new ArgumentOutOfRangeException(nameof(size));
+
+            InitSize = size;
+        }
+
+
         /// <summary>
         /// Gets an offset wrapper around the current buffer
         /// </summary>

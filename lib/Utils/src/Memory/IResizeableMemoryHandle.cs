@@ -42,11 +42,15 @@ namespace VNLib.Utils.Memory
         /// Resizes a memory handle to a new number of elements. 
         /// </summary>
         /// <remarks>
-        /// Even if a handle is resizable resizing may not be supported for all types of handles.
+        /// Even if a handle is resizable resizing may not be supported for all types of handles. <br/>
+        /// Be careful not to resize handles that are pinned or have raw pointers/references floating.
         /// </remarks>
         /// <param name="elements">The new number of elements to resize the handle to</param>
         /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="OverflowException"></exception>
         /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         void Resize(nuint elements);
     }
 }

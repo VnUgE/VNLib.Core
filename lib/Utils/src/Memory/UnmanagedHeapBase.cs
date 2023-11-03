@@ -152,10 +152,14 @@ namespace VNLib.Utils.Memory
         
         ///<inheritdoc/>
         ///<exception cref="OverflowException"></exception>
-        ///<exception cref="OutOfMemoryException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
         public void Resize(ref LPVOID block, nuint elements, nuint size, bool zero)
         {
+            if ((_flags & HeapCreation.SupportsRealloc) == 0)
+            {
+                throw new NotSupportedException("The underlying heap does not support block reallocation");
+            }
+
             //Check for overflow for size
             _ = checked(elements * size);
 

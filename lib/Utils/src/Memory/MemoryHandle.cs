@@ -71,10 +71,7 @@ namespace VNLib.Utils.Memory
             get => (IntPtr)GetOffset(0);
         }
 
-        /// <summary>
-        /// Gets a span over the entire allocated block
-        /// </summary>
-        /// <returns>A <see cref="Span{T}"/> over the internal data</returns>
+        /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="OverflowException"></exception>
         public unsafe Span<T> Span
@@ -145,10 +142,7 @@ namespace VNLib.Utils.Memory
             Heap = null!;
         }
 
-        /// <summary>
-        /// Resizes the current handle on the heap
-        /// </summary>
-        /// <param name="elements">Positive number of elemnts the current handle should referrence</param>
+        /// <inheritdoc/>
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
@@ -263,12 +257,5 @@ namespace VNLib.Utils.Memory
 
         ///<inheritdoc/>
         public override int GetHashCode() => base.GetHashCode();
-
-        ///<inheritdoc/>
-        public static implicit operator Span<T>(MemoryHandle<T> handle)
-        {
-            //If the handle is invalid or closed return an empty span 
-            return handle.IsClosed || handle.IsInvalid || handle._length == 0 ? Span<T>.Empty : handle.Span;
-        }
     }
 }

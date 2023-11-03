@@ -136,7 +136,7 @@ namespace VNLib.Hashing
             using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
 
             //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf);
+            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
             
             //hash the buffer
             return ComputeHash(binbuf.Span[..byteCount], buffer, type);
@@ -156,7 +156,7 @@ namespace VNLib.Hashing
             //Alloc buffer
             using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
             //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf);
+            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
             //hash the buffer
             return ComputeHash(binbuf.Span[..byteCount], type);
         }
@@ -289,7 +289,7 @@ namespace VNLib.Hashing
             using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
             
             //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf);
+            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
 
             //hash the buffer
             return ComputeHmac(key, binbuf.Span[..byteCount], output, type);
@@ -312,7 +312,7 @@ namespace VNLib.Hashing
             using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
 
             //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf);
+            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
 
             //hash the buffer
             return ComputeHmac(key, binbuf.Span[..byteCount], type);
