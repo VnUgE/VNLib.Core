@@ -241,11 +241,11 @@ namespace VNLib.Utils.Memory
             {
                 return;
             }
-
-            uint byteSize = ByteCount<T>((uint)block.Length);
+           
             ref T r0 = ref MemoryMarshal.GetReference(block);
+
             //Calls memset
-            ZeroByRef(ref r0, byteSize);
+            ZeroByRef(ref r0, (uint)block.Length);
         }
 
         /// <summary>
@@ -627,7 +627,7 @@ namespace VNLib.Utils.Memory
                 throw new ArgumentException("Target span is smaller than the size of the structure");
             }
 
-            CopyStruct(ref source, ref MemoryMarshal.AsRef<byte>(target));
+            CopyStruct(ref source, ref MemoryMarshal.GetReference(target));
         }
 
         /// <summary>
@@ -703,7 +703,19 @@ namespace VNLib.Utils.Memory
         /// <param name="source">A pointer to the source structure to copy from</param>
         /// <param name="target">A pointer to the target structure to copy to</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloneStruct<T>(T* source, T* target) where T : unmanaged => Unsafe.CopyBlockUnaligned(target, source, (uint)sizeof(T));
+        public static void CloneStruct<T>(T* source, T* target) where T : unmanaged
+        {
+            if(source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            if(target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            Unsafe.CopyBlockUnaligned(target, source, (uint)sizeof(T));
+        }
 
 
         /// <summary>
@@ -731,14 +743,17 @@ namespace VNLib.Utils.Memory
             //Check bounds
             CheckBounds(source, sourceOffset, count);
             CheckBounds(dest, destOffset, (uint)count);
-
-            //Get byte ref and byte count
-            nuint byteCount = ByteCount<T>((uint)count);
-            ref T src = ref MemoryMarshal.GetReference(source);
-            ref T dst = ref dest.GetReference();
-
+           
             //Use memmove by ref
-            bool success = MemmoveByRef(ref src, (uint)sourceOffset, ref dst, (uint)destOffset, byteCount);
+            bool success = MemmoveByRef(
+                ref MemoryMarshal.GetReference(source),
+                (uint)sourceOffset, 
+                ref dest.GetReference(), 
+                (uint)destOffset,
+                //Get byte ref and byte count
+                ByteCount<T>((uint)count)
+            );
+
             Debug.Assert(success, "Memmove by ref call failed during a 32bit copy");
         }
 
@@ -782,14 +797,16 @@ namespace VNLib.Utils.Memory
             //Check source bounds
             CheckBounds(source, (nuint)sourceOffset, (nuint)count);
             CheckBounds(dest, destOffset, count);
-
-            //Get byte ref and byte count
-            nuint byteCount = ByteCount<T>((uint)count);
-            ref T src = ref source.GetReference();
-            ref T dst = ref MemoryMarshal.GetReference(dest);
             
             //Use memmove by ref
-            bool success = MemmoveByRef(ref src, (uint)sourceOffset, ref dst, (uint)destOffset, byteCount);
+            bool success = MemmoveByRef(
+                ref source.GetReference(), 
+                (uint)sourceOffset, 
+                ref MemoryMarshal.GetReference(dest), 
+                (uint)destOffset,
+                ByteCount<T>((uint)count)
+            );
+
             Debug.Assert(success, "Memmove by ref call failed during a 32bit copy");
         }
 
@@ -831,10 +848,8 @@ namespace VNLib.Utils.Memory
 
             //Get byte ref and byte count
             nuint byteCount = ByteCount<T>(count);
-            ref T src = ref source.GetReference();
-            ref T dst = ref dest.GetReference();
 
-            if (!MemmoveByRef(ref src, sourceOffset, ref dst, destOffset, byteCount))
+            if (!MemmoveByRef(ref source.GetReference(), sourceOffset, ref dest.GetReference(), destOffset, byteCount))
             {
                 //Copying block larger than 32bit must be done with pointers
                 using MemoryHandle srcH = source.Pin(0);
@@ -897,19 +912,15 @@ namespace VNLib.Utils.Memory
                 return;
             }
 
-            //Check source bounds
+            //Check bounds
             CheckBounds(source, sourceOffset, count);
-
-            //Check dest bounds
             CheckBounds(dest, destOffset, count);
 
-            //Get byte refs and byte count
+            //Get byte count
             nuint byteCount = ByteCount<T>(count);
-            ref T src = ref source.GetReference();
-            ref T dst = ref MemoryMarshal.GetArrayDataReference(dest);
 
             //Try to memove by ref first, otherwise fallback to pinning
-            if (!MemmoveByRef(ref src, sourceOffset, ref dst, destOffset, byteCount))
+            if (!MemmoveByRef(ref source.GetReference(), sourceOffset, ref MemoryMarshal.GetArrayDataReference(dest), destOffset, byteCount))
             {
                 //Copying block larger than 32bit must be done with pointers
                 using MemoryHandle srcH = source.Pin(0);
@@ -955,19 +966,15 @@ namespace VNLib.Utils.Memory
                 return;
             }
 
-            //Check source bounds
+            //Check bounds
             CheckBounds(source, sourceOffset, count);
-
-            //Check dest bounds
             CheckBounds(dest, destOffset, count);
 
-            //Get byte refs and byte count
+            //Get byte count
             nuint byteCount = ByteCount<T>(count);
-            ref T src = ref MemoryMarshal.GetArrayDataReference(source);
-            ref T dst = ref dest.GetReference();
 
             //Try to memove by ref first, otherwise fallback to pinning
-            if (!MemmoveByRef(ref src, sourceOffset, ref dst, destOffset, byteCount))
+            if (!MemmoveByRef(ref MemoryMarshal.GetArrayDataReference(source), sourceOffset, ref dest.GetReference(), destOffset, byteCount))
             {
                 //Copying block larger than 32bit must be done with pointers
                 using MemoryHandle srcH = PinArrayAndGetHandle(source, 0);
@@ -1015,10 +1022,7 @@ namespace VNLib.Utils.Memory
                 return;
             }
 
-            //compute the byte count from the element count
-            nuint byteCount = ByteCount<T>(elementCount);
-
-            if(!MemmoveByRef(ref src, srcOffset, ref dst, dstOffset, byteCount))
+            if(!MemmoveByRef(ref src, srcOffset, ref dst, dstOffset, ByteCount<T>(elementCount)))
             {
                 throw new ArgumentException("The number of bytes to copy was larger than Uint32.MaxValue and was unsupported on this platform", nameof(elementCount));
             }
