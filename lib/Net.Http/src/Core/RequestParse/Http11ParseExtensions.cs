@@ -141,7 +141,7 @@ namespace VNLib.Net.Http.Core
                 parseState.Location = new()
                 {
                     //Set a default scheme
-                    Scheme = usingTls ? Uri.UriSchemeHttp : Uri.UriSchemeHttps,
+                    Scheme = usingTls ? Uri.UriSchemeHttps : Uri.UriSchemeHttp,
                 };
 
                 //Need to manually parse the query string

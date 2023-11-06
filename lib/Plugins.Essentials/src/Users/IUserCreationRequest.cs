@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: IUser.cs 
+* File: IUserCreationRequest.cs 
 *
-* IUser.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+* IUserCreationRequest.cs is part of VNLib.Plugins.Essentials which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
@@ -22,53 +22,40 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
-using System.Collections.Generic;
-
-using VNLib.Utils;
-using VNLib.Utils.Async;
+using VNLib.Utils.Memory;
 
 namespace VNLib.Plugins.Essentials.Users
 {
-
     /// <summary>
-    /// Represents an abstract user account
+    /// A request to create a new user
     /// </summary>
-    public interface IUser : 
-        IAsyncExclusiveResource, 
-        IDisposable, 
-        IObjectStorage, 
-        IEnumerable<KeyValuePair<string, string>>, 
-        IIndexable<string, string>
+    public interface IUserCreationRequest
     {
         /// <summary>
-        /// The user's privilege level 
+        /// The value to store in the users password field. By default this 
+        /// value will be hashed before being stored in the database, unless 
+        /// <see cref="UseRawPassword"/> is set to true.
         /// </summary>
-        ulong Privileges { get; set; }
+        PrivateString? Password { get; }
 
         /// <summary>
-        /// The user's ID
+        /// The user's initial privilege level
         /// </summary>
-        string UserID { get; }
-
-        /// <summary>
-        /// Date the user's account was created
-        /// </summary>
-        DateTimeOffset Created { get; }
+        ulong Privileges { get; }
 
         /// <summary>
         /// The user's email address
         /// </summary>
-        string EmailAddress { get; set; }
+        string EmailAddress { get; }
 
         /// <summary>
-        /// Status of account
+        /// Should the password be stored as-is in the database?
         /// </summary>
-        UserStatus Status { get; set; }
+        bool UseRawPassword { get; }
 
         /// <summary>
-        /// Marks the user for deletion on release
+        /// The user's initial status
         /// </summary>
-        void Delete();
+        UserStatus InitialStatus { get; }
     }
 }

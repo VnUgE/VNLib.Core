@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -27,15 +27,33 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace VNLib.Utils.Memory
 {
+
     /// <summary>
     /// Provides a wrapper class that will have unsafe access to the memory of 
     /// the specified <see cref="string"/> provided during object creation. 
     /// </summary>
     /// <remarks>The value of the memory the protected string points to is undefined when the instance is disposed</remarks>
-    public class PrivateString : PrivateStringManager, IEquatable<PrivateString>, IEquatable<string>, ICloneable
+    public class PrivateString : 
+        PrivateStringManager, 
+        IEquatable<PrivateString>, 
+        IEquatable<string>, 
+        ICloneable
     {
-        protected string StrRef => base[0]!;
-        private readonly bool OwnsReferrence;
+        /// <summary>
+        /// Gets the internal string referrence
+        /// </summary>
+        protected string StringRef => base[0]!;
+
+        /// <summary>
+        /// Does the current instance "own" the memory the data parameter points to
+        /// </summary>
+        protected bool OwnsReferrence { get; }
+
+        /// <summary>
+        /// The internal string's length
+        /// </summary>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public int Length => StringRef.Length;
 
         /// <summary>
         /// Creates a new <see cref="PrivateString"/> over the specified string and the memory it points to.
@@ -43,36 +61,12 @@ namespace VNLib.Utils.Memory
         /// <param name="data">The <see cref="string"/> instance pointing to the memory to protect</param>
         /// <param name="ownsReferrence">Does the current instance "own" the memory the data parameter points to</param>
         /// <remarks>You should no longer reference the input string directly</remarks>
-        public PrivateString(string data, bool ownsReferrence = true) : base(1)
+        /// <exception cref="ArgumentException"></exception>
+        public PrivateString(string data, bool ownsReferrence) : base(1)
         {
             //Create a private string manager to store referrence to string
             base[0] = data ?? throw new ArgumentNullException(nameof(data));
             OwnsReferrence = ownsReferrence;
-        }
-
-        //Create private string from a string
-        public static explicit operator PrivateString?(string? data)
-        {
-            //Allow passing null strings during implicit casting
-            return data == null ? null : new(data);
-        }
-
-        public static PrivateString? ToPrivateString(string? value)
-        {
-            return value == null ? null : new PrivateString(value, true);
-        }
-
-        //Cast to string
-        public static explicit operator string (PrivateString str)
-        {
-            //Check if disposed, or return the string
-            str.Check();
-            return str.StrRef;
-        }
-
-        public static implicit operator ReadOnlySpan<char>(PrivateString str)
-        {
-            return str.Disposed ? Span<char>.Empty : str.StrRef.AsSpan();
         }
 
         /// <summary>
@@ -80,93 +74,47 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <returns>The <see cref="ReadOnlySpan{T}"/> referrence to the internal string</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public ReadOnlySpan<char> ToReadOnlySpan()
-        {
-            Check();
-            return StrRef.AsSpan();
-        }
+        public ReadOnlySpan<char> ToReadOnlySpan() => StringRef.AsSpan();
+
+        /// <summary>
+        /// Creates a new deep copy of the current instance that 
+        /// is an independent <see cref="PrivateString"/>
+        /// </summary>
+        /// <returns>The new <see cref="PrivateString"/> instance</returns>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public virtual PrivateString Clone() => new(ToString(), true);
 
         ///<inheritdoc/>
-        public bool Equals(string? other)
-        {
-            Check();
-            return StrRef.Equals(other, StringComparison.Ordinal);
-        }
+        public bool Equals(string? other) => StringRef.Equals(other, StringComparison.Ordinal);
+
         ///<inheritdoc/>
-        public bool Equals(PrivateString? other)
-        {
-            Check();
-            return other != null && StrRef.Equals(other.StrRef, StringComparison.Ordinal);
-        }
+        public bool Equals(PrivateString? other) => other is not null && StringRef.Equals(other.StringRef, StringComparison.Ordinal);
+
         ///<inheritdoc/>
-        public override bool Equals(object? obj)
-        {
-            Check();
-            return obj is PrivateString otherRef && StrRef.Equals(otherRef);
-        }
+        public override bool Equals(object? obj) => obj is PrivateString otherRef && StringRef.Equals(otherRef);
+
         ///<inheritdoc/>
-        public bool Equals(ReadOnlySpan<char> other)
-        {
-            Check();
-            return StrRef.AsSpan().SequenceEqual(other);
-        }
+        public bool Equals(ReadOnlySpan<char> other) => StringRef.AsSpan().SequenceEqual(other);
+
         /// <summary>
         /// Creates a deep copy of the internal string and returns that copy
         /// </summary>
         /// <returns>A deep copy of the internal string</returns>
-        public override string ToString()
-        {
-            Check();
-            return new(StrRef.AsSpan());
-        }
-        /// <summary>
-        /// String length
-        /// </summary>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public int Length
-        {
-            get
-            {
-                Check();
-                return StrRef.Length;
-            }
-        }
-        /// <summary>
-        /// Indicates whether the underlying string is null or an empty string ("")
-        /// </summary>
-        /// <param name="ps"></param>
-        /// <returns>True if the parameter is null, or an empty string (""). False otherwise</returns>
-        public static bool IsNullOrEmpty([NotNullWhen(false)] PrivateString? ps) => ps == null|| ps.Length == 0;
+        public override string ToString() => CopyStringAtIndex(0)!;
 
         /// <summary>
         /// The hashcode of the underlying string
         /// </summary>
         /// <returns></returns>
-        public override int GetHashCode()
-        {
-            Check();
-            return StrRef.GetHashCode(StringComparison.Ordinal);
-        }
+        public override int GetHashCode() => Disposed ? 0 : string.GetHashCode(StringRef, StringComparison.Ordinal);
 
         /// <summary>
-        /// Creates a new deep copy of the current instance that is an independent <see cref="PrivateString"/>
+        /// Creates a new deep copy of the current instance that 
+        /// is an independent <see cref="PrivateString"/>
         /// </summary>
         /// <returns>The new <see cref="PrivateString"/> instance</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public override object Clone()
-        {
-            Check();
-            //Copy all contents of string to another reference 
-            string clone = new (StrRef.AsSpan());
-            //return a new private string
-            return new PrivateString(clone, true);
-        }
-
-        ///<inheritdoc/>
-        protected override void Free()
-        {
-            Erase();
-        }
+        object ICloneable.Clone() => new PrivateString(ToString(), true);       
 
         /// <summary>
         /// Erases the contents of the internal CLR string
@@ -179,5 +127,43 @@ namespace VNLib.Utils.Memory
                 base.Free();
             }
         }
+
+        ///<inheritdoc/>
+        protected override void Free() => Erase();
+
+        /// <summary>
+        /// Indicates whether the underlying string is null or an empty string ("")
+        /// </summary>
+        /// <param name="ps"></param>
+        /// <returns>True if the parameter is null, or an empty string (""). False otherwise</returns>
+        public static bool IsNullOrEmpty([NotNullWhen(false)] PrivateString? ps) => ps is null || ps.Length == 0;
+
+        /// <summary>
+        /// A nullable cast to a <see cref="PrivateString"/>
+        /// </summary>
+        /// <param name="data"></param>
+        public static explicit operator PrivateString?(string? data) => ToPrivateString(data, true);
+
+        /// <summary>
+        /// Creates a new <see cref="PrivateString"/> if the data is not null that owns the memory 
+        /// the string points to, null otherwise. 
+        /// </summary>
+        /// <param name="data">The string reference to wrap</param>
+        /// <param name="ownsString">A value that indicates if the string memory is owned by the instance</param>
+        /// <returns>The new private string wrapper, or null if the value is null</returns>
+        public static PrivateString? ToPrivateString(string? data, bool ownsString) => data == null ? null : new(data, ownsString);
+
+        /// <summary>
+        /// Casts the <see cref="PrivateString"/> to a <see cref="string"/>
+        /// </summary>
+        /// <param name="str"></param>
+        public static explicit operator string?(PrivateString? str) => str?.StringRef;
+
+        /// <summary>
+        /// Casts the <see cref="PrivateString"/> to a <see cref="ReadOnlySpan{T}"/>
+        /// </summary>
+        /// <param name="str"></param>
+        public static implicit operator ReadOnlySpan<char>(PrivateString? str) => (str is null || str.Disposed) ? Span<char>.Empty : str.StringRef.AsSpan();
+      
     }
 }

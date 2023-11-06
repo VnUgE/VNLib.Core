@@ -168,8 +168,8 @@ namespace VNLib.Net.Http
         /// </summary>
         None, 
         /// <summary>
-        /// Cookie samesite property, Same-Site mode
+        /// Cookie samesite property, strict mode
         /// </summary>
-        SameSite
+        Strict
     }
 }

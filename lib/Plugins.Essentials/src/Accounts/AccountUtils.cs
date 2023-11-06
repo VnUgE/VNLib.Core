@@ -48,7 +48,7 @@ namespace VNLib.Plugins.Essentials.Accounts
     {
 
         /// <summary>
-        /// The size in bytes of the random passwords generated when invoking the <see cref="SetRandomPasswordAsync(IPasswordHashingProvider, IUserManager, IUser, int)"/>
+        /// The size in bytes of the random passwords generated when invoking the 
         /// </summary>
         public const int RANDOM_PASS_SIZE = 240;
      
@@ -90,56 +90,37 @@ namespace VNLib.Plugins.Essentials.Accounts
         #region Password/User helper extensions
 
         /// <summary>
-        /// Generates and sets a random password for the specified user account
-        /// </summary>
-        /// <param name="manager">The configured <see cref="IUserManager"/> to process the password update on</param>
-        /// <param name="user">The user instance to update the password on</param>
-        /// <param name="passHashing">The <see cref="PasswordHashing"/> instance to hash the random password with</param>
-        /// <param name="size">Size (in bytes) of the generated random password</param>
-        /// <returns>A value indicating the results of the event (number of rows affected, should evaluate to true)</returns>
-        /// <exception cref="VnArgon2Exception"></exception>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
-        public static async Task<ERRNO> SetRandomPasswordAsync(this IPasswordHashingProvider passHashing, IUserManager manager, IUser user, int size = RANDOM_PASS_SIZE)
-        {
-            _ = manager ?? throw new ArgumentNullException(nameof(manager));
-            _ = user ?? throw new ArgumentNullException(nameof(user));
-            _ = passHashing ?? throw new ArgumentNullException(nameof(passHashing));
-            if (user.IsReleased)
-            {
-                throw new ObjectDisposedException("The specifed user object has been released");
-            }
-            //Alloc a buffer
-            using IMemoryHandle<byte> buffer = MemoryUtil.SafeAlloc<byte>(size);
-            //Use the CGN to get a random set
-            RandomHash.GetRandomBytes(buffer.Span);
-            //Hash the new random password
-            using PrivateString passHash = passHashing.Hash(buffer.Span);
-            //Write the password to the user account
-            return await manager.UpdatePassAsync(user, passHash);
-        }
-       
-        /// <summary>
-        /// Creates a new user with a random user id and the specified email address and password.
-        /// If privileges are left null, the minimum privileges will be set.
+        /// Validates a password associated with the specified user
         /// </summary>
         /// <param name="manager"></param>
-        /// <param name="emailAddress">The user's email address or secondary id</param>
-        /// <param name="password">The user's password</param>
-        /// <param name="privileges">Optional user privilage level</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>A task that resolves the new user</returns>
+        /// <param name="user">The user to validate the password against</param>
+        /// <param name="password">The password to test against the user</param>
+        /// <param name="flags">Validation flags</param>
+        /// <param name="cancellation">A token to cancel the validation</param>
         /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="UserExistsException"></exception>
-        /// <exception cref="UserCreationFailedException"></exception>
-        public static Task<IUser> CreateUserAsync(this IUserManager manager, string emailAddress, PrivateString password, ulong? privileges, CancellationToken cancellation = default)
+        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
+        public static async Task<ERRNO> ValidatePasswordAsync(this IUserManager manager, IUser user, string password, PassValidateFlags flags, CancellationToken cancellation)
         {
             _ = manager ?? throw new ArgumentNullException(nameof(manager));
-            //Create a random user id
-            string randomId = GetRandomUserId();
-            //Set the default/minimum privileges
-            privileges ??= MINIMUM_LEVEL;
-            return manager.CreateUserAsync(randomId, emailAddress, privileges.Value, password, cancellation);
+            using PrivateString ps = new(password, false);
+            return await manager.ValidatePasswordAsync(user, ps, flags, cancellation).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Updates a password associated with the specified user. If the update fails, the transaction
+        /// is rolled back.
+        /// </summary>
+        /// <param name="manager"></param>
+        /// <param name="user">The user account to update the password of</param>
+        /// <param name="password">The new password to set</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
+        public static async Task<ERRNO> UpdatePasswordAsync(this IUserManager manager, IUser user, string password, CancellationToken cancellation = default)
+        {
+            _ = manager ?? throw new ArgumentNullException(nameof(manager));
+            using PrivateString ps = new(password, false);
+            return await manager.UpdatePasswordAsync(user, ps, cancellation).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -169,14 +150,6 @@ namespace VNLib.Plugins.Essentials.Accounts
         public static void SetAccountOrigin(this IUser ud, string origin) => ud[ACC_ORIGIN_ENTRY] = origin;
 
         /// <summary>
-        /// Gets a random user-id generated from crypograhic random number
-        /// then hashed (SHA1) and returns a hexadecimal string
-        /// </summary>
-        /// <returns>The random string user-id</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string GetRandomUserId() => RandomHash.GetRandomHash(HashAlg.SHA1, 64, HashEncodingMode.Hexadecimal);
-
-        /// <summary>
         /// Generates a cryptographically secure random password, then hashes it 
         /// and returns the hash of the new password
         /// </summary>
@@ -204,58 +177,6 @@ namespace VNLib.Plugins.Essentials.Accounts
                 //Zero the block and return to pool
                 MemoryUtil.InitializeBlock(randBuffer.Span);
             }
-        }
-
-        /// <summary>
-        /// Asynchronously verifies the desired user's password. If the user is not found or the password is not found
-        /// returns false. Returns true if the user exist's has a valid password hash and matches the supplied password value.
-        /// </summary>
-        /// <param name="manager"></param>
-        /// <param name="userId">The id of the user to check the password against</param>
-        /// <param name="rawPassword">The raw password of the user to compare hashes against</param>
-        /// <param name="hashing">The password hashing tools</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>A task that completes with the value of the password hashing match.</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        public static async Task<bool> VerifyPasswordAsync(this IUserManager manager, string userId, PrivateString rawPassword, IPasswordHashingProvider hashing, CancellationToken cancellation)
-        {
-            _ = manager ?? throw new ArgumentNullException(nameof(manager));
-            _ = userId ?? throw new ArgumentNullException(nameof(userId));
-            _ = rawPassword ?? throw new ArgumentNullException(nameof(rawPassword));
-            _ = hashing ?? throw new ArgumentNullException(nameof(hashing));
-
-            //Get the user, may be null if the user does not exist
-            using IUser? user = await manager.GetUserAndPassFromIDAsync(userId, cancellation);
-
-            if(user == null)
-            {
-                return false;
-            }
-
-            if(user.PassHash == null)
-            {
-                return false;
-            }
-
-            return hashing.Verify(user.PassHash.ToReadOnlySpan(), rawPassword.ToReadOnlySpan());
-        }
-
-        /// <summary>
-        /// Verifies the user's raw password against the hashed password using the specified 
-        /// <see cref="PasswordHashing"/> instance
-        /// </summary>
-        /// <param name="user"></param>
-        /// <param name="rawPassword"></param>
-        /// <param name="hashing">The <see cref="IPasswordHashingProvider"/> provider instance</param>
-        /// <returns>True if the password </returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool VerifyPassword(this IUser user, PrivateString rawPassword, IPasswordHashingProvider hashing)
-        {
-            _ = user ?? throw new ArgumentNullException(nameof(user));
-            _ = rawPassword ?? throw new ArgumentNullException(nameof(rawPassword));
-            _ = hashing ?? throw new ArgumentNullException(nameof(hashing));
-
-            return user.PassHash != null && hashing.Verify(user.PassHash.ToReadOnlySpan(), rawPassword.ToReadOnlySpan());
         }
 
         /// <summary>

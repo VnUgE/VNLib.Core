@@ -28,14 +28,36 @@ using System.Threading.Tasks;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory;
+using VNLib.Plugins.Essentials.Accounts;
 
 namespace VNLib.Plugins.Essentials.Users
 {
+
     /// <summary>
     /// A backing store that provides user accounts
     /// </summary>
     public interface IUserManager
     {
+        /// <summary>
+        /// Gets the internal password hash provider if one is available
+        /// </summary>
+        /// <returns>The internal hash provider if available, null otherwise</returns>
+        IPasswordHashingProvider? GetHashProvider();
+
+        /// <summary>
+        /// Computes uinuqe user-id that is safe for use in the database. 
+        /// </summary>
+        /// <param name="input">The value to convert to a safe user-id</param>
+        /// <returns>The safe-user id</returns>
+        string ComputeSafeUserId(string input);
+
+        /// <summary>
+        /// Gets the number of entries in the current user table
+        /// </summary>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>The number of users in the table, or -1 if the operation failed</returns>
+        Task<long> GetUserCountAsync(CancellationToken cancellation = default);
+
         /// <summary>
         /// Attempts to get a user object without their password from the database asynchronously
         /// </summary>
@@ -55,36 +77,42 @@ namespace VNLib.Plugins.Essentials.Users
         Task<IUser?> GetUserFromEmailAsync(string emailAddress, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Attempts to get a user object with their password from the database on the current thread
+        /// Creates a new user account in the store as per the request. The user-id field is optional, 
+        /// and if set to null or empty, will be generated automatically by the store.
         /// </summary>
-        /// <param name="userid">The id of the user</param>
+        /// <param name="userId">An optional user id to force</param>
         /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        Task<IUser?> GetUserAndPassFromIDAsync(string userid, CancellationToken cancellation = default);
-
-        /// <summary>
-        /// Attempts to get a user object with their password from the database asynchronously
-        /// </summary>
-        /// <param name="emailAddress">The user's email address</param>
-        /// <param name="cancellationToken">A token to cancel the operation</param>
-        /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        Task<IUser?> GetUserAndPassFromEmailAsync(string emailAddress, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Creates a new user in the current user's table and if successful returns the new user object (without password)
-        /// </summary>
-        /// <param name="userid">The user id</param>
-        /// <param name="privileges">A number representing the privilage level of the account</param>
-        /// <param name="passHash">Value to store in the password field</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <param name="emailAddress">The account email address</param>
+        /// <param name="creation">The account email address</param>
         /// <returns>An object representing a user's account if successful, null otherwise</returns>
         /// <exception cref="UserExistsException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="UserCreationFailedException"></exception>
-        Task<IUser> CreateUserAsync(string userid, string emailAddress, ulong privileges, PrivateString passHash, CancellationToken cancellation = default);
+        Task<IUser> CreateUserAsync(IUserCreationRequest creation, string? userId, CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Validates a password associated with the specified user
+        /// </summary>
+        /// <param name="user">The user to validate the password against</param>
+        /// <param name="password">The password to test against the user</param>
+        /// <param name="flags">Validation flags</param>
+        /// <param name="cancellation">A token to cancel the validation</param>
+        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
+        Task<ERRNO> ValidatePasswordAsync(IUser user, PrivateString password, PassValidateFlags flags, CancellationToken cancellation = default);
+
+        /// <summary>
+        /// An operation that will attempt to recover a user's password if possible. Not all user
+        /// managment systems allow recovering passwords for users. This method should return
+        /// null if the operation is not supported.
+        /// <para>
+        /// The returned value will likely not be the user's raw password but instead a hashed
+        /// or encrypted version of the password. 
+        /// </para>
+        /// </summary>
+        /// <param name="user">The user to recover the password for</param>
+        /// <param name="cancellation">A token to cancel the opertion</param>
+        /// <returns>The password if found</returns>
+        /// <exception cref="NotSupportedException"></exception>
+        Task<PrivateString?> RecoverPasswordAsync(IUser user, CancellationToken cancellation = default);
 
         /// <summary>
         /// Updates a password associated with the specified user. If the update fails, the transaction
@@ -94,13 +122,6 @@ namespace VNLib.Plugins.Essentials.Users
         /// <param name="newPass">The new password to set</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
-        Task<ERRNO> UpdatePassAsync(IUser user, PrivateString newPass, CancellationToken cancellation = default);
-
-        /// <summary>
-        /// Gets the number of entries in the current user table
-        /// </summary>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>The number of users in the table, or -1 if the operation failed</returns>
-        Task<long> GetUserCountAsync(CancellationToken cancellation = default);
+        Task<ERRNO> UpdatePasswordAsync(IUser user, PrivateString newPass, CancellationToken cancellation = default);
     }
 }

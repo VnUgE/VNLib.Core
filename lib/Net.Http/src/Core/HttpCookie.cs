@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -42,15 +42,13 @@ namespace VNLib.Net.Http.Core
         public bool HttpOnly { get; init; }
         public bool IsSession { get; init; }
 
-        public HttpCookie(string name)
-        {
-            this.Name = name;
-        }
+        public HttpCookie(string name) => Name = name;
 
         public string Compile()
         {
             throw new NotImplementedException();
         }
+
         public void Compile(ref ForwardOnlyWriter<char> writer)
         {
             //set the name of the cookie
@@ -84,7 +82,7 @@ namespace VNLib.Net.Http.Core
                 case CookieSameSite.None:
                     writer.Append("None");
                     break;
-                case CookieSameSite.SameSite:
+                case CookieSameSite.Strict:
                     writer.Append("Strict");
                     break;
                 case CookieSameSite.Lax:
@@ -112,14 +110,8 @@ namespace VNLib.Net.Http.Core
 
         public override int GetHashCode() => Name.GetHashCode();
 
-        public override bool Equals(object? obj)
-        {
-            return obj is HttpCookie other && Equals(other);
-        }
+        public override bool Equals(object? obj) => obj is HttpCookie other && Equals(other);
 
-        public bool Equals(HttpCookie? other)
-        {
-            return other != null && Name.Equals(other.Name, StringComparison.OrdinalIgnoreCase);
-        }
+        public bool Equals(HttpCookie? other) => other != null && Name.Equals(other.Name, StringComparison.OrdinalIgnoreCase);
     }
 }

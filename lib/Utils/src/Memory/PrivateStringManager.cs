@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -24,24 +24,25 @@
 
 using System;
 
-
 namespace VNLib.Utils.Memory
 {
     /// <summary>
     /// When inherited by a class, provides a safe string storage that zeros a CLR string memory on disposal
     /// </summary>
-    public class PrivateStringManager : VnDisposeable, ICloneable
+    public class PrivateStringManager : VnDisposeable
     {
+        private readonly StringRef[] ProtectedElements;
+
         /// <summary>
-        /// Strings to be cleared when exiting
+        /// Create a new instance with fixed array size
         /// </summary>
-        private readonly string?[] ProtectedElements;
+        /// <param name="elements">Number of elements to protect</param>
+        public PrivateStringManager(int elements) => ProtectedElements = new StringRef[elements];
+
         /// <summary>
         /// Gets or sets a string referrence into the protected elements store
         /// </summary>
-        /// <param name="index"></param>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="index">The table index to store the string</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <returns>Referrence to string associated with the index</returns>
@@ -50,68 +51,75 @@ namespace VNLib.Utils.Memory
             get
             {
                 Check();
-                return ProtectedElements[index];
+                return ProtectedElements[index].Value;
             }
             set
             {
                 Check();
-                //Check to see if the string has been interned
-                if (!string.IsNullOrEmpty(value) && string.IsInterned(value) != null)
-                {
-                    throw new ArgumentException($"The specified string has been CLR interned and cannot be stored in {nameof(PrivateStringManager)}");
-                }
-                //Clear the old value before setting the new one
-                if (!string.IsNullOrEmpty(ProtectedElements[index]))
-                {
-                    MemoryUtil.UnsafeZeroMemory<char>(ProtectedElements[index]);
-                }
-                //set new value
-                ProtectedElements[index] = value;
-            }
-        }
-        /// <summary>
-        /// Create a new instance with fixed array size
-        /// </summary>
-        /// <param name="elements">Number of elements to protect</param>
-        public PrivateStringManager(int elements)
-        {
-            //Allocate the string array
-            ProtectedElements = new string[elements];
-        }
-        ///<inheritdoc/>
-        protected override void Free()
-        {
-            //Zero all strings specified
-            for (int i = 0; i < ProtectedElements.Length; i++)
-            {
-                if (!string.IsNullOrEmpty(ProtectedElements[i]))
-                {
-                    //Zero the string memory
-                    MemoryUtil.UnsafeZeroMemory<char>(ProtectedElements[i]);
-                    //Set to null
-                    ProtectedElements[i] = null;
-                }
+                SetValue(index, value);
             }
         }
 
+        private void SetValue(int index, string? value)
+        {
+            //Try to get the old reference and erase it
+            StringRef strRef = ProtectedElements[index];
+            strRef.Erase();
+
+            //Set the new value and determine if it is interned
+            ProtectedElements[index] = value is null ? 
+                new StringRef(null, false) 
+                : new StringRef(value, string.IsInterned(value) != null);
+        }
+
         /// <summary>
-        /// Creates a deep copy for a new independent <see cref="PrivateStringManager"/> 
+        /// Gets a copy of the string at the specified index. The 
+        /// value returned is safe from erasure and is an independent
+        /// string
         /// </summary>
-        /// <returns>A new independent <see cref="PrivateStringManager"/> instance</returns>
-        /// <remarks>Be careful duplicating large instances, and make sure clones are properly disposed if necessary</remarks>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public virtual object Clone()
+        /// <param name="index">The index to get the copy of the string at</param>
+        /// <returns>The copied string instance</returns>
+        protected string? CopyStringAtIndex(int index)
         {
             Check();
-            PrivateStringManager other = new (ProtectedElements.Length);
-            //Copy all strings to the other instance
-            for(int i = 0; i < ProtectedElements.Length; i++)
+            StringRef str = ProtectedElements[index];
+            
+            if(str.Value is null)
             {
-                //Copy all strings and store their copies in the new array
-                other.ProtectedElements[i] = this.ProtectedElements[i].AsSpan().ToString();
+                //Pass null
+                return null;
             }
-            //return the new copy
-            return other;
+            else if (str.IsInterned)
+            {
+                /*
+                 * If string is interned, it is safe to return the
+                 * string referrence as it will not be erased
+                 */
+                return str.Value;
+            }
+            else
+            {
+                //Copy to new clr string
+                return str.Value.AsSpan().ToString();
+            }
+        }
+
+        ///<inheritdoc/>
+        protected override void Free() => Array.ForEach(ProtectedElements, static p => p.Erase());
+
+        private readonly record struct StringRef(string? Value, bool IsInterned)
+        {
+            public readonly void Erase()
+            {
+                /*
+                 * Only erase if the string is not interned
+                 * and is not null
+                 */
+                if (Value is not null && !IsInterned)
+                {
+                    MemoryUtil.UnsafeZeroMemory<char>(Value);
+                }
+            }
         }
     }
 }
