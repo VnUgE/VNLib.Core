@@ -438,10 +438,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                     }
 
                     //Alloc data buffer and write initial data
-                    VnMemoryStream responseBuffer = new(heap);
-
-                    //Copy initial data
-                    responseBuffer.Write(recvBuffer.GetSpan()[..result.Count]);
+                    VnMemoryStream responseBuffer = new(heap, recvBuffer.GetSpan()[..result.Count]);
 
                     //Receive packets until the EOF is reached
                     while (!result.EndOfMessage)

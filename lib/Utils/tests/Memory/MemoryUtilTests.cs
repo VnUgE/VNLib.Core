@@ -133,6 +133,11 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(AllZero(new ReadOnlySpan<byte>(ptr, blockSize)));
         }
 
+        unsafe struct BigStruct
+        {
+            public fixed byte Data[1000];
+        }
+
         [TestMethod()]
         public unsafe void UnsafeAllocTest()
         {
@@ -142,21 +147,48 @@ namespace VNLib.Utils.Memory.Tests
                 _ = handle.Span;
                 _ = handle.Length;
                 _ = handle.IntLength;
-                _ = handle.GetReference();
-
-                //Test span pointer against pinned handle
-                using (MemoryHandle pinned = handle.Pin(0))
-                {
-                    fixed (void* ptr = &MemoryMarshal.GetReference(handle.Span))
-                    {
-                        Assert.IsTrue(ptr == pinned.Pointer);
-                    }
-                }
 
                 //Test references are equal
                 ref byte spanRef = ref MemoryMarshal.GetReference(handle.Span);
                 ref byte handleRef = ref handle.GetReference();
                 Assert.IsTrue(Unsafe.AreSame(ref spanRef, ref handleRef));
+
+                //Test span pointer against pinned handle
+                using (MemoryHandle pinned = handle.Pin(0))
+                {
+                    fixed (void* ptr = &spanRef)
+                    {
+                        Assert.IsTrue(ptr == pinned.Pointer);
+                    }
+                }
+
+                //Test negative pin
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(-1));
+
+                //Test pinned outsie handle size
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(1024));
+            }
+
+            using (UnsafeMemoryHandle<BigStruct> handle = MemoryUtil.UnsafeAlloc<BigStruct>(1024))
+            {
+                _ = handle.Span;
+                _ = handle.Length;
+                _ = handle.IntLength;
+                ref BigStruct handleRef = ref handle.GetReference();
+                ref BigStruct spanRef = ref MemoryMarshal.GetReference(handle.Span);
+
+                //Test references are equal
+                Assert.IsTrue(Unsafe.AreSame(ref spanRef, ref handleRef));
+
+                //Test span pointer against pinned handle
+                using (MemoryHandle pinned = handle.Pin(11))
+                {
+                    fixed (BigStruct* ptr = &spanRef)
+                    {
+                        void* offset = ptr + 11;
+                        Assert.IsTrue(offset == pinned.Pointer);
+                    }
+                }
 
                 //Test negative pin
                 Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.Pin(-1));
