@@ -41,6 +41,9 @@ tasks:
      - sleet push "{{.PACK_OUT}}/debug/" --source debug --config "{{.SLEET_CONFIG_PATH}}" --force
      - sleet push "{{.PACK_OUT}}/release/" --source release --config "{{.SLEET_CONFIG_PATH}}" --force
 
+     #git archive in the module directory
+     - git archive --format {{.ARCHIVE_FILE_FORMAT}} --output {{.ARCHIVE_FILE_NAME}} HEAD
+
   postbuild_failed:
     cmds:
      - echo "postbuild failed {{.MODULE_NAME}}"
