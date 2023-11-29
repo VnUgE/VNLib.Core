@@ -41,14 +41,7 @@ namespace VNLib.Net.Http.Core
     /// </summary>
     internal readonly struct TransportReader : IVnTextReader
     {
-        /*
-         * To make this structure read-only we can store the 
-         * mutable values in a private segment of the internal
-         * buffer. 8 bytes are reserved at the beining and an 
-         * additional word is added for padding incase small/wild
-         * under/over run occurs.
-         */
-        const int PrivateBufferOffset = 4 * sizeof(int);
+        private readonly static int BufferPosStructSize = Unsafe.SizeOf<BufferPosition>();
 
         ///<inheritdoc/>
         public readonly Encoding Encoding { get; }
@@ -58,26 +51,10 @@ namespace VNLib.Net.Http.Core
 
         ///<inheritdoc/>
         public readonly Stream BaseStream { get; }
-
-        /*
-         * Store the window start/end in the begging of the 
-         * data buffer. Then use a constant offset to get the
-         * start of the buffer
-         */
-        private readonly int BufWindowStart
-        {
-            get => MemoryMarshal.Read<int>(Buffer.GetBinSpan());
-            set => MemoryMarshal.Write(Buffer.GetBinSpan(), ref value);
-        }
-
-        private readonly int BufWindowEnd
-        {
-            get => MemoryMarshal.Read<int>(Buffer.GetBinSpan()[sizeof(int)..]);
-            set => MemoryMarshal.Write(Buffer.GetBinSpan()[sizeof(int)..], ref value);
-        }
+      
 
         private readonly IHttpHeaderParseBuffer Buffer;
-        private readonly int MAxBufferSize;
+        private readonly uint MaxBufferSize;
 
         /// <summary>
         /// Initializes a new <see cref="TransportReader"/> for reading text lines from the transport stream
@@ -92,78 +69,177 @@ namespace VNLib.Net.Http.Core
             BaseStream = transport;
             LineTermination = lineTermination;
             Buffer = buffer;
-            MAxBufferSize = buffer.BinSize - PrivateBufferOffset;
+            MaxBufferSize = (uint)(buffer.BinSize - BufferPosStructSize);
 
-            //Initialize the buffer window
-            SafeZeroPrivateSegments(Buffer);
+            //Assign an zeroed position
+            BufferPosition position = default;
+            SetPosition(ref position);
 
-            Debug.Assert(BufWindowEnd == 0 && BufWindowStart == 0);
+            AssertZeroPosition();
+        }
+
+        [Conditional("DEBUG")]
+        private void AssertZeroPosition()
+        {
+            BufferPosition position = default;
+            GetPosition(ref position);
+            Debug.Assert(position.WindowStart == 0);
+            Debug.Assert(position.WindowEnd == 0);
         }
 
         /// <summary>
-        /// Clears the initial window start/end values with the 
-        /// extra padding 
+        /// Reads the current position from the buffer segment
         /// </summary>
-        /// <param name="buffer">The buffer segment to initialize</param>
-        private static void SafeZeroPrivateSegments(IHttpHeaderParseBuffer buffer)
+        /// <param name="position">A reference to the varable to write the position to</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly void GetPosition(ref BufferPosition position)
         {
-            ref byte start = ref MemoryMarshal.GetReference(buffer.GetBinSpan());
-            Unsafe.InitBlock(ref start, 0, PrivateBufferOffset);
+            //Get the beining of the segment and read the position
+            Span<byte> span = Buffer.GetBinSpan();
+            position = MemoryMarshal.Read<BufferPosition>(span);
+        }
+
+        /// <summary>
+        /// Updates the current position in the buffer segment
+        /// </summary>
+        /// <param name="position"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly void SetPosition(ref BufferPosition position)
+        {
+            //Store the position at the beining of the segment
+            Span<byte> span = Buffer.GetBinSpan();
+            MemoryMarshal.Write(span, ref position);
         }
 
         /// <summary>
         /// Gets the data segment of the buffer after the private segment
         /// </summary>
         /// <returns></returns>
-        private readonly Span<byte> GetDataSegment() => Buffer.GetBinSpan()[PrivateBufferOffset..];
+        private readonly Span<byte> GetDataSegment()
+        {
+            //Get the beining of the segment
+            Span<byte> span = Buffer.GetBinSpan();
+            //Return the segment after the private segment
+            return span[BufferPosStructSize..];
+        }
         
         ///<inheritdoc/>
-        public readonly int Available => BufWindowEnd - BufWindowStart;
+        public readonly int Available
+        {
+            get
+            {
+                //Read position and return the window size
+                BufferPosition position = default;
+                GetPosition(ref position);
+                return (int)position.GetWindowSize();
+            }
+        }
 
         ///<inheritdoc/>
-        public readonly Span<byte> BufferedDataWindow => GetDataSegment()[BufWindowStart..BufWindowEnd];
-      
+        public readonly Span<byte> BufferedDataWindow
+        {
+            get
+            {
+                //Read current position and return the window
+                BufferPosition position = default;
+                GetPosition(ref position);
+                return GetDataSegment()[(int)position.WindowStart..(int)position.WindowEnd];
+            }
+        }      
 
         ///<inheritdoc/>
-        public readonly void Advance(int count) => BufWindowStart += count;
+        public readonly void Advance(int count)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), "Count must be positive");
+            }
+
+            //read the current position
+            BufferPosition position = default;            
+            GetPosition(ref position);
+
+            //Advance the window start by the count and set the position
+            position.AdvanceStart(count);
+            SetPosition(ref position);
+        }
 
         ///<inheritdoc/>
         public readonly void FillBuffer()
         {
+            //Read the current position
+            BufferPosition bufferPosition = default;
+            GetPosition(ref bufferPosition);
+
             //Get a buffer from the end of the current window to the end of the buffer
-            Span<byte> bufferWindow = GetDataSegment()[BufWindowEnd..];
+            Span<byte> bufferWindow = GetDataSegment()[(int)bufferPosition.WindowEnd..];
 
             //Read from stream
             int read = BaseStream.Read(bufferWindow);
+            Debug.Assert(read > -1, "Read should never be negative");
 
             //Update the end of the buffer window to the end of the read data
-            BufWindowEnd += read;
+            bufferPosition.AdvanceEnd(read);
+            SetPosition(ref bufferPosition);
         }
 
         ///<inheritdoc/>
         public readonly ERRNO CompactBufferWindow()
         {
+            //Read the current position
+            BufferPosition bufferPosition = default;
+            GetPosition(ref bufferPosition);
+
             //No data to compact if window is not shifted away from start
-            if (BufWindowStart > 0)
+            if (bufferPosition.WindowStart > 0)
             {
                 //Get span over engire buffer
                 Span<byte> buffer = GetDataSegment();
                 
                 //Get used data segment within window
-                Span<byte> usedData = buffer[BufWindowStart..BufWindowEnd];
+                Span<byte> usedData = buffer[(int)bufferPosition.WindowStart..(int)bufferPosition.WindowEnd];
                 
                 //Copy remaining to the begining of the buffer
                 usedData.CopyTo(buffer);
-                
-                //Buffer window start is 0
-                BufWindowStart = 0;
-                
-                //Buffer window end is now the remaining size
-                BufWindowEnd = usedData.Length;
+              
+                /*
+                 * Now that data has been shifted, update the position to 
+                 * the new window and write the new position to the buffer
+                 */
+                bufferPosition.Set(0, usedData.Length);
+                SetPosition(ref bufferPosition);
             }
 
             //Return the number of bytes of available space from the end of the current window
-            return MAxBufferSize - BufWindowEnd;
+            return (nint)(MaxBufferSize - bufferPosition.WindowEnd);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private record struct BufferPosition
+        {
+            public uint WindowStart;
+            public uint WindowEnd;
+           
+            /// <summary>
+            /// Sets the the buffer window position
+            /// </summary>
+            /// <param name="start">Window start</param>
+            /// <param name="end">Window end</param>
+            public void Set(int start, int end)
+            {
+                //Verify that the start and end are not negative
+                Debug.Assert(start >= 0, "Negative internal value passed to http buffer window start");
+                Debug.Assert(end >= 0, "Negative internal value passed to http buffer window end");
+
+                WindowStart = (uint)start;
+                WindowEnd = (uint)end;
+            }
+
+            public readonly uint GetWindowSize() => WindowEnd - WindowStart;
+
+            public void AdvanceEnd(int count) => WindowEnd += (uint)count;
+
+            public void AdvanceStart(int count) => WindowStart += (uint)count;
         }
     }
 }

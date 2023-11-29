@@ -142,6 +142,7 @@ namespace VNLib.Utils.Memory
         /// A nullable cast to a <see cref="PrivateString"/>
         /// </summary>
         /// <param name="data"></param>
+        [return:NotNullIfNotNull(nameof(data))]
         public static explicit operator PrivateString?(string? data) => ToPrivateString(data, true);
 
         /// <summary>

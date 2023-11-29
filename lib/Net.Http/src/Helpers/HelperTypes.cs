@@ -87,7 +87,11 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Http UNLOCK request method
         /// </summary>
-        UNLOCK  = 0x1000
+        UNLOCK  = 0x1000,
+        /// <summary>
+        /// Http LIST request method
+        /// </summary>
+        LIST   = 0x2000
     }
 
     /// <summary>

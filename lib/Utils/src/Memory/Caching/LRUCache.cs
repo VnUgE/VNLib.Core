@@ -67,24 +67,24 @@ namespace VNLib.Utils.Memory.Caching
                 //A record needs to be evicted before a new record can be added
 
                 //Get the oldest node from the list to reuse its instance and remove the old value
-                LinkedListNode<KeyValuePair<TKey, TValue>> oldNode = List.First!; //not null because count is at max capacity so an item must be at the end of the list
-                //Store old node value field on the stack
-                ref KeyValuePair<TKey, TValue> oldRecord = ref oldNode.ValueRef;
+                LinkedListNode<KeyValuePair<TKey, TValue>> node = List.First!; //not null because count is at max capacity so an item must be at the end of the list
 
                 //Remove from lookup
-                LookupTable.Remove(oldRecord.Key);
+                LookupTable.Remove(node.ValueRef.Key);
                 //Remove the node
                 List.RemoveFirst();
 
                 //Invoke evicted method
-                Evicted(ref oldRecord);
+                Evicted(ref node.ValueRef);
 
                 //Reuse the old ll node
-                oldNode.Value = item;
+                node.Value = item;
+
                 //add lookup with new key
-                LookupTable.Add(item.Key, oldNode);
+                LookupTable.Add(item.Key, node);
+
                 //Add to end of list
-                List.AddLast(oldNode);
+                List.AddLast(node);
             }
             else
             {

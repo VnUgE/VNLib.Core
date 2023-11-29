@@ -184,7 +184,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             finally
             {
-                MemoryUtil.InitializeBlock(buffer.Span);
+                MemoryUtil.InitializeBlock(ref buffer.GetReference(),buffer.IntLength);
             }
         }
 

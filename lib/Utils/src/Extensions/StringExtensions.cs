@@ -439,7 +439,7 @@ namespace VNLib.Utils.Extensions
                 char t = data[end - 1];
 
                 //If character \r or \n slice it off
-                if (t != '\r' && t != '\n' && t != ' ') 
+                if (t != '\r' && t != '\n' && t != ' ')
                 {
                     break;
                 }

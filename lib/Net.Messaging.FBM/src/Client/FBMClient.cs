@@ -47,7 +47,7 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// A Fixed Buffer Message Protocol client. Allows for high performance client-server messaging
     /// with minimal memory overhead.
     /// </summary>
-    public class FBMClient : VnDisposeable, IStatefulConnection, ICacheHolder
+    public class FBMClient : VnDisposeable, IStatefulConnection 
     {
         /// <summary>
         /// The WS connection query arguments to specify a receive buffer size
@@ -77,9 +77,12 @@ namespace VNLib.Net.Messaging.FBM.Client
       
         private readonly SemaphoreSlim SendLock;
         private readonly ConcurrentDictionary<int, FBMRequest> ActiveRequests;
-        private readonly ObjectRental<FBMRequest> RequestRental;
+        private readonly IFBMMemoryHandle _streamBuffer;
+        private readonly IFbmClientWebsocket _socket;
         private readonly FBMClientConfig _config;
-        private readonly byte[] _streamBuffer;
+
+        private readonly IObjectRental<FBMRequest> _requestRental;
+        private readonly bool _ownsObjectRenal;
 
         /// <summary>
         /// The configuration for the current client
@@ -90,33 +93,62 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// A handle that is reset when a connection has been successfully set, and is set
         /// when the connection exists
         /// </summary>
-        public ManualResetEvent ConnectionStatusHandle { get; }        
-        
-        /// <summary>
-        /// The <see cref="ClientWebSocket"/> to send/recieve message on
-        /// </summary>
-        public ManagedClientWebSocket ClientSocket { get; }
-       
+        public ManualResetEvent ConnectionStatusHandle { get; }
 
         /// <summary>
-        /// Creates a new <see cref="FBMClient"/> in a closed state
+        /// The client's http header collection used when making connections 
         /// </summary>
-        /// <param name="config">The client configuration</param>
-        public FBMClient(FBMClientConfig config)
+        public VnWebHeaderCollection Headers { get; }
+
+        /// <summary>
+        /// Creates an immutable FBMClient that wraps the supplied web socket using the
+        /// supplied config.
+        /// </summary>
+        /// <param name="config">The client config</param>
+        /// <param name="websocket">The websocket instance used to comunicate with an FBMServer</param>
+        public FBMClient(in FBMClientConfig config, IFbmClientWebsocket websocket)
+            :this(in config, websocket, null)
         {
-            RequestRental = ObjectRental.CreateReusable(ReuseableRequestConstructor, 200);
+        }
+
+        internal FBMClient(in FBMClientConfig config, IFbmClientWebsocket websocket, IObjectRental<FBMRequest>? requestRental)
+        {
+            _config = config;
+            _socket = websocket ?? throw new ArgumentNullException(nameof(websocket));
+           
+            _ = config.MemoryManager ?? throw new ArgumentException("FBM memory manager is required", nameof(config));
+
+            //Create new request rental if none supplied
+            if(requestRental is null)
+            {
+                _ownsObjectRenal = true;
+                _requestRental = ObjectRental.CreateReusable(ReuseableRequestConstructor, 100);
+            }
+            else
+            {
+                _requestRental = requestRental;
+            }
+
+            Headers = new();
             SendLock = new(1);
             ConnectionStatusHandle = new(true);
             ActiveRequests = new(Environment.ProcessorCount, 100);
 
-            _config = config;
-            //Init the new client socket
-            ClientSocket = new(config.RecvBufferSize, config.RecvBufferSize, config.KeepAliveInterval, config.SubProtocol);
-
-            //Init the stream buffer
+            /*
+             * We can use the pool to allocate a single stream buffer that will be shared. 
+             * This is because there is only 1 thread allowed to send/copy data at a time
+             * so it can be allocated once and shared
+             */
             int maxStrmBufSize = Math.Min(config.MaxMessageSize, MAX_STREAM_BUFFER_SIZE);
-            _streamBuffer = new byte[maxStrmBufSize];
+            _streamBuffer = config.MemoryManager.InitHandle();
+            config.MemoryManager.AllocBuffer(_streamBuffer, maxStrmBufSize);
         }
+
+        /// <summary>
+        /// Allocates and configures a new <see cref="FBMRequest"/> message object for use within the reusable store
+        /// </summary>
+        /// <returns>The configured <see cref="FBMRequest"/></returns>
+        protected virtual FBMRequest ReuseableRequestConstructor() => new(in _config);
 
         private void Debug(string format, params string[] strings)
         {
@@ -125,6 +157,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 Config.DebugLog.Debug($"[DEBUG] FBM Client: {format}", strings);
             }
         }
+        
         private void Debug(string format, long value, long other)
         {
             if (Config.DebugLog != null)
@@ -132,12 +165,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 Config.DebugLog.Debug($"[DEBUG] FBM Client: {format}", value, other);
             }
         }
-
-        /// <summary>
-        /// Allocates and configures a new <see cref="FBMRequest"/> message object for use within the reusable store
-        /// </summary>
-        /// <returns>The configured <see cref="FBMRequest"/></returns>
-        protected virtual FBMRequest ReuseableRequestConstructor() => new(in _config);
+       
 
         /// <summary>
         /// Asynchronously opens a websocket connection with the specifed remote server
@@ -157,28 +185,28 @@ namespace VNLib.Net.Messaging.FBM.Client
             Debug("Connection string {con}", urib.Uri.ToString());
 
             //Connect to server
-            await ClientSocket.ConnectAsync(urib.Uri, cancellationToken);
+            await _socket.ConnectAsync(urib.Uri, Headers, cancellationToken);
 
             //Reset wait handle before return
             ConnectionStatusHandle.Reset();
 
-            //Begin listeing for requets in a background task
-            _ = Task.Run(() => ProcessContinuousRecvAsync(ClientSocket), cancellationToken);
+            //Begin listeing for requests in a background task
+            _ = Task.Run(ProcessContinuousRecvAsync, cancellationToken);
         }
 
         /// <summary>
-        /// Rents a new <see cref="FBMRequest"/> from the internal <see cref="ReusableStore{T}"/>.
+        /// Rents a new <see cref="FBMRequest"/> from the internal <see cref="ObjectRental{T}"/>.
         /// Use <see cref="ReturnRequest(FBMRequest)"/> when request is no longer in use
         /// </summary>
         /// <returns>The configured (rented or new) <see cref="FBMRequest"/> ready for use</returns>
-        public FBMRequest RentRequest() => RequestRental.Rent();
+        public FBMRequest RentRequest() => _requestRental.Rent();
 
         /// <summary>
         /// Stores (or returns) the reusable request in cache for use with <see cref="RentRequest"/>
         /// </summary>
         /// <param name="request">The request to return to the store</param>
         /// <exception cref="InvalidOperationException"></exception>
-        public void ReturnRequest(FBMRequest request) => RequestRental.Return(request);
+        public void ReturnRequest(FBMRequest request) => _requestRental.Return(request);
 
         /// <summary>
         /// Sends a <see cref="FBMRequest"/> to the connected server
@@ -190,7 +218,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="FBMInvalidRequestException"></exception>
-        public Task<FBMResponse> SendAsync(FBMRequest request, CancellationToken cancellationToken = default) => SendAsync(request, _config.RequestTimeout, cancellationToken);
+        public Task<FBMResponse> SendAsync(FBMRequest request, CancellationToken cancellationToken = default) => SendAsync(request, Config.RequestTimeout, cancellationToken);
 
         /// <summary>
         /// Sends a <see cref="FBMRequest"/> to the connected server
@@ -229,7 +257,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 using (SemSlimReleaser releaser = await SendLock.GetReleaserAsync(cancellationToken))
                 {
                     //Send the data to the server
-                    await ClientSocket.SendAsync(requestData, WebSocketMessageType.Binary, true, cancellationToken);
+                    await _socket.SendAsync(requestData, WebSocketMessageType.Binary, true, cancellationToken);
                 }
 
                 //wait for the response to be set
@@ -267,7 +295,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         public Task<FBMResponse> StreamDataAsync(FBMRequest request, Stream payload, ContentType contentType, CancellationToken cancellationToken = default) 
-            => StreamDataAsync(request, payload, contentType, _config.RequestTimeout, cancellationToken);
+            => StreamDataAsync(request, payload, contentType, Config.RequestTimeout, cancellationToken);
 
         /// <summary>
         /// Streams arbitrary binary data to the server with the initial request message
@@ -283,6 +311,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <exception cref="InvalidOperationException"></exception>
         public async Task<FBMResponse> StreamDataAsync(FBMRequest request, Stream payload, ContentType contentType, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
+            _ = payload ?? throw new ArgumentNullException(nameof(payload));
+
             Check();
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -303,17 +333,19 @@ namespace VNLib.Net.Messaging.FBM.Client
                 //Write an empty body in the request so a content type header is writen
                 request.WriteBody(ReadOnlySpan<byte>.Empty, contentType);
 
+                Memory<byte> bufferMemory = _streamBuffer.GetMemory();
+
                 //Wait for send-lock
                 using (SemSlimReleaser releaser = await SendLock.GetReleaserAsync(cancellationToken))
                 {
                     //Send the initial request packet
-                    await ClientSocket.SendAsync(requestData, WebSocketMessageType.Binary, false, cancellationToken);
+                    await _socket.SendAsync(requestData, WebSocketMessageType.Binary, false, cancellationToken);
 
                     //Stream mesage body
                     do
                     {
                         //Read data
-                        int read = await payload.ReadAsync(_streamBuffer, cancellationToken);
+                        int read = await payload.ReadAsync(bufferMemory, cancellationToken);
 
                         if (read == 0)
                         {
@@ -322,7 +354,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                         }
 
                         //write message to socket, if the read data was smaller than the buffer, we can send the last packet
-                        await ClientSocket.SendAsync(_streamBuffer[..read], WebSocketMessageType.Binary, read < _streamBuffer.Length, cancellationToken);
+                        await _socket.SendAsync(bufferMemory[..read], WebSocketMessageType.Binary, read < bufferMemory.Length, cancellationToken);
 
                     } while (true);
                 }
@@ -358,14 +390,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         {
             Check();
             //Close the connection
-            await ClientSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Closing", cancellationToken);
+            await _socket.DisconnectAsync(WebSocketCloseStatus.NormalClosure, cancellationToken);
         }
-
-        ///<inheritdoc/>
-        public void CacheClear() => RequestRental.CacheClear();
-        ///<inheritdoc/>
-        public void CacheHardClear() => RequestRental.CacheHardClear();
-
 
         private void CheckOrEnqueue(FBMRequest request)
         {
@@ -404,25 +430,27 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// until the socket is closed, or canceled
         /// </summary>
         /// <returns></returns>
-        protected async Task ProcessContinuousRecvAsync(WebSocket socket)
+        protected async Task ProcessContinuousRecvAsync()
         {
             Debug("Begining receive loop");
 
             //Alloc recv buffer
-            IFBMMemoryHandle recvBuffer = _config.MemoryManager.InitHandle();
-            _config.MemoryManager.AllocBuffer(recvBuffer, _config.RecvBufferSize);
+            IFBMMemoryHandle recvBuffer = Config.MemoryManager.InitHandle();
+            Config.MemoryManager.AllocBuffer(recvBuffer, Config.RecvBufferSize);
             try
             {
-                if(!_config.MemoryManager.TryGetHeap(out IUnmangedHeap? heap))
+                if(!Config.MemoryManager.TryGetHeap(out IUnmangedHeap? heap))
                 {
                     throw new NotSupportedException("The memory manager must support using IUnmanagedHeaps");
                 }
+
+                Memory<byte> rcvMemory = recvBuffer.GetMemory();
 
                 //Recv event loop
                 while (true)
                 {
                     //Listen for incoming packets with the intial data buffer
-                    ValueWebSocketReceiveResult result = await socket.ReceiveAsync(recvBuffer.GetMemory(), CancellationToken.None);
+                    ValueWebSocketReceiveResult result = await _socket.ReceiveAsync(rcvMemory, CancellationToken.None);
 
                     //If the message is a close message, its time to exit
                     if (result.MessageType == WebSocketMessageType.Close)
@@ -444,10 +472,10 @@ namespace VNLib.Net.Messaging.FBM.Client
                     while (!result.EndOfMessage)
                     {
                         //recive more data
-                        result = await socket.ReceiveAsync(recvBuffer.GetMemory(), CancellationToken.None);
+                        result = await _socket.ReceiveAsync(rcvMemory, CancellationToken.None);
 
                         //Make sure the buffer is not too large
-                        if ((responseBuffer.Length + result.Count) > _config.MaxMessageSize)
+                        if ((responseBuffer.Length + result.Count) > Config.MaxMessageSize)
                         {
                             //Dispose the buffer before exiting
                             responseBuffer.Dispose();
@@ -485,9 +513,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             finally
             {
                 //Dispose the recv buffer
-                _config.MemoryManager.FreeBuffer(recvBuffer);
-                //Cleanup the socket when exiting
-                ClientSocket.Cleanup();
+                Config.MemoryManager.FreeBuffer(recvBuffer);
                 //Set status handle as unset
                 ConnectionStatusHandle.Set();
 
@@ -573,12 +599,19 @@ namespace VNLib.Net.Messaging.FBM.Client
         ///<inheritdoc/>
         protected override void Free()
         {
-            //Dispose socket
-            ClientSocket.Dispose();
+            //Free stream buffer
+            Config.MemoryManager.FreeBuffer(_streamBuffer);
+
             //Dispose client buffer
-            RequestRental.Dispose();
+            _socket.Dispose();
             SendLock.Dispose();
             ConnectionStatusHandle.Dispose();
+
+            //Dispose object rental if we own it
+            if (_ownsObjectRenal && _requestRental is IDisposable disp)
+            {
+                disp.Dispose();
+            }
         }
     }
 }

@@ -450,7 +450,6 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe MemoryHandle<T> Alloc<T>(this IUnmangedHeap heap, nuint elements, bool zero = false) where T : unmanaged
         {
             _ = heap ?? throw new ArgumentNullException(nameof(heap));
@@ -821,7 +820,59 @@ namespace VNLib.Utils.Extensions
         /// <returns>The sub-sequence of the current handle</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, int start) => handle.Span[start..];
+        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, nint start)
+        {
+            _ = handle ?? throw new ArgumentNullException(nameof(handle));
+            //calculate a remaining count
+            int count = (int)(handle.Length - (nuint)start);
+            //call the other overload
+            return AsSpan(handle, start, count);
+        }
+
+        /// <summary>
+        /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="start">Intial offset into the handle</param>
+        /// <returns>The sub-sequence of the current handle</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, int start) => AsSpan(handle, (nint)start);      
+
+        /// <summary>
+        /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="start">Intial offset into the handle</param>
+        /// <param name="count">The number of elements within the new sequence</param>
+        /// <returns>The sub-sequence of the current handle</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, nint start, int count)
+        {
+            _ = handle ?? throw new ArgumentNullException(nameof(handle));
+            if(start < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(start));
+            }
+            if(count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count));
+            }
+
+            //guard against buffer overrun
+            MemoryUtil.CheckBounds(handle, (nuint)start, (nuint)count);
+
+            if(count == 0)
+            {
+                return Span<T>.Empty;
+            }
+
+            //Get the offset ref and create a new span from the pointer
+            ref T asRef = ref handle.GetOffsetRef((nuint)start);
+            return MemoryMarshal.CreateSpan(ref asRef, count);
+        }
 
         /// <summary>
         /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
@@ -833,7 +884,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The sub-sequence of the current handle</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, int start, int count) => handle.Span.Slice(start, count);
+        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, int start, int count) => AsSpan(handle, (nint)start, count);
 
         /// <summary>
         /// Creates a new sub-sequence over the target handle. (allows for convient sub span)

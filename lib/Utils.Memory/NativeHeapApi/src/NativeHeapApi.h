@@ -73,7 +73,11 @@ typedef enum HeapCreationFlags
     /// <summary>
     /// Specifies that the requested heap will be a shared heap for the process/library
     /// </summary>
-    HEAP_CREATION_IS_SHARED = 0x04
+    HEAP_CREATION_IS_SHARED = 0x04,
+    /// <summary>
+    /// Specifies that the heap will support block reallocation
+    /// </summary>
+    HEAP_CREATION_SUPPORTS_REALLOC = 0x08,
 } HeapCreationFlags;
 
 /// <summary>

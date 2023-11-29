@@ -133,7 +133,7 @@ namespace VNLib.Hashing
             using IMemoryHandle<byte> buffer = PwHeap.Alloc<byte>(saltbytes + passBytes);
             
             Span<byte> saltBuffer = buffer.AsSpan(0, saltbytes);
-            Span<byte> passBuffer = buffer.AsSpan(passBytes);
+            Span<byte> passBuffer = buffer.AsSpan(saltbytes, passBytes);
             
             //Encode salt with span the same size of the salt
             _ = LocEncoding.GetBytes(salt, saltBuffer);
@@ -142,7 +142,12 @@ namespace VNLib.Hashing
             _ = LocEncoding.GetBytes(password, passBuffer);
             
             //Hash
-            return Hash2id(lib, passBuffer, saltBuffer, secret, in costParams, hashLen);
+            string result = Hash2id(lib, passBuffer, saltBuffer, secret, in costParams, hashLen);
+
+            //Zero buffer
+            MemoryUtil.InitializeBlock(ref buffer.GetReference(), buffer.GetIntLength());
+
+            return result;
         }
 
         /// <summary>
@@ -176,7 +181,12 @@ namespace VNLib.Hashing
             _ = LocEncoding.GetBytes(password, pwdHandle.Span);
             
             //Hash
-            return Hash2id(lib, pwdHandle.Span, salt, secret, in costParams, hashLen);
+            string result = Hash2id(lib, pwdHandle.Span, salt, secret, in costParams, hashLen);
+
+            //Zero buffer
+            MemoryUtil.InitializeBlock(ref pwdHandle.GetReference(), pwdHandle.GetIntLength());
+
+            return result;
         }
 
         /// <summary>
@@ -213,6 +223,9 @@ namespace VNLib.Hashing
             //encode salt
             salts = Convert.ToBase64String(salt);
             
+            //Zero buffer
+            MemoryUtil.InitializeBlock(ref hashHandle.GetReference(), hashHandle.GetIntLength());
+
             //Encode salt in base64
             return $"${ID_MODE}$v={(int)Argon2Version.Version13},m={costParams.MemoryCost},t={costParams.TimeCost},p={costParams.Parallelism},s={salts}${hash}";
         }
@@ -347,7 +360,12 @@ namespace VNLib.Hashing
             //encode password bytes
             rawPassLen = LocEncoding.GetBytes(rawPass, rawPassBuf);
             //Verify password
-            return Verify2id(lib, rawPassBuf[..rawPassLen], saltBuf, secret, passBuf, in costParams);
+            bool result = Verify2id(lib, rawPassBuf[..rawPassLen], saltBuf, secret, passBuf, in costParams);
+
+            //Zero buffer
+            MemoryUtil.InitializeBlock(ref rawBufferHandle.GetReference(), rawBufferHandle.GetIntLength());
+
+            return result;
         }
 
         /// <summary>
@@ -410,12 +428,17 @@ namespace VNLib.Hashing
                 context->outptr = outputPtr.Pointer;
                 context->outlen = (uint)outputHandle.Length;
                 //Hash
-                Argon2_ErrorCodes result = (Argon2_ErrorCodes)lib.Argon2Hash((IntPtr)context);
+                Argon2_ErrorCodes argResult = (Argon2_ErrorCodes)lib.Argon2Hash((IntPtr)context);
                 //Throw an excpetion if an error ocurred
-                ThrowOnArgonErr(result);
+                ThrowOnArgonErr(argResult);
             }
             //Return the comparison
-            return CryptographicOperations.FixedTimeEquals(outputHandle.Span, hashBytes);
+            bool result = CryptographicOperations.FixedTimeEquals(outputHandle.Span, hashBytes);
+
+            //Zero buffer
+            MemoryUtil.InitializeBlock(ref outputHandle.GetReference(), outputHandle.GetIntLength());
+
+            return result;
         }
 
         private static void ThrowOnArgonErr(Argon2_ErrorCodes result)

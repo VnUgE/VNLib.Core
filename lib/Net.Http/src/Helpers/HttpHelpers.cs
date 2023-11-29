@@ -29,7 +29,6 @@ using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-using VNLib.Net.Http.Core;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
@@ -66,7 +65,7 @@ namespace VNLib.Net.Http
          * an HttpMethod enum value,
          */
 
-        private static readonly IReadOnlyDictionary<int, HttpMethod> MethodHashLookup;
+        private static readonly IReadOnlyDictionary<int, HttpMethod> MethodHashLookup = HashHttpMethods();
 
         /*
          * Provides a constant lookup table from an MIME http request header string to a .NET 
@@ -128,8 +127,8 @@ namespace VNLib.Net.Http
          * during request parsing)
          * 
          */
-        private static readonly IReadOnlyDictionary<int, HttpRequestHeader> RequestHeaderHashLookup;
-        
+        private static readonly IReadOnlyDictionary<int, HttpRequestHeader> RequestHeaderHashLookup = HashRequestHeaders();
+
         /*
          * Provides a constant lookup table for http version hashcodes to an http
          * version enum value
@@ -143,68 +142,63 @@ namespace VNLib.Net.Http
         };
 
 
-        //Pre-compiled strings for all status codes for http 1, 1.1, and 2 
-        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V1_STAUTS_CODES;
-        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V1_1_STATUS_CODES;
-        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V2_STAUTS_CODES;
+        //Pre-compiled strings for all status codes for http 0.9 1, 1.1
+        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V0_9_STATUS_CODES = GetStatusCodes("0.9");
+        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V1_STAUTS_CODES = GetStatusCodes("1.0");
+        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V1_1_STATUS_CODES = GetStatusCodes("1.1");
+        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V2_STATUS_CODES = GetStatusCodes("2.0");
 
-        static HttpHelpers()
+        private static IReadOnlyDictionary<HttpStatusCode, string> GetStatusCodes(string version)
         {
+            //Setup status code dict
+            Dictionary<HttpStatusCode, string> statusCodes = new();
+            //Get all status codes
+            foreach (HttpStatusCode code in Enum.GetValues<HttpStatusCode>())
             {
-                //Setup status code dict
-                Dictionary<HttpStatusCode, string> v1status = new();
-                Dictionary<HttpStatusCode, string> v11status = new();
-                Dictionary<HttpStatusCode, string> v2status = new();
-                //Get all status codes
-                foreach (HttpStatusCode code in Enum.GetValues<HttpStatusCode>())
-                {
-                    //Use a regex to write the status code value as a string
-                    v1status[code] = $"HTTP/1.0 {(int)code} {HttpRequestBuilderRegex.Replace(code.ToString(), " $1")}";
-                    v11status[code] = $"HTTP/1.1 {(int)code} {HttpRequestBuilderRegex.Replace(code.ToString(), " $1")}";
-                    v2status[code] = $"HTTP/2.0 {(int)code} {HttpRequestBuilderRegex.Replace(code.ToString(), " $1")}";
-                }
-                //Store as readonly
-                V1_STAUTS_CODES = v1status;
-                V1_1_STATUS_CODES = v11status;
-                V2_STAUTS_CODES = v2status;
+                //Use a regex to write the status code value as a string
+                statusCodes[code] = $"HTTP/{version} {(int)code} {HttpRequestBuilderRegex.Replace(code.ToString(), " $1")}";
             }
+            return statusCodes;
+        }
+        
+        private static IReadOnlyDictionary<int, HttpMethod> HashHttpMethods()
+        {
+            /*
+            * Http methods are hashed at runtime using the HttpMethod enum
+            * values, purley for compatability and automation
+            */
+            Dictionary<int, HttpMethod> methods = new();
+            //Add all HTTP methods
+            foreach (HttpMethod method in Enum.GetValues<HttpMethod>())
             {
-                /*
-                 * Http methods are hashed at runtime using the HttpMethod enum
-                 * values, purley for compatability and automation
-                 */
-                Dictionary<int, HttpMethod> methods = new();
-                //Add all HTTP methods
-                foreach (HttpMethod method in Enum.GetValues<HttpMethod>())
+                //Exclude the not supported method
+                if (method == HttpMethod.None)
                 {
-                    //Exclude the not supported method
-                    if (method == HttpMethod.None)
-                    {
-                        continue;
-                    }
-                    //Store method string's hashcode for faster lookups
-                    methods[string.GetHashCode(method.ToString(), StringComparison.OrdinalIgnoreCase)] = method;
+                    continue;
                 }
-                MethodHashLookup = methods;
+                //Store method string's hashcode for faster lookups
+                methods[string.GetHashCode(method.ToString(), StringComparison.OrdinalIgnoreCase)] = method;
             }
-            {
-                /*
-                 * Pre-compute common headers 
-                 */
-                Dictionary<int, HttpRequestHeader> requestHeaderHashes = new();
+            return methods;
+        }
 
-                //Add all HTTP methods
-                foreach (string headerValue in RequestHeaderLookup.Keys)
-                {
-                    //Compute the hashcode for the header value
-                    int hashCode = string.GetHashCode(headerValue, StringComparison.OrdinalIgnoreCase);
-                    //Store the http header enum value with the hash-code of the string of said header
-                    requestHeaderHashes[hashCode] = RequestHeaderLookup[headerValue];
-                }
+        private static IReadOnlyDictionary<int, HttpRequestHeader> HashRequestHeaders()
+        {
+            /*
+            * Pre-compute common headers 
+            */
+            Dictionary<int, HttpRequestHeader> requestHeaderHashes = new();
 
-                RequestHeaderHashLookup = requestHeaderHashes;
+            //Add all HTTP methods
+            foreach (string headerValue in RequestHeaderLookup.Keys)
+            {
+                //Compute the hashcode for the header value
+                int hashCode = string.GetHashCode(headerValue, StringComparison.OrdinalIgnoreCase);
+                //Store the http header enum value with the hash-code of the string of said header
+                requestHeaderHashes[hashCode] = RequestHeaderLookup[headerValue];
             }
-        }        
+            return requestHeaderHashes;
+        }
     
 
         /// <summary>
@@ -358,8 +352,10 @@ namespace VNLib.Net.Http
         {
             return version switch
             {
+                HttpVersion.Http09 => V0_9_STATUS_CODES[code],
                 HttpVersion.Http1 => V1_STAUTS_CODES[code],
-                HttpVersion.Http2 => V2_STAUTS_CODES[code],
+                HttpVersion.Http2 => V2_STATUS_CODES[code],
+                //Default to HTTP/1.1
                 _ => V1_1_STATUS_CODES[code],
             };
         }

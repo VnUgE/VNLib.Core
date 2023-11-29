@@ -36,11 +36,6 @@ namespace VNLib.Utils.Memory.Caching
     /// <typeparam name="T">The data type to reuse</typeparam>
     public class ObjectRental<T> : ObjectRental, IObjectRental<T>, ICacheHolder where T: class
     {
-        /// <summary>
-        /// The initial data-structure capacity if quota is not defined
-        /// </summary>
-        public const int INITIAL_STRUCTURE_SIZE = 50;
-        
         protected readonly ConcurrentStack<T> Storage;
 
         protected readonly Action<T>? ReturnAction;
@@ -157,12 +152,8 @@ namespace VNLib.Utils.Memory.Caching
         /// while holding the lock
         /// </summary>
         /// <returns></returns>
-        protected T[] GetElementsWithLock()
-        {
-            //Enumerate all items to the array
-            return Storage.ToArray();
-        }
-     
+        protected T[] GetElementsWithLock() => Storage.ToArray();
+
 
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
@@ -182,7 +173,9 @@ namespace VNLib.Utils.Memory.Caching
 
             if (IsDisposableType)
             {
-                T[] result = GetElementsWithLock();
+                //Get all elements and clear the store
+                T[] result = Storage.ToArray();
+                Storage.Clear();
 
                 //Dispose all elements
                 foreach (T element in result)
