@@ -1,0 +1,104 @@
+# https://taskfile.dev
+
+#Called by the vnbuild system to produce builds for my website
+#https://www.vaughnnugent.com/resources/software
+
+#This taskfile is called in this directory and is specific to the phc-winner-argon2 project
+#that handles the MSBuild outside of the solution file
+
+version: '3'
+
+vars:
+  MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
+  PROJECT_NAME: 'Argon2'
+  MODULE_NAME: 'vnlib.core'
+
+tasks:
+
+  default:
+    desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    cmds:
+      #build with defaults
+      - task: build
+      - cmd: echo "Your Argon2 dll file can be found in '{{.USER_WORKING_DIR}}/build'"
+        silent: true
+  
+  build:
+    cmds:
+     #init cmake build with greedy enabled
+     - cmake -B./build
+
+     #build the rpmalloc library in debug mode first 
+     - task: build-win
+     - task: build-gnumake  
+
+  #build using msbuild for rpmalloc libraries for debug and release modes
+  build-win:
+    platforms: ['windows']
+    internal: true
+    cmds:
+     #build solution in debug mode
+     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=debug {{.BUILD_FLAGS}} {{.MS_ARGS}} 
+     #build in release
+     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=release {{.BUILD_FLAGS}} {{.MS_ARGS}} 
+  
+  #build using gnu make
+  build-gnumake:
+    platforms: ['linux']
+    internal: true
+    cmds:
+     #build project with make
+     - cd build && make
+ 
+  postbuild_success:
+    vars:
+      #required files to include in tar
+      TAR_FILES: "license.txt readme.txt"
+    
+    cmds:
+      #make bin dir
+    - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
+      ignore_error: true
+
+    #get licenses for debug
+    - task: licenses
+      vars: 
+        TARGET: './build/Debug'
+
+    - task: licenses
+      vars:
+        TARGET: './build/Release'
+   
+
+    #static debug lib
+    - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
+    #dynamic debug lib
+    - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
+    
+    #release static lib
+    - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
+    #release dll
+    - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+
+    #source code
+    - task: pack_source
+
+  licenses:
+    cmds:
+     #add license file
+     - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
+     #add readme file
+     - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
+  
+  pack_source:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+     #just pack up current directory, excluding build, bin, and git directories
+     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czvf bin/src.tar *"
+
+
+  clean:
+    ignore_error: true
+    cmds: 
+     - cmd: powershell -Command "Remove-Item -Recurse './bin'"
+     - cmd: powershell -Command "Remove-Item -Recurse './build'"

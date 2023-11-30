@@ -142,12 +142,12 @@ namespace VNLib.Plugins
             //Open new logger config
             LoggerConfiguration logConfig = new();
             //Check for verbose
-            if (HostArgs.HasArgument("-v"))
+            if (HostArgs.HasArgument("-v") || HostArgs.HasArgument("--verbose"))
             {
                 logConfig.MinimumLevel.Verbose();
             }
             //Check for debug mode
-            else if (HostArgs.HasArgument("-d"))
+            else if (HostArgs.HasArgument("-d") || HostArgs.HasArgument("--debug"))
             {
                 logConfig.MinimumLevel.Debug();
             }

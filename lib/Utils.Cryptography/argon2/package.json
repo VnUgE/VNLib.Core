@@ -1,0 +1,10 @@
+{
+  "name": "phc-winner-argon2",
+  "version": "0.0.0",
+  "output_dir": "bin",
+  "author": "Vaughn Nugent",
+  "description": "A vendored copy of the offical Argon2 repository that only produces the dependent Argon2 dynamic library required for some VNLib projects that wish to support secure password hashing",
+  "copyright": "",
+  "company": "Vaughn Nugent",
+  "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils.Cryptography/argon2"
+}
