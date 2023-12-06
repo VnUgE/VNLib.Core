@@ -37,9 +37,12 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flag
     * things working.
     * 
     * Always clear serialize flag and set shared heap pointer
+    * 
+    * Shared heap supports realloc, so set the flag
     */
 
     flags->CreationFlags &= ~(HEAP_CREATION_SERIALZE_ENABLED);
+    flags->CreationFlags |= HEAP_CREATION_SUPPORTS_REALLOC;
    
     flags->HeapPointer = heapGetSharedHeapHandle();
 

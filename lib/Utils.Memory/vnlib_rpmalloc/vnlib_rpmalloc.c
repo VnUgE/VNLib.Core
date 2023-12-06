@@ -152,6 +152,9 @@ HEAP_METHOD_EXPORT HeapHandle HEAP_METHOD_CC heapGetSharedHeapHandle(void)
 
 HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flags)
 {
+    //All heaps support resizing
+    flags->CreationFlags |= HEAP_CREATION_SUPPORTS_REALLOC;
+
     //Check flags
     if (flags->CreationFlags & HEAP_CREATION_IS_SHARED)
     {

@@ -325,10 +325,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InitializeBlock<T>(T[] array, uint count) where T: struct
         {
-            if(array == null)
-            {
-                throw new ArgumentNullException(nameof(array));
-            }
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
 
             //Check bounds
             CheckBounds(array, 0, count);
@@ -392,7 +389,18 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="structRef">The reference to the allocated structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(ref T structRef) where T : unmanaged => InitializeBlock(ref structRef, 1);
+        public static void ZeroStruct<T>(ref T structRef) where T : unmanaged
+        {
+            if (Unsafe.IsNullRef(ref structRef))
+            {
+                throw new ArgumentNullException(nameof(structRef));
+            }
+
+            //Get a byte reference to the structure
+            ref byte byteRef = ref Unsafe.As<T, byte>(ref structRef);
+
+            Unsafe.InitBlockUnaligned(ref byteRef, 0, (uint)sizeof(T));
+        }
 
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
@@ -730,10 +738,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void Copy<T>(ReadOnlySpan<T> source, int sourceOffset, IMemoryHandle<T> dest, nuint destOffset, int count) where T: struct
         {
-            if (dest is null)
-            {
-                throw new ArgumentNullException(nameof(dest));
-            }
+            ArgumentNullException.ThrowIfNull(dest, nameof(dest));
 
             if (count == 0)
             {
@@ -783,7 +788,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void Copy<T>(IMemoryHandle<T> source, nint sourceOffset, Span<T> dest, int destOffset, int count) where T : struct
         {
-            _ = source ?? throw new ArgumentNullException(nameof(source));
+            ArgumentNullException.ThrowIfNull(source, nameof(source));
 
             //Validate source/dest/count
             ValidateCopyArgs(sourceOffset, destOffset, count);
@@ -840,8 +845,8 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void Copy<T>(IMemoryHandle<T> source, nuint sourceOffset, IMemoryHandle<T> dest, nuint destOffset, nuint count) where T : unmanaged
         {
-            _ = source ?? throw new ArgumentNullException(nameof(source));
-            _ = dest ?? throw new ArgumentNullException(nameof(dest));
+            ArgumentNullException.ThrowIfNull(source, nameof(source));
+            ArgumentNullException.ThrowIfNull(dest, nameof(dest));
 
             CheckBounds(source, sourceOffset, count);
             CheckBounds(dest, destOffset, count);
@@ -897,15 +902,8 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void CopyArray<T>(IMemoryHandle<T> source, nuint sourceOffset, T[] dest, nuint destOffset, nuint count) where T : unmanaged
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            if (dest is null)
-            {
-                throw new ArgumentNullException(nameof(dest));
-            }
+            ArgumentNullException.ThrowIfNull(source, nameof(source));
+            ArgumentNullException.ThrowIfNull(dest, nameof(dest));
 
             if (count == 0)
             {
@@ -951,15 +949,8 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void CopyArray<T>(T[] source, nuint sourceOffset, IMemoryHandle<T> dest, nuint destOffset, nuint count) where T : unmanaged
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            if (dest is null)
-            {
-                throw new ArgumentNullException(nameof(dest));
-            }
+            ArgumentNullException.ThrowIfNull(source, nameof(source));
+            ArgumentNullException.ThrowIfNull(dest, nameof(dest));
 
             if (count == 0)
             {
@@ -1299,6 +1290,14 @@ namespace VNLib.Utils.Memory
             ref T baseRef = ref GetRef<T>(address);
             return ref Unsafe.Add(ref baseRef, (nint)offset);
         }
+
+        /// <summary>
+        /// Gets a managed pointer from the supplied handle
+        /// </summary>
+        /// <param name="handle">A reference to the handle to get the intpr for</param>
+        /// <returns>A managed pointer from the handle</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static IntPtr GetIntptr(ref MemoryHandle handle) => new(handle.Pointer);
 
         /// <summary>
         /// Rounds the requested byte size up to the nearest page

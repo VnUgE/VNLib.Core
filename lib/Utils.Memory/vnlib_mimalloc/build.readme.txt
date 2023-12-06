@@ -1,0 +1,54 @@
+vnlib_mimmalloc Copyright (C) 2023 Vaughn Nugent
+
+vnlib_mimmalloc is a wrapper library for Mimalloc by Microsoft that implements the NativeHeapApi 
+functions, and exports them by default for use as a library. The CMake configuration is setup to produce both
+a static and shared library you can link against. The NativeHeapApi.h file is included in the source tree
+of the archive this readme is included in. Simply add the header to your project and link against the library.
+
+The NativHeapApi was designed to consolidate heap based operations into a single interface for the purpose of
+.NET interop. The shared library (DLL) that is produced can be loaded into a .NET application that uses my 
+VNLib.Utils library. 
+
+LICENSE:
+You also received a copy of the MIT license for mimalloc by Microsoft, and a GNU license for this library from me.
+
+INSTALLATION:
+For the most up-to-date instructions go to my website here: https://www.vaughnnugent.com/resources/software/articles?tags=docs&search=building+native+heap
+
+If you cannot view the website, here are the basic instructions that may become outdated:
+
+PREREQUISITES:
+- Taskfile.dev (https://taskfile.dev/#/installation)
+- CMake (https://cmake.org/download/)
+- MSBuild (Vistual Studio build tools) and the CL.exe compiler-linker (Windows only)
+- GNU Make + GCC (Unix only)
+
+NOTE: 
+If you have any mimalloc specific CMake options you want to use, when running task, you can pass them as 
+an the MIMALLOC_CMAKE_ARGS env variable. 
+
+Example: >task MIMALLOC_CMAKE_ARGS="-DMI_SECURE=ON" (enable secure mode for mimalloc)
+
+See: https://microsoft.github.io/mimalloc/build.html for more information on mimalloc specific CMake options.
+
+BUILDING:
+1. You have already downloaded all the source code to build this library 
+2. Navigate to directory containing the Taskfile.yaml file in the root
+3. Run the default task: > task (yes literally just type "task" and hit enter if you installed Task gobally)
+
+WINDOWS:
+The taskfile should print on screen where the output library file was placed. It will be in the build directory
+usually under Debug or Release.
+
+UNIX:
+Navigate to the build directory after the task completes, and both the shared .so and static .a files will be
+in the build directory.
+
+MIMALLOC SPECIFIC NOTES:
+Mimalloc does not support cross-thread allocations on a privately head heap, which is paramount for my intented 
+use case. I have not found a way to make this work, so I have implemented a workaround by exporting only the 
+shared heap instance. This means that all allocations will be made on the shared heap, and not on a private heap. 
+Hopefully in the future I can find a way to make this work, but for now understand that if your use cause relied 
+on security from private heaps, you should avoid using this library. That being said, my libraries do not assume 
+security features for private heaps only lockless performance. Mimalloc does offer many more security features 
+that are worth using. 
