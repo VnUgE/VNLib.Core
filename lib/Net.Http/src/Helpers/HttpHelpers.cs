@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -25,6 +25,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Linq;
 using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -127,7 +128,7 @@ namespace VNLib.Net.Http
          * during request parsing)
          * 
          */
-        private static readonly IReadOnlyDictionary<int, HttpRequestHeader> RequestHeaderHashLookup = HashRequestHeaders();
+        private static readonly IReadOnlyDictionary<int, HttpRequestHeader> RequestHeaderHashLookup = ComputeCodeHashLookup(RequestHeaderLookup);
 
         /*
          * Provides a constant lookup table for http version hashcodes to an http
@@ -164,42 +165,22 @@ namespace VNLib.Net.Http
         private static IReadOnlyDictionary<int, HttpMethod> HashHttpMethods()
         {
             /*
-            * Http methods are hashed at runtime using the HttpMethod enum
-            * values, purley for compatability and automation
-            */
-            Dictionary<int, HttpMethod> methods = new();
-            //Add all HTTP methods
-            foreach (HttpMethod method in Enum.GetValues<HttpMethod>())
-            {
+             * Http methods are hashed at runtime using the HttpMethod enum
+             * values, purley for compatability and automation
+             */
+            return ComputeCodeHashLookup(
+                Enum.GetValues<HttpMethod>()
                 //Exclude the not supported method
-                if (method == HttpMethod.None)
-                {
-                    continue;
-                }
-                //Store method string's hashcode for faster lookups
-                methods[string.GetHashCode(method.ToString(), StringComparison.OrdinalIgnoreCase)] = method;
-            }
-            return methods;
+                .Except(new HttpMethod[] { HttpMethod.None })
+                .Select(m => KeyValuePair.Create(m.ToString(), m))
+            );
         }
 
-        private static IReadOnlyDictionary<int, HttpRequestHeader> HashRequestHeaders()
-        {
-            /*
-            * Pre-compute common headers 
-            */
-            Dictionary<int, HttpRequestHeader> requestHeaderHashes = new();
-
-            //Add all HTTP methods
-            foreach (string headerValue in RequestHeaderLookup.Keys)
-            {
-                //Compute the hashcode for the header value
-                int hashCode = string.GetHashCode(headerValue, StringComparison.OrdinalIgnoreCase);
-                //Store the http header enum value with the hash-code of the string of said header
-                requestHeaderHashes[hashCode] = RequestHeaderLookup[headerValue];
-            }
-            return requestHeaderHashes;
-        }
-    
+        private static IReadOnlyDictionary<int, T> ComputeCodeHashLookup<T>(IEnumerable<KeyValuePair<string, T>> enumerable)
+            => enumerable.ToDictionary(
+                static kv => string.GetHashCode(kv.Key, StringComparison.OrdinalIgnoreCase),
+                static kv => kv.Value
+            );
 
         /// <summary>
         /// Returns an http formatted content type string of a specified content type
@@ -215,6 +196,18 @@ namespace VNLib.Net.Http
         /// <param name="type">Content type from request</param>
         /// <returns><see cref="ContentType"/> of request, <see cref="ContentType.NonSupported"/> if unknown</returns>
         public static ContentType GetContentType(string type) => MimeToCt.GetValueOrDefault(type, ContentType.NonSupported);
+
+        /// <summary>
+        /// Returns the <see cref="ContentType"/> enum value from the MIME string
+        /// </summary>
+        /// <param name="type">Content type character span to compute the hashcode of</param>
+        /// <returns><see cref="ContentType"/> of request, <see cref="ContentType.NonSupported"/> if unknown</returns>
+        public static ContentType GetContentType(ReadOnlySpan<char> type)
+        {
+            //Compute hashcode 
+            int ctHashCode = string.GetHashCode(type, StringComparison.OrdinalIgnoreCase);
+            return ContentTypeHashLookup.GetValueOrDefault(ctHashCode, ContentType.NonSupported);
+        }
 
         //Cache control string using mdn reference 
         //https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
@@ -274,7 +267,6 @@ namespace VNLib.Net.Http
         /// </summary>
         /// <param name="smethod">Http acceptable method type string</param>
         /// <returns>Request method, <see cref="HttpMethod.None"/> if method is malformatted or unsupported</returns>
-        /// <exception cref="ArgumentNullException"></exception>
         public static HttpMethod GetRequestMethod(ReadOnlySpan<char> smethod)
         {
             //Get the hashcode for the method "string"

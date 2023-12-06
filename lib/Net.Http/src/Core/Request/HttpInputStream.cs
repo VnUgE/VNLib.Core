@@ -26,6 +26,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
@@ -50,6 +51,7 @@ namespace VNLib.Net.Http.Core
 
         public HttpInputStream(IHttpContextInformation contextInfo) => ContextInfo = contextInfo;
 
+        private long Remaining => Math.Max(ContentLength - _position, 0);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void OnComplete()
@@ -82,18 +84,53 @@ namespace VNLib.Net.Http.Core
             return ref _initalData;
         }
 
-        public override void Close() => throw new NotSupportedException("The HTTP input stream should never be closed!");
-        private long Remaining => Math.Max(ContentLength - _position, 0);
+        /// <summary>
+        /// Not a supported method. In debug mode will cause the application to crash with a 
+        /// warning to determine the cause.
+        /// </summary>
+        public override void Close() => Debug.Fail("A attempt to close the HTTP input stream was made. The source should be determined.");
+
+        /// <summary>
+        /// Always returns true
+        /// </summary>
         public override bool CanRead => true;
+        
+        /// <summary>
+        /// Stream is not seekable, but is always true for 
+        /// stream compatibility reasons 
+        /// </summary>
         public override bool CanSeek => true;
+
+        /// <summary>
+        /// Stream is never writable
+        /// </summary>
         public override bool CanWrite => false;
+
+        /// <summary>
+        /// Gets the total size of the entity body (aka Content-Length)
+        /// </summary>
         public override long Length => ContentLength;
+        
+        /// <summary>
+        /// Gets the number of bytes currently read from the entity body, setting the 
+        /// position is a NOOP
+        /// </summary>
         public override long Position { get => _position; set { } }
 
+        /// <summary>
+        /// NOOP
+        /// </summary>
         public override void Flush() { }
 
+        ///<inheritdoc/>
         public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
 
+        /// <summary>
+        /// Reads as much entity body data as available into the specified buffer as possible
+        /// until the buffer is full or the amount of entity data is reached. 
+        /// </summary>
+        /// <param name="buffer">The buffer to copy entity data to</param>
+        /// <returns>The number of bytes read from the transport</returns>
         public override int Read(Span<byte> buffer)
         {
             //Calculate the amount of data that can be read into the buffer
@@ -134,6 +171,7 @@ namespace VNLib.Net.Http.Core
             //Return number of bytes written to the buffer
             return writer.Written;
         }       
+
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -221,14 +259,18 @@ namespace VNLib.Net.Http.Core
             } while (read != 0);
         }
 
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            //Ignore seek control
-            return _position;
-        }
+        /// <summary>
+        /// Seek is not a supported operation, a seek request is ignored and nothin happens
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="origin"></param>
+        /// <returns></returns>
+        public override long Seek(long offset, SeekOrigin origin) => _position;
 
+        ///<inheritdoc/>
         public override void SetLength(long value) => throw new NotSupportedException();
 
+        ///<inheritdoc/>
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }

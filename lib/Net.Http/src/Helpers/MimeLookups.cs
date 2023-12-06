@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -22,11 +22,8 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
+
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace VNLib.Net.Http
 {
@@ -3234,5 +3231,11 @@ namespace VNLib.Net.Http
             { "application/vnd.zul", ContentType.Zir },
             { "application/vnd.handheld-entertainment+xml", ContentType.Zmm },
         };
+
+
+        /*
+         * A string hashcode lookup table for MIME content types
+         */
+        private static readonly IReadOnlyDictionary<int, ContentType> ContentTypeHashLookup = ComputeCodeHashLookup(MimeToCt);
     }
 }
