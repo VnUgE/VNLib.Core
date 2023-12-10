@@ -37,13 +37,13 @@ namespace VNLib.Net.Http
         private HttpContext Context;
 
         ///<inheritdoc/>
-        public Uri RequestUri => Context.Request.Location;
+        public Uri RequestUri => Context.Request.State.Location;
 
         ///<inheritdoc/>
         public string Path => RequestUri.LocalPath;
 
         ///<inheritdoc/>
-        public string? UserAgent => Context.Request.UserAgent;
+        public string? UserAgent => Context.Request.State.UserAgent;
 
         ///<inheritdoc/>
         public IHeaderCollection Headers { get; private set; }
@@ -55,28 +55,28 @@ namespace VNLib.Net.Http
         public bool IsWebSocketRequest { get; }
 
         ///<inheritdoc/>
-        public ContentType ContentType => Context.Request.ContentType;
+        public ContentType ContentType => Context.Request.State.ContentType;
 
         ///<inheritdoc/>
-        public HttpMethod Method => Context.Request.Method;
+        public HttpMethod Method => Context.Request.State.Method;
 
         ///<inheritdoc/>
-        public HttpVersion ProtocolVersion => Context.Request.HttpVersion;
+        public HttpVersion ProtocolVersion => Context.Request.State.HttpVersion;
 
         ///<inheritdoc/>
-        public Uri? Origin => Context.Request.Origin;
+        public Uri? Origin => Context.Request.State.Origin;
 
         ///<inheritdoc/>
-        public Uri? Referer => Context.Request.Referrer;
+        public Uri? Referer => Context.Request.State.Referrer;
 
         ///<inheritdoc/>
-        public Tuple<long, long>? Range => Context.Request.Range;
+        public HttpRange Range => Context.Request.State.Range;
 
         ///<inheritdoc/>
-        public IPEndPoint LocalEndpoint => Context.Request.LocalEndPoint;
+        public IPEndPoint LocalEndpoint => Context.Request.State.LocalEndPoint;
 
         ///<inheritdoc/>
-        public IPEndPoint RemoteEndpoint => Context.Request.RemoteEndPoint;
+        public IPEndPoint RemoteEndpoint => Context.Request.State.RemoteEndPoint;
 
         ///<inheritdoc/>
         public Encoding Encoding => Context.ParentServer.Config.HttpEncoding;
@@ -116,14 +116,14 @@ namespace VNLib.Net.Http
        
         internal ConnectionInfo(HttpContext ctx)
         {
+            //Update the context referrence
+            Context = ctx;
             //Create new header collection
             Headers = new VnHeaderCollection(ctx);
             //set co value
             CrossOrigin = ctx.Request.IsCrossOrigin();
             //Set websocket status
             IsWebSocketRequest = ctx.Request.IsWebSocketRequest();
-            //Update the context referrence
-            Context = ctx;
         }
 
 #nullable disable

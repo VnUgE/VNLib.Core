@@ -26,6 +26,7 @@ using System;
 using System.IO;
 using System.Buffers;
 using System.Threading;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.IO.Pipelines;
 using System.Threading.Tasks;
@@ -102,6 +103,8 @@ namespace VNLib.Net.Transport.Tcp
 
         public bool Release()
         {
+            _sysSocketBufferSize = 0;
+
             /*
              * If the pipeline has been started, then the pipes 
              * will be completed by the worker threads (or by the streams)
@@ -462,6 +465,8 @@ namespace VNLib.Net.Transport.Tcp
 
         private void CopyAndPublishDataOnSendPipe(ReadOnlyMemory<byte> src)
         {
+            Debug.Assert(_sysSocketBufferSize > 0, "A call to CopyAndPublishDataOnSendPipe was made before a socket was connected");
+
             /*
              * Clamp the buffer size to the system socket buffer size. If the 
              * buffer is larger then, we will need to publish multiple segments

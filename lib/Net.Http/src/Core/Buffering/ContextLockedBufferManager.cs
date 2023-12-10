@@ -47,13 +47,15 @@ namespace VNLib.Net.Http.Core.Buffering
         private readonly HeaderAccumulatorBuffer _requestHeaderBuffer;
         private readonly HeaderAccumulatorBuffer _responseHeaderBuffer;
         private readonly ChunkAccBuffer _chunkAccBuffer;
+        private readonly bool _chunkingEnabled;
 
-        public ContextLockedBufferManager(in HttpBufferConfig config)
+        public ContextLockedBufferManager(in HttpBufferConfig config, bool chunkingEnabled)
         {
             Config = config;
+            _chunkingEnabled = chunkingEnabled;
 
             //Compute total buffer size from server config
-            TotalBufferSize = ComputeTotalBufferSize(in config);
+            TotalBufferSize = ComputeTotalBufferSize(in config, chunkingEnabled);
 
              /*
               * Individual instances of the header accumulator buffer are required
@@ -96,8 +98,11 @@ namespace VNLib.Net.Http.Core.Buffering
                     //Shared response and form data buffer
                     ResponseAndFormData = GetNextSegment(ref full, responseAndFormDataSize),
 
-                    //Buffers cannot be shared
-                    ChunkedResponseAccumulator = GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize)
+                    /*
+                     * The chunk accumulator buffer cannot be shared. It is also only
+                     * stored if chunking is enabled.
+                     */
+                    ChunkedResponseAccumulator = _chunkingEnabled ? GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize) : default
                 };
 
                 /*
@@ -205,12 +210,19 @@ namespace VNLib.Net.Http.Core.Buffering
             return SplitHttpBufferElement.GetfullSize(max);
         }
 
-        static int ComputeTotalBufferSize(in HttpBufferConfig config)
+        static int ComputeTotalBufferSize(in HttpBufferConfig config, bool chunkingEnabled)
         {
-            return config.ResponseBufferSize
-                + config.ChunkedResponseAccumulatorSize
+            int baseSize = config.ResponseBufferSize
                 + ComputeResponseAndFormDataBuffer(in config)
                 + GetMaxHeaderBufferSize(in config);    //Header buffers are shared
+
+            if (chunkingEnabled)
+            {
+                //Add chunking buffer
+                baseSize += config.ChunkedResponseAccumulatorSize;
+            }
+
+            return baseSize;
         }
 
         static int ComputeResponseAndFormDataBuffer(in HttpBufferConfig config)
@@ -220,7 +232,7 @@ namespace VNLib.Net.Http.Core.Buffering
         }
 
 
-        readonly record struct HttpBufferSegments<T>
+        readonly struct HttpBufferSegments<T>
         {
             public readonly Memory<T> HeaderAccumulator { get; init; }
             public readonly Memory<T> ChunkedResponseAccumulator { get; init; }

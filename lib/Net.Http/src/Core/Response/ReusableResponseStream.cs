@@ -27,7 +27,7 @@ using System.IO;
 namespace VNLib.Net.Http.Core.Response
 {
 
-    internal abstract class ReusableResponseStream 
+    internal abstract class ReusableResponseStream
     {
         protected Stream? transport;
 
@@ -41,6 +41,6 @@ namespace VNLib.Net.Http.Core.Response
         /// Called when the connection is released
         /// </summary>
         public virtual void OnRelease() => transport = null;
-       
+
     }
 }

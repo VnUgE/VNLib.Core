@@ -64,6 +64,17 @@ namespace VNLib.Net.Http.Core
             }
             else
             {
+                //Set implicit 0 content length if not disabled
+                if (!ContextFlags.IsSet(HttpControlMask.ImplictContentLengthDisabled))
+                {
+                    //RFC 7230, length only set on 200 + but not 204
+                    if ((int)Response.StatusCode >= 200 && (int)Response.StatusCode != 204)
+                    {
+                        //If headers havent been sent by this stage there is no content, so set length to 0
+                        Response.Headers.Set(HttpResponseHeader.ContentLength, "0");
+                    }
+                }
+
                 await discardTask;
             }
 
@@ -79,88 +90,74 @@ namespace VNLib.Net.Http.Core
             //Adjust/append vary header
             Response.Headers.Add(HttpResponseHeader.Vary, "Accept-Encoding");
 
-            bool hasRange = Request.Range != null;
             long length = ResponseBody.Length;
             CompressionMethod compMethod = CompressionMethod.None;
-
-            /*
-             * Process range header, data will not be compressed because that would 
-             * require buffering, not a feature yet, and since the range will tell
-             * us the content length, we can get a direct stream to write to
-            */
-            if (hasRange)
-            {
-                //Get local range
-                Tuple<long, long> range = Request.Range!;
-
-                //Calc constrained content length
-                length = ResponseBody.GetResponseLengthWithRange(range);
-
-                //End range is inclusive so substract 1
-                long endRange = (range.Item1 + length) - 1;
-
-                //Set content-range header
-                Response.SetContentRange(range.Item1, endRange, length);
-            }
             /*
              * It will be known at startup whether compression is supported, if not this is 
              * essentially a constant. 
              */
-            else if (ParentServer.SupportedCompressionMethods != CompressionMethod.None)
+            if (ParentServer.SupportedCompressionMethods != CompressionMethod.None)
             {
                 //Determine if compression should be used
                 bool compressionDisabled = 
                         //disabled because app code disabled it
-                        ContextFlags.IsSet(COMPRESSION_DISABLED_MSK)
+                        ContextFlags.IsSet(HttpControlMask.CompressionDisabed)
                         //Disabled because too large or too small
-                        || ResponseBody.Length >= ParentServer.Config.CompressionLimit
-                        || ResponseBody.Length < ParentServer.Config.CompressionMinimum
+                        || length >= ParentServer.Config.CompressionLimit
+                        || length < ParentServer.Config.CompressionMinimum
                         //Disabled because lower than http11 does not support chunked encoding
-                        || Request.HttpVersion < HttpVersion.Http11;
+                        || Request.State.HttpVersion < HttpVersion.Http11;
 
                 if (!compressionDisabled)
                 {
                     //Get first compression method or none if disabled
                     compMethod = Request.GetCompressionSupport(ParentServer.SupportedCompressionMethods);
 
-                    //Set response headers
+                    //Set response compression encoding headers
                     switch (compMethod)
                     {
                         case CompressionMethod.Gzip:
-                            //Specify gzip encoding (using chunked encoding)
-                            Response.Headers[HttpResponseHeader.ContentEncoding] = "gzip";
+                            Response.Headers.Set(HttpResponseHeader.ContentEncoding, "gzip");
                             break;
                         case CompressionMethod.Deflate:
-                            //Specify delfate encoding (using chunked encoding)
-                            Response.Headers[HttpResponseHeader.ContentEncoding] = "deflate";
+                            Response.Headers.Set(HttpResponseHeader.ContentEncoding, "deflate");
                             break;
                         case CompressionMethod.Brotli:
-                            //Specify Brotli encoding (using chunked encoding)
-                            Response.Headers[HttpResponseHeader.ContentEncoding] = "br";
+                            Response.Headers.Set(HttpResponseHeader.ContentEncoding, "br");
                             break;
                     }
                 }
             }
 
             //Check on head methods
-            if (Request.Method == HttpMethod.HEAD)
+            if (Request.State.Method == HttpMethod.HEAD)
             {
                 //Specify what the content length would be
-                Response.Headers[HttpResponseHeader.ContentLength] = length.ToString();
+                Response.Headers.Set(HttpResponseHeader.ContentLength, length.ToString());
 
                 //We must send headers here so content length doesnt get overwritten, close will be called after this to flush to transport
                 Response.FlushHeaders();
 
                 return Task.CompletedTask;
             }
+            /*
+             * User submitted a 0 length response body, let hooks clean-up 
+             * any resources. Simply flush headers and exit
+             */
+            else if(length == 0)
+            {
+                
+                Response.FlushHeaders();
+                return Task.CompletedTask;
+            }
             else
             {
                 //Set the explicit length if a range was set
-                return WriteEntityDataAsync(length, compMethod, hasRange);
+                return WriteEntityDataAsync(length, compMethod);
             }
         }
       
-        private async Task WriteEntityDataAsync(long length, CompressionMethod compMethod, bool hasExplicitLength)
+        private async Task WriteEntityDataAsync(long length, CompressionMethod compMethod)
         {
             //Determine if buffer is required
             Memory<byte> buffer = ResponseBody.BufferRequired ? Buffers.GetResponseDataBuffer() : Memory<byte>.Empty;
@@ -170,11 +167,11 @@ namespace VNLib.Net.Http.Core
 
             if (compMethod == CompressionMethod.None)
             {
-                //Setup a direct stream to write to
+                //Setup a direct stream to write to because compression is not enabled
                 IDirectResponsWriter output = Response.GetDirectStream();
 
                 //Write response with optional forced length
-                await ResponseBody.WriteEntityAsync(output, hasExplicitLength ? length : -1, buffer);
+                await ResponseBody.WriteEntityAsync(output, buffer);
             }
             else
             {

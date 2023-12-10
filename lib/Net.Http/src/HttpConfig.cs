@@ -44,19 +44,24 @@ namespace VNLib.Net.Http
         /// <summary>
         /// The absolute request entity body size limit in bytes
         /// </summary>
-        public readonly int MaxUploadSize { get; init; } = 5 * 1000 * 1024;
+        public readonly long MaxUploadSize { get; init; } = 5 * 1000 * 1024;
 
         /// <summary>
         /// The maximum size in bytes allowed for an MIME form-data content type upload
         /// </summary>
         /// <remarks>Set to 0 to disabled mulit-part/form-data uploads</remarks>
-        public readonly int MaxFormDataUploadSize { get; init; } = 40 * 1024;  
+        public readonly int MaxFormDataUploadSize { get; init; } = 40 * 1024;
+
+        /// <summary>
+        /// The maximum number of file uploads allowed per request
+        /// </summary>
+        public readonly ushort MaxUploadsPerRequest { get; init; } = 5;
         
         /// <summary>
         /// The maximum response entity size in bytes for which the library will allow compresssing response data
         /// </summary>
         /// <remarks>Set this value to 0 to disable response compression</remarks>
-        public readonly int CompressionLimit { get; init; } = 1000 * 1024;
+        public readonly long CompressionLimit { get; init; } = 1000 * 1024;
 
         /// <summary>
         /// The minimum size (in bytes) of respones data that will be compressed
@@ -101,7 +106,7 @@ namespace VNLib.Net.Http
         /// will be returned and new connections closed.
         /// </summary>
         /// <remarks>Set to 0 to disable request processing. Causes perminant 503 results</remarks>
-        public readonly int MaxOpenConnections { get; init; } = int.MaxValue;      
+        public readonly int MaxOpenConnections { get; init; } = int.MaxValue;
 
         /// <summary>
         /// An <see cref="ILogProvider"/> for writing verbose request logs. Set to <c>null</c> 

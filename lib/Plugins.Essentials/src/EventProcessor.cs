@@ -434,19 +434,84 @@ namespace VNLib.Plugins.Essentials
 
                     //try to open the selected file for reading and allow sharing
                     FileStream fs = new (filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                    long endOffset = checked((long)entity.Server.Range.End);
+                    long startOffset = checked((long)entity.Server.Range.Start);
+
+                    //Follows rfc7233 -> https://www.rfc-editor.org/rfc/rfc7233#section-1.2
+                    switch (entity.Server.Range.RangeType)
+                    {
+                        case HttpRangeType.FullRange:
+                            if (endOffset > fs.Length || endOffset - startOffset < 0)
+                            {
+                                //Set acceptable range size
+                                entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{fs.Length}";
+
+                                //The start offset is greater than the file length, return range not satisfiable
+                                entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
+                            }
+                            else
+                            {
+                                //Seek the stream to the specified start position
+                                fs.Seek(startOffset, SeekOrigin.Begin);
+
+                                //Set range header, by passing the actual full content size
+                                entity.SetContentRangeHeader(entity.Server.Range, fs.Length);
+
+                                //Send the response, with actual response length (diff between stream length and position)
+                                entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs, endOffset - startOffset + 1);
+                            }
+                            break;
+                        case HttpRangeType.FromStart:
+                            if (startOffset > fs.Length)
+                            {
+                                //Set acceptable range size
+                                entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{fs.Length}";
+
+                                //The start offset is greater than the file length, return range not satisfiable
+                                entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
+                            }
+                            else
+                            {
+                                //Seek the stream to the specified start position
+                                fs.Seek(startOffset, SeekOrigin.Begin);
+
+                                //Set range header, by passing the actual full content size
+                                entity.SetContentRangeHeader(entity.Server.Range, fs.Length);
+
+                                //Send the response, with actual response length (diff between stream length and position)
+                                entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs, fs.Length - fs.Position);
+                            }
+                            break;
+
+                        case HttpRangeType.FromEnd:
+                            if (endOffset > fs.Length)
+                            {
+                                //Set acceptable range size
+                                entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{fs.Length}";
+
+                                //The end offset is greater than the file length, return range not satisfiable
+                                entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
+                            }
+                            else
+                            {
+                                //Seek the stream to the specified end position, server auto range will handle the rest
+                                fs.Seek(-endOffset, SeekOrigin.End);
+
+                                //Set range header, by passing the actual full content size
+                                entity.SetContentRangeHeader(entity.Server.Range, fs.Length);
+
+                                //Send the response, with actual response length (diff between stream length and position)
+                                entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs, fs.Length - fs.Position);
+                            }
+                            break;
+                        //No range or invalid range (the server is supposed to ignore invalid ranges)
+                        default:
+                            //send the whole file
+                            entity.CloseResponse(HttpStatusCode.OK, fileType, fs, fs.Length);
+                            break;
+                    }
                     
-                    //Check for range 
-                    if (entity.Server.Range != null && entity.Server.Range.Item1 > 0)
-                    {
-                        //Seek the stream to the specified position
-                        fs.Seek(entity.Server.Range.Item1, SeekOrigin.Begin);
-                        entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs);
-                    }
-                    else
-                    {
-                        //send the whole file
-                        entity.CloseResponse(HttpStatusCode.OK, fileType, fs);
-                    }
                 }
                 else
                 {

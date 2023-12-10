@@ -35,19 +35,13 @@ namespace VNLib.Net.Http.Core.Buffering
         ///<inheritdoc/>
         public int BinSize { get; }
 
-        internal SplitHttpBufferElement(int binSize)
-        {
-            BinSize = binSize;
-        }
+        internal SplitHttpBufferElement(int binSize) => BinSize = binSize;
 
         ///<inheritdoc/>
         public Span<char> GetCharSpan()
         {
-            //Get full buffer span
-            Span<byte> _base = base.GetBinSpan();
-
-            //Upshift to end of bin buffer
-            _base = _base[BinSize..];
+            //Get space available after binary buffer
+            Span<byte> _base = base.GetBinSpan(BinSize);
 
             //Return char span
             return MemoryMarshal.Cast<byte, char>(_base);
@@ -59,8 +53,15 @@ namespace VNLib.Net.Http.Core.Buffering
          */
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override Span<byte> GetBinSpan() => base.GetBinSpan(BinSize);
+        public override Span<byte> GetBinSpan(int offset) => base.GetBinSpan(offset, BinSize);
 
+        /*
+         * Override to trim the bin buffer to the actual size of the 
+         * binary segment of the buffer
+         */
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public override Span<byte> GetBinSpan(int offset, int size) => base.GetBinSpan(offset, Math.Min(BinSize, size));
 
         /// <summary>
         /// Gets the size total of the buffer required for binary data and char data

@@ -375,10 +375,32 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <param name="code">The status code to return to the client</param>
         /// <param name="ct">The response content type</param>
         /// <param name="response">The stream response to return to the user</param>
+        /// <param name="length">The explicit length of the stream</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualClose(HttpEntity entity, HttpStatusCode code, ContentType ct, Stream response, long length)
+        {
+            entity.CloseResponse(code, ct, response, length);
+            return VfReturnType.VirtualSkip;
+        }
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a given status code,
+        /// and memory content to return to the client
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="code">The status code to return to the client</param>
+        /// <param name="ct">The response content type</param>
+        /// <param name="response">The stream response to return to the user</param>
+        /// <param name="length">The explicit length of the stream</param>
         /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
         public static VfReturnType VirtualClose(HttpEntity entity, HttpStatusCode code, ContentType ct, Stream response)
         {
-            entity.CloseResponse(code, ct, response);
+            ArgumentNullException.ThrowIfNull(response, nameof(response));
+            if (!response.CanSeek)
+            {
+                throw new IOException("The stream must be seekable when using implicit length");
+            }
+            entity.CloseResponse(code, ct, response, response.Length);
             return VfReturnType.VirtualSkip;
         }
 

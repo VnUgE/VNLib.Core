@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -29,19 +29,22 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http.Core;
+using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http
-{   
+{
     internal sealed class HttpEvent : MarshalByRefObject, IHttpEvent
     {
         private HttpContext Context;
         private ConnectionInfo _ci;
+        private FileUpload[] _uploads;
 
         internal HttpEvent(HttpContext ctx)
         {
             Context = ctx;
             _ci = new ConnectionInfo(ctx);
-        }
+            _uploads = ctx.Request.CopyUploads();
+        }      
 
         ///<inheritdoc/>
         IConnectionInfo IHttpEvent.Server => _ci;
@@ -50,14 +53,16 @@ namespace VNLib.Net.Http
         HttpServer IHttpEvent.OriginServer => Context.ParentServer;       
 
         ///<inheritdoc/>
-        IReadOnlyDictionary<string, string> IHttpEvent.QueryArgs => Context.Request.RequestBody.QueryArgs;
-        ///<inheritdoc/>
-        IReadOnlyDictionary<string, string> IHttpEvent.RequestArgs => Context.Request.RequestBody.RequestArgs;
-        ///<inheritdoc/>
-        IReadOnlyList<FileUpload> IHttpEvent.Files => Context.Request.RequestBody.Uploads;
+        IReadOnlyDictionary<string, string> IHttpEvent.QueryArgs => Context.Request.QueryArgs;
 
         ///<inheritdoc/>
-        void IHttpEvent.DisableCompression() => Context.ContextFlags.Set(HttpContext.COMPRESSION_DISABLED_MSK);
+        IReadOnlyDictionary<string, string> IHttpEvent.RequestArgs => Context.Request.RequestArgs;
+
+        ///<inheritdoc/>
+        IReadOnlyList<FileUpload> IHttpEvent.Files => _uploads;
+
+        ///<inheritdoc/>
+        void IHttpEvent.SetControlFlag(ulong mask) => Context.ContextFlags.Set(mask);
 
         ///<inheritdoc/>
         void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler)
@@ -79,16 +84,23 @@ namespace VNLib.Net.Http
         void IHttpEvent.CloseResponse(HttpStatusCode code) => Context.Respond(code);
 
         ///<inheritdoc/>
-        void IHttpEvent.CloseResponse(HttpStatusCode code, ContentType type, Stream stream)
+        void IHttpEvent.CloseResponse(HttpStatusCode code, ContentType type, Stream stream, long length)
         {
+            ArgumentNullException.ThrowIfNull(stream, nameof(stream));
+
+            if(length < 0)
+            {
+                throw new ArgumentException("Length must be greater than or equal to 0", nameof(length));
+            }
+
             //Check if the stream is valid. We will need to read the stream, and we will also need to get the length property 
-            if (!stream.CanSeek || !stream.CanRead)
+            if (!stream.CanRead)
             {
                 throw new IOException("The stream.Length property must be available and the stream must be readable");
             }
 
             //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
-            if (stream.Length == 0)
+            if (length == 0)
             {
                 return;
             }
@@ -97,18 +109,24 @@ namespace VNLib.Net.Http
             Context.Response.SetStatusCode(code);
             
             //Finally store the stream input
-            if(!(Context.ResponseBody as ResponseWriter)!.TrySetResponseBody(stream))
+            if(!Context.ResponseBody.TrySetResponseBody(stream, length))
             {
                 throw new InvalidOperationException("A response body has already been set");
             }
 
-            //Set content type header after body
-            Context.Response.Headers[HttpResponseHeader.ContentType] = HttpHelpers.GetContentTypeString(type);
+            //User may want to set the content type header themselves
+            if (type != ContentType.NonSupported)
+            {
+                //Set content type header after body
+                Context.Response.Headers.Set(HttpResponseHeader.ContentType, HttpHelpers.GetContentTypeString(type));
+            }
         }
 
         ///<inheritdoc/>
         void IHttpEvent.CloseResponse(HttpStatusCode code, ContentType type, IMemoryResponseReader entity)
         {
+            ArgumentNullException.ThrowIfNull(entity, nameof(entity));
+
             //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
             if (entity.Remaining == 0)
             {
@@ -118,14 +136,18 @@ namespace VNLib.Net.Http
             //Set status code
             Context.Response.SetStatusCode(code);
 
-            //Finally store the stream input
-            if (!(Context.ResponseBody as ResponseWriter)!.TrySetResponseBody(entity))
+            //Store the memory reader input
+            if (!Context.ResponseBody.TrySetResponseBody(entity))
             {
                 throw new InvalidOperationException("A response body has already been set");
             }
 
-            //Set content type header after body
-            Context.Response.Headers[HttpResponseHeader.ContentType] = HttpHelpers.GetContentTypeString(type);
+            //User may want to set the content type header themselves
+            if (type != ContentType.NonSupported)
+            {
+                //Set content type header after body
+                Context.Response.Headers.Set(HttpResponseHeader.ContentType, HttpHelpers.GetContentTypeString(type));
+            }
         }
 
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
@@ -135,6 +157,7 @@ namespace VNLib.Net.Http
             Context = null;
             _ci.Clear();
             _ci = null;
+            _uploads = null;
         }
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
     }

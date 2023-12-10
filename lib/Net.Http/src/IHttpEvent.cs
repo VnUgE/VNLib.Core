@@ -75,9 +75,12 @@ namespace VNLib.Net.Http
         /// <param name="code">Response status code</param>
         /// <param name="type">MIME ContentType of data</param>
         /// <param name="stream">Data to be sent to client</param>
+        /// <param name="length">Length of data to read from the stream and send to client</param>
         /// <exception cref="IOException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        void CloseResponse(HttpStatusCode code, ContentType type, Stream stream);
+        void CloseResponse(HttpStatusCode code, ContentType type, Stream stream, long length);
 
         /// <summary>
         /// Responds to a client with an in-memory <see cref="IMemoryResponseReader"/> containing data 
@@ -86,6 +89,7 @@ namespace VNLib.Net.Http
         /// <param name="code">The status code to set</param>
         /// <param name="type">The entity content-type</param>
         /// <param name="entity">The in-memory response data</param>
+        /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         void CloseResponse(HttpStatusCode code, ContentType type, IMemoryResponseReader entity);
 
@@ -99,9 +103,9 @@ namespace VNLib.Net.Http
         void DangerousChangeProtocol(IAlternateProtocol protocolHandler);        
 
         /// <summary>
-        /// Disables response compression
+        /// Sets an http server control mask to be applied to the current event flow
         /// </summary>
-        void DisableCompression();
+        void SetControlFlag(ulong mask);
        
     }
 }

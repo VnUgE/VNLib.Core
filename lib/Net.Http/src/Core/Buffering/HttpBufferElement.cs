@@ -24,6 +24,7 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
@@ -41,44 +42,74 @@ namespace VNLib.Net.Http.Core.Buffering
     */
     internal abstract class HttpBufferElement : IHttpBuffer
     {
-        private MemoryHandle Pinned;
-        private int _size;
-        protected Memory<byte> Buffer;
+        private HandleState _handle;
 
-        public virtual void FreeBuffer()
+        public void FreeBuffer()
         {
-            //Unpin and set defaults
-            Pinned.Dispose();
-            Pinned = default;
-            Buffer = default;
-            _size = 0;
+            _handle.Unpin();
+            _handle = default;
         }
 
-        public virtual void SetBuffer(Memory<byte> buffer)
+        public void SetBuffer(Memory<byte> buffer) => _handle = new(buffer);
+
+        ///<inheritdoc/>
+        public int Size => _handle.Size;
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual Span<byte> GetBinSpan(int offset) => GetBinSpan(offset, Size - offset);
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual ref byte DangerousGetBinRef(int offset)
         {
-            //Set mem buffer
-            Buffer = buffer;
-            //Pin buffer and hold handle
-            Pinned = buffer.Pin();
-            //Set size to length of buffer
-            _size = buffer.Length;
+            if (offset >= _handle.Size)
+            {
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            }
+
+            //Get ref to pinned memory
+            ref byte start = ref _handle.GetRef();
+
+            //Add offset to ref
+            return ref Unsafe.Add(ref start, offset);
         }
 
         ///<inheritdoc/>
-        public int Size => _size;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual Memory<byte> GetMemory() => _handle.Memory;
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual Span<byte> GetBinSpan() => MemoryUtil.GetSpan<byte>(ref Pinned, _size);
+        public virtual Span<byte> GetBinSpan(int offset, int size) 
+            => (offset + size) < _handle.Size ? _handle.GetSpan(offset, size) : throw new ArgumentOutOfRangeException(nameof(offset));
 
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual Memory<byte> GetMemory() => Buffer;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected virtual Span<byte> GetBinSpan(int maxSize)
+        private readonly struct HandleState
         {
-            return maxSize > _size ? throw new ArgumentOutOfRangeException(nameof(maxSize)) : MemoryUtil.GetSpan<byte>(ref Pinned, maxSize);
+            private readonly MemoryHandle _handle;
+            private readonly IntPtr _pointer;
+            
+            public readonly int Size;
+            public readonly Memory<byte> Memory;
+
+            public HandleState(Memory<byte> mem)
+            {
+                Memory = mem;
+                Size = mem.Length;
+                _handle = mem.Pin();
+                _pointer = MemoryUtil.GetIntptr(ref _handle);
+            }
+
+            public readonly void Unpin() => _handle.Dispose();
+
+            public readonly Span<byte> GetSpan(int offset, int size)
+            {
+                Debug.Assert((offset + size) < Size, "Call to GetSpan failed because the offset/size was out of valid range");
+                return MemoryUtil.GetSpan<byte>(IntPtr.Add(_pointer, offset), size);
+            }
+
+            public readonly ref byte GetRef() => ref MemoryUtil.GetRef<byte>(_pointer);
         }
     }
 }

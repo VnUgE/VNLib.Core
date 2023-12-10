@@ -26,8 +26,8 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.IO;
@@ -91,9 +91,9 @@ namespace VNLib.Net.Http.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCrossOrigin(this HttpRequest Request)
         {
-            return Request.Origin != null
-                && (!Request.Origin.Authority.Equals(Request.Location.Authority, StringComparison.Ordinal) 
-                || !Request.Origin.Scheme.Equals(Request.Location.Scheme, StringComparison.Ordinal));
+            return Request.State.Origin != null
+                && (!Request.State.Origin.Authority.Equals(Request.State.Location.Authority, StringComparison.Ordinal) 
+                || !Request.State.Origin.Scheme.Equals(Request.State.Location.Scheme, StringComparison.Ordinal));
         }
 
         /// <summary>
@@ -117,22 +117,6 @@ namespace VNLib.Net.Http.Core
         }
 
         /// <summary>
-        /// Initializes the <see cref="HttpRequest"/> for an incomming connection
-        /// </summary>
-        /// <param name="server"></param>
-        /// <param name="ctx">The <see cref="ITransportContext"/> to attach the request to</param>
-        /// <param name="defaultHttpVersion">The default http version</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Initialize(this HttpRequest server, ITransportContext ctx, HttpVersion defaultHttpVersion)
-        {
-            server.LocalEndPoint = ctx.LocalEndPoint;
-            server.RemoteEndPoint = ctx.RemoteEndpoint;
-            //Set to default http version so the response can be configured properly
-            server.HttpVersion = defaultHttpVersion;
-        }
-
-
-        /// <summary>
         /// Initializes the <see cref="HttpRequest.RequestBody"/> for the current request
         /// </summary>
         /// <param name="context"></param>
@@ -145,7 +129,7 @@ namespace VNLib.Net.Http.Core
             ParseQueryArgs(context.Request);
 
             //Decode requests from body
-            return !context.Request.HasEntityBody ? ValueTask.CompletedTask : ParseInputStream(context);
+            return !context.Request.State.HasEntityBody ? ValueTask.CompletedTask : ParseInputStream(context);
         }
 
         private static async ValueTask ParseInputStream(HttpContext context)
@@ -163,7 +147,9 @@ namespace VNLib.Net.Http.Core
             //Get the form data buffer (should be cost free)
             Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
 
-            switch (request.ContentType)
+            Debug.Assert(!formBuffer.IsEmpty, "GetFormDataBuffer() returned an empty memory buffer");
+
+            switch (request.State.ContentType)
             {
                 //CT not supported, dont read it
                 case ContentType.NonSupported:
@@ -185,7 +171,7 @@ namespace VNLib.Net.Http.Core
                 case ContentType.MultiPart:
                     {
                         //Make sure we have a boundry specified
-                        if (string.IsNullOrWhiteSpace(request.Boundry))
+                        if (string.IsNullOrWhiteSpace(request.State.Boundry))
                         {
                             break;
                         }
@@ -198,14 +184,14 @@ namespace VNLib.Net.Http.Core
 
                         //Split the body as a span at the boundries
                         ((ReadOnlySpan<char>)formBody.AsSpan(0, chars))
-                            .Split($"--{request.Boundry}", StringSplitOptions.RemoveEmptyEntries, FormDataBodySplitCb, context);
+                            .Split($"--{request.State.Boundry}", StringSplitOptions.RemoveEmptyEntries, FormDataBodySplitCb, context);
 
                     }
                     break;
                 //Default case is store as a file
                 default:
-                    //add upload 
-                    request.RequestBody.Uploads.Add(new(request.InputStream, false, request.ContentType, null));
+                    //add upload (if it fails thats fine, no memory to clean up)
+                    request.AddFileUpload(new(request.InputStream, false, request.State.ContentType, null));
                     break;
             }
         }
@@ -234,14 +220,8 @@ namespace VNLib.Net.Http.Core
                 //calculate the number of characters 
                 int numChars = encoding.GetCharCount(binBuffer.Span[..read]);
 
-                //Guard for overflow
-                if (((ulong)(numChars + length)) >= int.MaxValue)
-                {
-                    throw new OverflowException();
-                }
-
-                //Re-alloc buffer
-                charBuffer.ResizeIfSmaller(length + numChars);
+                //Re-alloc buffer and guard for overflow
+                charBuffer.ResizeIfSmaller(checked(numChars + length));
 
                 //Decode and update position
                 _ = encoding.GetChars(binBuffer.Span[..read], charBuffer.Span.Slice(length, numChars));
@@ -281,14 +261,14 @@ namespace VNLib.Net.Http.Core
                     break;
                 }
 
-                //Get header data
+                //Get header data before the next crlf
                 ReadOnlySpan<char> header = reader.Window[..index];
 
                 //Split header at colon
-                int colon = header.IndexOf(':');
+                int colon;
 
                 //If no data is available after the colon the header is not valid, so move on to the next body
-                if (colon < 1)
+                if ((colon = header.IndexOf(':')) < 1)
                 {
                     return;
                 }
@@ -299,17 +279,16 @@ namespace VNLib.Net.Http.Core
                 //get the header value
                 ReadOnlySpan<char> headerValue = header[(colon + 1)..];
 
-                //Check for content dispositon header
-                if (headerType == HttpHelpers.ContentDisposition)
+                switch (headerType)
                 {
-                    //Parse the content dispostion
-                    HttpHelpers.ParseDisposition(headerValue, out DispType, out Name, out FileName);
-                }
-                //Check for content type
-                else if (headerType == HttpRequestHeader.ContentType)
-                {
-                    //The header value for content type should be an MIME content type
-                    ctHeaderVal = HttpHelpers.GetContentType(headerValue.Trim().ToString());
+                    case HttpHelpers.ContentDisposition:
+                        //Parse the content dispostion
+                        HttpHelpers.ParseDisposition(headerValue, out DispType, out Name, out FileName);
+                        break;
+                    case HttpRequestHeader.ContentType:
+                        //The header value for content type should be an MIME content type
+                        ctHeaderVal = HttpHelpers.GetContentType(headerValue.Trim());
+                        break;
                 }
 
                 //Shift window to the next line
@@ -321,19 +300,23 @@ namespace VNLib.Net.Http.Core
             //If filename is set, this must be a file
             if (!string.IsNullOrWhiteSpace(FileName))
             {
-                ReadOnlySpan<char> fileData = reader.Window.TrimCRLF();
+                //Only add the upload if the request can accept more uploads, otherwise drop it
+                if (state.Request.CanAddUpload())
+                {
+                    ReadOnlySpan<char> fileData = reader.Window.TrimCRLF();
 
-                FileUpload upload = UploadFromString(fileData, state, FileName, ctHeaderVal);
+                    FileUpload upload = UploadFromString(fileData, state, FileName, ctHeaderVal);
 
-                //Store the file in the uploads 
-                state.Request.RequestBody.Uploads.Add(upload);
+                    //Store the file in the uploads 
+                    state.Request.AddFileUpload(in upload);
+                }
             }
 
             //Make sure the name parameter was set and store the message body as a string
             else if (!string.IsNullOrWhiteSpace(Name))
             {
                 //String data as body
-                state.Request.RequestBody.RequestArgs[Name] = reader.Window.TrimCRLF().ToString();
+                state.Request.RequestArgs[Name] = reader.Window.TrimCRLF().ToString();
             }
         }
 
@@ -387,7 +370,7 @@ namespace VNLib.Net.Http.Core
             ReadOnlySpan<char> value = kvArg.SliceAfterParam('=');
 
             //trim, allocate strings, and store in the request arg dict
-            Request.RequestBody.RequestArgs[key.TrimCRLF().ToString()] = value.TrimCRLF().ToString();
+            Request.RequestArgs[key.TrimCRLF().ToString()] = value.TrimCRLF().ToString();
         }
 
         /*
@@ -404,11 +387,11 @@ namespace VNLib.Net.Http.Core
                 ReadOnlySpan<char> value = queryArgument.SliceAfterParam('=');
 
                 //Insert into dict
-                Request.RequestBody.QueryArgs[key.ToString()] = value.ToString();
+                Request.QueryArgs[key.ToString()] = value.ToString();
             }
 
             //if the request has query args, parse and store them
-            ReadOnlySpan<char> queryString = Request.Location.Query;
+            ReadOnlySpan<char> queryString = Request.State.Location.Query;
 
             if (!queryString.IsEmpty)
             {

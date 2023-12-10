@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -26,10 +26,8 @@ using System;
 using System.Net;
 using System.Runtime.CompilerServices;
 
-using VNLib.Utils.Memory;
-using VNLib.Utils.Extensions;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Response
 {
     /// <summary>
     /// Provides extended funcionality of an <see cref="HttpContext"/>
@@ -59,7 +57,7 @@ namespace VNLib.Net.Http.Core
 
         public const string NO_CACHE_STRING = "no-cache";
         private static readonly string CACHE_CONTROL_VALUE = HttpHelpers.GetCacheString(CacheType.NoCache | CacheType.NoStore);
-        
+
         /// <summary>
         /// Sets CacheControl and Pragma headers to no-cache
         /// </summary>
@@ -70,29 +68,6 @@ namespace VNLib.Net.Http.Core
             Response.Headers[HttpResponseHeader.CacheControl] = CACHE_CONTROL_VALUE;
         }
 
-        /// <summary>
-        /// Sets the content-range header to the specified parameters
-        /// </summary>
-        /// <param name="Response"></param>
-        /// <param name="start">The content range start</param>
-        /// <param name="end">The content range end</param>
-        /// <param name="length">The total content length</param>
-        public static void SetContentRange(this HttpResponse Response, long start, long end, long length)
-        {
-            //Alloc enough space to hold the string
-            Span<char> buffer = stackalloc char[64];
-            ForwardOnlyWriter<char> rangeBuilder = new(buffer);
-            //Build the range header in this format "bytes <begin>-<end>/<total>"
-            rangeBuilder.Append("bytes ");
-            rangeBuilder.Append(start);
-            rangeBuilder.Append('-');
-            rangeBuilder.Append(end);
-            rangeBuilder.Append('/');
-            rangeBuilder.Append(length);
-            //Print to a string and set the content range header
-            Response.Headers[HttpResponseHeader.ContentRange] = rangeBuilder.ToString();
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ReadOnlyMemory<byte> GetRemainingConstrained(this IMemoryResponseReader reader, int limit)
         {
@@ -100,25 +75,6 @@ namespace VNLib.Net.Http.Core
             int size = Math.Min(reader.Remaining, limit);
             //get segment and slice
             return reader.GetMemory()[..size];
-        }
-
-        /// <summary>
-        /// If an end-range is set, returns the remaining bytes up to the end-range, otherwise returns the entire request body length
-        /// </summary>
-        /// <param name="body"></param>
-        /// <param name="range">The data range</param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static long GetResponseLengthWithRange(this IHttpResponseBody body, Tuple<long, long> range)
-        {
-            /*
-             * If end range is defined, then calculate the length of the response
-             * 
-             * The length is the end range minus the start range plus 1 because range
-             * is an inclusve value
-             */
-
-            return range.Item2 < 0 ? body.Length : Math.Min(body.Length, range.Item2 - range.Item1 + 1);
         }
     }
 }

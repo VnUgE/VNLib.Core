@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Net;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -40,54 +39,56 @@ namespace VNLib.Net.Http.Core
 #endif
     {
         public readonly VnWebHeaderCollection Headers;
-        public readonly Dictionary<string, string> Cookies;
         public readonly List<string> Accept;
         public readonly List<string> AcceptLanguage;
-        public readonly HttpRequestBody RequestBody;
-
-        public HttpVersion HttpVersion { get; set; }
-        public HttpMethod Method { get; set; }
-        public string? UserAgent { get; set; }
-        public string? Boundry { get; set; }
-        public ContentType ContentType { get; set; }
-        public string? Charset { get; set; }
-        public Uri Location { get; set; }
-        public Uri? Origin { get; set; }
-        public Uri? Referrer { get; set; }
-        internal bool KeepAlive { get; set; }
-        public IPEndPoint RemoteEndPoint { get; set; }
-        public IPEndPoint LocalEndPoint { get; set; }       
-        public Tuple<long, long>? Range { get; set; }
-
-        /// <summary>
-        /// A value indicating whether the connection contained a request entity body.
-        /// </summary>
-        public bool HasEntityBody { get; set; }
+        public readonly Dictionary<string, string> Cookies;
+        public readonly Dictionary<string, string> RequestArgs;
+        public readonly Dictionary<string, string> QueryArgs;
 
         /// <summary>
         /// A transport stream wrapper that is positioned for reading
         /// the entity body from the input stream
         /// </summary>
-        public HttpInputStream InputStream { get; }
+        public readonly HttpInputStream InputStream;
+
+        /*
+         * Evil mutable structure that stores the http request state. 
+         * 
+         * Readonly ref allows for immutable accessors, but 
+         * explicit initialization function for a mutable ref
+         * that can be stored in local state to ensure proper state
+         * initalization.
+         * 
+         * Reason - easy and mistake free object reuse with safe 
+         * null/default values and easy reset.
+         */
+        private HttpRequestState _state;
+        private readonly FileUpload[] _uploads;
 
         /// <summary>
-        /// A value indicating if the client's request had an Expect-100-Continue header
+        /// Gets a mutable structure ref only used to initalize the request 
+        /// state.
         /// </summary>
-        public bool Expect { get; set; }
+        /// <returns>A mutable reference to the state structure for initalization purposes</returns>
+        internal ref HttpRequestState GetMutableStateForInit() => ref _state;
 
-#nullable disable
-        public HttpRequest(IHttpContextInformation contextInfo)
+        /// <summary>
+        /// A readonly reference to the internal request state once initialized
+        /// </summary>
+        internal ref readonly HttpRequestState State => ref _state;
+
+        public HttpRequest(IHttpContextInformation contextInfo, ushort maxUploads)
         {
             //Create new collection for headers
+            _uploads = new FileUpload[maxUploads];
             Headers = new();
-            //Create new collection for request cookies
             Cookies = new(5, StringComparer.OrdinalIgnoreCase);
-            //New list for accept
-            Accept = new(10);
-            AcceptLanguage = new(10);
+            RequestArgs = new(StringComparer.OrdinalIgnoreCase);
+            QueryArgs = new(StringComparer.OrdinalIgnoreCase);
+            Accept = new(8);
+            AcceptLanguage = new(8);
             //New reusable input stream
             InputStream = new(contextInfo);
-            RequestBody = new();
         }       
 
         void IHttpLifeCycle.OnPrepare()
@@ -98,44 +99,87 @@ namespace VNLib.Net.Http.Core
 
         void IHttpLifeCycle.OnNewConnection()
         { }
+        
+        void IHttpLifeCycle.OnNewRequest()
+        { }
 
+        /// <summary>
+        /// Initializes the <see cref="HttpRequest"/> for an incomming connection
+        /// </summary>
+        /// <param name="ctx">The <see cref="ITransportContext"/> to attach the request to</param>
+        /// <param name="defaultHttpVersion">The default http version</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void OnNewRequest()
+        public void Initialize(ITransportContext ctx, HttpVersion defaultHttpVersion)
         {
-            //Set to defaults
-            ContentType = ContentType.NonSupported;
-            Method = HttpMethod.None;
-            HttpVersion = HttpVersion.None;
+            _state.LocalEndPoint = ctx.LocalEndPoint;
+            _state.RemoteEndPoint = ctx.RemoteEndpoint;
+            //Set to default http version so the response can be configured properly
+            _state.HttpVersion = defaultHttpVersion;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnComplete()
         {
+            FreeUploadBuffers();
+
+            //Clear request state (this is why a struct is used)
+            _state = default;
+
             //release the input stream
             InputStream.OnComplete();
-            RequestBody.OnComplete();
+            //Clear args
+            RequestArgs.Clear();
+            QueryArgs.Clear();
             //Make sure headers, cookies, and accept are cleared for reuse
             Headers.Clear();
             Cookies.Clear();
             Accept.Clear();
             AcceptLanguage.Clear();
-            //Clear request flags
-            this.Expect = false;
-            this.KeepAlive = false;
-            this.HasEntityBody = false;
-            //We need to clean up object refs
-            this.Boundry = default;
-            this.Charset = default;
-            this.LocalEndPoint = default;
-            this.Location = default;
-            this.Origin = default;
-            this.Referrer = default;
-            this.RemoteEndPoint = default;
-            this.UserAgent = default;
-            this.Range = default;
-            //We are all set to reuse the instance
         }
 
+        private void FreeUploadBuffers()
+        {          
+            //Dispose all initialized files 
+            for (int i = 0; i < _uploads.Length; i++)
+            {
+                _uploads[i].Free();
+                _uploads[i] = default;
+            }
+        }
+
+        public void AddFileUpload(in FileUpload upload)
+        {
+            //See if there is room for another upload
+            if (_state.UploadCount < _uploads.Length)
+            {
+                //Add file to upload array and increment upload count
+                _uploads[_state.UploadCount++] = upload;
+            }
+        }
+
+        /// <summary>
+        /// Checks if another upload can be added to the request
+        /// </summary>
+        /// <returns>A value indicating if another file upload can be added to the array</returns>
+        public bool CanAddUpload() => _state.UploadCount < _uploads.Length;
+
+        /// <summary>
+        /// Creates a new array and copies the uploads to it.
+        /// </summary>
+        /// <returns>The array clone of the file uploads</returns>
+        public FileUpload[] CopyUploads()
+        {
+            if (_state.UploadCount == 0)
+            {
+                return Array.Empty<FileUpload>();
+            }
+            //Create new array to hold uploads
+            FileUpload[] uploads = new FileUpload[_state.UploadCount];
+            //Copy uploads to new array
+            Array.Copy(_uploads, uploads, _state.UploadCount);
+            //Return new array
+            return uploads;
+        }
 
 #if DEBUG
 
@@ -154,11 +198,11 @@ namespace VNLib.Net.Http.Core
         public void Compile(ref ForwardOnlyWriter<char> writer)
         {
             //Request line
-            writer.Append(Method.ToString());
+            writer.Append(_state.Method.ToString());
             writer.Append(" ");
-            writer.Append(Location?.PathAndQuery);
+            writer.Append(_state.Location?.PathAndQuery);
             writer.Append(" HTTP/");
-            switch (HttpVersion)
+            switch (_state.HttpVersion)
             {
                 case HttpVersion.None:
                     writer.Append("Unsuppored Http version");
@@ -181,7 +225,7 @@ namespace VNLib.Net.Http.Core
 
             //write host
             writer.Append("Host: ");
-            writer.Append(Location?.Authority);
+            writer.Append(_state.Location?.Authority);
             writer.Append("\r\n");
 
             //Write headers
@@ -226,51 +270,51 @@ namespace VNLib.Net.Http.Core
                 writer.Append("\r\n");
             }
             //Write user agent
-            if (UserAgent != null)
+            if (_state.UserAgent != null)
             {
                 writer.Append("User-Agent: ");
-                writer.Append(UserAgent);
+                writer.Append(_state.UserAgent);
                 writer.Append("\r\n");
             }
             //Write content type
-            if (ContentType != ContentType.NonSupported)
+            if (_state.ContentType != ContentType.NonSupported)
             {
                 writer.Append("Content-Type: ");
-                writer.Append(HttpHelpers.GetContentTypeString(ContentType));
+                writer.Append(HttpHelpers.GetContentTypeString(_state.ContentType));
                 writer.Append("\r\n");
             }
             //Write content length
-            if (ContentType != ContentType.NonSupported)
+            if (_state.ContentType != ContentType.NonSupported)
             {
                 writer.Append("Content-Length: ");
                 writer.Append(InputStream.Length);
                 writer.Append("\r\n");
             }
-            if (KeepAlive)
+            if (_state.KeepAlive)
             {
                 writer.Append("Connection: keep-alive\r\n");
             }
-            if (Expect)
+            if (_state.Expect)
             {
                 writer.Append("Expect: 100-continue\r\n");
             }
-            if(Origin != null)
+            if(_state.Origin != null)
             {
                 writer.Append("Origin: ");
-                writer.Append(Origin.ToString());
+                writer.Append(_state.Origin.ToString());
                 writer.Append("\r\n");
             }
-            if (Referrer != null)
+            if (_state.Referrer != null)
             {
                 writer.Append("Referrer: ");
-                writer.Append(Referrer.ToString());
+                writer.Append(_state.Referrer.ToString());
                 writer.Append("\r\n");
             }
             writer.Append("from ");
-            writer.Append(RemoteEndPoint.ToString());
+            writer.Append(_state.RemoteEndPoint.ToString());
             writer.Append("\r\n");
             writer.Append("Received on ");
-            writer.Append(LocalEndPoint.ToString());
+            writer.Append(_state.LocalEndPoint.ToString());
             //Write end of headers
             writer.Append("\r\n");
         }

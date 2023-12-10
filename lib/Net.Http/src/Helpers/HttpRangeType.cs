@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: DirectStream.cs 
+* File: HttpRangeType.cs 
 *
-* DirectStream.cs is part of VNLib.Net.Http which is part of the larger 
+* HttpRangeType.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -23,17 +23,30 @@
 */
 
 using System;
-using System.Threading.Tasks;
 
-namespace VNLib.Net.Http.Core.Response
+namespace VNLib.Net.Http
 {
-
-    internal sealed class DirectStream : ReusableResponseStream, IDirectResponsWriter
+    /// <summary>
+    /// An enumeration of http range types to observe from http requests
+    /// </summary>
+    [Flags]
+    public enum HttpRangeType
     {
-        ///<inheritdoc/>
-        public Task FlushAsync() => transport!.FlushAsync();
-
-        ///<inheritdoc/>
-        public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer) => transport!.WriteAsync(buffer);
+        /// <summary>
+        /// DO NOT USE, NOT VALID
+        /// </summary>
+        None = 0,
+        /// <summary>
+        /// A range of bytes from the start of the resource
+        /// </summary>
+        FromStart = 1,
+        /// <summary>
+        /// A range of bytes from the end of the resource
+        /// </summary>
+        FromEnd = 2,
+        /// <summary>
+        /// A full range of bytes from the start to the end of the resource
+        /// </summary>
+        FullRange = 3
     }
 }

@@ -183,14 +183,15 @@ namespace VNLib.Plugins.Essentials
         ///<inheritdoc/>
         ///<exception cref="ContentTypeUnacceptableException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void CloseResponse(HttpStatusCode code, ContentType type, Stream stream)
+        public void CloseResponse(HttpStatusCode code, ContentType type, Stream stream, long length)
         {
-            Entity.CloseResponse(code, type, stream);
             //Verify content type matches
             if (!Server.Accepts(type))
             {
                 throw new ContentTypeUnacceptableException("The client does not accept the content type of the response");
             }
+
+            Entity.CloseResponse(code, type, stream, length);
         }
 
         ///<inheritdoc/>
@@ -209,7 +210,7 @@ namespace VNLib.Plugins.Essentials
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DisableCompression() => Entity.DisableCompression();
+        public void SetControlFlag(ulong mask) => Entity.SetControlFlag(mask);
 
         /*
          * Do not directly expose dangerous methods, but allow them to be called

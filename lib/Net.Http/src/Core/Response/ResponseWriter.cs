@@ -31,49 +31,48 @@
 
 using System;
 using System.IO;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
-using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.Compression;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Response
 {
 
     internal sealed class ResponseWriter : IHttpResponseBody
     {
-        private Stream? _streamResponse;
-        private IMemoryResponseReader? _memoryResponse;
-        
+        private ResponsBodyDataState _userState;
+
         ///<inheritdoc/>
-        public bool HasData { get; private set; }
+        public bool HasData => _userState.IsSet;
 
         //Buffering is required when a stream is set
-        bool IHttpResponseBody.BufferRequired => _streamResponse != null;
+        ///<inheritdoc/>
+        public bool BufferRequired => _userState.Stream != null;
 
         ///<inheritdoc/>
-        public long Length { get; private set; }
+        public long Length => _userState.Legnth;
 
         /// <summary>
         /// Attempts to set the response body as a stream
         /// </summary>
         /// <param name="response">The stream response body to read</param>
+        /// <param name="length">Explicit length of the stream</param>
         /// <returns>True if the response entity could be set, false if it has already been set</returns>
-        internal bool TrySetResponseBody(Stream response)
+        internal bool TrySetResponseBody(Stream response, long length)
         {
-            if (HasData)
+            if (_userState.IsSet)
             {
                 return false;
             }
 
-            //Get relative length of the stream, IE the remaning bytes in the stream if position has been modified
-            Length = (response.Length - response.Position);
-            //Store ref to stream
-            _streamResponse = response;
-            //update has-data flag
-            HasData = true;
+            Debug.Assert(response != null, "Stream value is null, illegal operation");
+            Debug.Assert(length > -1, "explicit length passed a negative value, illegal operation");
+
+            _userState = new(response, length);
             return true;
         }
 
@@ -84,138 +83,90 @@ namespace VNLib.Net.Http.Core
         /// <returns>True if the response entity could be set, false if it has already been set</returns>
         internal bool TrySetResponseBody(IMemoryResponseReader response)
         {
-            if (HasData)
+            if (_userState.IsSet)
             {
                 return false;
             }
 
-            //Get length
-            Length = response.Remaining;
-            //Store ref to stream
-            _memoryResponse = response;
-            //update has-data flag
-            HasData = true;
+            Debug.Assert(response != null, "Memory response argument was null and expected a value");
+
+            //Assign user-state
+            _userState = new(response);
             return true;
         }
 
+        private ReadOnlyMemory<byte> _readSegment;
+        private ForwardOnlyMemoryReader<byte> _streamReader;
+
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
-        ReadOnlyMemory<byte> _readSegment;
-
         ///<inheritdoc/>
-        async Task IHttpResponseBody.WriteEntityAsync(IDirectResponsWriter dest, long count, Memory<byte> buffer)
+        public async Task WriteEntityAsync(IDirectResponsWriter dest, Memory<byte> buffer)
         {
-            int remaining;
-
             //Write a sliding window response
-            if (_memoryResponse != null)
+            if (_userState.MemResponse != null)
             {
-                if(count > 0)
+                //Write response body from memory
+                while (_userState.MemResponse.Remaining > 0)
                 {
-                    //Get min value from count/range length
-                    remaining = (int)Math.Min(count, _memoryResponse.Remaining);
+                    //Get remaining segment
+                    _readSegment = _userState.MemResponse.GetMemory();
 
-                    //Write response body from memory
-                    while (remaining > 0)
-                    {
-                        //Get remaining segment
-                        _readSegment = _memoryResponse.GetRemainingConstrained(remaining);
+                    //Write segment to output stream
+                    await dest.WriteAsync(_readSegment);
 
-                        //Write segment to output stream
-                        await dest.WriteAsync(_readSegment);
-
-                        //Advance by the written ammount
-                        _memoryResponse.Advance(_readSegment.Length);
-
-                        //Update remaining
-                        remaining -= _readSegment.Length;
-                    }
-                }
-                else
-                {
-                    //Write response body from memory
-                    while (_memoryResponse.Remaining > 0)
-                    {
-                        //Get remaining segment
-                        _readSegment = _memoryResponse.GetMemory();
-
-                        //Write segment to output stream
-                        await dest.WriteAsync(_readSegment);
-
-                        //Advance by the written amount
-                        _memoryResponse.Advance(_readSegment.Length);
-                    }
+                    //Advance by the written amount
+                    _userState.MemResponse.Advance(_readSegment.Length);
                 }
 
                 //Disposing of memory response can be deferred until the end of the request since its always syncrhonous
             }
             else
             {
-                if (count > 0)
-                {
-                    //Buffer is required, and count must be supplied
+                /*
+                 * When streams are used, callers will submit an explict length value 
+                 * which must be respected. This allows the stream size to differ from
+                 * the actual content length. This is useful for when the stream is
+                 * non-seekable, or does not have a known length
+                 */
 
-                    long total = 0;
-                    int read;
-                    while (true)
+                long total = 0;
+                while (total < Length)
+                {
+                    //get offset wrapper of the total buffer or remaining count
+                    Memory<byte> offset = buffer[..(int)Math.Min(buffer.Length, Length - total)];
+
+                    //read
+                    int read = await _userState.Stream!.ReadAsync(offset);
+
+                    //Guard
+                    if (read == 0)
                     {
-                        //get offset wrapper of the total buffer or remaining count
-                        Memory<byte> offset = buffer[..(int)Math.Min(buffer.Length, count - total)];
-                        //read
-                        read = await _streamResponse!.ReadAsync(offset);
-                        //Guard
-                        if (read == 0)
-                        {
-                            break;
-                        }
-                        //write only the data that was read (slice)
-                        await dest.WriteAsync(offset[..read]);
-                        //Update total
-                        total += read;
+                        break;
                     }
-                }
-                else
-                {
-                    //Read in loop
-                    do
-                    {
-                        //read
-                        int read = await _streamResponse!.ReadAsync(buffer);
-                        //Guard
-                        if (read == 0)
-                        {
-                            break;
-                        }
 
-                        //write only the data that was read (slice)
-                        await dest.WriteAsync(buffer[..read]);
+                    //write only the data that was read (slice)
+                    await dest.WriteAsync(offset[..read]);
 
-                    } while (true);
-                }
+                    //Update total
+                    total += read;
+                } 
 
                 //Try to dispose the response stream asyncrhonously since we are done with it
-                await _streamResponse!.DisposeAsync();
-
-                //remove ref so its not disposed again
-                _streamResponse = null;
+                await _userState!.DisposeStreamAsync();
             }
         }
 
-        ForwardOnlyMemoryReader<byte> _streamReader;
-
         ///<inheritdoc/>        
-        async Task IHttpResponseBody.WriteEntityAsync(IResponseCompressor comp, IResponseDataWriter writer, Memory<byte> buffer)
+        public async Task WriteEntityAsync(IResponseCompressor comp, IResponseDataWriter writer, Memory<byte> buffer)
         {
-            //Locals
-            int read;
-
             //Write a sliding window response
-            if (_memoryResponse != null)
-            {             
-                while (_memoryResponse.Remaining > 0)
+            if (_userState.MemResponse != null)
+            {
+                while (_userState.MemResponse.Remaining > 0)
                 {
                     //Commit output bytes
-                    if (CompressNextSegment(_memoryResponse, comp, writer))
+                    if (CompressNextSegment(_userState.MemResponse, comp, writer))
                     {
                         //Time to flush
                         await writer.FlushAsync(false);
@@ -232,11 +183,14 @@ namespace VNLib.Net.Http.Core
                     buffer = buffer[..comp.BlockSize];
                 }
 
-                //Process in loop
-                do
+                long total = 0;
+                while (total < Length) //If length was reached, break
                 {
+                    //get offset wrapper of the total buffer or remaining count
+                    Memory<byte> offset = buffer[..(int)Math.Min(buffer.Length, Length - total)];
+
                     //read
-                    read = await _streamResponse!.ReadAsync(buffer, CancellationToken.None);
+                    int read = await _userState.Stream!.ReadAsync(offset, CancellationToken.None);
 
                     //Guard
                     if (read == 0)
@@ -244,9 +198,9 @@ namespace VNLib.Net.Http.Core
                         break;
                     }
 
-                    //Track read bytes and loop uil all bytes are read
-                    _streamReader = new(buffer[..read]);
-                  
+                    //Track read bytes and loop until all bytes are read
+                    _streamReader = new(offset[..read]);
+
                     do
                     {
                         //Compress the buffered data and flush if required
@@ -258,18 +212,16 @@ namespace VNLib.Net.Http.Core
 
                     } while (_streamReader.WindowSize > 0);
 
-                } while (true);
+                    //Update total
+                    total += read;                   
+                }
 
                 /*
                  * Try to dispose the response stream asyncrhonously since we can safley here
                  * otherwise it will be deferred until the end of the request cleanup
                  */
-                await _streamResponse!.DisposeAsync();
-
-                //remove ref so its not disposed again
-                _streamResponse = null;
+                await _userState.DisposeStreamAsync();
             }
-
 
             /*
              * Once there is no more response data avialable to compress
@@ -301,7 +253,7 @@ namespace VNLib.Net.Http.Core
 
             } while (true);
         }
-        
+
         private static bool CompressNextSegment(IMemoryResponseReader reader, IResponseCompressor comp, IResponseDataWriter writer)
         {
             //Read the next segment
@@ -338,17 +290,50 @@ namespace VNLib.Net.Http.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnComplete()
         {
-            //Clear has data flag
-            HasData = false;
-            Length = 0;
+            //Clear rseponse containers
+            _userState.Dispose();
+            _userState = default;
+            
             _readSegment = default;
             _streamReader = default;
+        }
 
-            //Clear rseponse containers
-            _streamResponse?.Dispose();
-            _streamResponse = null;
-            _memoryResponse?.Close();
-            _memoryResponse = null;
+        private readonly struct ResponsBodyDataState
+        {
+            public readonly long Legnth;
+            public readonly Stream? Stream;
+            public readonly IMemoryResponseReader? MemResponse;
+            public readonly bool IsSet;
+
+            public ResponsBodyDataState(Stream stream, long length)
+            {
+                Legnth = length;
+                Stream = stream;
+                MemResponse = null;
+                IsSet = true;
+            }
+
+            public ResponsBodyDataState(IMemoryResponseReader reader)
+            {
+                Legnth = reader.Remaining;
+                Stream = null;
+                MemResponse = reader;
+                IsSet = true;
+            }
+
+            public readonly ValueTask DisposeStreamAsync()
+            {
+                return Stream?.DisposeAsync() ?? default;
+            }
+
+            public readonly void Dispose()
+            {
+                if (IsSet)
+                {
+                    Stream?.Dispose();
+                    MemResponse?.Close();
+                }
+            }
         }
     }
 }

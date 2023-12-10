@@ -32,7 +32,7 @@ namespace VNLib.Net.Http.Core.Buffering
     internal interface ISplitHttpBuffer : IHttpBuffer
     {
         /// <summary>
-        /// Gets the character segment of the internal buffer as a span of chars, which may be slower than <see cref="IHttpBuffer.GetBinSpan"/>
+        /// Gets the character segment of the internal buffer as a span of chars, which may be slower than <see cref="IHttpBuffer.GetBinSpan(int)"/>
         /// but still considered a hot-path
         /// </summary>
         /// <returns>The character segment of the internal buffer</returns>

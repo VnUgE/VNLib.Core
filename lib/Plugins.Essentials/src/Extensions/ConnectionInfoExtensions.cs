@@ -30,6 +30,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
+using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
 namespace VNLib.Plugins.Essentials.Extensions
@@ -152,6 +153,61 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static void LastModified(this IConnectionInfo server, DateTimeOffset value)
         {
             server.Headers[HttpResponseHeader.LastModified] = value.ToString("R");
+        }
+
+
+        /// <summary>
+        /// Sets the content-range header to the specified parameters
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="range">The http range used to return set the response header</param>
+        /// <param name="length">The total content length</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static void SetContentRangeHeader(this IHttpEvent entity, in HttpRange range, long length)
+        {
+            if(length < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length), "Length must be greater than or equal to zero");
+            }
+
+            ulong start;
+            ulong end;
+
+            //Determine start and end range from actual length and range
+            switch (range.RangeType)
+            {
+                case HttpRangeType.FullRange:
+                    start = range.Start;
+                    end = range.End;
+                    break;
+
+                case HttpRangeType.FromStart:
+                    start = range.Start;
+                    end = (ulong)length - 1;
+                    break;
+
+                case HttpRangeType.FromEnd:
+                    start = (ulong)length - range.End;
+                    end = (ulong)length - 1;
+                    break;
+
+                default:
+                    throw new InvalidOperationException("Invalid range type");
+            }
+
+
+            //Alloc enough space to hold the string
+            Span<char> buffer = stackalloc char[64];
+            ForwardOnlyWriter<char> rangeBuilder = new(buffer);
+            //Build the range header in this format "bytes <begin>-<end>/<total>"
+            rangeBuilder.Append("bytes ");
+            rangeBuilder.Append(start);
+            rangeBuilder.Append('-');
+            rangeBuilder.Append(end);
+            rangeBuilder.Append('/');
+            rangeBuilder.Append(length);
+            //Print to a string and set the content range header
+            entity.Server.Headers[HttpResponseHeader.ContentRange] = rangeBuilder.ToString();
         }
 
         /// <summary>

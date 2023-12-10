@@ -36,6 +36,7 @@ using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 using VNLib.Net.Http.Core;
 using VNLib.Net.Http.Core.Buffering;
+using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http
 {
@@ -55,8 +56,10 @@ namespace VNLib.Net.Http
             
             try
             {
+                Stream stream = transportContext.ConnectionStream;
+
                 //Set write timeout
-                transportContext.ConnectionStream.WriteTimeout = _config.SendTimeout;
+                stream.WriteTimeout = _config.SendTimeout;
 
                 //Init stream
                 context.InitializeContext(transportContext);
@@ -65,7 +68,7 @@ namespace VNLib.Net.Http
                 do
                 {
                     //Set rx timeout low for initial reading
-                    transportContext.ConnectionStream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
+                    stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
                     
                     //Process the request
                     bool keepAlive = await ProcessHttpEventAsync(context);
@@ -77,10 +80,10 @@ namespace VNLib.Net.Http
                     }
 
                     //Reset inactive keeaplive timeout, when expired the following read will throw a cancealltion exception
-                    transportContext.ConnectionStream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
+                    stream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
                     
                     //"Peek" or wait for more data to begin another request (may throw timeout exception when timmed out)
-                    await transportContext.ConnectionStream.ReadAsync(Memory<byte>.Empty, StopToken!.Token);
+                    await stream.ReadAsync(Memory<byte>.Empty, StopToken!.Token);
                     
                 } while (true);
 
@@ -95,11 +98,11 @@ namespace VNLib.Net.Http
                     context = null;
 
                     //Remove transport timeouts
-                    transportContext.ConnectionStream.ReadTimeout = Timeout.Infinite;
-                    transportContext.ConnectionStream.WriteTimeout = Timeout.Infinite;
+                    stream.ReadTimeout = Timeout.Infinite;
+                    stream.WriteTimeout = Timeout.Infinite;
 
                     //Listen on the alternate protocol
-                    await ap.RunAsync(transportContext.ConnectionStream, StopToken!.Token).ConfigureAwait(false);
+                    await ap.RunAsync(stream, StopToken!.Token).ConfigureAwait(false);
                 }
             }
             //Catch wrapped socket exceptions
@@ -249,7 +252,9 @@ namespace VNLib.Net.Http
 
             //Init parser
             TransportReader reader = new (ctx.GetTransport(), parseBuffer, _config.HttpEncoding, HeaderLineTermination);
-           
+
+            HttpStatusCode code;
+
             try
             {
                 //Get the char span
@@ -257,24 +262,19 @@ namespace VNLib.Net.Http
                 
                 Http11ParseExtensions.Http1ParseState parseState = new();
                 
-                //Parse the request line 
-                HttpStatusCode code = ctx.Request.Http1ParseRequestLine(ref parseState, ref reader, lineBuf, secInfo.HasValue);
-                
-                if (code > 0)
+                if ((code = ctx.Request.Http1ParseRequestLine(ref parseState, ref reader, lineBuf, secInfo.HasValue)) > 0)
                 {
                     return code;
                 }
 
                 //Parse the headers
-                code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, Config, lineBuf);
-                if (code > 0)
+                if ((code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, Config, lineBuf)) > 0)
                 {
                     return code;
                 }
 
                 //Prepare entity body for request
-                code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, Config);
-                if (code > 0)
+                if ((code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, Config)) > 0)
                 {
                     return code;
                 }
@@ -306,18 +306,18 @@ namespace VNLib.Net.Http
                 * connection if parsing the request fails
                 */
                 //Close the connection when we exit
-                context.Response.Headers[HttpResponseHeader.Connection] = "closed";
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
                 //Return status code, if the the expect header was set, return expectation failed, otherwise return the result status code
-                context.Respond(context.Request.Expect ? HttpStatusCode.ExpectationFailed : status);
+                context.Respond(context.Request.State.Expect ? HttpStatusCode.ExpectationFailed : status);
                 //exit and close connection (default result will close the context)
                 return false;
             }
 
             //Make sure the server supports the http version
-            if ((context.Request.HttpVersion & SupportedVersions) == 0)
+            if ((context.Request.State.HttpVersion & SupportedVersions) == 0)
             {
                 //Close the connection when we exit
-                context.Response.Headers[HttpResponseHeader.Connection] = "closed";
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
                 context.Respond(HttpStatusCode.HttpVersionNotSupported);
                 return false;
             }
@@ -326,13 +326,13 @@ namespace VNLib.Net.Http
             if (OpenConnectionCount > _config.MaxOpenConnections)
             {
                 //Close the connection and return 503
-                context.Response.Headers[HttpResponseHeader.Connection] = "closed";
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
                 context.Respond(HttpStatusCode.ServiceUnavailable);
                 return false;
             }
             
             //Store keepalive value from request, and check if keepalives are enabled by the configuration
-            bool keepalive = context.Request.KeepAlive & _config.ConnectionKeepAlive > TimeSpan.Zero;
+            bool keepalive = context.Request.State.KeepAlive & _config.ConnectionKeepAlive > TimeSpan.Zero;
             
             //Set connection header (only for http1.1)
           
@@ -342,19 +342,19 @@ namespace VNLib.Net.Http
                 * Request parsing only sets the keepalive flag if the connection is http1.1
                 * so we can verify this in an assert
                 */
-                Debug.Assert(context.Request.HttpVersion == HttpVersion.Http11, "Request parsing allowed keepalive for a non http1.1 connection, this is a bug");
+                Debug.Assert(context.Request.State.HttpVersion == HttpVersion.Http11, "Request parsing allowed keepalive for a non http1.1 connection, this is a bug");
 
-                context.Response.Headers[HttpResponseHeader.Connection] = "keep-alive";
-                context.Response.Headers[HttpResponseHeader.KeepAlive] = KeepAliveTimeoutHeaderValue;
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "keep-alive");
+                context.Response.Headers.Set(HttpResponseHeader.KeepAlive, KeepAliveTimeoutHeaderValue);
             }
             else
             {
                 //Set connection closed
-                context.Response.Headers[HttpResponseHeader.Connection] = "closed";
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
             }
 
-            //Get the server root for the specified location
-            IWebRoot? root = ServerRoots!.GetValueOrDefault(context.Request.Location.DnsSafeHost, _wildcardRoot);
+            //Get the server root for the specified location or fallback to a wildcard host if one is selected
+            IWebRoot? root = ServerRoots!.GetValueOrDefault(context.Request.State.Location.DnsSafeHost, _wildcardRoot);
             
             if (root == null)
             {
@@ -364,7 +364,7 @@ namespace VNLib.Net.Http
             }
 
             //Check the expect header and return an early status code
-            if (context.Request.Expect)
+            if (context.Request.State.Expect)
             {
                 //send a 100 status code
                 await context.Response.SendEarly100ContinueAsync();

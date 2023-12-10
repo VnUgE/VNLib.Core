@@ -25,6 +25,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -34,27 +35,26 @@ using VNLib.Utils;
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-
 using VNLib.Net.Http.Core.Buffering;
-using VNLib.Net.Http.Core.Response;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Response
 {
     internal sealed class HttpResponse : IHttpLifeCycle
 #if DEBUG
-        ,IStringSerializeable
+        , IStringSerializeable
 #endif
     {
+        private readonly IHttpContextInformation ContextInfo;
         private readonly HashSet<HttpCookie> Cookies;
-        private readonly HeaderDataAccumulator Writer;
-        
         private readonly DirectStream ReusableDirectStream;
         private readonly ChunkedStream ReusableChunkedStream;
-        private readonly IHttpContextInformation ContextInfo;
+        private readonly HeaderDataAccumulator Writer;
+
+        private int _headerWriterPosition;
 
         private bool HeadersSent;
         private bool HeadersBegun;
-      
+
         private HttpStatusCode _code;
 
         /// <summary>
@@ -62,7 +62,12 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         public VnWebHeaderCollection Headers { get; }
 
-        public HttpResponse(IHttpBufferManager manager, IHttpContextInformation ctx)
+        /// <summary>
+        /// The current http status code value
+        /// </summary>
+        internal HttpStatusCode StatusCode => _code;
+
+        public HttpResponse(IHttpContextInformation ctx, IHttpBufferManager manager)
         {
             ContextInfo = ctx;
 
@@ -70,11 +75,11 @@ namespace VNLib.Net.Http.Core
             Headers = new();
             Cookies = new();
 
-            //Create a new reusable writer stream 
-            Writer = new(manager.ResponseHeaderBuffer, ctx);
-            
+            //Init header accumulator
+            Writer = new(manager.ResponseHeaderBuffer, ContextInfo);
+
             //Create a new chunked stream
-            ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ctx);
+            ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ContextInfo);
             ReusableDirectStream = new();
         }
 
@@ -89,7 +94,7 @@ namespace VNLib.Net.Http.Core
             {
                 throw new InvalidOperationException("Status code has already been sent");
             }
-            
+
             _code = code;
         }
 
@@ -147,7 +152,7 @@ namespace VNLib.Net.Http.Core
                 foreach (HttpCookie cookie in Cookies)
                 {
                     writer.Append("Set-Cookie: ");
-                    
+
                     //Write the cookie to the header buffer
                     cookie.Compile(ref writer);
 
@@ -159,7 +164,7 @@ namespace VNLib.Net.Http.Core
             }
 
             //Commit headers
-            Writer.CommitChars(ref writer);
+            Writer.CommitChars(ref writer, ref _headerWriterPosition);
         }
 
         private ValueTask EndFlushHeadersAsync()
@@ -168,10 +173,10 @@ namespace VNLib.Net.Http.Core
             FlushHeaders();
 
             //Last line to end headers
-            Writer.WriteTermination();
+            Writer.WriteTermination(ref _headerWriterPosition);
 
             //Get the response data header block
-            Memory<byte> responseBlock = Writer.GetResponseData();
+            Memory<byte> responseBlock = Writer.GetResponseData(_headerWriterPosition);
 
             //Update sent headers
             HeadersSent = true;
@@ -202,13 +207,13 @@ namespace VNLib.Net.Http.Core
             if (contentLength < 0)
             {
                 //Add chunked header
-                Headers[HttpResponseHeader.TransferEncoding] = "chunked";
-               
+                Headers.Set(HttpResponseHeader.TransferEncoding, "chunked");
+
             }
             else
             {
                 //Add content length header
-                Headers[HttpResponseHeader.ContentLength] = contentLength.ToString();
+                Headers.Set(HttpResponseHeader.ContentLength, contentLength.ToString());
             }
 
             //Flush headers
@@ -223,8 +228,8 @@ namespace VNLib.Net.Http.Core
         public IDirectResponsWriter GetDirectStream()
         {
             //Headers must be sent before getting a direct stream
-            Debug.Assert(HeadersSent);
-            return ReusableDirectStream; 
+            Debug.Assert(HeadersSent, "A call to stream capture was made before the headers were flushed to the transport");
+            return ReusableDirectStream;
         }
 
         /// <summary>
@@ -241,7 +246,7 @@ namespace VNLib.Net.Http.Core
             return ReusableChunkedStream;
         }
 
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Check()
         {
@@ -262,13 +267,16 @@ namespace VNLib.Net.Http.Core
             Check();
 
             //Send a status message with the continue response status
-            Writer.WriteToken(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, HttpStatusCode.Continue));
+            Writer.WriteToken(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, HttpStatusCode.Continue), ref _headerWriterPosition);
 
             //Trailing crlf
-            Writer.WriteTermination();
+            Writer.WriteTermination(ref _headerWriterPosition);
 
             //Get the response data header block
-            Memory<byte> responseBlock = Writer.GetResponseData();
+            Memory<byte> responseBlock = Writer.GetResponseData(_headerWriterPosition);
+
+            //reset after getting the written buffer
+            _headerWriterPosition = 0;
 
             //get base stream
             Stream bs = ContextInfo.GetTransport();
@@ -290,13 +298,6 @@ namespace VNLib.Net.Http.Core
             //If headers haven't been sent yet, send them and there must be no content
             if (!HeadersSent)
             {
-                //RFC 7230, length only set on 200 + but not 204
-                if ((int)_code >= 200 && (int)_code != 204)
-                {
-                    //If headers havent been sent by this stage there is no content, so set length to 0
-                    Headers[HttpResponseHeader.ContentLength] = "0";
-                }
-
                 //Finalize headers
                 return EndFlushHeadersAsync();
             }
@@ -332,8 +333,9 @@ namespace VNLib.Net.Http.Core
         {
             //Default to okay status code
             _code = HttpStatusCode.OK;
-            
-            ReusableChunkedStream.OnNewRequest();
+
+            //Set new header writer on every new request
+            _headerWriterPosition = 0;
         }
 
         ///<inheritdoc/>
@@ -347,11 +349,71 @@ namespace VNLib.Net.Http.Core
             HeadersBegun = false;
             HeadersSent = false;
 
-            //Reset header writer
-            Writer.Reset();
+            //clear header writer
+            _headerWriterPosition = 0;
 
             //Call child lifecycle hooks
             ReusableChunkedStream.OnComplete();
+        }
+
+        private sealed class DirectStream : ReusableResponseStream, IDirectResponsWriter
+        {
+            ///<inheritdoc/>
+            public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer) => transport!.WriteAsync(buffer);
+        }
+
+        /// <summary>
+        /// Writes chunked HTTP message bodies to an underlying streamwriter 
+        /// </summary>
+        private sealed class ChunkedStream : ReusableResponseStream, IResponseDataWriter
+        {
+            private readonly ChunkDataAccumulator _chunkAccumulator;
+
+            /*
+             * Tracks the number of bytes accumulated in the 
+             * current chunk.
+             */
+            private int _accumulatedBytes;
+
+            public ChunkedStream(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
+                => _chunkAccumulator = new(buffer, context);
+
+            #region Hooks
+
+            ///<inheritdoc/>
+            public void OnComplete() => _accumulatedBytes = 0;
+
+            ///<inheritdoc/>
+            public Memory<byte> GetMemory() => _chunkAccumulator.GetRemainingSegment(_accumulatedBytes);
+
+            ///<inheritdoc/>
+            public int Advance(int written)
+            {
+                //Advance the accumulator
+                _accumulatedBytes += written;
+                return _chunkAccumulator.GetRemainingSegmentSize(_accumulatedBytes);
+            }
+
+            ///<inheritdoc/>
+            public ValueTask FlushAsync(bool isFinal)
+            {
+                /*
+                 * We need to know when the final chunk is being flushed so we can
+                 * write the final termination sequence to the transport.
+                 */
+
+                Memory<byte> chunkData = isFinal ?
+                    _chunkAccumulator.GetFinalChunkData(_accumulatedBytes) :
+                    _chunkAccumulator.GetChunkData(_accumulatedBytes);
+
+                //Reset accumulator
+                _accumulatedBytes = 0;
+
+                //Write remaining data to stream
+                return transport!.WriteAsync(chunkData, CancellationToken.None);
+            }
+
+            #endregion
         }
 
 #if DEBUG
@@ -364,7 +426,7 @@ namespace VNLib.Net.Http.Core
             using IMemoryHandle<char> buffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
 
             //Writer
-            ForwardOnlyWriter<char> writer = new (buffer.Span);
+            ForwardOnlyWriter<char> writer = new(buffer.Span);
             Compile(ref writer);
             return writer.ToString();
         }

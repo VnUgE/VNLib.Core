@@ -23,78 +23,42 @@
 */
 
 using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 using VNLib.Utils.IO;
+using VNLib.Utils.Memory;
+
 using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core.Response
 {
+
     /// <summary>
     /// A specialized <see cref="IDataAccumulator{T}"/> for buffering data 
     /// in Http/1.1 chunks
     /// </summary>
-    internal class ChunkDataAccumulator : IDataAccumulator<byte>
+    internal readonly struct ChunkDataAccumulator
     {
-        public const int RESERVED_CHUNK_SUGGESTION = 32;
-       
-        private readonly int ReservedSize;
+        /*
+         * The number of bytes to reserve at the beginning of the buffer
+         * for the chunk size segment. This is the maximum size of the
+         */
+        public const int ReservedSize = 16;
+
         private readonly IHttpContextInformation Context;
         private readonly IChunkAccumulatorBuffer Buffer;
-        
+
+        /*
+        * Must always leave enough room for trailing crlf at the end of 
+        * the buffer
+        */
+        private readonly int TotalMaxBufferSize => Buffer.Size - (int)Context.CrlfSegment.Length;
 
         public ChunkDataAccumulator(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
         {
-            ReservedSize = RESERVED_CHUNK_SUGGESTION;
-
             Context = context;
             Buffer = buffer;
-        }
-      
-        /*
-         * Reserved offset is a pointer to the first byte of the reserved chunk window
-         * that actually contains the size segment data.
-         */
-      
-        private int _reservedOffset;
-
-        ///<inheritdoc/>
-        public int RemainingSize => Buffer.Size - AccumulatedSize;
-
-        ///<inheritdoc/>
-        Span<byte> IDataAccumulator<byte>.Remaining => Buffer.GetBinSpan()[AccumulatedSize..];
-
-        ///<inheritdoc/>
-        Span<byte> IDataAccumulator<byte>.Accumulated => Buffer.GetBinSpan()[_reservedOffset.. AccumulatedSize];
-
-        ///<inheritdoc/>
-        public int AccumulatedSize { get; set; }
-
-        ///<inheritdoc/>
-        public void Advance(int count) => AccumulatedSize += count;
-
-        /// <summary>
-        /// Gets the remaining segment of the buffer to write chunk data to.
-        /// </summary>
-        /// <returns>The chunk buffer to write data to</returns>
-        public Memory<byte> GetRemainingSegment()
-        {
-            /*
-             * We need to return the remaining segment of the buffer, the segment after the 
-             * accumulated chunk data, but before the trailing crlf.
-             */
-
-            //Get the remaining buffer segment
-            return Buffer.GetMemory().Slice(AccumulatedSize, RemainingSize - Context.EncodedSegments.CrlfBytes.Length);
-        }
-
-        /// <summary>
-        /// Calculates the usable remaining size of the chunk buffer.
-        /// </summary>
-        /// <returns>The number of bytes remaining in the buffer</returns>
-        public int GetRemainingSegmentSize()
-        {
-            //Remaining size accounting for the trailing crlf
-            return RemainingSize - Context.EncodedSegments.CrlfBytes.Length;
         }
 
         /// <summary>
@@ -102,15 +66,16 @@ namespace VNLib.Net.Http.Core.Response
         /// to the client. This also resets the accumulator.
         /// </summary>
         /// <returns></returns>
-        public Memory<byte> GetChunkData()
+        public readonly Memory<byte> GetChunkData(int accumulatedSize)
         {
             //Update the chunk size
-            UpdateChunkSize();
+            int reservedOffset = UpdateChunkSize(Buffer, Context, accumulatedSize);
+            int endPtr = GetPointerToEndOfUsedBuffer(accumulatedSize);
 
             //Write trailing chunk delimiter
-            this.Append(Context.EncodedSegments.CrlfBytes.Span);
+            endPtr += Context.CrlfSegment.DangerousCopyTo(Buffer, endPtr);
 
-            return GetCompleteChunk();
+            return Buffer.GetMemory()[reservedOffset..endPtr];
         }
 
         /// <summary>
@@ -118,46 +83,58 @@ namespace VNLib.Net.Http.Core.Response
         /// to the client.
         /// </summary>
         /// <returns></returns>
-        public Memory<byte> GetFinalChunkData()
+        public readonly Memory<byte> GetFinalChunkData(int accumulatedSize)
         {
             //Update the chunk size
-            UpdateChunkSize();
+            int reservedOffset = UpdateChunkSize(Buffer, Context, accumulatedSize);
+            int endPtr = GetPointerToEndOfUsedBuffer(accumulatedSize);
 
             //Write trailing chunk delimiter
-            this.Append(Context.EncodedSegments.CrlfBytes.Span);
+            endPtr += Context.CrlfSegment.DangerousCopyTo(Buffer, endPtr);
 
             //Write final chunk to the end of the accumulator
-            this.Append(Context.EncodedSegments.FinalChunkTermination.Span);
+            endPtr += Context.FinalChunkSegment.DangerousCopyTo(Buffer, endPtr);
 
-            return GetCompleteChunk();
+            return Buffer.GetMemory()[reservedOffset..endPtr];
         }
+
+        /// <summary>
+        /// Gets the remaining segment of the buffer to write chunk data to.
+        /// </summary>
+        /// <returns>The chunk buffer to write data to</returns>
+        public readonly Memory<byte> GetRemainingSegment(int accumulatedSize)
+        {
+            int endOfDataOffset = GetPointerToEndOfUsedBuffer(accumulatedSize);
+            return Buffer.GetMemory()[endOfDataOffset..TotalMaxBufferSize];
+        }
+
+        /// <summary>
+        /// Calculates the usable remaining size of the chunk buffer.
+        /// </summary>
+        /// <returns>The number of bytes remaining in the buffer</returns>
+        public readonly int GetRemainingSegmentSize(int accumulatedSize)
+            => TotalMaxBufferSize - GetPointerToEndOfUsedBuffer(accumulatedSize);
 
 
         /*
          * Completed chunk is the segment of the buffer that contains the size segment
          * followed by the accumulated chunk data, and the trailing crlf.
          * 
-         * AccumulatedSize points to the end of the accumulated chunk data. The reserved
-         * offset points to the start of the size segment.
+         * The accumulated data position is the number of chunk bytes accumulated
+         * in the data segment. This does not include the number of reserved bytes 
+         * are before it.
+         * 
+         * We can get the value that points to the end of the used buffer 
+         * and use the memory range operator to get the segment from the reserved 
+         * segment, to the actual end of the data segment.
          */
-        private Memory<byte> GetCompleteChunk() => Buffer.GetMemory()[_reservedOffset..AccumulatedSize];
-      
+        private readonly Memory<byte> GetCompleteChunk(int reservedOffset, int accumulatedSize)
+        {
+            return Buffer.GetMemory()[reservedOffset..accumulatedSize];
+        }
 
-        private void InitReserved()
-        {
-            //First reserve the chunk window by advancing the accumulator to the reserved size
-            Advance(ReservedSize);
-        }
-       
-        ///<inheritdoc/>
-        public void Reset()
-        {
-            //zero offsets
-            _reservedOffset = 0;
-            AccumulatedSize = 0;
-            //Init reserved segment
-            InitReserved();
-        }
+
+        private static int GetPointerToEndOfUsedBuffer(int accumulatedSize) => accumulatedSize + ReservedSize;
 
         /*
          * UpdateChunkSize method updates the running total of the chunk size
@@ -177,29 +154,32 @@ namespace VNLib.Net.Http.Core.Response
          * [...0a\r\n] [10 bytes of data] [eoc]
          */
 
-        private void UpdateChunkSize()
+        private static int UpdateChunkSize(IChunkAccumulatorBuffer buffer, IHttpContextInformation context, int chunkSize)
         {
-            const int CharBufSize = 2 * sizeof(int);
+            const int CharBufSize = 2 * sizeof(int) + 2; //2 hex chars per byte + crlf
 
             /*
              * Alloc stack buffer to store chunk size hex chars
              * the size of the buffer should be at least the number 
              * of bytes of the max chunk size
              */
-            Span<char> s = stackalloc char[CharBufSize];
-            
-            //Chunk size is the accumulated size without the reserved segment
-            int chunkSize = (AccumulatedSize - ReservedSize);
+            Span<char> intFormatBuffer = stackalloc char[CharBufSize];
+
+
+            //temp buffer to store binary encoded data in
+            Span<byte> chunkSizeBinBuffer = stackalloc byte[ReservedSize];
 
             //format the chunk size
-            chunkSize.TryFormat(s, out int written, "x");
+            bool formatSuccess = chunkSize.TryFormat(intFormatBuffer, out int bytesFormatted, "x", null);
+            Debug.Assert(formatSuccess, "Failed to write integer chunk size to temp buffer");
 
-            //temp buffer to store encoded data in
-            Span<byte> encBuf = stackalloc byte[ReservedSize];
+            //Write the trailing crlf to the end of the encoded chunk size
+            intFormatBuffer[bytesFormatted++] = '\r';
+            intFormatBuffer[bytesFormatted++] = '\n';
+
             //Encode the chunk size chars
-            int initOffset = Context.Encoding.GetBytes(s[..written], encBuf);
-
-            Span<byte> encoded = encBuf[..initOffset];
+            int totalChunkBufferBytes = context.Encoding.GetBytes(intFormatBuffer[..bytesFormatted], chunkSizeBinBuffer);
+            Debug.Assert(totalChunkBufferBytes <= ReservedSize, "Chunk size buffer offset is greater than reserved size. Encoding failure");
 
             /*
              * We need to calcuate how to store the encoded buffer directly
@@ -209,31 +189,15 @@ namespace VNLib.Net.Http.Core.Response
              * the exact size required to store the encoded chunk size
              */
 
-            _reservedOffset = (ReservedSize - (initOffset + Context.EncodedSegments.CrlfBytes.Length));
-            
-            Span<byte> upshifted = Buffer.GetBinSpan()[_reservedOffset..ReservedSize];
+            int reservedOffset = ReservedSize - totalChunkBufferBytes;
 
-            //First write the chunk size
-            encoded.CopyTo(upshifted);
+            //Copy encoded chunk size to the reserved segment
+            ref byte reservedSegRef = ref buffer.DangerousGetBinRef(reservedOffset);
+            ref byte chunkSizeBufRef = ref MemoryMarshal.GetReference(chunkSizeBinBuffer);
 
-            //Upshift again to write the crlf
-            upshifted = upshifted[initOffset..];
+            MemoryUtil.Memmove(ref chunkSizeBufRef, 0, ref reservedSegRef, 0, (uint)totalChunkBufferBytes);
 
-            //Copy crlf
-            Context.EncodedSegments.CrlfBytes.Span.CopyTo(upshifted);
-        }
-
-
-        public void OnNewRequest()
-        {
-            InitReserved();
-        }
-
-        public void OnComplete()
-        {
-            //Zero offsets
-            _reservedOffset = 0;
-            AccumulatedSize = 0;
+            return reservedOffset;
         }
     }
 }

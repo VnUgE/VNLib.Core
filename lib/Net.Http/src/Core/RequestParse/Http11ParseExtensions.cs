@@ -69,9 +69,16 @@ namespace VNLib.Net.Http.Core
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         public static HttpStatusCode Http1ParseRequestLine(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, Span<char> lineBuf, bool usingTls)
         {
+            /*
+             * Evil mutable struct, get a local mutable reference to the request's 
+             * state structure in order to initialize state variables. 
+             */
+            ref HttpRequestState reqState = ref Request.GetMutableStateForInit();
+
             //Locals
             ERRNO requestResult;
             int index, endloc;
+            ReadOnlySpan<char> requestLine, pathAndQuery;
 
             //Read the start line
             requestResult = reader.ReadLine(lineBuf);
@@ -84,7 +91,7 @@ namespace VNLib.Net.Http.Core
             }
             
             //true up the request line to actual size
-            ReadOnlySpan<char> requestLine = lineBuf[..(int)requestResult].Trim();
+            requestLine = lineBuf[..(int)requestResult].Trim();
 
             //Find the first white space character ("GET / HTTP/1.1")
             index = requestLine.IndexOf(' ');
@@ -92,50 +99,44 @@ namespace VNLib.Net.Http.Core
             {
                 return HttpStatusCode.BadRequest;
             }
-            
-            //Decode the verb (function requires the string be the exact characters of the request method)
-            Request.Method = HttpHelpers.GetRequestMethod(requestLine[0..index]);
 
-            //Make sure the method is supported
-            if (Request.Method == HttpMethod.None)
+            //Decode the verb (function requires the string be the exact characters of the request method)
+            if ((reqState.Method = HttpHelpers.GetRequestMethod(requestLine[0..index])) == HttpMethod.None)
             {
                 return HttpStatusCode.MethodNotAllowed;
             }
             
             //location string should be from end of verb to HTTP/ NOTE: Only supports http... this is an http server
-            endloc = requestLine.LastIndexOf(" HTTP/", StringComparison.OrdinalIgnoreCase);
-
+            
             //Client must specify an http version prepended by a single whitespace(rfc2612)
-            if (endloc == -1)
+            if ((endloc = requestLine.LastIndexOf(" HTTP/", StringComparison.OrdinalIgnoreCase)) == -1)
             {
                 return HttpStatusCode.HttpVersionNotSupported;
             }
             
-            //Try to parse the version and only accept the 3 major versions of http
-            Request.HttpVersion = HttpHelpers.ParseHttpVersion(requestLine[endloc..]);
-            //Check to see if the version was parsed succesfully
-            if (Request.HttpVersion == HttpVersion.None)
+            //Try to parse the requested http version, only supported versions
+            if ((reqState.HttpVersion = HttpHelpers.ParseHttpVersion(requestLine[endloc..])) == HttpVersion.None)
             {
                 //Return not supported
                 return HttpStatusCode.HttpVersionNotSupported;
             }
 
             //Set keepalive flag if http11
-            Request.KeepAlive = Request.HttpVersion == HttpVersion.Http11;
+            reqState.KeepAlive = reqState.HttpVersion == HttpVersion.Http11;
 
             //Get the location segment from the request line
-            ReadOnlySpan<char> paq = requestLine[(index + 1)..endloc].TrimCRLF();
+            pathAndQuery = requestLine[(index + 1)..endloc].TrimCRLF();
 
             //Process an absolute uri, 
-            if (paq.Contains("://", StringComparison.Ordinal))
+            if (pathAndQuery.Contains("://", StringComparison.Ordinal))
             {
                 //Convert the location string to a .net string and init the location builder (will perform validation when the Uri propery is used)
-                parseState.Location = new(paq.ToString());
+                parseState.Location = new(pathAndQuery.ToString());
                 parseState.IsAbsoluteRequestUrl = true;
                 return 0;
             }
             //Try to capture a realative uri
-            else if (paq.Length > 0 && paq[0] == '/')
+            else if (pathAndQuery.Length > 0 && pathAndQuery[0] == '/')
             {
                 //Create a default location uribuilder
                 parseState.Location = new()
@@ -145,19 +146,19 @@ namespace VNLib.Net.Http.Core
                 };
 
                 //Need to manually parse the query string
-                int q = paq.IndexOf('?');
+                int q = pathAndQuery.IndexOf('?');
 
                 //has query?
                 if (q == -1)
                 {
-                    parseState.Location.Path = paq.ToString();
+                    parseState.Location.Path = pathAndQuery.ToString();
                 }
                 //Does have query argument
                 else
                 {
                     //separate the path from the query
-                    parseState.Location.Path = paq[0..q].ToString();
-                    parseState.Location.Query = paq[(q + 1)..].ToString();
+                    parseState.Location.Path = pathAndQuery[0..q].ToString();
+                    parseState.Location.Query = pathAndQuery[(q + 1)..].ToString();
                 }
                 return 0;
             }
@@ -177,6 +178,12 @@ namespace VNLib.Net.Http.Core
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         public static HttpStatusCode Http1ParseHeaders(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, in HttpConfig Config, Span<char> lineBuf)
         {
+            /*
+            * Evil mutable struct, get a local mutable reference to the request's 
+            * state structure in order to initialize state variables. 
+            */
+            ref HttpRequestState reqState = ref Request.GetMutableStateForInit();
+
             try
             {
                 int headerCount = 0, colon;
@@ -263,7 +270,7 @@ namespace VNLib.Net.Http.Core
                         case HttpRequestHeader.Connection:
                             {
                                 //Update keepalive, if the connection header contains "closed" and with the current value of keepalive
-                                Request.KeepAlive &= !requestHeaderValue.Contains("close", StringComparison.OrdinalIgnoreCase);
+                                reqState.KeepAlive &= !requestHeaderValue.Contains("close", StringComparison.OrdinalIgnoreCase);
 
                                 //Also store the connecion header into the store
                                 Request.Headers.Add(HttpRequestHeader.Connection, requestHeaderValue.ToString());
@@ -277,11 +284,11 @@ namespace VNLib.Net.Http.Core
                                     return HttpStatusCode.UnsupportedMediaType;
                                 }
 
-                                Request.Boundry = boundry;
-                                Request.Charset = charset;
+                                reqState.Boundry = boundry;
+                                reqState.Charset = charset;
 
                                 //Get the content type enum from mime type
-                                Request.ContentType = HttpHelpers.GetContentType(ct);
+                                reqState.ContentType = HttpHelpers.GetContentType(ct);
                             }
                             break;
                         case HttpRequestHeader.ContentLength:
@@ -318,11 +325,11 @@ namespace VNLib.Net.Http.Core
                                 //Split the host value by the port parameter 
                                 ReadOnlySpan<char> port = requestHeaderValue.SliceAfterParam(':').Trim();
 
-                                //Slicing beofre the colon should always provide a useable hostname, so allocate a string for it
-                                string host = requestHeaderValue.SliceBeforeParam(':').Trim().ToString();
+                                //Slicing before the colon should always provide a useable hostname, so allocate a string for it
+                                string hostOnly = requestHeaderValue.SliceBeforeParam(':').Trim().ToString();
                                 
                                 //Verify that the host is usable
-                                if (Uri.CheckHostName(host) == UriHostNameType.Unknown)
+                                if (Uri.CheckHostName(hostOnly) == UriHostNameType.Unknown)
                                 {
                                     return HttpStatusCode.BadRequest;
                                 }
@@ -330,14 +337,14 @@ namespace VNLib.Net.Http.Core
                                 //Verify that the host matches the host header if absolue uri is set
                                 if (parseState.IsAbsoluteRequestUrl)
                                 {
-                                    if (!host.Equals(parseState.Location!.Host, StringComparison.OrdinalIgnoreCase))
+                                    if (!hostOnly.Equals(parseState.Location!.Host, StringComparison.OrdinalIgnoreCase))
                                     {
                                         return HttpStatusCode.BadRequest;
                                     }
                                 }
 
                                 //store the host value
-                                parseState.Location!.Host = host;
+                                parseState.Location!.Host = hostOnly;
                                 
                                 //If the port span is empty, no colon was found or the port is invalid
                                 if (!port.IsEmpty)
@@ -350,6 +357,9 @@ namespace VNLib.Net.Http.Core
                                     //Store port
                                     parseState.Location.Port = p;
                                 }
+
+                                //Set host header in collection also
+                                Request.Headers.Add(HttpRequestHeader.Host, requestHeaderValue.ToString());
                             }
                             break;
                         case HttpRequestHeader.Cookie:
@@ -381,51 +391,85 @@ namespace VNLib.Net.Http.Core
                                 //Check the referer header and capture its uri instance, it should be absolutely parseable
                                 if (!requestHeaderValue.IsEmpty && Uri.TryCreate(requestHeaderValue.ToString(), UriKind.Absolute, out Uri? refer))
                                 {
-                                    Request.Referrer = refer;
+                                    reqState.Referrer = refer;
                                 }
                             }
                             break;
                         case HttpRequestHeader.Range:
                             {
+                                //Use rfc 7233 -> https://www.rfc-editor.org/rfc/rfc7233
+
+                                //MUST ignore range header if not a GET method
+                                if(reqState.Method != HttpMethod.GET)
+                                {
+                                    //Ignore the header and continue parsing headers
+                                    break;
+                                }
+
                                 //See if range bytes value has been set
                                 ReadOnlySpan<char> rawRange = requestHeaderValue.SliceAfterParam("bytes=").TrimCRLF();
 
                                 //Make sure the bytes parameter is set
                                 if (rawRange.IsEmpty)
                                 {
+                                    //Ignore the header and continue parsing headers
                                     break;
                                 }
 
                                 //Get start range
                                 ReadOnlySpan<char> startRange = rawRange.SliceBeforeParam('-');
-
                                 //Get end range (empty if no - exists)
                                 ReadOnlySpan<char> endRange = rawRange.SliceAfterParam('-');
 
-                                //See if a range end is specified
-                                if (endRange.IsEmpty)
+                                //try to parse the range values
+                                bool hasStartRange = ulong.TryParse(startRange, out ulong startRangeValue);
+                                bool hasEndRange = ulong.TryParse(endRange, out ulong endRangeValue);
+
+                                /*
+                                 * The range header may be a range-from-end type request that 
+                                 * looks like this:
+                                 * 
+                                 * bytes=-500
+                                 * 
+                                 * or a range-from-start type request that looks like this:
+                                 * bytes=500-
+                                 * 
+                                 * or a full range of bytes
+                                 * bytes=0-500
+                                 */
+
+                                if (hasEndRange)
                                 {
-                                    //No end range specified, so only range start
-                                    if (long.TryParse(startRange, out long start) && start > -1)
+                                    if (hasStartRange)
                                     {
-                                        //Create new range 
-                                        Request.Range = new(start, -1);
-                                        break;
+                                        //Validate explicit range
+                                        if(!HttpRange.IsValidRangeValue(startRangeValue, endRangeValue))
+                                        {
+                                            //Ignore and continue parsing headers
+                                            break;
+                                        }
+
+                                        //Set full http range
+                                        reqState.Range = new(startRangeValue, endRangeValue, HttpRangeType.FullRange);
+                                    }
+                                    else
+                                    {
+                                        //From-end range
+                                        reqState.Range = new(0, endRangeValue, HttpRangeType.FromEnd);
                                     }
                                 }
-                                //Range has a start and end
-                                else if (long.TryParse(startRange, out long start) && long.TryParse(endRange, out long end) && end > -1)
+                                else if(hasStartRange)
                                 {
-                                    //get start and end components from range header
-                                    Request.Range = new(start, end);
-                                    break;
+                                    //Valid start range only, so from start range
+                                    reqState.Range = new(startRangeValue, 0, HttpRangeType.FromStart);
                                 }
+                                //No valid range values
                             }
-                            //Could not parse start range from header
-                            return HttpStatusCode.RequestedRangeNotSatisfiable;
+                           
+                            break;
                         case HttpRequestHeader.UserAgent:
                             //Store user-agent
-                            Request.UserAgent = requestHeaderValue.IsEmpty ? string.Empty : requestHeaderValue.TrimCRLF().ToString();
+                            reqState.UserAgent = requestHeaderValue.IsEmpty ? string.Empty : requestHeaderValue.TrimCRLF().ToString();
                             break;
                         //Special code for origin header
                         case HttpHelpers.Origin:
@@ -436,13 +480,13 @@ namespace VNLib.Net.Http.Core
                                 //Origin headers should always be absolute address "parsable"
                                 if (Uri.TryCreate(origin, UriKind.Absolute, out Uri? org))
                                 {
-                                    Request.Origin = org;
+                                    reqState.Origin = org;
                                 }
                             }
                             break;
                         case HttpRequestHeader.Expect:
                             //Accept 100-continue for the Expect header value
-                            Request.Expect = requestHeaderValue.Equals("100-continue", StringComparison.OrdinalIgnoreCase);
+                            reqState.Expect = requestHeaderValue.Equals("100-continue", StringComparison.OrdinalIgnoreCase);
                             break;
                         default:
                             //By default store the header in the request header store
@@ -454,7 +498,7 @@ namespace VNLib.Net.Http.Core
                 } while (true);
 
                 //If request is http11 then host is required
-                if (Request.HttpVersion == HttpVersion.Http11 && !hostFound)
+                if (reqState.HttpVersion == HttpVersion.Http11 && !hostFound)
                 {
                     return HttpStatusCode.BadRequest;
                 }
@@ -474,9 +518,9 @@ namespace VNLib.Net.Http.Core
             {
                 return HttpStatusCode.BadRequest;
             }
-            
+
             //Store the finalized location
-            Request.Location = parseState.Location.Uri;
+            reqState.Location = parseState.Location.Uri;
             
             return 0;
         }
@@ -492,19 +536,25 @@ namespace VNLib.Net.Http.Core
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         public static HttpStatusCode Http1PrepareEntityBody(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, in HttpConfig Config)
         {
+            /*
+            * Evil mutable struct, get a local mutable reference to the request's 
+            * state structure in order to initialize state variables. 
+            */
+            ref HttpRequestState reqState = ref Request.GetMutableStateForInit();
+
             //If the content type is multipart, make sure its not too large to ingest
-            if (Request.ContentType == ContentType.MultiPart && parseState.ContentLength > Config.MaxFormDataUploadSize)
+            if (reqState.ContentType == ContentType.MultiPart && parseState.ContentLength > Config.MaxFormDataUploadSize)
             {
                 return HttpStatusCode.RequestEntityTooLarge;
             }
 
             //Only ingest the rest of the message body if the request is not a head, get, or trace methods
-            if ((Request.Method & (HttpMethod.GET | HttpMethod.HEAD | HttpMethod.TRACE)) != 0)
+            if ((reqState.Method & (HttpMethod.GET | HttpMethod.HEAD | HttpMethod.TRACE)) != 0)
             {
                 //Bad format to include a message body with a GET, HEAD, or TRACE request
                 if (parseState.ContentLength > 0)
                 {
-                    Config.ServerLog.Debug("Message body received from {ip} with GET, HEAD, or TRACE request, was considered an error and the request was dropped", Request.RemoteEndPoint);
+                    Config.ServerLog.Debug("Message body received from {ip} with GET, HEAD, or TRACE request, was considered an error and the request was dropped", reqState.RemoteEndPoint);
                     return HttpStatusCode.BadRequest;
                 }
                 else
@@ -520,7 +570,7 @@ namespace VNLib.Net.Http.Core
             if (!transfer.IsEmpty && transfer.Contains("chunked", StringComparison.OrdinalIgnoreCase))
             {
                 //Not a valid http version for chunked transfer encoding
-                if (Request.HttpVersion != HttpVersion.Http11)
+                if (reqState.HttpVersion != HttpVersion.Http11)
                 {
                     return HttpStatusCode.BadRequest;
                 }
@@ -533,7 +583,7 @@ namespace VNLib.Net.Http.Core
                  */
                 if (parseState.ContentLength > 0)
                 {
-                    Config.ServerLog.Debug("Possible attempted desync, Content length + chunked encoding specified. RemoteEP: {ip}", Request.RemoteEndPoint);
+                    Config.ServerLog.Debug("Possible attempted desync, Content length + chunked encoding specified. RemoteEP: {ip}", reqState.RemoteEndPoint);
                     return HttpStatusCode.BadRequest;
                 }
 
@@ -566,7 +616,8 @@ namespace VNLib.Net.Http.Core
                     _ = reader.ReadRemaining(initData.Value.DataSegment);
                 }
 
-                Request.HasEntityBody = true;
+                //Notify request that an entity body has been set
+                reqState.HasEntityBody = true;
             }
             //Success!
             return 0;

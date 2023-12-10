@@ -36,7 +36,6 @@
  */
 
 using System;
-using System.Text;
 using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
@@ -86,10 +85,12 @@ namespace VNLib.Net.Http
         /// The cached HTTP1/1 keepalive timeout header value
         /// </summary>
         private readonly string KeepAliveTimeoutHeaderValue;
+
         /// <summary>
         /// Reusable store for obtaining <see cref="HttpContext"/> 
         /// </summary>
         private readonly ObjectRental<HttpContext> ContextStore;
+
         /// <summary>
         /// The cached header-line termination value
         /// </summary>
@@ -107,13 +108,19 @@ namespace VNLib.Net.Http
         public bool Running { get; private set; }
 
         /// <summary>
-        /// The <see cref="ServerPreEncodedSegments"/> for the current server
-        /// </summary>
-        internal readonly ServerPreEncodedSegments PreEncodedSegments;
-        /// <summary>
         /// Cached supported compression methods
         /// </summary>
         internal readonly CompressionMethod SupportedCompressionMethods;
+
+        /// <summary>
+        /// Pre-encoded CRLF bytes
+        /// </summary>
+        internal readonly HttpEncodedSegment CrlfBytes;
+
+        /// <summary>
+        /// Pre-encoded HTTP chunking final chunk segment
+        /// </summary>
+        internal readonly HttpEncodedSegment FinalChunkBytes;
 
         private CancellationTokenSource? StopToken;
 
@@ -139,10 +146,6 @@ namespace VNLib.Net.Http
             ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this));
             //Setup config copy with the internal http pool
             Transport = transport;
-            //Create the pre-encoded segments
-            PreEncodedSegments = GetSegments(config.HttpEncoding);
-            //Store a ref to the crlf memory segment
-            HeaderLineTermination = PreEncodedSegments.CrlfBytes.Memory;
             //Cache supported compression methods, or none if compressor is null
             SupportedCompressionMethods = config.CompressorManager == null ? 
                 CompressionMethod.None : 
@@ -150,6 +153,13 @@ namespace VNLib.Net.Http
 
             //Cache wildcard root
             _wildcardRoot = ServerRoots.GetValueOrDefault(WILDCARD_KEY);
+
+            //Init pre-encded segments
+            CrlfBytes = HttpEncodedSegment.FromString(HttpHelpers.CRLF, config.HttpEncoding);
+            FinalChunkBytes = HttpEncodedSegment.FromString("0\r\n\r\n", config.HttpEncoding);
+
+            //Store a ref to the crlf memory segment
+            HeaderLineTermination = CrlfBytes.Buffer.AsMemory();
         }
 
         private static void ValidateConfig(in HttpConfig conf)
@@ -163,10 +173,21 @@ namespace VNLib.Net.Http
                 throw new ArgumentException("ActiveConnectionRecvTimeout cannot be less than -1", nameof(conf));
             }
 
-            //Chunked data accumulator must be at least 64 bytes (arbinrary value)
-            if (conf.BufferConfig.ChunkedResponseAccumulatorSize < 64 || conf.BufferConfig.ChunkedResponseAccumulatorSize == int.MaxValue)
+            //We only need to verify the chunk buffer size if compression is enabled, otherwise it will never be used
+            if (conf.CompressorManager != null)
             {
-                throw new ArgumentException("ChunkedResponseAccumulatorSize cannot be less than 64 bytes", nameof(conf));
+                //Chunked data accumulator must be at least 64 bytes (arbitrary value)
+                if (conf.BufferConfig.ChunkedResponseAccumulatorSize < 64 || conf.BufferConfig.ChunkedResponseAccumulatorSize == int.MaxValue)
+                {
+                    throw new ArgumentException("ChunkedResponseAccumulatorSize cannot be less than 64 bytes", nameof(conf));
+                }
+            }
+            else
+            {
+                if(conf.BufferConfig.ChunkedResponseAccumulatorSize < 0)
+                {
+                    throw new ArgumentException("ChunkedResponseAccumulatorSize can never be less than 0", nameof(conf));
+                }
             }
 
             if (conf.CompressionLimit < 0)
@@ -228,40 +249,6 @@ namespace VNLib.Net.Http
             {
                 throw new ArgumentException("SendTimeout cannot be less than 1 millisecond", nameof(conf));
             }
-        }
-
-        private static ServerPreEncodedSegments GetSegments(Encoding encoding)
-        {
-            int offset = 0, length;
-            
-            //Alloc buffer to store segments in
-            byte[] buffer = new byte[16];
-
-            Span<byte> span = buffer;
-
-            //Get crlf bytes
-            length = encoding.GetBytes(HttpHelpers.CRLF, span);
-
-            //Build crlf segment
-            HttpEncodedSegment crlf = new(buffer, offset, length);
-
-            offset += length;
-            span = span[offset..];
-
-            //Get final chunk bytes
-            length = encoding.GetBytes("0\r\n\r\n", span);
-
-            //Build final chunk segment
-            HttpEncodedSegment finalChunk = new(buffer, offset, length);
-
-            offset += length;
-
-            //Build the segments
-            return new ServerPreEncodedSegments(buffer)
-            {
-                FinalChunkTermination = finalChunk,
-                CrlfBytes = crlf
-            };
         }
 
         /// <summary>

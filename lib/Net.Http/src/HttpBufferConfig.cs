@@ -70,7 +70,8 @@ namespace VNLib.Net.Http
         public readonly int ResponseBufferSize { get; init; } = 32 * 1024;
 
         /// <summary>
-        /// The size of the buffer used to accumulate chunked response data before writing to the transport
+        /// The size of the buffer used to accumulate chunked response data before writing to the transport.
+        /// May be set to 0 when <see cref="HttpConfig.CompressorManager"/> is set to null (compression is disabled).
         /// </summary>
         public readonly int ChunkedResponseAccumulatorSize { get; init; } = 64 * 1024;
     }

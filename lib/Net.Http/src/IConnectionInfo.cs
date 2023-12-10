@@ -93,9 +93,10 @@ namespace VNLib.Net.Http
         Uri? Referer { get; }
 
         /// <summary>
-        /// The parsed range header, or -1,-1 if the range header was not set
+        /// The parsed range header, check the <see cref="HttpRange.RangeType"/>
+        /// to determine if the range has been set
         /// </summary>
-        Tuple<long, long>? Range { get; }
+        HttpRange Range { get; }
 
         /// <summary>
         /// The server endpoint that accepted the connection

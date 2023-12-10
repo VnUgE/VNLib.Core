@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: ServerPreEncodedSegments.cs 
+* File: HttpControlMask.cs 
 *
-* ServerPreEncodedSegments.cs is part of VNLib.Net.Http which
-* is part of the larger VNLib collection of libraries and utilities.
+* HttpControlMask.cs is part of VNLib.Net.Http which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,25 +22,23 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http
 {
     /// <summary>
-    /// Holds pre-encoded buffer segments for http request/responses
+    /// Contains HttpServer related function masks for altering http server
+    /// behavior
     /// </summary>
-    /// <param name="Buffer">
-    /// Holds ref to internal buffer
-    /// </param>
-    internal readonly record struct ServerPreEncodedSegments(byte[] Buffer)
+    public static class HttpControlMask
     {
         /// <summary>
-        /// Holds a pre-encoded segment for all crlf (line termination) bytes
+        /// Tells the http server that dynamic response compression should be disabled
         /// </summary>
-        public readonly HttpEncodedSegment CrlfBytes { get; init; } = default;
+        public const ulong CompressionDisabed = 0x01UL;
 
         /// <summary>
-        /// Holds a pre-encoded segment for the final chunk termination
-        /// in http chuncked encoding
+        /// Tells the server not to set a 0 content length header when sending a response that does 
+        /// not have an entity body to send. 
         /// </summary>
-        public readonly HttpEncodedSegment FinalChunkTermination { get; init; } = default;
+        public const ulong ImplictContentLengthDisabled = 0x02UL;
     }
 }

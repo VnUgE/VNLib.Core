@@ -61,9 +61,8 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         /// <param name="dest">The response stream to write data to</param>
         /// <param name="buffer">An optional buffer used to buffer responses</param>
-        /// <param name="count">The maximum length of the response data to write</param>
         /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync(IDirectResponsWriter dest, long count, Memory<byte> buffer);
+        Task WriteEntityAsync(IDirectResponsWriter dest, Memory<byte> buffer);
 
         /// <summary>
         /// Writes internal response entity data to the destination stream

@@ -39,11 +39,5 @@ namespace VNLib.Net.Http.Core.Response
         /// <param name="buffer">The response data to write</param>
         /// <returns>A value task that resolves when the write operation is complete</returns>
         ValueTask WriteAsync(ReadOnlyMemory<byte> buffer);
-
-        /// <summary>
-        /// Flushes any remaining data to the client
-        /// </summary>
-        /// <returns>A task that resolves when the flush operationis complete</returns>
-        Task FlushAsync();
     }
 }

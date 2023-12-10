@@ -250,12 +250,13 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="data">The data to straem to the client as an attatcment</param>
         /// <param name="ct">The <see cref="ContentType"/> that represents the file</param>
         /// <param name="fileName">The name of the file to attach</param>
+        /// <param name="length">Explicit length of the stream data</param>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloseResponseAttachment(this IHttpEvent ev, HttpStatusCode code, ContentType ct, Stream data, string fileName)
+        public static void CloseResponseAttachment(this IHttpEvent ev, HttpStatusCode code, ContentType ct, Stream data, string fileName, long length)
         {
             //Close with file
-            ev.CloseResponse(code, ct, data);
+            ev.CloseResponse(code, ct, data, length);
             //Set content dispostion as attachment (only if successfull)
             ev.Server.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
         }
@@ -304,9 +305,10 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Get content type from filename
             ContentType ct = HttpHelpers.GetContentTypeFromFile(file.Name);            
             //Set the input as a stream
-            ev.CloseResponse(code, ct, file);
+            ev.CloseResponse(code, ct, file, file.Length);
         }
-        
+
+       
         /// <summary>
         /// Close a response to a connection with a character buffer using the server wide
         /// <see cref="ConnectionInfo.Encoding"/> encoding
@@ -321,7 +323,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, ReadOnlySpan<char> data)
         {
-            //Get a memory stream using UTF8 encoding
+            //Get a memory stream using server built-in encoding
             CloseResponse(ev, code, type, data, ev.Server.Encoding);
         }
         
@@ -344,7 +346,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             }
 
             //Validate encoding
-            _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
+            ArgumentNullException.ThrowIfNull(encoding, nameof(encoding));
             
             //Get new simple memory response
             IMemoryResponseReader reader = new SimpleMemoryResponse(data, encoding);
@@ -790,6 +792,13 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string ContentTypeString(this in FileUpload upload) => HttpHelpers.GetContentTypeString(upload.ContentType);
 
+        /// <summary>
+        /// Sets the <see cref="HttpControlMask.CompressionDisabed"/> flag on the current 
+        /// <see cref="IHttpEvent"/> instance to disable dynamic compression on the response.
+        /// </summary>
+        /// <param name="entity"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void DisableCompression(this IHttpEvent entity) => entity.SetControlFlag(HttpControlMask.CompressionDisabed);
 
         /// <summary>
         /// Attempts to upgrade the connection to a websocket, if the setup fails, it sets up the response to the client accordingly.

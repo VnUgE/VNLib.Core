@@ -31,17 +31,13 @@ using VNLib.Utils;
 using VNLib.Utils.Memory.Caching;
 using VNLib.Net.Http.Core.Buffering;
 using VNLib.Net.Http.Core.Compression;
+using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http.Core
 {
+
     internal sealed partial class HttpContext : IConnectionContext, IReusable, IHttpContextInformation
     {
-        /// <summary>
-        /// When set as a response flag, disables response compression for 
-        /// the current request/response flow
-        /// </summary>
-        public const ulong COMPRESSION_DISABLED_MSK = 0x01UL;
-
         /// <summary>
         /// The reusable http request container
         /// </summary>
@@ -60,7 +56,7 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// The response entity body container
         /// </summary>
-        public readonly IHttpResponseBody ResponseBody;
+        public readonly ResponseWriter ResponseBody;
 
         /// <summary>
         /// A collection of flags that can be used to control the way the context 
@@ -83,35 +79,35 @@ namespace VNLib.Net.Http.Core
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
 
-        private readonly IResponseCompressor? _compressor;
-        private readonly ResponseWriter responseWriter;
+        private readonly ManagedHttpCompressor? _compressor;
         private ITransportContext? _ctx;
         
         public HttpContext(HttpServer server)
         {
             ParentServer = server;
 
-            //Init buffer manager
-            Buffers = new(server.Config.BufferConfig);
-
-            //Create new request
-            Request = new (this);
-            
-            //create a new response object
-            Response = new (Buffers, this);
-
-            //Init response writer
-            ResponseBody = responseWriter = new ResponseWriter();
+            ContextFlags = new(0);
 
             /*
              * We can alloc a new compressor if the server supports compression.
              * If no compression is supported, the compressor will never be accessed
              */
-            _compressor = server.SupportedCompressionMethods == CompressionMethod.None ? 
+            _compressor = server.SupportedCompressionMethods == CompressionMethod.None ?
                 null :
                 new ManagedHttpCompressor(server.Config.CompressorManager!);
 
-            ContextFlags = new(0);
+
+            //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
+            Buffers = new(server.Config.BufferConfig, _compressor != null);
+
+            //Create new request
+            Request = new (this, server.Config.MaxUploadsPerRequest);
+            
+            //create a new response object
+            Response = new (this, Buffers);
+
+            //Init response writer
+            ResponseBody =  new ResponseWriter();
         }
 
         /// <summary>
@@ -126,10 +122,13 @@ namespace VNLib.Net.Http.Core
         Encoding IHttpContextInformation.Encoding => ParentServer.Config.HttpEncoding;
 
         ///<inheritdoc/>
-        HttpVersion IHttpContextInformation.CurrentVersion => Request.HttpVersion;
+        HttpVersion IHttpContextInformation.CurrentVersion => Request.State.HttpVersion;
 
         ///<inheritdoc/>
-        public ServerPreEncodedSegments EncodedSegments => ParentServer.PreEncodedSegments;
+        public ref readonly HttpEncodedSegment CrlfSegment => ref ParentServer.CrlfBytes;
+
+        ///<inheritdoc/>
+        public ref readonly HttpEncodedSegment FinalChunkSegment => ref ParentServer.FinalChunkBytes;
 
         ///<inheritdoc/>
         public Stream GetTransport() => _ctx!.ConnectionStream;
@@ -157,11 +156,8 @@ namespace VNLib.Net.Http.Core
             ContextFlags.ClearAll();
 
             //Lifecycle on new request
-            Request.OnNewRequest();
-            Response.OnNewRequest();
-
-            //Initialize the request
             Request.Initialize(_ctx!, ParentServer.Config.DefaultHttpVersion);
+            Response.OnNewRequest();
         }
 
         ///<inheritdoc/>
@@ -175,7 +171,7 @@ namespace VNLib.Net.Http.Core
         {
             Request.OnComplete();
             Response.OnComplete();
-            responseWriter.OnComplete();
+            ResponseBody.OnComplete();
 
             //Free compressor when a message flow is complete
             _compressor?.Free();
