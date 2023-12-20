@@ -587,16 +587,31 @@ namespace VNLib.Utils
              * intial buffer, we get the exact size of the buffer needed to 
              * percent encode.
              */
-
             int count = 0, len = utf8Bytes.Length;
+
             fixed (byte* utfBase = &MemoryMarshal.GetReference(utf8Bytes))
             {
-                //Find all unsafe characters and add the entropy size
-                for (int i = 0; i < len; i++)
+                if (allowedChars.IsEmpty)
                 {
-                    if (!IsUrlSafeChar(utfBase[i], allowedChars))
+                    //Find all unsafe characters and add the entropy size
+                    for (int i = 0; i < len; i++)
                     {
-                        count += 2;
+                        if (!IsUrlSafeChar(utfBase[i]))
+                        {
+                            count += 2;
+                        }
+                    }
+                }
+                else
+                {
+                    //Find all unsafe characters and add the entropy size
+                    for (int i = 0; i < len; i++)
+                    {
+                        //Check if value is url safe or is allowed by the allowed chars argument
+                        if (!(IsUrlSafeChar(utfBase[i]) || allowedChars.Contains(utfBase[i])))
+                        {
+                            count += 2;
+                        }
                     }
                 }
             }
@@ -617,30 +632,57 @@ namespace VNLib.Utils
             int outPos = 0, len = utf8Bytes.Length;
             ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.Span;
 
-            for (int i = 0; i < len; i++)
+            if (allowedChars.IsEmpty)
             {
-                byte value = utf8Bytes[i];
-                //Check if value is url safe
-                if(IsUrlSafeChar(value, allowedChars))
+                for (int i = 0; i < len; i++)
                 {
-                    //Skip
-                    utf8Output[outPos++] = value;
-                }
-                else
-                {
-                    //Percent encode
-                    utf8Output[outPos++] = 0x25;  // '%'
-                    //Calc and store the encoded by the upper 4 bits
-                    utf8Output[outPos++] = lookupTable[(value & 0xf0) >> 4];
-                    //Store lower 4 bits in encoded value
-                    utf8Output[outPos++] = lookupTable[value & 0x0f];
+                    byte value = utf8Bytes[i];
+                    //Check if value is url safe
+                    if (IsUrlSafeChar(value))
+                    {
+                        //Skip
+                        utf8Output[outPos++] = value;
+                    }
+                    else
+                    {
+                        //Percent encode
+                        utf8Output[outPos++] = 0x25;  // '%'
+                                                      //Calc and store the encoded by the upper 4 bits
+                        utf8Output[outPos++] = lookupTable[(value & 0xf0) >> 4];
+                        //Store lower 4 bits in encoded value
+                        utf8Output[outPos++] = lookupTable[value & 0x0f];
+                    }
                 }
             }
+            else
+            {
+                for (int i = 0; i < len; i++)
+                {
+                    byte value = utf8Bytes[i];
+                    //Check if value is url safe
+                    if (IsUrlSafeChar(value) || allowedChars.Contains(value))
+                    {
+                        //Skip
+                        utf8Output[outPos++] = value;
+                    }
+                    else
+                    {
+                        //Percent encode
+                        utf8Output[outPos++] = 0x25;  // '%'
+                                                      //Calc and store the encoded by the upper 4 bits
+                        utf8Output[outPos++] = lookupTable[(value & 0xf0) >> 4];
+                        //Store lower 4 bits in encoded value
+                        utf8Output[outPos++] = lookupTable[value & 0x0f];
+                    }
+                }
+            }
+
             //Return the size of the output buffer
             return outPos;
         }
 
-        private static bool IsUrlSafeChar(byte value, ReadOnlySpan<byte> allowedChars)
+
+        private static bool IsUrlSafeChar(byte value)
         {
             return
                 // base10 digits
@@ -652,9 +694,8 @@ namespace VNLib.Utils
                 // Uppercase letters
                 || value > 0x40 && value < 0x5b
                 // lowercase letters
-                || value > 0x60 && value < 0x7b
-                // Check allowed characters
-                || allowedChars.Contains(value);
+                || value > 0x60 && value < 0x7b;
+            
         }
 
         //TODO: Implement decode with better performance, lookup table or math vs searching the table
@@ -998,7 +1039,6 @@ namespace VNLib.Utils
                 Base64ToUrlSafeInPlace(nonPadded);
                 return nonPadded.Length;
             }
-
         }
 
         /// <summary>
@@ -1103,11 +1143,26 @@ namespace VNLib.Utils
         /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured.</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<byte> output, bool includePadding)
         {
-            //Write the input buffer to the output buffer
-            input.CopyTo(output);
+            //Do bsae64 encoding avoiding the tripple copy
+            if (Base64.EncodeToUtf8(input, output, out _, out int bytesWritten) != OperationStatus.Done)
+            {
+                return ERRNO.E_FAIL;
+            }
 
-            //encode in place
-            return Base64UrlEncodeInPlace(output, input.Length, includePadding);
+            if (includePadding)
+            {
+                //Url encode in place
+                Base64ToUrlSafeInPlace(output[..bytesWritten]);
+                return bytesWritten;
+            }
+            else
+            {
+                //Remove padding bytes from base64 encode
+                Span<byte> nonPadded = output[..bytesWritten].TrimEnd((byte)0x3d);
+
+                Base64ToUrlSafeInPlace(nonPadded);
+                return nonPadded.Length;
+            }
         }
 
         /// <summary>

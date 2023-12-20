@@ -28,61 +28,11 @@ using System.Security.Cryptography;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory;
+using VNLib.Hashing.Native.MonoCypher;
+using VNLib.Utils.Extensions;
 
 namespace VNLib.Hashing
 {
-    /// <summary>
-    /// Defines a hashing algorithm to use when computing a hash.
-    /// </summary>
-    public enum HashAlg
-    {
-        /// <summary>
-        /// Unused type, will cause a computation method to raise an argument exception when used.
-        /// </summary>
-        None,
-        /// <summary>
-        /// Defines the SHA-512 hashing algorithm
-        /// </summary>
-        SHA512 = 64,
-        /// <summary>
-        /// Defines the SHA-384 hashing algorithm
-        /// </summary>
-        SHA384 = 48,
-        /// <summary>
-        /// Defines the SHA-256 hashing algorithm
-        /// </summary>
-        SHA256 = 32,
-        /// <summary>
-        /// Defines the SHA-1 hashing algorithm
-        /// WARNING: This hashing method is considered insecure and cannot be corrected.
-        /// </summary>
-        SHA1 = 20,
-        /// <summary>
-        /// Defines the MD5 hashing algorithm
-        /// WARNING: This hashing method is considered insecure and cannot be corrected.
-        /// </summary>
-        MD5 = 16
-    }
-
-    /// <summary>
-    /// The binary hash encoding type
-    /// </summary>
-    [Flags]
-    public enum HashEncodingMode
-    {
-        /// <summary>
-        /// Specifies the Base64 character encoding
-        /// </summary>
-        Base64 = 64,
-        /// <summary>
-        /// Specifies the hexadecimal character encoding
-        /// </summary>
-        Hexadecimal = 16,
-        /// <summary>
-        /// Specifies the Base32 character encoding
-        /// </summary>
-        Base32 = 32
-    }
 
     /// <summary>
     /// Provides simple methods for common managed hashing functions
@@ -119,6 +69,19 @@ namespace VNLib.Hashing
             };
         }
 
+        private static readonly Sha1 _sha1Alg;
+        private static readonly Sha256 _sha256Alg;
+        private static readonly Sha384 _sha384Alg;
+        private static readonly Sha512 _sha512Alg;
+        private static readonly Md5 _md5Alg;
+        private static readonly Blake2b _blake2bAlg;
+
+        /// <summary>
+        /// Gets a value that indicates whether the current runtime has the required libraries 
+        /// available to support the Blake2b hashing algorithm
+        /// </summary>
+        public static bool SupportsBlake2b => MonoCypherLibrary.CanLoadDefaultLibrary(); 
+
         /// <summary>
         /// Uses the UTF8 character encoding to encode the string, then 
         /// attempts to compute the hash and store the results into the output buffer
@@ -130,16 +93,16 @@ namespace VNLib.Hashing
         /// <exception cref="ArgumentException"></exception>
         public static ERRNO ComputeHash(ReadOnlySpan<char> data, Span<byte> buffer, HashAlg type)
         {
-            int byteCount = CharEncoding.GetByteCount(data);
-            
-            //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
-
-            //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
-            
-            //hash the buffer
-            return ComputeHash(binbuf.Span[..byteCount], buffer, type);
+            return type switch
+            {
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, buffer),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, buffer),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, buffer),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, buffer),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, buffer),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, buffer),                
+                _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
+            };
         }
 
         /// <summary>
@@ -152,13 +115,16 @@ namespace VNLib.Hashing
         /// <exception cref="ArgumentException"></exception>
         public static byte[] ComputeHash(ReadOnlySpan<char> data, HashAlg type)
         {
-            int byteCount = CharEncoding.GetByteCount(data);
-            //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
-            //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
-            //hash the buffer
-            return ComputeHash(binbuf.Span[..byteCount], type);
+            return type switch
+            {
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data),               
+                _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
+            };
         }
 
         /// <summary>
@@ -174,11 +140,12 @@ namespace VNLib.Hashing
             //hash the buffer
             return type switch
             {
-                HashAlg.SHA512 => SHA512.TryHashData(data, output, out int count) ? count : ERRNO.E_FAIL,
-                HashAlg.SHA384 => SHA384.TryHashData(data, output, out int count) ? count : ERRNO.E_FAIL,
-                HashAlg.SHA256 => SHA256.TryHashData(data, output, out int count) ? count : ERRNO.E_FAIL,
-                HashAlg.SHA1 => SHA1.TryHashData(data, output, out int count) ? count : ERRNO.E_FAIL,
-                HashAlg.MD5 => MD5.TryHashData(data, output, out int count) ? count : ERRNO.E_FAIL,
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, output),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, output),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, output),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, output),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, output),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, output),                
                 _ => throw new ArgumentException("Hash algorithm is not supported"),
             };
         }
@@ -195,12 +162,13 @@ namespace VNLib.Hashing
             //hash the buffer
             return type switch
             {
-                HashAlg.SHA512 => SHA512.HashData(data),
-                HashAlg.SHA384 => SHA384.HashData(data),
-                HashAlg.SHA256 => SHA256.HashData(data),
-                HashAlg.SHA1 => SHA1.HashData(data),
-                HashAlg.MD5 => MD5.HashData(data),
-                _ => throw new ArgumentException("Hash algorithm is not supported"),
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data),               
+                _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
             };
         }
 
@@ -216,21 +184,15 @@ namespace VNLib.Hashing
         /// <exception cref="CryptographicException"></exception>
         public static string ComputeHash(ReadOnlySpan<byte> data, HashAlg type, HashEncodingMode mode)
         {
-            //Alloc hash buffer
-            Span<byte> hashBuffer = stackalloc byte[(int)type];
-            //hash the buffer
-            ERRNO count = ComputeHash(data, hashBuffer, type);
-            if (!count)
+            return type switch
             {
-                throw new CryptographicException("Failed to compute the hash of the data");
-            }
-            //Convert to hex string
-            return mode switch
-            {
-                HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer.Slice(0, count)),
-                HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer.Slice(0, count)),
-                HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer.Slice(0, count)),
-                _ => throw new ArgumentException("Encoding mode is not supported"),
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, mode),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, mode),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, mode),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, mode),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, mode),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, mode),                
+                _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
             };
         }
 
@@ -247,29 +209,17 @@ namespace VNLib.Hashing
         /// <exception cref="CryptographicException"></exception>
         public static string ComputeHash(ReadOnlySpan<char> data, HashAlg type, HashEncodingMode mode)
         {
-            //Alloc hash buffer
-            Span<byte> hashBuffer = stackalloc byte[(int)type];
-            //hash the buffer
-            ERRNO count = ComputeHash(data, hashBuffer, type);
-            if (!count)
+            return type switch
             {
-                throw new CryptographicException("Failed to compute the hash of the data");
-            }
-            //Convert to hex string
-            return mode switch
-            {
-                HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer.Slice(0, count)),
-                HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer.Slice(0, count)),
-                HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer.Slice(0, count)),
-                _ => throw new ArgumentException("Encoding mode is not supported"),
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, mode),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, mode),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, mode),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, mode),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, mode),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, mode),              
+                _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
             };
         }
-
-
-        public static string ComputeHexHash(ReadOnlySpan<byte> data, HashAlg type) => ComputeHash(data, type, HashEncodingMode.Hexadecimal);
-        public static string ComputeBase64Hash(ReadOnlySpan<byte> data, HashAlg type) => ComputeHash(data, type, HashEncodingMode.Base64);
-        public static string ComputeHexHash(ReadOnlySpan<char> data, HashAlg type) => ComputeHash(data, type, HashEncodingMode.Hexadecimal);
-        public static string ComputeBase64Hash(ReadOnlySpan<char> data, HashAlg type) => ComputeHash(data, type, HashEncodingMode.Base64);
 
         /// <summary>
         /// Computes the HMAC of the specified character buffer using the specified key and 
@@ -283,16 +233,16 @@ namespace VNLib.Hashing
         /// <exception cref="ArgumentException"></exception>
         public static ERRNO ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<char> data, Span<byte> output, HashAlg type)
         {
-            int byteCount = CharEncoding.GetByteCount(data);
-            
-            //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
-            
-            //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
-
-            //hash the buffer
-            return ComputeHmac(key, binbuf.Span[..byteCount], output, type);
+            return type switch
+            {
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, output, key),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, output, key),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, output, key),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, output, key),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, output, key),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, output, key),                
+                _ => ERRNO.E_FAIL
+            };
         }
 
         /// <summary>
@@ -306,17 +256,18 @@ namespace VNLib.Hashing
         /// <exception cref="ArgumentException"></exception>
         public static byte[] ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<char> data, HashAlg type)
         {
-            int byteCount = CharEncoding.GetByteCount(data);
-            
-            //Alloc buffer
-            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
-
-            //Encode data
-            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
-
-            //hash the buffer
-            return ComputeHmac(key, binbuf.Span[..byteCount], type);
+            return type switch
+            {
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, key),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, key),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, key),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, key),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, key),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, key),               
+                _ => throw new ArgumentException("Hash algorithm is not supported"),
+            };
         }
+
         /// <summary>
         /// Computes the HMAC of the specified data buffer using the specified key and 
         /// writes the resuts to the output buffer.
@@ -332,11 +283,12 @@ namespace VNLib.Hashing
             //hash the buffer
             return type switch
             {
-                HashAlg.SHA512 => HMACSHA512.TryHashData(key, data, output, out int count) ? count : ERRNO.E_FAIL,
-                HashAlg.SHA384 => HMACSHA384.TryHashData(key, data, output, out int count) ? count : ERRNO.E_FAIL,
-                HashAlg.SHA256 => HMACSHA256.TryHashData(key, data, output, out int count) ? count : ERRNO.E_FAIL,               
-                HashAlg.SHA1 => HMACSHA1.TryHashData(key, data, output, out int count) ? count : ERRNO.E_FAIL,
-                HashAlg.MD5 => HMACMD5.TryHashData(key, data, output, out int count) ? count : ERRNO.E_FAIL,
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, output, key),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, output, key),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, output, key),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, output, key),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, output, key),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, output, key),               
                 _ => throw new ArgumentException("Hash algorithm is not supported"),
             };
         }
@@ -355,11 +307,12 @@ namespace VNLib.Hashing
             //hash the buffer
             return type switch
             {
-                HashAlg.SHA512 => HMACSHA512.HashData(key, data),
-                HashAlg.SHA384 => HMACSHA384.HashData(key, data),
-                HashAlg.SHA256 => HMACSHA256.HashData(key, data),
-                HashAlg.SHA1 => HMACSHA1.HashData(key, data),
-                HashAlg.MD5 => HMACMD5.HashData(key, data),
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, key),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, key),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, key),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, key),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, key),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, key),              
                 _ => throw new ArgumentException("Hash algorithm is not supported"),
             };
         }
@@ -376,24 +329,15 @@ namespace VNLib.Hashing
         /// <exception cref="ArgumentException"></exception>
         public static string ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, HashAlg type, HashEncodingMode mode)
         {
-            //Alloc hash buffer
-            Span<byte> hashBuffer = stackalloc byte[(int)type];
-            
-            //hash the buffer
-            ERRNO count = ComputeHmac(key, data, hashBuffer, type);
-            
-            if (!count)
+            return type switch
             {
-                throw new InternalBufferTooSmallException("Failed to compute the hash of the data");
-            }
-            
-            //Convert to hex string
-            return mode switch
-            {
-                HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer.Slice(0, count)),
-                HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer.Slice(0, count)),
-                HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer.Slice(0, count)),
-                _ => throw new ArgumentException("Encoding mode is not supported"),
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, mode, key),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, mode, key),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, mode, key),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, mode, key),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, mode, key),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, mode, key),
+                _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
             };
         }
 
@@ -409,25 +353,114 @@ namespace VNLib.Hashing
         /// <exception cref="ArgumentException"></exception>
         public static string ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<char> data, HashAlg type, HashEncodingMode mode)
         {
-            //Alloc hash buffer
-            Span<byte> hashBuffer = stackalloc byte[(int)type];
+            return type switch
+            {
+                HashAlg.BlAKE2B => ComputeHashInternal(in _blake2bAlg, data, mode, key),
+                HashAlg.SHA512 => ComputeHashInternal(in _sha512Alg, data, mode, key),
+                HashAlg.SHA384 => ComputeHashInternal(in _sha384Alg, data, mode, key),
+                HashAlg.SHA256 => ComputeHashInternal(in _sha256Alg, data, mode, key),
+                HashAlg.SHA1 => ComputeHashInternal(in _sha1Alg, data, mode, key),
+                HashAlg.MD5 => ComputeHashInternal(in _md5Alg, data, mode, key),
+                _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
+            };
+        }
 
+        #region internal
+
+        private static byte[] ComputeHashInternal<T>(in T algorithm, ReadOnlySpan<char> data, ReadOnlySpan<byte> key = default) where T : IHashAlgorithm
+        {
+            int byteCount = CharEncoding.GetByteCount(data);
+            //Alloc buffer
+            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
+            //Encode data
+            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
             //hash the buffer
-            ERRNO count = ComputeHmac(key, data, hashBuffer, type);
-            
+            return ComputeHashInternal(in algorithm, binbuf.AsSpan(0, byteCount), key);
+        }
+
+        private static string ComputeHashInternal<T>(in T algorithm, ReadOnlySpan<char> data, HashEncodingMode mode, ReadOnlySpan<byte> key = default) where T : IHashAlgorithm
+        {
+            //Alloc stack buffer to store hash output
+            Span<byte> hashBuffer = stackalloc byte[algorithm.HashSize];
+            //hash the buffer
+            ERRNO count = ComputeHashInternal(in algorithm, data, hashBuffer, key);
             if (!count)
             {
-                throw new InternalBufferTooSmallException("Failed to compute the hash of the data");
+                throw new CryptographicException("Failed to compute the hash of the data");
             }
-            
-            //Convert to hex string
+
+            //Convert to encoded string 
             return mode switch
             {
                 HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer.Slice(0, count)),
                 HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer.Slice(0, count)),
                 HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer.Slice(0, count)),
+                HashEncodingMode.Base64Url => VnEncoding.ToBase64UrlSafeString(hashBuffer.Slice(0, count), true),
                 _ => throw new ArgumentException("Encoding mode is not supported"),
             };
         }
+
+        private static string ComputeHashInternal<T>(in T algorithm, ReadOnlySpan<byte> data, HashEncodingMode mode, ReadOnlySpan<byte> key = default) where T : IHashAlgorithm
+        {
+            //Alloc stack buffer to store hash output
+            Span<byte> hashBuffer = stackalloc byte[algorithm.HashSize];
+
+            //hash the buffer
+            ERRNO count = ComputeHashInternal(in algorithm, data, hashBuffer, key);
+            if (!count)
+            {
+                throw new CryptographicException("Failed to compute the hash of the data");
+            }
+
+            //Convert to encoded string 
+            return mode switch
+            {
+                HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer.Slice(0, count)),
+                HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer.Slice(0, count)),
+                HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer.Slice(0, count)),
+                HashEncodingMode.Base64Url => VnEncoding.ToBase64UrlSafeString(hashBuffer.Slice(0, count), true),
+                _ => throw new ArgumentException("Encoding mode is not supported"),
+            };
+        }
+
+        private static ERRNO ComputeHashInternal<T>(in T algorithm, ReadOnlySpan<char> data, Span<byte> output, ReadOnlySpan<byte> key = default) where T : IHashAlgorithm
+        {
+            int byteCount = CharEncoding.GetByteCount(data);
+            //Alloc buffer
+            using UnsafeMemoryHandle<byte> binbuf = MemoryUtil.UnsafeAlloc(byteCount, true);
+            //Encode data
+            byteCount = CharEncoding.GetBytes(data, binbuf.Span);
+            //hash the buffer or hmac if key is not empty
+            return ComputeHashInternal(in algorithm, binbuf.Span[..byteCount], output, key);
+        }
+
+
+        private static ERRNO ComputeHashInternal<T>(in T algorithm, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key = default) where T : IHashAlgorithm
+        {
+            //hash the buffer or hmac if key is not empty
+            if (key.IsEmpty)
+            {
+                return algorithm.TryComputeHash(data, buffer, out int written) ? written : ERRNO.E_FAIL;
+            }
+            else
+            {
+                return algorithm.TryComputeHmac(key, data, buffer, out int written) ? written : ERRNO.E_FAIL;
+            }
+        }
+
+        private static byte[] ComputeHashInternal<T>(in T algorithm, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key = default) where T : IHashAlgorithm
+        {
+            //hash the buffer or hmac if key is not empty
+            if (key.IsEmpty)
+            {
+                return algorithm.ComputeHash(data);
+            }
+            else
+            {
+                return algorithm.ComputeHmac(key, data);
+            }
+        }     
+
+        #endregion
     }
 }

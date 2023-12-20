@@ -235,7 +235,7 @@ namespace VNLib.Utils.Async
                 wait = new();
             }
 
-            //Init wait with session
+            //Init wait with moniker
             wait.Prepare(moniker);
         }
 
@@ -246,7 +246,7 @@ namespace VNLib.Utils.Async
         /// <param name="entry">The entry to return to the pool</param>
         protected virtual void ReturnEntry(WaitEntry entry)
         {
-            //Remove session ref
+            //Remove ref
             entry.Prepare(default);
 
             if (EntryPool.Count < MaxPoolSize)
@@ -391,7 +391,7 @@ namespace VNLib.Utils.Async
 
             /// <summary>
             /// Prepres a new <see cref="WaitEntry"/> for 
-            /// its new session.
+            /// its new moniker object.
             /// </summary>
             /// <param name="moniker">The referrence to the moniker to hold</param>
             public void Prepare(TMoniker? moniker)
@@ -516,15 +516,13 @@ namespace VNLib.Utils.Async
                  * will be thrown if this doesnt work
                  */
 
-                if (_nextWaiter.Status == TaskStatus.Created)
+                switch (_nextWaiter.Status)
                 {
-                    _nextWaiter.Start();
-                    return true;
-                }
-
-                if(_nextWaiter.Status == TaskStatus.Canceled)
-                {
-                    return false;
+                    case TaskStatus.Canceled:
+                        return false;
+                    case TaskStatus.Created:
+                        _nextWaiter.Start();
+                        return true;
                 }
 
                 Debug.Fail($"Next waiting task is in an invalid state: {_nextWaiter.Status}");

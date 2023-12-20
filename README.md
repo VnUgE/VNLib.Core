@@ -23,6 +23,9 @@ Again, go to my website below, my email address is available, go ahead and send 
 [Builds for VNLib.Core](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core) - Per-project build artifacts  
 [Links for Nuget Feeds](https://www.vaughnnugent.com/resources/software/modules) - Get my NuGet feed links  
 
+### .NET Version Notice
+I prefer sticking with lts .NET versions and 8 just released, so I will likely be upgrading once its "stable" and I have the time to port and test everything. Core libraries will be first then downstream packages.  
+
 ## Index/NameSpaces
 **VNLib.**
 - [Utils](lib/Utils/#) - A mutli-use library focused on reducing complexity for working with native resources, memory, asynchronous patterns and data-structures, object/resource pooling, critical resource handling, and common logging abstractions. 
@@ -38,6 +41,7 @@ Again, go to my website below, my email address is available, go ahead and send 
 - [Utils.Memory](lib/Utils.Memory/#) - Utilty libraries for native memory management framework for VNLib, including an x64 CMake build of rpmalloc.
 - [Net.Compression](lib/Net.Compression/#) - A cross platform native compression provider and IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
 - [Net.Rest.Client](lib/Net.Rest.Client/#) - A library for defining REST api clients via a fluent api by defining sites and endpoints, OAuth2 authenticator for RestSharp, and a simple RestSharp client pool.
+- [Utils.Cryptography](lib/Utils.Cryptography/#) - Contains vendored copies of recommended/referenced libraries and wrapper libraries such as Argon2 and Monocypher. 
 
 ## Builds & Source
 Builds contain the individual components listed below packaged per-project, available for download on my website. Build packages will be tgz archives (except for nuget packages). You can obtain debug and release builds, along with per-project source code 
@@ -49,8 +53,11 @@ NuGet feeds for release and debug packages are available on my website as the li
 
 [Links for Nuget Feeds](https://www.vaughnnugent.com/resources/software/modules)
 
+## Branches
+There are currently two branches I use, master and develop. Develop is the my default building branch, all changes are merged into master when I am satisfied. An internal PR is opened, reviewed and merged into master, you will notice this merge often consists of multiple commits. The develop branch will ALWAYS be ahead of the master branch.
+
 ## Notes
-As with all of my VNlib projects, there are in a very early pre-release state. This is my first large-scale software engineering project and it its not in highest of priorities to be a good "software developer", sorry :smiley:. I care about the highest performance code I know how to make for my applications regardless of complexity. I use ALL of the packages/libraries in these projects in my own infrastructure and as issues appear I try to fix and test them before publishing the build packages on my website (see builds below). I understand that most of my projects are often re-inventing the wheel, I'm aware, I enjoy boilerplate because it's mine... This all subject to change without warning. 
+As with all of my VNlib projects, there are in a very early pre-release state. This is my first large-scale software engineering project and its not in highest of priorities to be a good "software developer", sorry :smiley:. I care about the highest performance code I know how to make for my applications regardless of complexity. I use ALL of the packages/libraries in these projects in my own infrastructure and as issues appear I try to fix and test them before publishing the build packages on my website (see builds below). I understand that most of my projects are often re-inventing the wheel, I'm aware, I enjoy boilerplate because it's mine... This all subject to change without warning. 
 
 ### How is the code for this repo maintained?
 I use many internal tools to build and maintain these projects. I use [OneDev](https://code.onedev.io/) for my internal source control (as well as other git tools) and code updates are pushed to GitHub as part of a build process. I use [Task](https://taskfile.dev) in the build process to publish builds for all projects in this repository. Builds are publicly available on my website from the link below. I do *not* intend to expose my internal tools for security reasons. I prefer to keep my dependencies/processes internal, and will be relying on GitHub for as little as possible. 

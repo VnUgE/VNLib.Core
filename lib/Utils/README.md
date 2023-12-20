@@ -29,9 +29,8 @@ The software in this repository is licensed under the GNU GPL version 2.0 (or an
 - VNLib.Utils.Resources - Abstractions and base data structures for holding and accessing resources.
 
 ## Recommended 3rd Party Libs
-This library does not require any direct dependencies, however there are some optional ones that are recommended for higher performance. This library does not, modify, contribute, or affect the functionality of any of the 3rd party libraries recommended below.  
-
-[**RPMalloc**](https://github.com/mjansson/rpmalloc) By Mattias Jansson - VNlib.Utils.Memory (and sub-classes) may load and bind function calls to this native library determined by environment variables. To use RPMalloc as the default unmanaged allocator simply add the dynamic library to the native lib search path, such as in the executable directory, and set the allocator environment variable as instructed below. I maintain a compatible Windows x64 [dll library](../WinRpMalloc/README.md) on my website and in this repository, that conforms to the [NativeHeap](../NativeHeapApi/README.md) api required for runtime loading.  
+The [Utils.Memory](../Utils.Memory) namespace includes vendored and wrapped versions of recommended unmanaged heap allocator libraries to link at runtime.  
+Read [this document](https://www.vaughnnugent.com/resources/software/articles?tags=docs&search=native+heap) for more information on vendored libraries and instructions on how to build them.  
 
 ## Other notes
 Generally for internal library data structures that require memory allocation, a constructor override or a static method will consume a heap instance so you may pass your own heap instance or the Shared heap.  

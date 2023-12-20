@@ -184,7 +184,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             finally
             {
-                MemoryUtil.InitializeBlock(ref buffer.GetReference(),buffer.IntLength);
+                MemoryUtil.InitializeBlock(ref buffer.GetReference(), buffer.IntLength);
             }
         }
 
@@ -214,7 +214,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             finally
             {
-                MemoryUtil.InitializeBlock(buffer.Span);
+                MemoryUtil.InitializeBlock(ref buffer.GetReference(), buffer.IntLength);
             }
         }
         
@@ -242,7 +242,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             finally
             {
                 //Erase secret buffer
-                MemoryUtil.InitializeBlock(secretBuffer.Span);
+                MemoryUtil.InitializeBlock(ref secretBuffer.GetReference(), secretBuffer.IntLength);
             }
         }
 
@@ -265,7 +265,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             Argon2CostParams costParams = GetCostParams();
 
             //Alloc heap buffer 
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage<byte>(minBufferSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage(minBufferSize, true);
 
             //Segment the buffer
             HashBufferSegments segments = new(buffer.Span, _secret.BufferSize, _config.SaltLen, (int)_config.HashLen);
@@ -286,7 +286,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             finally
             {
-                MemoryUtil.InitializeBlock(buffer.Span);
+                MemoryUtil.InitializeBlock(ref buffer.GetReference(), buffer.IntLength);
             }
         }
 

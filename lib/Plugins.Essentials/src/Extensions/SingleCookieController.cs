@@ -32,22 +32,10 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// <summary>
     /// Implements a sinlge cookie controller
     /// </summary>
-    public class SingleCookieController : ICookieController
+    /// <param name="Name">The name of the cookie to manage</param>
+    /// <param name="ValidFor">The max-age cookie value</param>
+    public record class SingleCookieController(string Name, TimeSpan ValidFor) : ICookieController
     {
-        private readonly string _cookieName;
-        private readonly TimeSpan _validFor;
-
-        /// <summary>
-        /// Creates a new <see cref="SingleCookieController"/> instance
-        /// </summary>
-        /// <param name="cookieName">The name of the cookie to manage</param>
-        /// <param name="validFor">The max-age cookie value</param>
-        public SingleCookieController(string cookieName, TimeSpan validFor)
-        {
-            _cookieName = cookieName;
-            _validFor = validFor;
-        }
-
         /// <summary>
         /// The domain of the cookie
         /// </summary>
@@ -78,40 +66,40 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Optionally clears the cookie (does not force)
         /// </summary>
         /// <param name="entity">The entity to clear the cookie for</param>
-        public void ExpireCookie(HttpEntity entity) => ExpireCookie(entity, false);
+        public void ExpireCookie(IHttpEvent entity) => ExpireCookie(entity, false);
 
         ///<inheritdoc/>
-        public void ExpireCookie(HttpEntity entity, bool force)
+        public void ExpireCookie(IHttpEvent entity, bool force)
         {
             _ = entity ?? throw new ArgumentNullException(nameof(entity));
             SetCookieInternal(entity, string.Empty, force);
         }
 
         ///<inheritdoc/>
-        public string? GetCookie(HttpEntity entity)
+        public string? GetCookie(IHttpEvent entity)
         {
             _ = entity ?? throw new ArgumentNullException(nameof(entity));
-            return entity.Server.RequestCookies.GetValueOrDefault(_cookieName);
+            return entity.Server.RequestCookies.GetValueOrDefault(Name);
         }
 
         ///<inheritdoc/>
-        public void SetCookie(HttpEntity entity, string value)
+        public void SetCookie(IHttpEvent entity, string value)
         {
             _ = entity ?? throw new ArgumentNullException(nameof(entity));
             SetCookieInternal(entity, value, true);
         }
 
-        private void SetCookieInternal(HttpEntity entity, string value, bool force)
+        private void SetCookieInternal(IHttpEvent entity, string value, bool force)
         {
             //Only set cooke if already exists or force is true
             if (entity.Server.RequestCookies.ContainsKey(value) || force)
             {
                 //Build and set cookie
-                HttpCookie cookie = new(_cookieName, value)
+                HttpCookie cookie = new(Name, value)
                 {
                     Secure = Secure,
                     HttpOnly = HttpOnly,
-                    ValidFor = _validFor,
+                    ValidFor = ValidFor,
                     SameSite = SameSite,
                     Path = Path,
                     Domain = Domain

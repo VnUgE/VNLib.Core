@@ -157,7 +157,7 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public static void InitializeAll(this IPluginStack runtime)
         {
-            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
 
             foreach(RuntimePluginLoader loader in runtime.Plugins)
             {
@@ -173,7 +173,7 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="AggregateException"></exception>
         public static void InvokeLoad(this IPluginStack runtime)
         {
-            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
 
             //try loading all plugins
             runtime.Plugins.TryForeach(static p => p.LoadPlugins());
@@ -216,7 +216,7 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="AggregateException"></exception>
         public static void ReloadAll(this IPluginStack runtime)
         {
-            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
 
             //try reloading all plugins
             runtime.Plugins.TryForeach(static p => p.ReloadPlugins());
@@ -231,8 +231,8 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public static void RegsiterListener(this IPluginStack runtime, IPluginEventListener listener, object? state = null)
         {
-            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
-            _ = listener ?? throw new ArgumentNullException(nameof(listener));
+            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
+            ArgumentNullException.ThrowIfNull(listener, nameof(listener));
 
             //Register for all plugins
             foreach (PluginController controller in runtime.Plugins.Select(static p => p.Controller))
@@ -249,8 +249,8 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public static void UnregsiterListener(this IPluginStack runtime, IPluginEventListener listener)
         {
-            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
-            _ = listener ?? throw new ArgumentNullException(nameof(listener));
+            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
+            ArgumentNullException.ThrowIfNull(listener, nameof(listener));
 
             //Unregister for all plugins
             foreach (PluginController controller in runtime.Plugins.Select(static p => p.Controller))
@@ -268,7 +268,7 @@ namespace VNLib.Plugins.Runtime
         /// <returns>The current builder instance for chaining</returns>
         public static PluginStackBuilder WithLocalJsonConfig(this PluginStackBuilder builder, in JsonElement? hostConfig)
         {
-            _ = builder ?? throw new ArgumentNullException(nameof(builder));
+            ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
             LocalFilePluginConfigReader reader;
 
@@ -297,6 +297,19 @@ namespace VNLib.Plugins.Runtime
         }
 
         /// <summary>
+        /// Sets an empty/null configuration reader for the plugin stack. No 
+        /// configuration will be passed to plugins.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns>The current builder instance for chaining</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static PluginStackBuilder WithNullConfig(this PluginStackBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder, nameof(builder));
+            return builder.WithConfigurationReader(new NullPluginConfigReader());
+        }
+
+        /// <summary>
         /// Specifies the directory that the plugin loader will search for plugins in
         /// </summary>
         /// <param name="path">The search directory path</param>
@@ -314,8 +327,8 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public static PluginStackBuilder WithSearchDirectory(this PluginStackBuilder builder, DirectoryInfo dir)
         {
-            _ = builder ?? throw new ArgumentNullException(nameof(builder));
-            _ = dir ?? throw new ArgumentNullException(nameof(dir));
+            ArgumentNullException.ThrowIfNull(builder, nameof(builder));
+            ArgumentNullException.ThrowIfNull(dir, nameof(dir));
 
             PluginDirectorySearcher dirSearcher = new (dir);
             builder.WithDiscoveryManager(dirSearcher);
@@ -413,6 +426,15 @@ namespace VNLib.Plugins.Runtime
                     using Utf8JsonWriter writer = new(configData);
                     merged.WriteTo(writer);
                 }
+            }
+        }
+
+        private sealed class NullPluginConfigReader : IPluginConfigReader
+        {
+            ///<inheritdoc/>
+            public void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream outputStream)
+            {
+                //Do nothing
             }
         }
     }

@@ -53,19 +53,19 @@ tasks:
   postbuild_success:
     vars:
       #required files to include in tar
-      TAR_FILES: "license.txt readme.txt"
+      TAR_FILES: "license.txt readme.txt argon2.h"
     
     cmds:
       #make bin dir
     - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
       ignore_error: true
 
-    #get licenses for debug
-    - task: licenses
+    #add embeded resources to output dirs
+    - task: embed
       vars: 
         TARGET: './build/Debug'
 
-    - task: licenses
+    - task: embed
       vars:
         TARGET: './build/Release'
    
@@ -83,12 +83,14 @@ tasks:
     #source code
     - task: pack_source
 
-  licenses:
+  embed:
     cmds:
      #add license file
      - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
      #add readme file
      - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
+     #add argon2 header file
+     - powershell -Command "Copy-Item -Path ./include/argon2.h -Destination '{{.TARGET}}/argon2.h'"
   
   pack_source:
     dir: '{{.USER_WORKING_DIR}}'

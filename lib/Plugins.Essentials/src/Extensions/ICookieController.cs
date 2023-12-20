@@ -22,6 +22,8 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using VNLib.Net.Http;
+
 namespace VNLib.Plugins.Essentials.Extensions
 {
     /// <summary>
@@ -34,14 +36,14 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <param name="entity">The http connection to set the cookie value for</param>
         /// <param name="value">The cookie value</param>
-        void SetCookie(HttpEntity entity, string value);
+        void SetCookie(IHttpEvent entity, string value);
 
         /// <summary>
         /// Gets the cookie value for the given entity
         /// </summary>
         /// <param name="entity">The entity to get the cookie for</param>
         /// <returns>The cookie value if set, null otherwise</returns>
-        string? GetCookie(HttpEntity entity);
+        string? GetCookie(IHttpEvent entity);
 
         /// <summary>
         /// Expires an existing request cookie for the given entity, avoiding 
@@ -49,6 +51,6 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <param name="entity">The http connection to expire the cookie on</param>
         /// <param name="force">Forcibly set the response cookie regardless of it's existence</param>
-        void ExpireCookie(HttpEntity entity, bool force);
+        void ExpireCookie(IHttpEvent entity, bool force);
     }
 }

@@ -24,7 +24,6 @@
 
 using System;
 using System.Text;
-using System.Buffers;
 using System.Threading;
 using System.Diagnostics;
 using System.Buffers.Text;
@@ -34,6 +33,7 @@ using System.Runtime.InteropServices;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Native;
 using VNLib.Utils.Extensions;
+using VNLib.Hashing.Native.MonoCypher;
 
 namespace VNLib.Hashing
 {
@@ -42,40 +42,46 @@ namespace VNLib.Hashing
     /// Implements the Argon2 data hashing library in .NET for cross platform use.
     /// </summary>
     /// <remarks>Buffers are allocted on a private <see cref="IUnmangedHeap"/> instance.</remarks>
-    public static unsafe partial class VnArgon2
+    public static unsafe class VnArgon2
     {
         public const uint ARGON2_DEFAULT_FLAGS = 0U;
         public const uint HASH_SIZE = 128;
         public const int MAX_SALT_SIZE = 100;
         public const string ID_MODE = "argon2id";
         public const string ARGON2_DEFUALT_LIB_NAME = "argon2";
-        public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "ARGON2_DLL_PATH";
+        public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "VNLIB_ARGON2_DLL_PATH";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;
         private static readonly Lazy<IUnmangedHeap> _heap = new (static () => MemoryUtil.InitializeNewHeapForProcess(true), LazyThreadSafetyMode.PublicationOnly);
-        private static readonly Lazy<SafeArgon2Library> _nativeLibrary = new(LoadSharedLibInternal, LazyThreadSafetyMode.PublicationOnly);
+        private static readonly Lazy<IArgon2Library> _nativeLibrary = new(LoadSharedLibInternal, LazyThreadSafetyMode.PublicationOnly);
 
 
         //Private heap initialized to 10k size, and all allocated buffers will be zeroed when allocated
-        private static IUnmangedHeap PwHeap => _heap.Value;
+        private static IUnmangedHeap PwHeap => _heap.Value;      
 
-        /*
-         * The native library delegate method
-         */
-        [SafeMethodName("argon2id_ctx")]
-        delegate int Argon2InvokeHash(IntPtr context);
-
-        private static SafeArgon2Library LoadSharedLibInternal()
+        private static IArgon2Library LoadSharedLibInternal()
         {
             //Get the path to the argon2 library
             string? argon2EnvPath = Environment.GetEnvironmentVariable(ARGON2_LIB_ENVIRONMENT_VAR_NAME);
-            //Default to the default library name
-            argon2EnvPath ??= ARGON2_DEFUALT_LIB_NAME;
 
-            Trace.WriteLine("Attempting to load global native Argon2 library from: " + argon2EnvPath, "VnArgon2");
+            //If no native library is set, try to load the monocypher library
+            if (string.IsNullOrWhiteSpace(argon2EnvPath) && MonoCypherLibrary.CanLoadDefaultLibrary())
+            {
+                Trace.WriteLine("Using the native MonoCypher library for Argon2 password hashing", "VnArgon2");
 
-            SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(argon2EnvPath, DllImportSearchPath.SafeDirectories);
-            return new SafeArgon2Library(lib);
+                //Load shared monocyphter argon2 library
+                return MonoCypherLibrary.Shared.Argon2CreateLibrary(_heap.Value);
+            }
+            else
+            {
+                //Default to the default library name
+                argon2EnvPath ??= ARGON2_DEFUALT_LIB_NAME;
+
+                Trace.WriteLine("Attempting to load global native Argon2 library from: " + argon2EnvPath, "VnArgon2");
+
+                SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(argon2EnvPath, DllImportSearchPath.SafeDirectories);
+                return new SafeArgon2Library(lib);
+            }
         }
 
 
@@ -130,7 +136,7 @@ namespace VNLib.Hashing
             int passBytes = LocEncoding.GetByteCount(password);
             
             //Alloc memory for salt
-            using IMemoryHandle<byte> buffer = PwHeap.Alloc<byte>(saltbytes + passBytes);
+            using MemoryHandle<byte> buffer = PwHeap.Alloc<byte>(saltbytes + passBytes);
             
             Span<byte> saltBuffer = buffer.AsSpan(0, saltbytes);
             Span<byte> passBuffer = buffer.AsSpan(saltbytes, passBytes);
@@ -175,7 +181,7 @@ namespace VNLib.Hashing
             int passBytes = LocEncoding.GetByteCount(password);
             
             //Alloc memory for password
-            using IMemoryHandle<byte> pwdHandle = PwHeap.Alloc<byte>(passBytes);
+            using MemoryHandle<byte> pwdHandle = PwHeap.Alloc<byte>(passBytes);
             
             //Encode password, create a new span to make sure its proper size 
             _ = LocEncoding.GetBytes(password, pwdHandle.Span);
@@ -223,9 +229,6 @@ namespace VNLib.Hashing
             //encode salt
             salts = Convert.ToBase64String(salt);
             
-            //Zero buffer
-            MemoryUtil.InitializeBlock(ref hashHandle.GetReference(), hashHandle.GetIntLength());
-
             //Encode salt in base64
             return $"${ID_MODE}$v={(int)Argon2Version.Version13},m={costParams.MemoryCost},t={costParams.TimeCost},p={costParams.Parallelism},s={salts}${hash}";
         }
@@ -330,7 +333,7 @@ namespace VNLib.Hashing
             int rawPassLen = LocEncoding.GetByteCount(rawPass);
 
             //Alloc buffer for decoded data
-            using IMemoryHandle<byte> rawBufferHandle = PwHeap.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen);
+            using MemoryHandle<byte> rawBufferHandle = PwHeap.Alloc<byte>(passBase64BufSize + saltBase64BufSize + rawPassLen);
             
             //Split buffers
             Span<byte> saltBuf = rawBufferHandle.Span[..saltBase64BufSize];
@@ -393,10 +396,7 @@ namespace VNLib.Hashing
         )
         {
             //Alloc data for hash output
-            using IMemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(hashBytes.Length);
-
-            //Pin to get the base pointer
-            using MemoryHandle outputPtr = outputHandle.Pin(0);
+            using MemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(hashBytes.Length);
 
             //Get pointers
             fixed (byte* secretptr = secret, pwd = rawPass, slptr = salt)
@@ -425,7 +425,7 @@ namespace VNLib.Hashing
                 context->secret = secretptr;
                 context->secretlen = (uint)secret.Length;
                 //Output
-                context->outptr = outputPtr.Pointer;
+                context->outptr = outputHandle.Base;
                 context->outlen = (uint)outputHandle.Length;
                 //Hash
                 Argon2_ErrorCodes argResult = (Argon2_ErrorCodes)lib.Argon2Hash((IntPtr)context);
@@ -441,7 +441,7 @@ namespace VNLib.Hashing
             return result;
         }
 
-        private static void ThrowOnArgonErr(Argon2_ErrorCodes result)
+        internal static void ThrowOnArgonErr(Argon2_ErrorCodes result)
         {
             switch (result)
             {

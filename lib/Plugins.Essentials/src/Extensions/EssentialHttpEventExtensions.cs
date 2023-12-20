@@ -908,7 +908,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                     entity.Server.Headers[HttpResponseHeader.Connection] = "Upgrade";
 
                     //Hash accept string
-                    entity.Server.Headers["Sec-WebSocket-Accept"] = ManagedHash.ComputeBase64Hash($"{key.Trim()}{HttpHelpers.WebsocketRFC4122Guid}", HashAlg.SHA1);
+                    entity.Server.Headers["Sec-WebSocket-Accept"] = ManagedHash.ComputeHash($"{key.Trim()}{HttpHelpers.WebsocketRFC4122Guid}", HashAlg.SHA1, HashEncodingMode.Base64);
 
                     //Protocol if user specified it
                     if (!string.IsNullOrWhiteSpace(subProtocol))

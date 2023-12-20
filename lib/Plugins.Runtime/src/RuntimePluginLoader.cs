@@ -57,7 +57,6 @@ namespace VNLib.Plugins.Runtime
         /// Creates a new <see cref="RuntimePluginLoader"/> with the specified config and host config dom.
         /// </summary>
         /// <param name="loader">The plugin's assembly loader</param>
-        /// <param name="hostConfig">The host/process configuration DOM</param>
         /// <param name="log">A log provider to write plugin unload log events to</param>
         /// <exception cref="ArgumentNullException"></exception>
         public RuntimePluginLoader(IPluginAssemblyLoader loader, ILogProvider? log)

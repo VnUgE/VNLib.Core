@@ -27,38 +27,34 @@ using System.Runtime.InteropServices;
 
 namespace VNLib.Hashing
 {
-
-    public static unsafe partial class VnArgon2
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    internal unsafe ref struct Argon2Context
     {
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        private ref struct Argon2Context
-        {
-            public void* outptr;         /* output array */
-            public UInt32 outlen;         /* digest length */
+        public void* outptr;         /* output array */
+        public UInt32 outlen;         /* digest length */
 
-            public void* pwd;            /* password array */
-            public UInt32 pwdlen;         /* password length */
+        public void* pwd;            /* password array */
+        public UInt32 pwdlen;         /* password length */
 
-            public void* salt;           /* salt array */
-            public UInt32 saltlen;        /* salt length */
+        public void* salt;           /* salt array */
+        public UInt32 saltlen;        /* salt length */
 
-            public void* secret;         /* key array */
-            public UInt32 secretlen;      /* key length */
+        public void* secret;         /* key array */
+        public UInt32 secretlen;      /* key length */
 
-            public void* ad;             /* associated data array */
-            public UInt32 adlen;          /* associated data length */
+        public void* ad;             /* associated data array */
+        public UInt32 adlen;          /* associated data length */
 
-            public UInt32 t_cost;         /* number of passes */
-            public UInt32 m_cost;         /* amount of memory requested (KB) */
-            public UInt32 lanes;          /* number of lanes */
-            public UInt32 threads;        /* maximum number of threads */
+        public UInt32 t_cost;         /* number of passes */
+        public UInt32 m_cost;         /* amount of memory requested (KB) */
+        public UInt32 lanes;          /* number of lanes */
+        public UInt32 threads;        /* maximum number of threads */
 
-            public Argon2Version version;      /* version number */
+        public Argon2Version version;      /* version number */
 
-            public void* allocate_cbk;   /* pointer to memory allocator */
-            public void* free_cbk;       /* pointer to memory deallocator */
+        public void* allocate_cbk;   /* pointer to memory allocator */
+        public void* free_cbk;       /* pointer to memory deallocator */
 
-            public UInt32 flags;          /* array of bool options */
-        }
+        public UInt32 flags;          /* array of bool options */
     }
 }
