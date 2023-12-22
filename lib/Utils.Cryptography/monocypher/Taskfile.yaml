@@ -96,7 +96,7 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
      #pack monocypher source code and create the archive
-     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -cvf 'bin/src.tar' ."
+     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -cvf 'bin/src.tgz' ."
 
   clean:
     ignore_error: true

@@ -96,7 +96,7 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
      #just pack up current directory, excluding build, bin, and git directories
-     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czvf bin/src.tar *"
+     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czvf bin/src.tgz *"
 
 
   clean:
