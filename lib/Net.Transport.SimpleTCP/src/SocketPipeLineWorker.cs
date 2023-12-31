@@ -176,8 +176,7 @@ namespace VNLib.Net.Transport.Tcp
                         while(segmentReader.WindowSize > 0)
                         {
                             //Write segment to socket, and upate written data
-                            int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None)
-                                .ConfigureAwait(false);
+                            int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None);
 
                             if(written < 0)
                             {

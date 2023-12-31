@@ -1521,35 +1521,35 @@ namespace VNLib.Utils.Memory
         {
             public static ref byte AsByte<T>(ref T ptr, nuint elementOffset)
             {
-                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                ref T offset = ref Unsafe.Add(ref ptr, elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
             public static ref byte AsByte<T>(T[] arr, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetArrayDataReference(arr);
-                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                ref T offset = ref Unsafe.Add(ref ptr, elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
             public static ref byte AsByte<T>(Span<T> span, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetReference(span);
-                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                ref T offset = ref Unsafe.Add(ref ptr, elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
             public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetReference(span);
-                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                ref T offset = ref Unsafe.Add(ref ptr, elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
             public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset)
             {
                 ref T ptr = ref handle.GetReference();
-                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                ref T offset = ref Unsafe.Add(ref ptr, elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
         }
