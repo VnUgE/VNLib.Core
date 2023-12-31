@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -45,7 +45,7 @@ namespace VNLib.Net.Http.Core
 
             ValueTask discardTask = Request.InputStream.DiscardRemainingAsync();
 
-            //See if discard is needed
+            //See if response data needs to be written
             if (ResponseBody.HasData)
             {
                 //Parallel the write and discard

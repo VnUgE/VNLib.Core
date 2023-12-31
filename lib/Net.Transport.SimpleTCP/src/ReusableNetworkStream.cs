@@ -62,20 +62,23 @@ namespace VNLib.Net.Transport.Tcp
         public override void CopyTo(Stream destination, int bufferSize) => throw new NotSupportedException("CopyTo is not supported");
         #endregion
 
+        private int _recvTimeoutMs;
+        private int _sendTimeoutMs;
+
         //Read timeout to use when receiving data
         public override int ReadTimeout
         {
-            get => Transport.RecvTimeoutMs;
+            get => _recvTimeoutMs;
             //Allow -1 to set to infinite timeout
-            set => Transport.RecvTimeoutMs = value > -2 ? value : throw new ArgumentException("Write timeout must be a 32bit signed integer larger than 0");
+            set => _recvTimeoutMs = value > -2 ? value : throw new ArgumentException("Write timeout must be a 32bit signed integer larger than 0");
         }
 
         // Write timeout is not currently used, becasue the writer managed socket timeouts
         public override int WriteTimeout
         {
-            get => Transport.SendTimeoutMs;
+            get => _sendTimeoutMs;
             //Allow -1 to set to infinite timeout
-            set => Transport.SendTimeoutMs = value > -2 ? value : throw new ArgumentException("Write timeout must be a 32bit signed integer larger than -1");
+            set => _sendTimeoutMs = value > -2 ? value : throw new ArgumentException("Write timeout must be a 32bit signed integer larger than -1");
         }
 
         //Timer used to cancel pipeline recv timeouts
@@ -88,11 +91,7 @@ namespace VNLib.Net.Transport.Tcp
 
         ///<inheritdoc/>
         public override void Close() 
-        {
-            //Call sync
-            Task closing = Transport.CloseAsync();
-            closing.GetAwaiter().GetResult();
-        }
+        { }
 
         ///<inheritdoc/>
         public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -105,7 +104,7 @@ namespace VNLib.Net.Transport.Tcp
         public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
 
         ///<inheritdoc/>
-        public override int Read(Span<byte> buffer) => Transport.Recv(buffer);
+        public override int Read(Span<byte> buffer) => Transport.Recv(buffer, _recvTimeoutMs);
 
         ///<inheritdoc/>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -114,13 +113,13 @@ namespace VNLib.Net.Transport.Tcp
 
         ///<inheritdoc/>
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) 
-            => Transport.RecvAsync(buffer, cancellationToken);
+            => Transport.RecvAsync(buffer, _recvTimeoutMs, cancellationToken);
 
         ///<inheritdoc/>
         public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
 
         ///<inheritdoc/>
-        public override void Write(ReadOnlySpan<byte> buffer) => Transport.Send(buffer);
+        public override void Write(ReadOnlySpan<byte> buffer) => Transport.Send(buffer, _sendTimeoutMs);
 
         ///<inheritdoc/>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) 
@@ -130,12 +129,12 @@ namespace VNLib.Net.Transport.Tcp
         ///<exception cref="IOException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellation = default) 
-            => Transport.SendAsync(buffer, cancellation);
+            => Transport.SendAsync(buffer, _sendTimeoutMs, cancellation);
 
         /*
          * Override dispose to intercept base cleanup until the internal release
          */
 
-        public override ValueTask DisposeAsync() => new (Transport.CloseAsync());
+        public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

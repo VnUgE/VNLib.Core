@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -40,7 +40,8 @@ using VNLib.Plugins.Attributes;
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
 
-    internal sealed record class PluginStackInitializer(PluginLoadEventListener Listener, IPluginStack Stack, IManualPlugin[] ManualPlugins) : IPluginInitializer
+    internal sealed record class PluginStackInitializer(PluginLoadEventListener Listener, IPluginStack Stack, IManualPlugin[] ManualPlugins, bool ConcurrentLoad) 
+        : IPluginInitializer
     {
         private readonly LinkedList<IManagedPlugin> _managedPlugins = new();
         private readonly LinkedList<ManualPluginWrapper> _manualPlugins = new();
@@ -88,8 +89,20 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 }
             }
 
-            //Load stage, load only initialized plugins
-            Parallel.ForEach(_loadedPlugins, wp => LoadPlugin(wp, debugLog));
+            /*
+             * Load stage, load only initialized plugins.
+             * 
+             * Optionally single-threaded or parallel
+             */
+
+            if (ConcurrentLoad)
+            {
+                Parallel.ForEach(_loadedPlugins, wp => LoadPlugin(wp, debugLog));
+            }
+            else
+            {
+                _loadedPlugins.TryForeach(_loadedPlugins => LoadPlugin(_loadedPlugins, debugLog));
+            }
 
             return _loadedPlugins.ToArray();
         }

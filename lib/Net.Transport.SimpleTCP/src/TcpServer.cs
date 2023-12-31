@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -23,12 +23,15 @@
 */
 
 using System;
+using System.Net;
 using System.Security;
 using System.Threading;
+using System.Diagnostics;
 using System.Net.Sockets;
-using System.IO.Pipelines;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+
+using System.IO.Pipelines;
 
 using VNLib.Utils.Async;
 using VNLib.Utils.Logging;
@@ -46,15 +49,17 @@ namespace VNLib.Net.Transport.Tcp
     /// connections is expected. This class cannot be inherited
     /// </para>
     /// </summary>
-    public sealed class TcpServer : ICacheHolder, ISockAsyncArgsHandler
+    public sealed class TcpServer : ICacheHolder
     {
+        private readonly TCPConfig _config;
+
         /// <summary>
         /// The current <see cref="TcpServer"/> configuration
         /// </summary>
-        public TCPConfig Config { get; }
+        public ref readonly TCPConfig Config => ref _config;
 
-        private readonly ObjectRental<VnSocketAsyncArgs> SockAsyncArgPool;
-        private readonly PipeOptions PipeOptions;
+        private readonly ObjectRental<AwaitableAsyncServerSocket> SockAsyncArgPool;
+        private readonly AsyncQueue<ITcpConnectionDescriptor> WaitingSockets;
 
         /// <summary>
         /// Initializes a new <see cref="TcpServer"/> with the specified <see cref="TCPConfig"/>
@@ -66,40 +71,47 @@ namespace VNLib.Net.Transport.Tcp
         public TcpServer(TCPConfig config, PipeOptions? pipeOptions = null)
         {
             //Check config
-            if(pipeOptions == null)
+            if (pipeOptions == null)
             {
                 //Pool is required when using default pipe options
                 _ = config.BufferPool ?? throw new ArgumentException("Buffer pool argument cannot be null");
             }
-            
+
             _ = config.Log ?? throw new ArgumentException("Log argument is required");
-            
+
             if (config.MaxRecvBufferData < 4096)
             {
                 throw new ArgumentException("MaxRecvBufferData size must be at least 4096 bytes to avoid data pipeline pefromance issues");
             }
-            if(config.AcceptThreads < 1)
+            if (config.AcceptThreads < 1)
             {
                 throw new ArgumentException("Accept thread count must be greater than 0");
             }
-            if(config.AcceptThreads > Environment.ProcessorCount)
+            if (config.AcceptThreads > Environment.ProcessorCount)
             {
                 config.Log.Debug("Suggestion: Setting accept threads to {pc}", Environment.ProcessorCount);
             }
 
-            Config = config;
+            _config = config;
 
-            //Cache pipe options
-            PipeOptions = pipeOptions ?? new(
+            //Assign default pipe options
+            pipeOptions ??= new(
                 config.BufferPool,
-                readerScheduler:PipeScheduler.ThreadPool,
-                writerScheduler:PipeScheduler.ThreadPool, 
-                pauseWriterThreshold: config.MaxRecvBufferData, 
+                readerScheduler: PipeScheduler.ThreadPool,
+                writerScheduler: PipeScheduler.ThreadPool,
+                pauseWriterThreshold: config.MaxRecvBufferData,
                 minimumSegmentSize: 8192,
-                useSynchronizationContext:false
-                );
+                useSynchronizationContext: false
+            );
 
-            SockAsyncArgPool = ObjectRental.CreateReusable(ArgsConstructor, Config.CacheQuota);
+            //Arguments constructor
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            AwaitableAsyncServerSocket ArgsConstructor() => new(pipeOptions);
+
+            SockAsyncArgPool = ObjectRental.CreateReusable(ArgsConstructor, config.CacheQuota);
+
+            //Init waiting socket queue, always multi-threaded
+            WaitingSockets = new(false, false);
         }
 
         ///<inheritdoc/>
@@ -107,192 +119,151 @@ namespace VNLib.Net.Transport.Tcp
 
         ///<inheritdoc/>
         public void CacheHardClear() => SockAsyncArgPool.CacheHardClear();
-      
-        private AsyncQueue<VnSocketAsyncArgs>? WaitingSockets;
-        private Socket? ServerSock;
-        private bool _canceledFlag;
 
         /// <summary>
         /// Begins listening for incoming TCP connections on the configured socket
         /// </summary>
         /// <param name="token">A token that is used to abort listening operations and close the socket</param>
+        /// <returns>A task that resolves when all accept threads have exited. The task does not need to be observed</returns>
         /// <exception cref="SocketException"></exception>
         /// <exception cref="SecurityException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public void Start(CancellationToken token)
+        public Task Start(CancellationToken token)
         {
-            //If the socket is still listening
-            if (ServerSock != null)
-            {
-                throw new InvalidOperationException("The server thread is currently listening and cannot be re-started");
-            }
+            Socket serverSock;
 
             //make sure the token isnt already canceled
             if (token.IsCancellationRequested)
             {
                 throw new ArgumentException("Token is already canceled", nameof(token));
             }
-            
+
             //Configure socket on the current thread so exceptions will be raised to the caller
-            ServerSock = new(Config.LocalEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            serverSock = new(_config.LocalEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             //Bind socket
-            ServerSock.Bind(Config.LocalEndPoint);
+            serverSock.Bind(_config.LocalEndPoint);
             //Begin listening
-            ServerSock.Listen(Config.BackLog);
+            serverSock.Listen(_config.BackLog);
             
             //See if keepalive should be used
-            if (Config.TcpKeepalive)
-            {               
+            if (_config.TcpKeepalive)
+            {
                 //Setup socket keepalive from config
-                ServerSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                ServerSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, Config.KeepaliveInterval);
-                ServerSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, Config.TcpKeepAliveTime);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, _config.KeepaliveInterval);
+                serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, _config.TcpKeepAliveTime);
             }
 
             //Invoke socket created callback
-            Config.OnSocketCreated?.Invoke(ServerSock);
-
-            //Init waiting socket queue
-            WaitingSockets = new(false, false);
+            _config.OnSocketCreated?.Invoke(serverSock);
 
             //Clear canceled flag
-            _canceledFlag = false;
+            StrongBox<bool> canceledFlag = new(false);
+
+            Task[] acceptWorkers = new Task[_config.AcceptThreads];
 
             //Start listening for connections
-            for (int i = 0; i < Config.AcceptThreads; i++)
+            for (int i = 0; i < _config.AcceptThreads; i++)
             {
-                AcceptConnection();
+                acceptWorkers[i] = Task.Run(() => ExecAcceptAsync(serverSock, canceledFlag), token);
             }
+
+            CancellationTokenRegistration reg = default;
 
             //Cleanup callback
-            static void cleanup(object? state)
+            void cleanup()
             {
-                TcpServer server = (TcpServer)state!;
-
                 //Set canceled flag
-                server._canceledFlag = true;
-                
-                //Clean up socket
-                server.ServerSock!.Dispose();
-                server.ServerSock = null;
+                canceledFlag.Value = true;
 
-                server.SockAsyncArgPool.CacheHardClear();
+                //Clean up socket
+                serverSock.Dispose();
+
+                //Cleanup pool
+                SockAsyncArgPool.CacheHardClear();
 
                 //Dispose any queued sockets
-                while (server.WaitingSockets!.TryDequeue(out VnSocketAsyncArgs? args))
+                while (WaitingSockets!.TryDequeue(out ITcpConnectionDescriptor? args))
                 {
-                    args.Dispose();
+                    (args as IDisposable)!.Dispose();
+                }
+
+                reg.Dispose();
+            }
+
+            //Register cleanup
+            reg = token.Register(cleanup, false);
+
+            return Task.WhenAll(acceptWorkers);
+        }
+
+        private async Task ExecAcceptAsync(Socket serverSock, StrongBox<bool> canceled)
+        {
+            Debug.Assert(serverSock != null, "Expected not-null server socket value");
+            Debug.Assert(canceled != null && !canceled.Value, "Expected a valid canceled flag instance");
+
+            //Cache buffer sizes
+            int recBufferSize = serverSock.ReceiveBufferSize;
+            int sendBufferSize = serverSock.SendBufferSize;
+
+            //Cache local endpoint for multi-server logging
+            EndPoint localEndpoint = serverSock.LocalEndPoint!;
+
+            Debug.Assert(localEndpoint != null, "Expected a socket bound to a local endpoint");
+
+            try
+            {
+                while (!canceled.Value)
+                {
+                    //Rent new args
+                    AwaitableAsyncServerSocket acceptArgs = SockAsyncArgPool.Rent();
+
+                    //Accept new connection
+                    SocketError err = await acceptArgs.AcceptAsync(serverSock, recBufferSize, sendBufferSize);
+
+                    //Check canceled flag before proceeding
+                    if (canceled.Value)
+                    {
+                        //dispose and bail
+                        acceptArgs.Dispose();
+                        _config.Log.Verbose("Accept thread aborted for {socket}", localEndpoint);
+                    }
+                    else if (err == SocketError.Success)
+                    {
+                        // Add to waiting queue
+                        if (!WaitingSockets!.TryEnque(acceptArgs))
+                        {
+                            _ = await acceptArgs.CloseConnectionAsync();
+
+                            /*
+                             * Writing to log will likely compound resource exhaustion, but the user must be informed
+                             * connections are being dropped.
+                             */
+                            _config.Log.Warn("Socket {e} disconnected because the waiting queue is overflowing", acceptArgs.GetHashCode());
+
+                            //Re-eqnue
+                            SockAsyncArgPool.Return(acceptArgs);
+                        }
+
+                        //Success
+                        PrintConnectionInfo(acceptArgs, SocketAsyncOperation.Accept);
+                    }
+                    else
+                    {
+                        //Error
+                        _config.Log.Debug("Socket accept failed with error code {ec}", err);
+                        //Return args to pool
+                        SockAsyncArgPool.Return(acceptArgs);
+                    }
                 }
             }
-            
-            //Register cleanup
-            _ = token.Register(cleanup, this, false);
-        }
-      
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private VnSocketAsyncArgs ArgsConstructor()
-        {
-            //Socket args accept callback functions for this 
-            VnSocketAsyncArgs args = new(this, PipeOptions);
-            return args;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void ISockAsyncArgsHandler.OnSocketAccepted(VnSocketAsyncArgs args) => AcceptCompleted(args);        
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void ISockAsyncArgsHandler.OnSocketDisconnected(VnSocketAsyncArgs args)
-        {
-            //If the is closed, dispose the args and exit
-            if (_canceledFlag)
+            catch(Exception ex)
             {
-                args.Dispose();
-            }
-            else
-            {
-                SockAsyncArgPool.Return(args);
+                _config.Log.Fatal(ex, "Accept thread failed with exception");
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AcceptConnection()
-        {
-            //Make sure cancellation isnt pending
-            if (_canceledFlag)
-            {
-                return;
-            }
-
-            //Rent new args
-            VnSocketAsyncArgs acceptArgs = SockAsyncArgPool!.Rent();
-
-            //Accept another socket
-            if (!acceptArgs.BeginAccept(ServerSock!))
-            {
-                //Completed synchronously
-                AcceptCompleted(acceptArgs);
-            }
-            //Completed async
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AcceptCompleted(VnSocketAsyncArgs args)
-        {
-            //Examine last op for aborted error, if aborted, then the listening socket has exited
-            if (args.SocketError == SocketError.OperationAborted)
-            {
-                //Dispose args since server is exiting
-                args.Dispose();
-                return;
-            }
-            
-            //Check for error and log it
-            if (!args.EndAccept())
-            {
-                args.Disconnect();
-                Config.Log.Debug("Socket accept failed with error code {ec}", args.SocketError);
-                return;
-            }
-
-            //Try to enqueue the args to the waiting queue, if the queue is full, disconnect the socket
-            if (!WaitingSockets!.TryEnque(args))
-            {
-                args.Disconnect();
-                Config.Log.Warn("Socket {e} disconnected because the waiting queue is overflowing", args.GetHashCode());
-                return;
-            }
-            
-            //Accept a new connection
-            AcceptConnection();
-        }
-        
-        /// <summary>
-        /// Retreives a connected socket from the waiting queue
-        /// </summary>
-        /// <returns>The context of the connect</returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        public ValueTask<TransportEventContext> AcceptAsync(CancellationToken cancellation)
-        {
-            _ = WaitingSockets ?? throw new InvalidOperationException("Server is not listening");
-
-            //Try get args from queue
-            if(WaitingSockets.TryDequeue(out VnSocketAsyncArgs? args))
-            {
-                return ValueTask.FromResult<TransportEventContext>(new(args, args.Stream));
-            }
-
-            return AcceptAsyncCore(this, cancellation);
-
-            static async ValueTask<TransportEventContext> AcceptAsyncCore(TcpServer server, CancellationToken cancellation)
-            {
-                //Await async
-                VnSocketAsyncArgs args = await server.WaitingSockets!.DequeueAsync(cancellation);
-
-                return new(args, args.Stream);
-            }
-        }
 
         /// <summary>
         /// Accepts a connection and returns the connection descriptor.
@@ -300,7 +271,7 @@ namespace VNLib.Net.Transport.Tcp
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>The connection descriptor</returns>
         /// <remarks>
-        /// NOTE: You must always call the <see cref="ITcpConnectionDescriptor.CloseConnection"/> and 
+        /// NOTE: You must always call the <see cref="CloseConnectionAsync"/> and 
         /// destroy all references to it when you are done. You must also dispose the stream returned
         /// from the <see cref="ITcpConnectionDescriptor.GetStream"/> method.
         /// </remarks>
@@ -310,17 +281,65 @@ namespace VNLib.Net.Transport.Tcp
             _ = WaitingSockets ?? throw new InvalidOperationException("Server is not listening");
 
             //Try get args from queue
-            if (WaitingSockets.TryDequeue(out VnSocketAsyncArgs? args))
+            if (WaitingSockets.TryDequeue(out ITcpConnectionDescriptor? args))
             {
-                return ValueTask.FromResult<ITcpConnectionDescriptor>(args);
+                return ValueTask.FromResult(args);
             }
 
-            return AcceptConnectionAsyncCore(this, cancellation);
+            return WaitingSockets!.DequeueAsync(cancellation);
+        }
 
-            static async ValueTask<ITcpConnectionDescriptor> AcceptConnectionAsyncCore(TcpServer server, CancellationToken cancellation)
+        /// <summary>
+        /// Cleanly closes an existing TCP connection obtained from <see cref="AcceptConnectionAsync(CancellationToken)"/>
+        /// and returns the instance to the pool for reuse. 
+        /// <para>
+        /// You should destroy all references to the
+        /// connection descriptor and dispose the stream returned from <see cref="ITcpConnectionDescriptor.GetStream"/>
+        /// </para>
+        /// </summary>
+        /// <param name="descriptor">The existing descriptor to close</param>
+        /// <returns>A task that represents the closing operations</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public async ValueTask CloseConnectionAsync(ITcpConnectionDescriptor descriptor)
+        {
+            ArgumentNullException.ThrowIfNull(descriptor, nameof(descriptor));
+
+            //Recover args
+            AwaitableAsyncServerSocket args = (AwaitableAsyncServerSocket)descriptor;
+
+            PrintConnectionInfo(args, SocketAsyncOperation.Disconnect);
+
+            //Close the socket and cleanup resources
+            SocketError err = await args.CloseConnectionAsync();
+
+            if (err == SocketError.Success)
             {
-                //Await async
-                return await server.WaitingSockets!.DequeueAsync(cancellation);
+                //Return to pool
+                SockAsyncArgPool.Return(args);
+            }
+            else
+            {
+                args.Dispose();
+                _config.Log.Verbose("Socket disconnected failed with error code {ec}. Resources disposed", err);
+            }
+        }
+
+
+        [Conditional("DEBUG")]
+        private void PrintConnectionInfo(ITcpConnectionDescriptor con, SocketAsyncOperation operation)
+        {
+            if (!_config.DebugTcpLog)
+            {
+                return;
+            }
+
+            con.GetEndpoints(out IPEndPoint local, out IPEndPoint remote);
+
+            switch (operation)
+            {
+                default:
+                    _config.Log.Verbose("Socket {operation} on {local} -> {remote}", operation, local, remote);
+                    break;
             }
         }
     }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -23,8 +23,7 @@
 */
 
 using System.IO;
-using System.Net.Sockets;
-
+using System.Net;
 
 namespace VNLib.Net.Transport.Tcp
 {
@@ -33,7 +32,12 @@ namespace VNLib.Net.Transport.Tcp
     /// </summary>
     public interface ITcpConnectionDescriptor
     {
-        internal Socket Socket { get; }
+        /// <summary>
+        /// Gets the local and remote endpoints of the connection
+        /// </summary>
+        /// <param name="localEndpoint">The local socket connection</param>
+        /// <param name="remoteEndpoint">The remote client connection endpoint</param>
+        void GetEndpoints(out IPEndPoint localEndpoint, out IPEndPoint remoteEndpoint);
 
         /// <summary>
         /// Gets a stream wrapper around the connection.
@@ -42,13 +46,5 @@ namespace VNLib.Net.Transport.Tcp
         /// You must dispose of this stream when you are done with it.
         /// </remarks>
         Stream GetStream();
-
-        /// <summary>
-        /// Closes a connection and cleans up any resources
-        /// </summary>
-        /// <remarks>
-        /// You must destory any references to this connection descriptor after calling this method.
-        /// </remarks>
-        void CloseConnection();
     }
 }

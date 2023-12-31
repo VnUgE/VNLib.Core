@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -37,7 +37,7 @@ namespace VNLib.Utils.Memory.Caching
     {
         protected ThreadLocal<T> Store { get; }
 
-        internal ThreadLocalObjectStorage(Func<T> constructor, Action<T>? rentCb, Action<T>? returnCb)
+        internal ThreadLocalObjectStorage(Func<T> constructor, Action<T>? rentCb, Func<T, bool>? returnCb)
             :base(constructor, rentCb, returnCb, 0)
         {
             Store = new(Constructor);
@@ -51,10 +51,10 @@ namespace VNLib.Utils.Memory.Caching
         public override T Rent()
         {
             Check();
-            //Get the tlocal value
+            //Get the tlocal value or init if null (and assign to thread-local slot)
             T value = Store.Value!;
             //Invoke the rent action if set
-            base.RentAction?.Invoke(value);
+            RentAction?.Invoke(value);
             return value;
         }
 
@@ -63,15 +63,19 @@ namespace VNLib.Utils.Memory.Caching
         public override void Return(T item)
         {
             Check();
+
             //Invoke the rent action
-            base.ReturnAction?.Invoke(item);
+            if(ReturnAction != null && ReturnAction.Invoke(item) == false)
+            {
+                //Assign a new value to the thread-local slot and clean-up the old one
+                Store.Value = Constructor();
+
+                DisposeIfDisposeable(item);
+            }
         }
 
         ///<inheritdoc/>
-        public override T[] GetItems()
-        {
-            return Store.Values.ToArray();
-        }
+        public override T[] GetItems() => Store.Values.ToArray();
 
         ///<inheritdoc/>
         protected override void Free()

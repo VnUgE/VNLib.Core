@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -158,7 +158,7 @@ namespace VNLib.Net.Http.Core.Response
         }
 
         ///<inheritdoc/>        
-        public async Task WriteEntityAsync(IResponseCompressor comp, IResponseDataWriter writer, Memory<byte> buffer)
+        public async Task WriteEntityAsync<TComp>(TComp comp, IResponseDataWriter writer, Memory<byte> buffer) where TComp : IResponseCompressor
         {
             //Write a sliding window response
             if (_userState.MemResponse != null)
@@ -254,7 +254,8 @@ namespace VNLib.Net.Http.Core.Response
             } while (true);
         }
 
-        private static bool CompressNextSegment(IMemoryResponseReader reader, IResponseCompressor comp, IResponseDataWriter writer)
+        private static bool CompressNextSegment<TComp>(IMemoryResponseReader reader, TComp comp, IResponseDataWriter writer)
+            where TComp: IResponseCompressor
         {
             //Read the next segment
             ReadOnlyMemory<byte> readSegment = comp.BlockSize > 0 ? reader.GetRemainingConstrained(comp.BlockSize) : reader.GetMemory();
@@ -271,7 +272,8 @@ namespace VNLib.Net.Http.Core.Response
             return writer.Advance(res.BytesWritten) == 0;
         }
 
-        private static bool CompressNextSegment(ref ForwardOnlyMemoryReader<byte> reader, IResponseCompressor comp, IResponseDataWriter writer)
+        private static bool CompressNextSegment<TComp>(ref ForwardOnlyMemoryReader<byte> reader, TComp comp, IResponseDataWriter writer)
+            where TComp: IResponseCompressor
         {
             //Get output buffer
             Memory<byte> output = writer.GetMemory();
@@ -316,8 +318,8 @@ namespace VNLib.Net.Http.Core.Response
             public ResponsBodyDataState(IMemoryResponseReader reader)
             {
                 Legnth = reader.Remaining;
-                Stream = null;
                 MemResponse = reader;
+                Stream = null;
                 IsSet = true;
             }
 

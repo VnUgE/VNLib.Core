@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -38,36 +38,19 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Transport.Tcp
 {
+
     /// <summary>
     /// A reuseable socket pipeline provider, that marshals data from a network stream 
     /// to a connected socket.
     /// </summary>
     internal sealed class SocketPipeLineWorker : ITransportInterface, IReusable
     {
-        /*
-         * [0] = Recv
-         * [1] = Send
-         * [2] = Send Complete
-         * [3] = Read Complete
-         */
-
-        private readonly Task[] _tasks;
-        
         public readonly ReusableNetworkStream NetworkStream;
         private readonly Pipe SendPipe;
         private readonly Pipe RecvPipe;
         private readonly Timer RecvTimer;
         private readonly Timer SendTimer;
         private readonly Stream RecvStream;
-
-        private CancellationTokenSource? _cts;
-
-        ///<inheritdoc/>
-        public int SendTimeoutMs { get; set; }
-
-        ///<inheritdoc/>
-        public int RecvTimeoutMs { get; set; }
-
 
         /// <summary>
         /// Initalizes a new reusable socket pipeline worker
@@ -87,57 +70,21 @@ namespace VNLib.Net.Transport.Tcp
 
             //Init reusable network stream
             NetworkStream = new(this);
-
-            SendTimeoutMs = Timeout.Infinite;
-            RecvTimeoutMs = Timeout.Infinite;
-
-            /*
-             * Store the operation tasks in an array, so they can be
-             * joined when the stream is closed
-             */
-            _tasks = new Task[4];
         }
 
         public void Prepare()
-        { }
+        {
+            NetworkStream.ReadTimeout = Timeout.Infinite;
+            NetworkStream.WriteTimeout = Timeout.Infinite;
+        }      
 
         public bool Release()
         {
             _sysSocketBufferSize = 0;
 
-            /*
-             * If the pipeline has been started, then the pipes 
-             * will be completed by the worker threads (or by the streams)
-             * and when release is called, there will no longer be 
-             * an observer for the result, which means the pipes 
-             * may be safely reset for reuse
-             */
-            if (_tasks[0] != null)
-            {
-                SendPipe.Reset();
-                RecvPipe.Reset();
-            }
-            /*
-             * If socket had an error and was not started,
-             * it means there may be data written to the 
-             * recv pipe from the accept operation, that 
-             * needs to be cleared
-             */
-            else
-            {
-                //Complete the recvpipe then reset it to discard buffered data
-                RecvPipe.Reader.Complete();
-                RecvPipe.Writer.Complete();
-                //now reset it
-                RecvPipe.Reset();
-            }
-
-            //Cleanup tasks
-            Array.Clear(_tasks);
-
-            //Cleanup cts
-            _cts?.Dispose();
-            _cts = null;
+            //Reset pipes for use
+            SendPipe.Reset();
+            RecvPipe.Reset();
 
             return true;
         }
@@ -148,21 +95,6 @@ namespace VNLib.Net.Transport.Tcp
         /// <param name="bufferSize">The size hint of the buffer to get</param>
         /// <returns>A memory structure of the specified size</returns>
         public Memory<byte> GetMemory(int bufferSize) => RecvPipe.Writer.GetMemory(bufferSize);
-
-        /// <summary>
-        /// Begins async work to receive and send data on a connected socket
-        /// </summary>
-        /// <param name="client">The socket to read/write from</param>
-        /// <param name="bytesTransferred">The number of bytes to be commited</param>
-        public void Start(Socket client, int bytesTransferred)
-        {
-            //Advance writer
-            RecvPipe.Writer.Advance(bytesTransferred);
-            //begin recv tasks, and pass inital data to be flushed flag
-            _tasks[0] = RecvDoWorkAsync(client, bytesTransferred > 0);
-            _tasks[1] = SendDoWorkAsync(client);
-        }
-
 
         /*
          * NOTES
@@ -195,11 +127,19 @@ namespace VNLib.Net.Transport.Tcp
          */
 
         private ReadResult _sendReadRes;
+        private int _sysSocketBufferSize;
 
-        private async Task SendDoWorkAsync(Socket sock)
+        public async Task SendDoWorkAsync<TIO>(TIO sock, int sendBufferSize)
+            where TIO : ISocketIo
         {
+            Exception? errCause = null;
+            ReadOnlySequence<byte>.Enumerator enumerator;
+            ForwardOnlyMemoryReader<byte> segmentReader;
+
             try
             {
+                _sysSocketBufferSize = sendBufferSize;
+
                 //Enter work loop
                 while (true)
                 {
@@ -207,7 +147,7 @@ namespace VNLib.Net.Transport.Tcp
                     _sendReadRes = await SendPipe.Reader.ReadAsync(CancellationToken.None);
 
                     //Catch error/cancel conditions and break the loop
-                    if (_sendReadRes.IsCanceled || !sock.Connected || _sendReadRes.Buffer.IsEmpty)
+                    if (_sendReadRes.IsCanceled || _sendReadRes.Buffer.IsEmpty)
                     {
                         break;
                     }
@@ -218,7 +158,7 @@ namespace VNLib.Net.Transport.Tcp
                      */
 
                     //Get enumerator to write memory segments
-                    ReadOnlySequence<byte>.Enumerator enumerator = _sendReadRes.Buffer.GetEnumerator();
+                   enumerator = _sendReadRes.Buffer.GetEnumerator();
 
                     //Begin enumerator
                     while (enumerator.MoveNext())
@@ -231,21 +171,27 @@ namespace VNLib.Net.Transport.Tcp
                          * move to the next segment
                          */
 
-                        ForwardOnlyMemoryReader<byte> reader = new(enumerator.Current);
+                        segmentReader = new(enumerator.Current);
                          
-                        while(reader.WindowSize > 0)
+                        while(segmentReader.WindowSize > 0)
                         {
                             //Write segment to socket, and upate written data
-                            int written = await sock.SendAsync(reader.Window, SocketFlags.None);
+                            int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None)
+                                .ConfigureAwait(false);
 
-                            if(written == reader.WindowSize)
+                            if(written < 0)
+                            {
+                                goto ExitOnSocketErr;
+                            }
+
+                            if(written == segmentReader.WindowSize)
                             {
                                 //All data was written
                                 break;
                             }
 
                             //Advance unread window to end of the written data
-                            reader.Advance(written);
+                            segmentReader.Advance(written);
                         } 
                         //Advance to next window/segment
                     }
@@ -260,44 +206,45 @@ namespace VNLib.Net.Transport.Tcp
                     }
                 }
 
-                //All done, complete the send pipe reader
-                await SendPipe.Reader.CompleteAsync();
+            ExitOnSocketErr:
+                ;
+
             }
             catch (Exception ex)
             {
-                //Complete the send pipe reader
-                await SendPipe.Reader.CompleteAsync(ex);
+                errCause = ex;   
             }
             finally
             {
                 _sendReadRes = default;
-                //Cancel the recv task
-                _cts!.Cancel();
+
+                //Complete the send pipe reader
+                await SendPipe.Reader.CompleteAsync(errCause);
             }
         }
 
 
         private FlushResult _recvFlushRes;
-        private int _sysSocketBufferSize;
 
-        private async Task RecvDoWorkAsync(Socket sock, bool initialData)
-        {
-            //init new cts
-            _cts = new();
-            
+        public async Task RecvDoWorkAsync<TIO>(TIO sock, int bytesTransferred, int recvBufferSize)
+            where TIO : ISocketIo
+        {            
             Exception? cause = null;
+            Memory<byte> buffer;
+
             try
             {
-                //Avoid syscall?
-                _sysSocketBufferSize = sock.ReceiveBufferSize;
-
                 //If initial data was buffered, it needs to be published to the reader
-                if (initialData)
+                if (bytesTransferred > 0)
                 {
-                    //Flush initial data
-                    FlushResult res = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
+                    //Advance the write to written data from accept
+                    RecvPipe.Writer.Advance(bytesTransferred);
 
-                    if (res.IsCompleted || res.IsCanceled)
+                    //Flush initial data
+                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
+
+                    //Check flush result for error/cancel
+                    if (IsPipeClosedAfterFlush(ref _recvFlushRes))
                     {
                         //Exit
                         return;
@@ -308,14 +255,14 @@ namespace VNLib.Net.Transport.Tcp
                 while (true)
                 {
                     //Get buffer from pipe writer
-                    Memory<byte> buffer = RecvPipe.Writer.GetMemory(_sysSocketBufferSize);
+                    buffer = RecvPipe.Writer.GetMemory(recvBufferSize);
                     
                     //Wait for data or error from socket
-                    int count = await sock.ReceiveAsync(buffer, SocketFlags.None, _cts.Token);
+                    int count = await sock.ReceiveAsync(buffer, SocketFlags.None);
 
-                    //socket returned emtpy data
-                    if (count == 0 || !sock.Connected)
+                    if(count <= 0)
                     {
+                        //Connection is softly closing, exit
                         break;
                     }
 
@@ -326,24 +273,18 @@ namespace VNLib.Net.Transport.Tcp
                     _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
 
                     //Writing has completed, time to exit
-                    if (_recvFlushRes.IsCompleted || _recvFlushRes.IsCanceled)
+                    if (IsPipeClosedAfterFlush(ref _recvFlushRes))
                     {
                         break;
                     }
                 }
             }
-            //Normal exit
-            catch (OperationCanceledException)
-            {}
-            catch (SocketException se)
-            {
-                cause = se;
-                //Cancel sending reader task because the socket has an error and cannot be used
-                SendPipe.Reader.CancelPendingRead();
-            }
             catch (Exception ex)
             {
                 cause = ex;
+
+                //Cancel sending reader task because the socket has an error and cannot be used
+                SendPipe.Reader.CancelPendingRead();
             }
             finally
             {
@@ -359,6 +300,9 @@ namespace VNLib.Net.Transport.Tcp
         }
 
 
+        private static bool IsPipeClosedAfterFlush(ref FlushResult result) => result.IsCanceled || result.IsCompleted;
+
+
         /// <summary>
         /// The internal cleanup/dispose method to be called
         /// when the pipeline is no longer needed
@@ -367,43 +311,41 @@ namespace VNLib.Net.Transport.Tcp
         {
             RecvTimer.Dispose();
             SendTimer.Dispose();
-
-            //Perform some managed cleanup
-
-            //Cleanup tasks
-            Array.Clear(_tasks);
-
-            //Cleanup cts
-            _cts?.Dispose();
-            _cts = null;
         }
-       
 
-        private static async Task AwaitFlushTask(ValueTask<FlushResult> valueTask, Timer? sendTimer)
+        /// <summary>
+        /// Must be called when the pipeline is requested to be closed
+        /// </summary>
+        /// <returns>A value task that complets when the piepline is completed</returns>
+        internal async ValueTask ShutDownClientPipeAsync()
+        {
+            //Complete the data input so sending completes
+            await SendPipe.Writer.CompleteAsync();
+            await RecvPipe.Reader.CompleteAsync();
+        }
+
+
+        private static async Task AwaitFlushTask<TTimer>(ValueTask<FlushResult> valueTask, TTimer timer)
+            where TTimer : INetTimer
         {
             try
             {
                 FlushResult result = await valueTask.ConfigureAwait(false);
-
-                if (result.IsCanceled)
-                {
-                    ThrowHelpers.ThrowWriterCanceled();
-                }
+                ThrowHelpers.ThrowIfWriterCanceled(result.IsCanceled);
             }
             finally
             {
-                sendTimer?.Stop();
+                timer.Stop();
             }
         }
 
-        private ValueTask SendWithTimerInternalAsync(ReadOnlyMemory<byte> data, CancellationToken cancellation)
+        private ValueTask SendWithTimerInternalAsync<TTimer>(in TTimer timer, CancellationToken cancellation)
+            where TTimer : INetTimer
         {
             //Start send timer
-            SendTimer.Restart(SendTimeoutMs);
+            timer.Start();
             try
             {
-                CopyAndPublishDataOnSendPipe(data);
-
                 //Send the segment
                 ValueTask<FlushResult> result = SendPipe.Writer.FlushAsync(cancellation);
 
@@ -411,140 +353,111 @@ namespace VNLib.Net.Transport.Tcp
                 if (result.IsCompleted)
                 {
                     //Stop timer
-                    SendTimer.Stop();
+                    timer.Stop();
 
                     //safe to get the flush result sync, may throw, so preserve the call stack
                     FlushResult fr = result.GetAwaiter().GetResult();
-                    
+
                     //Check for canceled and throw
                     return fr.IsCanceled
-                        ? throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter")
+                        ? ValueTask.FromException(new OperationCanceledException("The write operation was canceled by the underlying PipeWriter"))
                         : ValueTask.CompletedTask;
                 }
                 else
                 {
                     //Wrap the task in a ValueTask since it must be awaited, and will happen on background thread
-                    return new(AwaitFlushTask(result, SendTimer));
+                    return new(AwaitFlushTask(result, timer));
                 }
             }
             catch
             {
                 //Stop timer on exception
-                SendTimer.Stop();
+                timer.Stop();
                 throw;
             }
         }
 
-        private ValueTask SendWithoutTimerInternalAsync(ReadOnlyMemory<byte> data, CancellationToken cancellation)
+        private ValueTask SendAsync(ReadOnlySpan<byte> data, int timeout, CancellationToken cancellation)
         {
-            CopyAndPublishDataOnSendPipe(data);
+            //Publish send data to send pipe
+            CopyAndPublishDataOnSendPipe(data, _sysSocketBufferSize, SendPipe.Writer);
 
-            //Send the segment
-            ValueTask<FlushResult> result = SendPipe.Writer.FlushAsync(cancellation);
-
-            //Task completed successfully, so 
-            if (result.IsCompleted)
+            //See if timer is required
+            if (timeout < 1)
             {
-                /*
-                 * We can get the flush result synchronously, it may throw
-                 * so preserve the call stack
-                 */
-                FlushResult fr = result.GetAwaiter().GetResult();
-                
-                //Check for canceled and throw
-                return fr.IsCanceled
-                    ? throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter")
-                    : ValueTask.CompletedTask;
+                NoOpTimerWrapper noOpTimer = default;
+
+                //no timer
+                return SendWithTimerInternalAsync(in noOpTimer, cancellation);
             }
             else
             {
-                //Wrap the task in a ValueTask since it must be awaited, and will happen on background thread
-                return new(AwaitFlushTask(result, null));
+                TpTimerWrapper sendTimer = new(SendTimer, timeout);
+
+                //Pass new send timer to send method
+                return SendWithTimerInternalAsync(in sendTimer, cancellation);
             }
         }
 
-        private void CopyAndPublishDataOnSendPipe(ReadOnlyMemory<byte> src)
+        ValueTask ITransportInterface.SendAsync(ReadOnlyMemory<byte> data, int timeout, CancellationToken cancellation)
         {
-            Debug.Assert(_sysSocketBufferSize > 0, "A call to CopyAndPublishDataOnSendPipe was made before a socket was connected");
+            return SendAsync(data.Span, timeout, cancellation);
+        }
+
+        private static void CopyAndPublishDataOnSendPipe<TWriter>(ReadOnlySpan<byte> src, int bufferSize, TWriter writer)
+            where TWriter: IBufferWriter<byte>
+        {
+            Debug.Assert(bufferSize > 0, "A call to CopyAndPublishDataOnSendPipe was made before a socket was connected");
+
+            ref byte srcRef = ref MemoryMarshal.GetReference(src);
 
             /*
-             * Clamp the buffer size to the system socket buffer size. If the 
-             * buffer is larger then, we will need to publish multiple segments
+             * Only publish blocks up to the size of the socket buffer
+             * If blocks are larger than the socket buffer, they will 
+             * be published in chunks up to the size of the socket buffer
              */
-            if(src.Length > _sysSocketBufferSize)
+            uint written = 0;
+            while (written < src.Length)
             {
-                //Store local src buffer reference to copy to
-                ref byte srcRef = ref MemoryMarshal.GetReference(src.Span);
+                //Clamp the data to copy to the size of the socket buffer
+                int dataToCopy = (int)Math.Min(bufferSize, src.Length - written);
 
-                uint written = 0;
-                while (written < src.Length)
-                {
-                    int dataToCopy = (int)Math.Min(_sysSocketBufferSize, src.Length - written);
+                //Get a new buffer span, as large as the data to copy
+                Span<byte> dest = writer.GetSpan(dataToCopy);
+                ref byte destRef = ref MemoryMarshal.GetReference(dest);
 
-                    //Get a new buffer span, and ref
-                    Span<byte> dest = SendPipe.Writer.GetSpan(dataToCopy);
-                    ref byte destRef = ref MemoryMarshal.GetReference(dest);
+                //Copy data to the buffer at the new position (attempt to use hardware acceleration)
+                MemoryUtil.AcceleratedMemmove(ref srcRef, written, ref destRef, 0, (uint)dataToCopy);
 
-                    //Copy data to the buffer at the new position
-                    MemoryUtil.Memmove(ref srcRef, written, ref destRef, 0, (uint)dataToCopy);
+                //Advance the writer by the number of bytes written
+                writer.Advance(dataToCopy);
 
-                    //Advance the writer by the number of bytes written
-                    SendPipe.Writer.Advance(dataToCopy);
-
-                    //Increment the written count
-                    written += (uint)dataToCopy;
-                }
+                //Increment the written count
+                written += (uint)dataToCopy;
             }
+        }       
+
+        void ITransportInterface.Send(ReadOnlySpan<byte> data, int timeout)
+        {
+            //Call async send and wait for completion
+            ValueTask result = SendAsync(data, timeout, CancellationToken.None);
+
+            //If the task is completed, then it was sync, so get the result
+            if (result.IsCompleted)
+            {
+                result.GetAwaiter().GetResult();
+            }
+            //Otherwise convert to task then await it
             else
             {
-                //Single segment, just copy to the writer
-                Span<byte> dest = SendPipe.Writer.GetSpan(src.Length);
-                src.Span.CopyTo(dest);
-                SendPipe.Writer.Advance(src.Length);
+                result.AsTask().GetAwaiter().GetResult();
             }
         }
 
-        ValueTask ITransportInterface.SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellation)
+        private ValueTask<int> RecvWithTimeoutAsync<TTimer>(Memory<byte> data, in TTimer timer, CancellationToken cancellation)
+            where TTimer : INetTimer
         {
-            //Use timer if timeout is set, dont otherwise
-            return SendTimeoutMs < 1 ? SendWithoutTimerInternalAsync(data, cancellation) : SendWithTimerInternalAsync(data, cancellation);
-        }
-      
-        void ITransportInterface.Send(ReadOnlySpan<byte> data)
-        {
-            //Determine if the send timer should be used
-            Timer? _timer = SendTimeoutMs < 1 ? null : SendTimer;
-            
-            //Write data directly to the writer buffer
-            SendPipe.Writer.Write(data);
-
-            //Start send timer
-            _timer?.Restart(SendTimeoutMs);
-            
-            try
-            {
-                //Send the segment
-                ValueTask<FlushResult> result = SendPipe.Writer.FlushAsync(CancellationToken.None);
-
-                //Await the result synchronously
-                FlushResult fr = result.ConfigureAwait(false).GetAwaiter().GetResult();
-
-                if (fr.IsCanceled)
-                {
-                    ThrowHelpers.ThrowWriterCanceled();
-                }
-            }
-            finally
-            {
-                //Stop timer
-                _timer?.Stop();                
-            }
-        }
-
-
-        ValueTask<int> ITransportInterface.RecvAsync(Memory<byte> buffer, CancellationToken cancellation)
-        {
-            static async Task<int> AwaitAsyncRead(ValueTask<int> task, Timer recvTimer)
+            static async Task<int> AwaitAsyncRead(ValueTask<int> task, TTimer recvTimer)
             {
                 try
                 {
@@ -556,12 +469,12 @@ namespace VNLib.Net.Transport.Tcp
                 }
             }
 
-            //Restart recv timer
-            RecvTimer.Restart(RecvTimeoutMs);
+            //Restart timer
+            timer.Start();
             try
             {
                 //Read async and get the value task
-                ValueTask<int> result = RecvStream.ReadAsync(buffer, cancellation);
+                ValueTask<int> result = RecvStream.ReadAsync(data, cancellation);
 
                 if (result.IsCompleted)
                 {
@@ -576,20 +489,39 @@ namespace VNLib.Net.Transport.Tcp
                 else
                 {
                     //return async as value task
-                    return new(AwaitAsyncRead(result, RecvTimer));
+                    return new(AwaitAsyncRead(result, timer));
                 }
             }
             catch
             {
-                RecvTimer.Stop();
+                timer.Stop();
                 throw;
             }
         }
 
-        int ITransportInterface.Recv(Span<byte> buffer)
+        ValueTask<int> ITransportInterface.RecvAsync(Memory<byte> buffer, int timeout, CancellationToken cancellation)
+        {
+            //See if timer is required
+            if (timeout < 1)
+            {
+                NoOpTimerWrapper noOpTimer = default;
+
+                //no timer
+                return RecvWithTimeoutAsync(buffer, in noOpTimer, cancellation);
+            }
+            else
+            {
+                TpTimerWrapper recvTimer = new(RecvTimer, timeout);
+
+                //Pass new send timer to send method
+                return RecvWithTimeoutAsync(buffer, in recvTimer, cancellation);
+            }
+        }
+
+        int ITransportInterface.Recv(Span<byte> buffer, int timeout)
         {
             //Restart timer
-            RecvTimer.Restart(RecvTimeoutMs);
+            RecvTimer.Restart(timeout);
             try
             {
                 return RecvStream.Read(buffer);
@@ -599,26 +531,47 @@ namespace VNLib.Net.Transport.Tcp
                 RecvTimer.Stop();
             }
         }
-
-        Task ITransportInterface.CloseAsync()
-        {
-            //Complete the send pipe writer since stream is closed
-            _tasks[2] = SendPipe.Writer.CompleteAsync().AsTask();
-
-            //Complete the recv pipe reader since its no longer used
-            _tasks[3] = RecvPipe.Reader.CompleteAsync().AsTask();
-
-            //Join worker tasks, no alloc if completed sync, otherwise alloc anyway
-            return Task.WhenAll(_tasks);
-        }
       
 
         private static class ThrowHelpers
         {            
-            public static void ThrowWriterCanceled() 
+            public static void ThrowIfWriterCanceled(bool isCancelled) 
             {
-                throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter");
+                if(isCancelled)
+                {
+                    throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter");
+                }               
             }
+        }
+
+        private interface INetTimer
+        {
+            void Start();
+
+            void Stop();
+        }
+
+        private readonly struct TpTimerWrapper : INetTimer
+        {
+            private readonly Timer _timer;
+            private readonly int _timeout;
+
+            public TpTimerWrapper(Timer timer, int timeout)
+            {
+                _timer = timer;
+                _timeout = timeout;
+            }
+
+            public readonly void Start() => _timer.Restart(_timeout);
+
+            public readonly void Stop() => _timer.Stop();
+        }
+
+        private readonly struct NoOpTimerWrapper : INetTimer
+        {
+            public readonly void Start() { }
+
+            public readonly void Stop() { }
         }
     }
 }

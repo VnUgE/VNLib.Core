@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -21,8 +21,6 @@
 * You should have received a copy of the GNU General Public License 
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
-
-using System;
 
 namespace VNLib.Utils
 {

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -48,11 +48,20 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
         /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
         /// <param name="quota">The maximum number of elements that will be cached</param>
-        public static ObjectRental<TNew> Create<TNew>(Action<TNew>? rentCb, Action<TNew>? returnCb, int quota = 0) where TNew : class, new()
+        public static ObjectRental<TNew> Create<TNew>(Action<TNew>? rentCb, Func<TNew, bool>? returnCb, int quota = 0) where TNew : class, new()
         {
             static TNew constructor() => new();
             return Create(constructor, rentCb, returnCb, quota);
         }
+
+        /// <summary>
+        /// Creates a new <see cref="ObjectRental{T}"/> store with generic rental and return callback handlers
+        /// </summary>
+        /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
+        /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
+        /// <param name="quota">The maximum number of elements that will be cached</param>
+        public static ObjectRental<TNew> Create<TNew>(Action<TNew>? rentCb, Action<TNew>? returnCb, int quota = 0) where TNew : class, new() 
+            => Create(rentCb, FromAction(returnCb), quota);
 
         /// <summary>
         /// Creates a new <see cref="ObjectRental{T}"/> store with a generic constructor function
@@ -69,8 +78,19 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
         /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
         /// <param name="quota">The maximum number of elements that will be cached</param>
-        public static ObjectRental<TNew> Create<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Action<TNew>? returnCb, int quota = 0) where TNew : class 
+        public static ObjectRental<TNew> Create<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Func<TNew, bool>? returnCb, int quota = 0) where TNew : class 
             => new(constructor, rentCb, returnCb, quota);
+
+
+        /// <summary>
+        /// Creates a new <see cref="ObjectRental{T}"/> store with generic rental and return callback handlers
+        /// </summary>
+        /// <param name="constructor">The function invoked to create a new instance when required</param>
+        /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
+        /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
+        /// <param name="quota">The maximum number of elements that will be cached</param>
+        public static ObjectRental<TNew> Create<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Action<TNew>? returnCb, int quota = 0) where TNew : class
+            => Create(constructor, rentCb, FromAction(returnCb), quota);
 
         /// <summary>
         /// Creates a new <see cref="ThreadLocalObjectStorage{TNew}"/> store with generic rental and return callback handlers
@@ -80,8 +100,30 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
         /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
         /// <returns>The initialized store</returns>
-        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Action<TNew>? returnCb) where TNew : class 
+        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Func<TNew, bool>? returnCb) where TNew : class 
             => new (constructor, rentCb, returnCb);
+
+        /// <summary>
+        /// Creates a new <see cref="ThreadLocalObjectStorage{TNew}"/> store with generic rental and return callback handlers
+        /// </summary>
+        /// <typeparam name="TNew"></typeparam>
+        /// <param name="constructor">The function invoked to create a new instance when required</param>
+        /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
+        /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
+        /// <returns>The initialized store</returns>
+        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Action<TNew>? returnCb) where TNew : class
+            => CreateThreadLocal(constructor, rentCb, FromAction(returnCb));
+
+        /// <summary>
+        /// Creates a new <see cref="ThreadLocalObjectStorage{T}"/> store with generic rental and return callback handlers
+        /// </summary>
+        /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
+        /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
+        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Action<TNew>? rentCb, Func<TNew, bool>? returnCb) where TNew : class, new()
+        {
+            static TNew constructor() => new();
+            return CreateThreadLocal(constructor, rentCb, returnCb);
+        }
 
         /// <summary>
         /// Creates a new <see cref="ThreadLocalObjectStorage{T}"/> store with generic rental and return callback handlers
@@ -154,6 +196,23 @@ namespace VNLib.Utils.Memory.Caching
 
         private static void StaticOnReusablePrepare<T>(T item) where T: IReusable => item.Prepare();
 
-        private static void StaticOnReusableRelease<T>(T item) where T : IReusable => item.Release();
+        private static bool StaticOnReusableRelease<T>(T item) where T : IReusable => item.Release();
+
+
+        private static Func<T, bool>? FromAction<T>(Action<T>? callback)
+        {
+            //Propagate null callback
+            if(callback is null)
+            {
+                return null;
+            }
+
+            //Local function always returns true
+            return (T item) =>
+            {
+                callback(item);
+                return true;
+            };
+        }
     }
 }

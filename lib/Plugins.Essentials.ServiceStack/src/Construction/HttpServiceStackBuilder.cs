@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -51,6 +51,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         private Func<ServiceGroup, IHttpServer>? _getServers;
         private Func<IPluginStack>? _getPlugins;
         private IManualPlugin[]? manualPlugins;
+        private bool loadConcurrently;
 
         /// <summary>
         /// Uses the supplied callback to get a collection of virtual hosts
@@ -121,6 +122,17 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         }
 
         /// <summary>
+        /// Sets the load concurrency flag for the plugin stack
+        /// </summary>
+        /// <param name="value">True to enable concurrent loading, false for serial loading</param>
+        /// <returns>The current instance for chaining</returns>
+        public HttpServiceStackBuilder LoadPluginsConcurrently(bool value)
+        {
+            loadConcurrently = value;
+            return this;
+        }
+
+        /// <summary>
         /// Builds the new <see cref="HttpServiceStack"/> from the configured callbacks
         /// </summary>
         /// <returns>The newly constructed <see cref="HttpServiceStack"/> that may be used to manage your http services</returns>
@@ -165,7 +177,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             plugins ??= new EmptyPluginStack();
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
-            return new (domain.GetListener(), plugins, manualPlugins);
+            return new (domain.GetListener(), plugins, manualPlugins, loadConcurrently);
         }
 
         /*

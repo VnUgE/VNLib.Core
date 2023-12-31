@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -823,8 +823,12 @@ namespace VNLib.Utils.Extensions
         public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, nint start)
         {
             _ = handle ?? throw new ArgumentNullException(nameof(handle));
+            if(start < 0 || (uint)start > handle.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(start));
+            }
             //calculate a remaining count
-            int count = (int)(handle.Length - (nuint)start);
+            int count = checked((int)(handle.Length - (uint)start));            
             //call the other overload
             return AsSpan(handle, start, count);
         }

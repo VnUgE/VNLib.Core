@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -36,50 +36,37 @@ namespace VNLib.Net.Transport.Tcp
     interface ITransportInterface
     {
         /// <summary>
-        /// Gets or sets the read timeout in milliseconds
-        /// </summary>
-        int RecvTimeoutMs { get; set; }
-
-        /// <summary>
-        /// Gets or set the time (in milliseconds) the transport should wait for a send operation
-        /// </summary>
-        int SendTimeoutMs { get; set; }
-
-        /// <summary>
         /// Performs an asynchronous send operation
         /// </summary>
         /// <param name="data">The buffer containing the data to send to the client</param>
+        /// <param name="timeout">The timeout in milliseconds</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>A ValueTask that completes when the send operation is complete</returns>
-        ValueTask SendAsync(ReadOnlyMemory<byte> data, CancellationToken cancellation);
+        ValueTask SendAsync(ReadOnlyMemory<byte> data, int timeout, CancellationToken cancellation);
 
         /// <summary>
         /// Performs an asynchronous send operation
         /// </summary>
         /// <param name="buffer">The data buffer to write received data to</param>
+        /// <param name="timeout">The timeout in milliseconds</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>A ValueTask that returns the number of bytes read into the buffer</returns>
-        ValueTask<int> RecvAsync(Memory<byte> buffer, CancellationToken cancellation);
-        
+        ValueTask<int> RecvAsync(Memory<byte> buffer, int timeout, CancellationToken cancellation);
+
         /// <summary>
         /// Performs a synchronous send operation
         /// </summary>
+        /// <param name="timeout">The timeout in milliseconds</param>
         /// <param name="data">The buffer to send to the client</param>
-        void Send(ReadOnlySpan<byte> data);
+        void Send(ReadOnlySpan<byte> data, int timeout);
 
         /// <summary>
         /// Performs a synchronous receive operation
         /// </summary>
+        /// <param name="timeout">The timeout in milliseconds</param>
         /// <param name="buffer">The buffer to copy output data to</param>
         /// <returns>The number of bytes received</returns>
-        int Recv(Span<byte> buffer);
-
-        /// <summary>
-        /// Raised when the interface is no longer required and resources
-        /// related to the connection should be released.
-        /// </summary>
-        /// <returns>A task that resolves when the operation is complete</returns>
-        Task CloseAsync();
+        int Recv(Span<byte> buffer, int timeout);
 
     }
 }

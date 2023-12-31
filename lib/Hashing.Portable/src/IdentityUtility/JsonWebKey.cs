@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -269,7 +269,7 @@ namespace VNLib.Hashing.IdentityUtility
                     {
                         using ECDsa? eCDsa = GetECDsaPrivateKey(jwk);
                         _ = eCDsa ?? throw new InvalidOperationException("JWK Does not contain an ECDsa private key");
-                        token.Sign(eCDsa, HashAlg.SHA512);
+                        token.Sign(eCDsa, HashAlg.SHA256);
                         return;
                     }
                 default:
@@ -431,7 +431,7 @@ namespace VNLib.Hashing.IdentityUtility
             if(base64.Length <= 64)
             {
                 //Use stack buffer
-                Span<byte> buffer = stackalloc byte[84];
+                Span<byte> buffer = stackalloc byte[64];
 
                 //base64url decode
                 ERRNO count = VnEncoding.Base64UrlDecode(base64, buffer);

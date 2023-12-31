@@ -1,12 +1,12 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
-* File: ISockAsyncArgsHandler.cs 
+* File: ISocketIo.cs 
 *
-* ISockAsyncArgsHandler.cs is part of VNLib.Net.Transport.SimpleTCP which 
-* is part of the larger VNLib collection of libraries and utilities.
+* ISocketIo.cs is part of VNLib.Net.Transport.SimpleTCP which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Transport.SimpleTCP is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,20 +22,18 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+
+
 namespace VNLib.Net.Transport.Tcp
 {
-    internal interface ISockAsyncArgsHandler
+    internal interface ISocketIo
     {
-        /// <summary>
-        /// Called when an asynchronous accept operation has completed
-        /// </summary>
-        /// <param name="args">The arguments that completed the accept operation</param>
-        void OnSocketAccepted(VnSocketAsyncArgs args);
+        ValueTask<int> SendAsync(ReadOnlyMemory<byte> buffer, SocketFlags socketFlags);
 
-        /// <summary>
-        /// Called when an asynchronous disconnect operation has completed
-        /// </summary>
-        /// <param name="args">The args that are disconnecting</param>
-        void OnSocketDisconnected(VnSocketAsyncArgs args);
+        ValueTask<int> ReceiveAsync(Memory<byte> buffer, SocketFlags socketFlags);
     }
 }

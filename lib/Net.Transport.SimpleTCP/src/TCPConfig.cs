@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -87,6 +87,11 @@ namespace VNLib.Net.Transport.Tcp
         /// An optional callback invoked after the socket has been created
         /// for optional appliction specific socket configuration
         /// </summary>
-        public Action<Socket>? OnSocketCreated { get; init; } 
+        public readonly Action<Socket>? OnSocketCreated { get; init; } 
+        /// <summary>
+        /// Enables verbose logging of TCP operations using the <see cref="LogLevel.Verbose"/>
+        /// level
+        /// </summary>
+        public readonly bool DebugTcpLog { get; init; }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -25,6 +25,7 @@
 using System;
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 namespace VNLib.Utils.Memory.Caching
 {  
@@ -38,7 +39,7 @@ namespace VNLib.Utils.Memory.Caching
     {
         protected readonly ConcurrentStack<T> Storage;
 
-        protected readonly Action<T>? ReturnAction;
+        protected readonly Func<T, bool>? ReturnAction;
         protected readonly Action<T>? RentAction;
         protected readonly Func<T> Constructor;
 
@@ -73,11 +74,11 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="rentCb">The pre-retnal preperation action</param>
         /// <param name="returnCb">The pre-return cleanup action</param>
         /// <param name="quota">The maximum number of elements to cache in the store</param>
-        protected internal ObjectRental(Func<T> constructor, Action<T>? rentCb, Action<T>? returnCb, int quota) : this(quota)
+        protected internal ObjectRental(Func<T> constructor, Action<T>? rentCb, Func<T, bool>? returnCb, int quota) : this(quota)
         {
-            this.RentAction = rentCb;
-            this.ReturnAction = returnCb;
-            this.Constructor = constructor;
+            RentAction = rentCb;
+            ReturnAction = returnCb;
+            Constructor = constructor;
         }
 
         /// <inheritdoc/>
@@ -108,23 +109,27 @@ namespace VNLib.Utils.Memory.Caching
             _ = item ?? throw new ArgumentNullException(nameof(item));
 
             Check();
-            
-            //Invoke return callback if set
-            ReturnAction?.Invoke(item);
+
+            //Invoke return callback if set and check if the item should be returned
+            if (ReturnAction != null && ReturnAction(item) == false)
+            {
+                //If the return action returns false, the item should not be returned to the store
+                DisposeIfDisposeable(item);
+                return;
+            }
 
             //Check quota limit (Doesnt need to be perfect)
             if (Storage.Count < QuotaLimit)
             {
                 //Store the object
                 Storage.Push(item);
+                return;
             }
-            else if(IsDisposableType)
-            {
-                //If the element was not added and is disposeable, we can dispose the element
-                (item as IDisposable)!.Dispose();
-                //Write debug message
-                Debug.WriteLine("Object rental disposed an object over quota");
-            }
+            
+            //Cleanup the object
+            DisposeIfDisposeable(item);
+            //Write debug message
+            Debug.WriteLine("Object rental disposed an object over quota");
         }
 
         /// <remarks>
@@ -154,6 +159,19 @@ namespace VNLib.Utils.Memory.Caching
         /// <returns></returns>
         protected T[] GetElementsWithLock() => Storage.ToArray();
 
+        /// <summary>
+        /// Disposes the item if it implements <see cref="IDisposable"/>
+        /// based on a cached value of the type for performance
+        /// </summary>
+        /// <param name="item">The item to clean up</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void DisposeIfDisposeable(T item)
+        {
+            if (IsDisposableType)
+            {
+                (item as IDisposable)!.Dispose();
+            }
+        }
 
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>

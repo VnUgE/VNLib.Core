@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -71,6 +71,6 @@ namespace VNLib.Net.Http.Core
         /// <param name="writer">The response output writer</param>
         /// <param name="buffer">An optional buffer used to buffer responses</param>
         /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync(IResponseCompressor comp, IResponseDataWriter writer, Memory<byte> buffer);
+        Task WriteEntityAsync<TComp>(TComp comp, IResponseDataWriter writer, Memory<byte> buffer) where TComp : IResponseCompressor;
     }
 }

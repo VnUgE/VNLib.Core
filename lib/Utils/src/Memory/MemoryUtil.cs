@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -30,6 +30,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 
 using VNLib.Utils.Resources;
 using VNLib.Utils.Memory.Diagnostics;
@@ -89,7 +92,10 @@ namespace VNLib.Utils.Memory
 
         //Cache the system page size
         private static readonly int SystemPageSize = Environment.SystemPageSize;
-      
+
+        //Cache avx2 support
+        private static readonly bool IsAvx2Supported = Avx2.IsSupported;
+
         /// <summary>
         /// Provides a shared heap instance for the process to allocate memory from.
         /// </summary>
@@ -469,9 +475,7 @@ namespace VNLib.Utils.Memory
             //Recover byte reference of target struct
             ref byte dst = ref Unsafe.As<T, byte>(ref target);
 
-            //Memmove
-            bool result = MemmoveByRef(ref source, 0, ref dst, 0, (nuint)sizeof(T));
-            Debug.Assert(result, "Memmove 32bit copy failed");
+            Unsafe.CopyBlockUnaligned(ref dst, ref source, (uint)sizeof(T));
         }
 
         /// <summary>
@@ -501,8 +505,7 @@ namespace VNLib.Utils.Memory
             ref byte src = ref Unsafe.As<T, byte>(ref source);
 
             //Memmove
-            bool result = MemmoveByRef(ref src, 0, ref target, 0, (nuint)sizeof(T));
-            Debug.Assert(result, "Memmove 32bit copy failed");
+            Unsafe.CopyBlockUnaligned(ref target, ref src, (uint)sizeof(T));
         }
 
 
@@ -701,7 +704,23 @@ namespace VNLib.Utils.Memory
         /// <param name="source">A reference to the source structure to copy from</param>
         /// <param name="target">A reference to the target structure to copy to</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloneStruct<T>(ref T source, ref T target) where T : struct => Memmove(ref source, 0, ref target, 0, 1);
+        public static void CloneStruct<T>(ref T source, ref T target) where T : unmanaged
+        {
+            if (Unsafe.IsNullRef(ref source))
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            if (Unsafe.IsNullRef(ref target))
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            //Byte refs
+            ref byte src = ref Unsafe.As<T, byte>(ref source);
+            ref byte dst = ref Unsafe.As<T, byte>(ref target);
+
+            Unsafe.CopyBlockUnaligned(ref dst, ref src, (uint)sizeof(T));
+        }
 
         /// <summary>
         /// Copies the memory of the structure pointed to by the source pointer to the target
@@ -750,13 +769,11 @@ namespace VNLib.Utils.Memory
             CheckBounds(dest, destOffset, (uint)count);
            
             //Use memmove by ref
-            bool success = MemmoveByRef(
-                ref MemoryMarshal.GetReference(source),
-                (uint)sourceOffset, 
-                ref dest.GetReference(), 
-                (uint)destOffset,
-                //Get byte ref and byte count
-                ByteCount<T>((uint)count)
+            bool success = CopyUtilCore.MemmoveByRef(
+                ref Refs.AsByte(source, (nuint)sourceOffset),
+                ref Refs.AsByte(dest, destOffset),
+                ByteCount<T>((uint)count),
+                false
             );
 
             Debug.Assert(success, "Memmove by ref call failed during a 32bit copy");
@@ -804,12 +821,11 @@ namespace VNLib.Utils.Memory
             CheckBounds(dest, destOffset, count);
             
             //Use memmove by ref
-            bool success = MemmoveByRef(
-                ref source.GetReference(), 
-                (uint)sourceOffset, 
-                ref MemoryMarshal.GetReference(dest), 
-                (uint)destOffset,
-                ByteCount<T>((uint)count)
+            bool success = CopyUtilCore.MemmoveByRef(
+                ref Refs.AsByte(source, (nuint)sourceOffset), 
+                ref Refs.AsByte(dest, (nuint)destOffset),
+                ByteCount<T>((uint)count),
+                false
             );
 
             Debug.Assert(success, "Memmove by ref call failed during a 32bit copy");
@@ -854,7 +870,13 @@ namespace VNLib.Utils.Memory
             //Get byte ref and byte count
             nuint byteCount = ByteCount<T>(count);
 
-            if (!MemmoveByRef(ref source.GetReference(), sourceOffset, ref dest.GetReference(), destOffset, byteCount))
+            if (!CopyUtilCore.MemmoveByRef(
+               ref Refs.AsByte(source, sourceOffset),
+               ref Refs.AsByte(dest, destOffset),
+               byteCount,
+               false
+               )
+            )
             {
                 //Copying block larger than 32bit must be done with pointers
                 using MemoryHandle srcH = source.Pin(0);
@@ -888,7 +910,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Preforms a fast referrence based copy on very large blocks of memory 
+        /// Performs a fast reference based copy on very large blocks of memory 
         /// using pinning and pointers only when the number of bytes to copy is 
         /// larger than <see cref="UInt32.MaxValue"/>
         /// </summary>
@@ -918,7 +940,13 @@ namespace VNLib.Utils.Memory
             nuint byteCount = ByteCount<T>(count);
 
             //Try to memove by ref first, otherwise fallback to pinning
-            if (!MemmoveByRef(ref source.GetReference(), sourceOffset, ref MemoryMarshal.GetArrayDataReference(dest), destOffset, byteCount))
+            if (!CopyUtilCore.MemmoveByRef(
+                ref Refs.AsByte(source, sourceOffset),
+                ref Refs.AsByte(dest, destOffset),
+                byteCount,
+                false
+                )
+            )
             {
                 //Copying block larger than 32bit must be done with pointers
                 using MemoryHandle srcH = source.Pin(0);
@@ -933,9 +961,8 @@ namespace VNLib.Utils.Memory
             }
         }
 
-
         /// <summary>
-        /// Preforms a fast referrence based copy on very large blocks of memory 
+        /// Performs a fast reference based copy on very large blocks of memory 
         /// using pinning and pointers only when the number of bytes to copy is 
         /// larger than <see cref="UInt32.MaxValue"/>
         /// </summary>
@@ -965,7 +992,13 @@ namespace VNLib.Utils.Memory
             nuint byteCount = ByteCount<T>(count);
 
             //Try to memove by ref first, otherwise fallback to pinning
-            if (!MemmoveByRef(ref MemoryMarshal.GetArrayDataReference(source), sourceOffset, ref dest.GetReference(), destOffset, byteCount))
+            if (!CopyUtilCore.MemmoveByRef( 
+                ref Refs.AsByte(source, sourceOffset), 
+                ref Refs.AsByte(dest, destOffset), 
+                byteCount, 
+                false
+                )
+            )
             {
                 //Copying block larger than 32bit must be done with pointers
                 using MemoryHandle srcH = PinArrayAndGetHandle(source, 0);
@@ -996,58 +1029,62 @@ namespace VNLib.Utils.Memory
         /// <param name="elementCount"></param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        public static void Memmove<T>(ref T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint elementCount) where T : struct
+        public static void Memmove<T>(ref T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint elementCount) where T : struct 
+            => Memmove(ref src, srcOffset, ref dst, dstOffset, elementCount, false);
+
+        /// <summary>
+        /// Low level api for copying data from source memory to destination memory of an
+        /// umanged data type. This call attempts to force hadrware acceleration if supported.
+        /// <para>
+        /// Understand that using this function attempts to force hardware acceleration, which 
+        /// may hurt performance if the data is not large enough to justify the overhead.
+        /// </para>
+        /// <para>
+        /// If the <see cref="Avx.IsSupported"/> flag is false, this function will fallback to
+        /// the default method used by <see cref="Memmove{T}(ref T, nuint, ref T, nuint, nuint)"/>
+        /// </para>
+        /// </summary>
+        /// <remarks>
+        /// WARNING: It's not possible to do bounds checking when using references. Be sure you 
+        /// know what you are doing!
+        /// </remarks>
+        /// <typeparam name="T">The unmanaged or structure type to copy</typeparam>
+        /// <param name="src">A reference to the source data to copy from</param>
+        /// <param name="srcOffset">The offset (in elements) from the reference to begin the copy from</param>
+        /// <param name="dst">The detination</param>
+        /// <param name="dstOffset"></param>
+        /// <param name="elementCount"></param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void AcceleratedMemmove<T>(ref T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint elementCount) where T : struct 
+            => Memmove(ref src, srcOffset, ref dst, dstOffset, elementCount, IsAvx2Supported);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void Memmove<T>(ref T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint elementCount, bool useAcceleration) where T : struct
         {
-            if(Unsafe.IsNullRef(ref src))
+            if (Unsafe.IsNullRef(ref src))
             {
                 throw new ArgumentNullException(nameof(src));
             }
 
-            if(Unsafe.IsNullRef(ref dst))
+            if (Unsafe.IsNullRef(ref dst))
             {
                 throw new ArgumentNullException(nameof(dst));
             }
 
-            if(elementCount == 0)
+            if (elementCount == 0)
             {
                 return;
             }
 
-            if(!MemmoveByRef(ref src, srcOffset, ref dst, dstOffset, ByteCount<T>(elementCount)))
+            if (!CopyUtilCore.MemmoveByRef(
+                ref Refs.AsByte(ref src, srcOffset), 
+                ref Refs.AsByte(ref dst, dstOffset), 
+                ByteCount<T>(elementCount), 
+                useAcceleration)
+            )
             {
                 throw new ArgumentException("The number of bytes to copy was larger than Uint32.MaxValue and was unsupported on this platform", nameof(elementCount));
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        private static bool MemmoveByRef<T>(ref T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint byteCount) where T : struct
-        {
-            Debug.Assert(!Unsafe.IsNullRef(ref src), "Null source reference passed to MemmoveByRef");
-            Debug.Assert(!Unsafe.IsNullRef(ref dst), "Null destination reference passed to MemmoveByRef");
-
-            //Get offset referrences to the source and destination
-            ref T srcOffsetPtr = ref Unsafe.Add(ref src, srcOffset);
-            ref T dstOffsetPtr = ref Unsafe.Add(ref dst, dstOffset);
-
-            //Cast to byte pointers
-            ref byte srcByte = ref Unsafe.As<T, byte>(ref srcOffsetPtr);
-            ref byte dstByte = ref Unsafe.As<T, byte>(ref dstOffsetPtr);
-
-            if (_clrMemmove != null)
-            {
-                //Call sysinternal memmove
-                _clrMemmove(ref dstByte, ref srcByte, byteCount);
-                return true;
-            }
-            else if(byteCount < uint.MaxValue)
-            {
-                //Use safe 32bit block copy
-                Unsafe.CopyBlock(ref dstByte, ref srcByte, (uint)byteCount);
-                return true;
-            }
-            else
-            {
-                return false;
             }
         }
 
@@ -1203,17 +1240,31 @@ namespace VNLib.Utils.Memory
         /// <param name="elementOffset">The address offset</param>
         /// <returns>A <see cref="MemoryHandle"/> that manages the pinning of the supplied array</returns>
         /// <exception cref="IndexOutOfRangeException"></exception>
-        public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, int elementOffset)
+        public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, nint elementOffset)
         {
             if(elementOffset < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(elementOffset));
             }
 
-            _ = array ?? throw new ArgumentNullException(nameof(array));
+            return PinArrayAndGetHandle(array, (nuint)elementOffset);
+        }
+
+        /// <summary>
+        /// Pins the supplied array and gets the memory handle that controls 
+        /// the pinning lifetime via GC handle
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="array">The array to pin</param>
+        /// <param name="elementOffset">The address offset</param>
+        /// <returns>A <see cref="MemoryHandle"/> that manages the pinning of the supplied array</returns>
+        /// <exception cref="IndexOutOfRangeException"></exception>
+        public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, nuint elementOffset)
+        {
+            ArgumentNullException.ThrowIfNull(array, nameof(array));
 
             //Quick verify index exists, may be the very last index
-            CheckBounds(array, (nuint)elementOffset, 1);
+            CheckBounds(array, elementOffset, 1);
 
             //Pin the array
             GCHandle arrHandle = GCHandle.Alloc(array, GCHandleType.Pinned);
@@ -1355,6 +1406,152 @@ namespace VNLib.Utils.Memory
             nint elSize = sizeof(T);
             //Round to nearest page (in bytes)
             return NearestPage(elements * elSize) / elSize;
+        }
+
+
+        private static class CopyUtilCore
+        {
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            public static bool MemmoveByRef(ref byte srcByte, ref byte dstByte, nuint byteCount, bool forceAcceleration)
+            {
+                Debug.Assert(!Unsafe.IsNullRef(ref srcByte), "Null source reference passed to MemmoveByRef");
+                Debug.Assert(!Unsafe.IsNullRef(ref dstByte), "Null destination reference passed to MemmoveByRef");
+
+                if (IsAvx2Supported)
+                {
+                    //If the data is aligned, always use the 32 byte copy
+                    if (Is32ByteAligned(byteCount))
+                    {
+                        _avx32ByteCopy(ref srcByte, ref dstByte, byteCount);
+                        return true;
+                    }
+
+                    //See if forcing acceleration is desired
+                    if (forceAcceleration)
+                    {
+                        //not aligned, so we need to only copy the aligned portion
+                        nuint remainder = byteCount % 0x20u;
+                        nuint alignedCount = byteCount - remainder;
+
+                        //Copy aligned portion
+                        _avx32ByteCopy(ref srcByte, ref dstByte, alignedCount);
+
+                        //Upshift references to the remainder addresses
+                        ref byte srcRemainder = ref Unsafe.Add(ref srcByte, alignedCount);
+                        ref byte dstRemainder = ref Unsafe.Add(ref dstByte, alignedCount);
+
+                        //finish copying remaining data
+                        bool success = _memmove(ref srcRemainder, ref dstRemainder, remainder);
+                        Debug.Assert(success, "Memmove by ref call failed during a 32bit copy");
+
+                        return true;
+                    }
+                }
+
+                //fallback to memmove
+                return _memmove(ref srcByte, ref dstByte, byteCount);
+            }
+
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            private static bool _memmove(ref byte src, ref byte dst, nuint byteCount)
+            {
+                if (_clrMemmove != null)
+                {
+                    //Call sysinternal memmove
+                    _clrMemmove(ref dst, ref src, byteCount);
+                    return true;
+                }
+                else if (byteCount < uint.MaxValue)
+                {
+                    //Use safe 32bit block copy
+                    Unsafe.CopyBlock(ref dst, ref src, (uint)byteCount);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            private static void _avx32ByteCopy(
+                ref byte src,
+                ref byte dst,
+                nuint count
+            )
+            {
+                Debug.Assert(Is32ByteAligned(count), "Byte count must be 32 byte aligned");
+                Debug.Assert(Avx2.IsSupported, "AVX2 is not supported on this platform");
+
+                //determine the number of loops
+                nuint loopCount = count / (nuint)Vector256<byte>.Count;
+
+                fixed (byte* srcPtr = &src, dstPtr = &dst)
+                {
+                    //local mutable copies
+                    byte* srcOffset = srcPtr;
+                    byte* dstOffset = dstPtr;
+
+                    for (nuint i = 0; i < loopCount; i++)
+                    {
+                        //avx vector load
+                        Vector256<byte> srcVector = Avx.LoadVector256(srcOffset);
+                        Avx.Store(dstOffset, srcVector);
+
+                        //Upshift pointers
+                        srcOffset += Vector256<byte>.Count;
+                        dstOffset += Vector256<byte>.Count;
+                    }
+                }
+            }
+
+
+            /// <summary>
+            /// Determines if the given size 32-byte aligned
+            /// </summary>
+            /// <param name="size">The block size to test</param>
+            /// <returns>A value that indicates if the block size is 32byte aligned</returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static bool Is32ByteAligned(nuint size) => unchecked(size % 0x20u) == 0;
+        }
+
+        private static class Refs
+        {
+            public static ref byte AsByte<T>(ref T ptr, nuint elementOffset)
+            {
+                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                return ref Unsafe.As<T, byte>(ref offset);
+            }
+
+            public static ref byte AsByte<T>(T[] arr, nuint elementOffset)
+            {
+                ref T ptr = ref MemoryMarshal.GetArrayDataReference(arr);
+                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                return ref Unsafe.As<T, byte>(ref offset);
+            }
+
+            public static ref byte AsByte<T>(Span<T> span, nuint elementOffset)
+            {
+                ref T ptr = ref MemoryMarshal.GetReference(span);
+                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                return ref Unsafe.As<T, byte>(ref offset);
+            }
+
+            public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset)
+            {
+                ref T ptr = ref MemoryMarshal.GetReference(span);
+                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                return ref Unsafe.As<T, byte>(ref offset);
+            }
+
+            public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset)
+            {
+                ref T ptr = ref handle.GetReference();
+                ref T offset = ref Unsafe.Add(ref ptr, (nint)elementOffset);
+                return ref Unsafe.As<T, byte>(ref offset);
+            }
         }
     }
 }
