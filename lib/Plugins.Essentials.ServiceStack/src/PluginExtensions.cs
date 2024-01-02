@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -26,7 +26,7 @@ using System.Linq;
 using System.Collections.Generic;
 
 using VNLib.Utils.Logging;
-using VNLib.Plugins.Runtime;
+using VNLib.Plugins.Essentials.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -40,14 +40,18 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="plugin"></param>
         /// <returns>The enumeration of web endpoints</returns>
-        internal static IEnumerable<IEndpoint> GetEndpoints(this IPlugin plugin) => ((IWebPlugin)plugin).GetEndpoints();
+        internal static IEnumerable<IEndpoint> GetEndpoints(this IManagedPlugin plugin)
+        {
+            //Try to get the endpoint defintion
+            if (plugin.Services.GetService(typeof(IVirtualEndpointDefinition)) is IVirtualEndpointDefinition defintion)
+            {
+                //Return the endpoints from the definition
+                return defintion.GetEndpoints();
+            }
 
-        /// <summary>
-        /// Gets only plugins that implement <see cref="IWebPlugin"/> interface
-        /// </summary>
-        /// <param name="controller"></param>
-        /// <returns></returns>
-        internal static IEnumerable<LivePlugin> GetOnlyWebPlugins(this PluginController controller) => controller.Plugins.Where(static p => p.Plugin is IWebPlugin);
+            //If the plugin does not have an endpoint definition, return an empty enumeration
+            return Enumerable.Empty<IEndpoint>();
+        }
 
         /// <summary>
         /// Loads all plugins that implement <see cref="IWebPlugin"/> interface into the 

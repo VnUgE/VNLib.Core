@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -127,6 +127,23 @@ namespace VNLib.Plugins.Runtime
             LogInitializer? logFunc = logInit?.CreateDelegate<LogInitializer>(Plugin);
             //Invoke
             logFunc?.Invoke(cliArgs);
+        }
+
+        /// <summary>
+        /// Gets services from the plugin if it is loaded and 
+        /// publishes them to the pool
+        /// </summary>
+        /// <param name="pool">The service pool to collect services into</param>
+        /// <exception cref="InvalidOperationException"></exception>
+        internal void GetServices(IPluginServicePool pool)
+        {
+            if (!_loaded)
+            {
+                throw new InvalidOperationException("Plugin is not loaded");
+            }
+
+            //Load services into pool
+            Plugin?.PublishServices(pool);
         }
 
         /// <summary>

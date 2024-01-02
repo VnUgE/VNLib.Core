@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.PluginBase
@@ -44,7 +44,7 @@ namespace VNLib.Plugins
     /// Provides a concrete base class for <see cref="IPlugin"/> instances using the Serilog logging provider.
     /// Accepts the standard plugin <see cref="JsonDocument"/> configuration constructors
     /// </summary>
-    public abstract class PluginBase : MarshalByRefObject, IWebPlugin, IPluginTaskObserver
+    public abstract class PluginBase : MarshalByRefObject, IPluginTaskObserver, IPlugin
     {
         /*
          * CTS exists for the life of the plugin, its resources are never disposed
@@ -53,6 +53,7 @@ namespace VNLib.Plugins
         private readonly CancellationTokenSource Cts = new();
 
         private readonly LinkedList<Task> DeferredTasks = new();
+        private readonly LinkedList<ServiceExport> _services = new();
 
         /// <summary>
         /// A cancellation token that is cancelled when the plugin has been unloaded
@@ -70,13 +71,6 @@ namespace VNLib.Plugins
         /// runtime supplied configuration object.
         /// </summary>
         protected virtual string PluginConfigDomPropertyName => "plugin";
-
-        /// <summary>
-        /// A list of all currently prepared <see cref="IEndpoint"/> endpoints.
-        /// Endpoints must be added to this list before <see cref="IWebPlugin.GetEndpoints"/> is called
-        /// by the host app
-        /// </summary>
-        public ICollection<IEndpoint> Endpoints { get; } = new List<IEndpoint>();
 
         /// <summary>
         /// The logging instance
@@ -97,6 +91,12 @@ namespace VNLib.Plugins
         /// The configuration data from the plugin's config file passed by the host application
         /// </summary>
         public JsonElement PluginConfig => Configuration.RootElement.GetProperty(PluginConfigDomPropertyName);
+
+        /// <summary>
+        /// The collection of exported services that will be published to the host 
+        /// application
+        /// </summary>
+        public ICollection<ServiceExport> Services => _services;
 
         /// <inheritdoc/>
         public abstract string PluginName { get; }
@@ -257,18 +257,17 @@ namespace VNLib.Plugins
                 Log.Error(ex);
             }
         }
+
         /// <summary>
         /// Invoked when the host process has a command message to send 
         /// </summary>
         /// <param name="cmd">The command message</param>
         protected abstract void ProcessHostCommand(string cmd);
 
-        IEnumerable<IEndpoint> IWebPlugin.GetEndpoints()
-        {
-            OnGetEndpoints();
-            return Endpoints;
-        }
-        
+        ///<inheritdoc/>
+        void IPlugin.PublishServices(IPluginServicePool pool) => OnPublishServices(pool);
+
+        ///<inheritdoc/>
         void IPlugin.Load()
         {
             //Setup empty log if not specified
@@ -291,7 +290,8 @@ namespace VNLib.Plugins
                 throw;
             }
         }
-        
+
+        ///<inheritdoc/>
         void IPlugin.Unload()
         {
             try 
@@ -317,8 +317,8 @@ namespace VNLib.Plugins
             Configuration?.Dispose();
             //dispose the log
             (Log as IDisposable)?.Dispose();
-            //Clear endpoints list
-            Endpoints.Clear();
+            //Remove any services
+            _services.Clear();
             //empty deffered array
             DeferredTasks.Clear();
         }
@@ -372,12 +372,6 @@ namespace VNLib.Plugins
         }
 
         /// <summary>
-        /// Adds the specified endpoint to be routed when loading is complete
-        /// </summary>
-        /// <param name="endpoint">The <see cref="IEndpoint"/> to present to the application when loaded</param>
-        public void Route(IEndpoint endpoint) => Endpoints.Add(endpoint);
-
-        /// <summary>
         /// <para>
         /// Invoked when the host loads the plugin instance
         /// </para>
@@ -391,11 +385,22 @@ namespace VNLib.Plugins
         /// Invoked when all endpoints have been removed from service. All managed and unmanged resources should be released.
         /// </summary>
         protected abstract void OnUnLoad();
-        
+
         /// <summary>
-        /// Invoked before <see cref="IWebPlugin.GetEndpoints"/> called by the host app to get all endpoints
-        /// for the current plugin
+        /// Invoked when the host requests the plugin to publish services
+        /// <para>
+        /// If overriden, the base implementation must be called to 
+        /// publish all services in the internal service collection
+        /// </para>
         /// </summary>
-        protected virtual void OnGetEndpoints() { }
+        /// <param name="pool">The pool to publish services to</param>
+        protected virtual void OnPublishServices(IPluginServicePool pool)
+        {
+            //Publish all services then cleanup
+            foreach (ServiceExport export in _services)
+            {
+                pool.ExportService(export.ServiceType, export.Service, export.Flags);
+            }
+        }
     }
 }

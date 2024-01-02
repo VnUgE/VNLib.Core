@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -43,5 +43,16 @@ namespace VNLib.Plugins
         /// Invoked when the plugin is unloaded from the runtime
         /// </summary>
         void Unload();
+
+        /// <summary>
+        /// Called directly after the plugin is loaded to allow for service 
+        /// publishing for the host application to use
+        /// <para>
+        /// NOTE: A service pool is shared for each assembly, if there are multiple
+        /// plugins per assembly, they will share the same service pool.
+        /// </para>
+        /// </summary>
+        /// <param name="pool">The service publisher instance</param>
+        void PublishServices(IPluginServicePool pool);
     }
 }

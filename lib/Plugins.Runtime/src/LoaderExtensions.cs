@@ -27,6 +27,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using VNLib.Utils.IO;
@@ -34,6 +35,15 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Plugins.Runtime
 {
+
+    /// <summary>
+    /// A callback function signature for plugin plugin loading errors on plugin
+    /// stacks.
+    /// </summary>
+    /// <param name="Loader">The loader that the exception occured on</param>
+    /// <param name="exception">The exception cause of the error</param>
+    public delegate void PluginLoadErrorHandler(RuntimePluginLoader Loader, Exception exception);
+
     /// <summary>
     /// Contains extension methods for PluginLoader library
     /// </summary>
@@ -169,14 +179,68 @@ namespace VNLib.Plugins.Runtime
         /// Invokes the load method for all plugin instances
         /// </summary>
         /// <param name="runtime"></param>
+        /// <param name="concurrent">A value that indicates if plugins should be loaded concurrently or sequentially</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="AggregateException"></exception>
-        public static void InvokeLoad(this IPluginStack runtime)
+        public static void InvokeLoad(this IPluginStack runtime, bool concurrent)
+        {           
+            List<Exception> exceptions = new ();
+
+            //Add load exceptions into the list
+            void onError(RuntimePluginLoader loader, Exception ex) => exceptions.Add(ex);
+
+            //Invoke load with onError callback
+            InvokeLoad(runtime, concurrent, onError);
+
+            //If any exceptions occured, throw them now
+            if(exceptions.Count > 0)
+            {
+                throw new AggregateException(exceptions);
+            }
+        }
+
+        /// <summary>
+        /// Invokes the load method for all plugin instances, and captures exceptions
+        /// into the specified callback function.
+        /// </summary>
+        /// <param name="runtime"></param>
+        /// <param name="concurrent">A value that indicates if plugins should be loaded concurrently or sequentially</param>
+        /// <param name="onError">A callback function to handle error conditions instead of raising exceptions</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void InvokeLoad(this IPluginStack runtime, bool concurrent, PluginLoadErrorHandler onError)
         {
             ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
 
-            //try loading all plugins
-            runtime.Plugins.TryForeach(static p => p.LoadPlugins());
+            if (concurrent)
+            {
+                //Invoke load in parallel
+                Parallel.ForEach(runtime.Plugins, p =>
+                {
+                    try
+                    {
+                        p.LoadPlugins();
+                    }
+                    catch (Exception ex)
+                    {
+                        onError(p, ex);
+                    }
+                });
+            }
+            else
+            {
+                //Load sequentially
+                foreach(RuntimePluginLoader loader in runtime.Plugins)
+                {
+                    try
+                    {
+                        loader.LoadPlugins();
+                    }
+                    catch (Exception ex)
+                    {
+                        onError(loader, ex);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -398,6 +462,24 @@ namespace VNLib.Plugins.Runtime
         }
 
         /// <summary>
+        /// Registers a new <see cref="SharedPluginServiceProvider"/> for the current plugin stack
+        /// that will listen for plugin events and capture the exported services into a 
+        /// single pool.
+        /// </summary>
+        /// <param name="stack"></param>
+        /// <returns>A new <see cref="SharedPluginServiceProvider"/> that will capture all exported services when loaded</returns>
+        public static SharedPluginServiceProvider RegisterServiceProvider(this IPluginStack stack)
+        {
+            //Init new service provider
+            SharedPluginServiceProvider provider = new();
+
+            //Register for all plugins
+            RegsiterListener(stack, provider);
+
+            return provider;
+        }
+
+        /// <summary>
         /// Gets the current collection of loaded plugins for the plugin stack
         /// </summary>
         /// <param name="stack"></param>
@@ -499,6 +581,6 @@ namespace VNLib.Plugins.Runtime
             {
                 //Do nothing
             }
-        }
+        }    
     }
 }

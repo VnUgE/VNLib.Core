@@ -26,7 +26,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -35,7 +34,7 @@ using System.ComponentModel.Design;
 using VNLib.Utils.Logging;
 using VNLib.Plugins.Runtime;
 using VNLib.Utils.Extensions;
-using VNLib.Plugins.Attributes;
+using VNLib.Plugins.Runtime.Services;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -229,9 +228,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 }
             }
 
-            ///<inheritdoc/>
-            IEndpoint[] IManagedPlugin.GetEndpoints() => Plugin.Controller.GetOnlyWebPlugins().SelectMany(static pl => pl.Plugin!.GetEndpoints()).ToArray();
-
             /*
             * Automatically called after the plugin has successfully loaded
             * by event handlers below
@@ -246,21 +242,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 //Init new service container
                 _services = new();
 
-                //Get types from plugin
-                foreach (LivePlugin plugin in Plugin.Controller.Plugins)
-                {
-                    /*
-                     * Get the exposed configurator method if declared, 
-                     * it may not be defined. 
-                     */
-                    ServiceConfigurator? callback = plugin.PluginType.GetMethods()
-                                                .Where(static m => m.GetCustomAttribute<ServiceConfiguratorAttribute>() != null && !m.IsAbstract)
-                                                .Select(m => m.CreateDelegate<ServiceConfigurator>(plugin.Plugin))
-                                                .FirstOrDefault();
-
-                    //Invoke if defined to expose services
-                    callback?.Invoke(_services);
-                }
+                //Get all exported services and add them to the container
+                PluginServiceExport[] exports = Plugin.Controller.GetExportedServices();
+                Array.ForEach(exports, e => _services.AddService(e.ServiceType, e.Service, true));
             }
 
             ///<inheritdoc/>
@@ -297,9 +281,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
             ///<inheritdoc/>
             public IServiceContainer Services => _container;
-
-            ///<inheritdoc/>
-            IEndpoint[] IManagedPlugin.GetEndpoints() => Plugin.GetEndpoints();
 
             public void Load()
             {

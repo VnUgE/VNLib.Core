@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -29,9 +29,11 @@ using System.Collections.Generic;
 
 using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
+using VNLib.Plugins.Runtime.Services;
 
 namespace VNLib.Plugins.Runtime
 {
+
     /// <summary>
     /// Manages the lifetime of a collection of <see cref="IPlugin"/> instances,
     /// and their dependent event listeners
@@ -52,11 +54,14 @@ namespace VNLib.Plugins.Runtime
 
         private readonly List<LivePlugin> _plugins;
         private readonly List<KeyValuePair<IPluginEventListener, object?>> _listeners;
+        private readonly PluginServicePool _servicePool;
+     
 
         internal PluginController()
         {
             _plugins = new ();
             _listeners = new ();
+            _servicePool = new ();
         }
 
         /// <summary>
@@ -86,6 +91,10 @@ namespace VNLib.Plugins.Runtime
             }
         }
 
+        /// <summary>
+        /// Populates the given <see cref="IServiceContainer"/> with all services
+        /// </summary>
+        public PluginServiceExport[] GetExportedServices() => _servicePool.GetServices();
 
         internal void InitializePlugins(Assembly asm)
         {
@@ -121,6 +130,9 @@ namespace VNLib.Plugins.Runtime
                 //Load all plugins
                 _plugins.TryForeach(static p => p.LoadPlugin());
 
+                //Load all services into the service pool
+                _plugins.TryForeach(p => p.GetServices(_servicePool));
+
                 //Notify event handlers
                 _listeners.TryForeach(l => l.Key.OnPluginLoaded(this, l.Value));
             }
@@ -140,8 +152,10 @@ namespace VNLib.Plugins.Runtime
                 }
                 finally
                 {
-                    //Always 
+                    //Always clear plugins
                     _plugins.Clear();
+                    //always make sure service pool is clear
+                    _servicePool.Clear();
                 }
             }
         }
@@ -150,7 +164,8 @@ namespace VNLib.Plugins.Runtime
         {
             _plugins.Clear();
             _listeners.Clear();
+            _servicePool.Clear();
         }
-     
+
     }
 }

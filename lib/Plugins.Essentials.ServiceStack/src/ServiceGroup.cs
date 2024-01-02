@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -23,6 +23,7 @@
 */
 
 using System.Net;
+using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -82,7 +83,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         internal void OnPluginLoaded(IManagedPlugin plugin)
         {
             //Get all new endpoints for plugin
-            IEndpoint[] newEndpoints = plugin.GetEndpoints();
+            IEndpoint[] newEndpoints = plugin.GetEndpoints()
+                .ToArray();
 
             //Add endpoints to dict
             _endpointsForPlugins.AddOrUpdate(plugin, newEndpoints);

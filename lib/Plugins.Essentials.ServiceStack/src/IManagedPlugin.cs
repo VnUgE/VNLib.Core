@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -40,12 +40,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// must listen for plugin load/unload events to respect lifecycles properly.
         /// </remarks>
         IServiceContainer Services { get; }
-
-        /// <summary>
-        /// Internal call to get all exported plugin endpoints
-        /// </summary>
-        /// <returns></returns>
-        internal IEndpoint[] GetEndpoints();
 
         /// <summary>
         /// Internal notification that the plugin is loaded

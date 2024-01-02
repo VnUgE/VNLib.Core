@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -43,12 +43,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// </summary>
         /// <param name="container">The container to add services to</param>
         void GetAllExportedServices(IServiceContainer container);
-
-        /// <summary>
-        /// Collects all exported endpoints to put into service
-        /// </summary>
-        /// <returns>The collection of endpoints</returns>
-        IEndpoint[] GetEndpoints();
 
         /// <summary>
         /// Initializes the plugin, called before accessing any other methods

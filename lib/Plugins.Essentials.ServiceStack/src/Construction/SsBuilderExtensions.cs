@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -185,9 +185,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
         private static void OnPluginServiceEvent<T>(this IManagedPlugin plugin, Action<T> loader)
         {
-            object? service = plugin.Services.GetService(typeof(T));
-
-            if (service is T s)
+            if (plugin.Services.GetService(typeof(T)) is T s)
             {
                 loader(s);
             }

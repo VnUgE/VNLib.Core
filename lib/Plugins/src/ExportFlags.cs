@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
-* File: IWebPlugin.cs 
+* File: ExportFlags.cs 
 *
-* IWebPlugin.cs is part of VNLib.Plugins which is part of the larger 
+* ExportFlags.cs is part of VNLib.Plugins which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins is free software: you can redistribute it and/or modify 
@@ -22,24 +22,19 @@
 * along with VNLib.Plugins. If not, see http://www.gnu.org/licenses/.
 */
 
-using System.Collections.Generic;
+using System;
 
 namespace VNLib.Plugins
 {
     /// <summary>
-    /// Represents a plugin that is expected to perform web application based operations
+    /// Service export flags
     /// </summary>
-    public interface IWebPlugin : IPlugin
+    [Flags]
+    public enum ExportFlags
     {
         /// <summary>
-        /// Returns all endpoints within the plugin to load into the current root
+        /// No flags
         /// </summary>
-        /// <returns>An enumeration of endpoints to load</returns>
-        /// <remarks>
-        /// Lifecycle: Results returned from this method should be consistant (although its only
-        /// likely to be called once) anytime after the <see cref="IPlugin.Load"/> method, and undefined
-        /// after the <see cref="IPlugin.Unload"/> method is called.
-        /// </remarks>
-        IEnumerable<IEndpoint> GetEndpoints();
+        None = 0,
     }
 }
