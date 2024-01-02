@@ -72,3 +72,10 @@ I originally wanted the ability to listen for simple HTTP connections without th
 I'm not currently looking for code contributors for this project and others, and NO contributions will be accepted through GitHub directly. I would prefer you contact me via my contact information on my website if possible. 
 
 I am however interested in what you build with my libraries, especially web-plugins. You may consider viewing my plugin repos to see what I mean. Since I spend most of my time developing the core and extension libraries (and will continue to do) I don't have much time to focus on new plugin libraries used to build web functionality. Some ideas: content management, code documentation management, NuGet feed host (I have an simple internal one I built but its private for now), I **really** want a secure chat application, secure voice chat would be brilliant as well. If you have ideas or have built a plugin you want featured or reviewed, please feel free to get in touch.
+
+## Donations
+If you like this project and want to support it or motivate me for faster development you can donate with fiat or on-chain BTC for now.  
+
+On-Chain Bitcoin: `bc1qgj4fk6gdu8lnhd4zqzgxgcts0vlwcv3rqznxn9`
+
+Fiat: [Paypal](https://www.paypal.com/donate/?business=VKEDFD74QAQ72&no_recurring=0&item_name=By+donating+you+are+funding+my+love+for+producing+free+software+for+my+community.+&currency_code=USD)
