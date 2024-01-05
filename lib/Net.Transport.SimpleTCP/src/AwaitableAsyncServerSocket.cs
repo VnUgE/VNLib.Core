@@ -217,8 +217,10 @@ namespace VNLib.Net.Transport.Tcp
 
             public void Release()
             {
+                //Make sure any operation specific data is cleared
                 AcceptSocket = null;
                 UserToken = null;
+                SetBuffer(default);
             }
 
             protected override void OnCompleted(SocketAsyncEventArgs e)
@@ -275,14 +277,14 @@ namespace VNLib.Net.Transport.Tcp
                 //Reset task source
                 AsyncTaskCore = default;
 
-                if(!sock.AcceptAsync(this))
+                if(sock.AcceptAsync(this))
                 {
                     //Async op pending, return the task
-                    return ValueTask.FromResult(SocketError);
+                    return new ValueTask<SocketError>(this, AsyncTaskCore.Version);
                 }
 
-                //Async accept
-                return new ValueTask<SocketError>(this, AsyncTaskCore.Version);
+                //Sync op completed
+                return ValueTask.FromResult(SocketError);               
             }          
 
             /// <summary>
@@ -298,13 +300,14 @@ namespace VNLib.Net.Transport.Tcp
                 AsyncTaskCore = default;
                 
                 //accept async
-                if (!serverSock.DisconnectAsync(this))
+                if (serverSock.DisconnectAsync(this))
                 {
-                    return ValueTask.FromResult(SocketError);
+                    //Async disconnect
+                    return new ValueTask<SocketError>(this, AsyncTaskCore.Version);
+                   
                 }
 
-                //Async accept
-                return new ValueTask<SocketError>(this, AsyncTaskCore.Version);
+                return ValueTask.FromResult(SocketError);
             }
         
 
@@ -323,12 +326,11 @@ namespace VNLib.Net.Transport.Tcp
                     return new ValueTask<int>(this, AsyncTaskCore.Version);
                 }
 
+                //clear buffer
+                SetBuffer(default);
+
                 //Sync send
-                return SocketError switch
-                {
-                    SocketError.Success => ValueTask.FromResult(BytesTransferred),
-                    _ => ValueTask.FromException<int>(new SocketException((int)SocketError))
-                };
+                return GetSyncTxRxResult();
             }
 
             public ValueTask<int> ReceiveAsync(Socket socket, SocketFlags flags)
@@ -349,6 +351,11 @@ namespace VNLib.Net.Transport.Tcp
                 //Clear buffer
                 SetBuffer(default);
 
+                return GetSyncTxRxResult();
+            }
+
+            private ValueTask<int> GetSyncTxRxResult()
+            {
                 //Sync send
                 return SocketError switch
                 {
