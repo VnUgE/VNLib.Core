@@ -280,12 +280,12 @@ namespace VNLib.Utils.Memory
         {
             Debug.Assert(Unsafe.IsNullRef(ref src) == false, "Null reference passed to ZeroByRef");
 
-            //Convert to bytes
-            uint byteSize = ByteCount<T>(elements);
-            ref byte byteRef = ref Unsafe.As<T, byte>(ref src);
-
-            //Call init block
-            Unsafe.InitBlock(ref byteRef, 0, byteSize);
+            //Call init block on bytes
+            Unsafe.InitBlock(
+                ref Refs.AsByte(ref src, 0), 
+                0, 
+                ByteCount<T>(elements)
+            );
         }
 
         /*

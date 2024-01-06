@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -23,7 +23,7 @@
 */
 
 using System;
-using System.Runtime.Serialization;
+
 
 namespace VNLib.Plugins.Runtime
 {
@@ -41,9 +41,6 @@ namespace VNLib.Plugins.Runtime
         { }
 
         public PluginUnloadException(string message, Exception innerException) : base(message, innerException)
-        { }
-
-        protected PluginUnloadException(SerializationInfo info, StreamingContext context) : base(info, context)
         { }
     }
 }

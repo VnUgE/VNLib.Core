@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>    
-    <TargetFramework>net6.0</TargetFramework>        
+    <TargetFramework>net8.0</TargetFramework>        
     <AssemblyName>VNLib.Hashing.Portable</AssemblyName>
     <RootNamespace>VNLib.Hashing</RootNamespace>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>    
@@ -17,7 +17,7 @@
     <Description>Provides managed and random cryptocraphic hashing helper classes, including complete Argon2 password hashing.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
-    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Hashing.Portable</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>

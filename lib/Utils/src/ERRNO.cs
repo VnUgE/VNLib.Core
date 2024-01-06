@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -85,13 +85,7 @@ namespace VNLib.Utils
         /// C style boolean conversion. false if 0, true otherwise 
         /// </summary>
         /// <param name="errorVal"></param>
-        public static implicit operator bool(ERRNO errorVal) => errorVal != 0;      
-        
-        /// <summary>
-        /// Creates a new <see cref="IntPtr"/> from the value if the stored (nint) error code 
-        /// </summary>
-        /// <param name="errno">The <see cref="ERRNO"/> contating the pointer value</param>
-        public static implicit operator IntPtr(ERRNO errno) => new(errno.ErrorCode);
+        public static implicit operator bool(ERRNO errorVal) => errorVal != 0;   
 
         /// <summary>
         /// Creates a new <c>nint</c> from the value if the stored error code 

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VNLib.Plugins</RootNamespace>
     <AssemblyName>VNLib.Plugins</AssemblyName>
     <Nullable>enable</Nullable>
@@ -14,7 +14,7 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins</PackageId>
-    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <PackageTags>Plugins, VNLIb, VNLib Plugins, Plugin Base</PackageTags>
     <Product>VNLib Plugins Interface Assembly</Product>
     <Description>Provides a standard interface for building dynamically loadable plugins and asynchronus web endpoint processing, compatible with the VNLib.Plugins.Runtime loader library.

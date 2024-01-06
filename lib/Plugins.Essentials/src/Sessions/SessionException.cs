@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,7 +23,7 @@
 */
 
 using System;
-using System.Runtime.Serialization;
+
 
 namespace VNLib.Plugins.Essentials.Sessions
 {
@@ -40,9 +40,6 @@ namespace VNLib.Plugins.Essentials.Sessions
         {}
         ///<inheritdoc/>
         public SessionException(string message, Exception innerException) : base(message, innerException)
-        {}
-        ///<inheritdoc/>
-        protected SessionException(SerializationInfo info, StreamingContext context) : base(info, context)
         {}
     }
 }

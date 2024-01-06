@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Runtime.Serialization;
 
 using VNLib.Utils.Resources;
 
@@ -39,8 +38,6 @@ namespace VNLib.Plugins.Essentials.Users
         public UserCreationFailedException(string message) : base(message)
         {}
         public UserCreationFailedException(string message, Exception innerException) : base(message, innerException)
-        {}
-        protected UserCreationFailedException(SerializationInfo info, StreamingContext context) : base(info, context)
         {}
     }
 }

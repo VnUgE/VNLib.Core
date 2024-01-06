@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VNLib.Net.Transport</RootNamespace>
     <AssemblyName>VNLib.Net.Transport.SimpleTCP</AssemblyName>
     <Nullable>enable</Nullable>
@@ -18,7 +18,7 @@
     <Description>Provides a library for single process asynchronous, event driven, TCP socket listening and supporting structures to implement simple high performance TCP servers with or without TLS security.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
-    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Transport.SimpleTCP</RepositoryUrl>
   </PropertyGroup>

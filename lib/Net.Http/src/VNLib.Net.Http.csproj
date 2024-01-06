@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VNLib.Net.Http</RootNamespace>
     <AssemblyName>VNLib.Net.Http</AssemblyName>
     <NeutralLanguage>en-US</NeutralLanguage>
@@ -17,7 +17,7 @@
     <Company>Vaughn Nugent</Company>
     <Product>VNLib HTTP Library</Product>
     <Description>Provides a high performance HTTP 0.9-1.1 application processing layer for handling transport *agnostic connections and asynchronous event support for applications serving HTTP requests such as web content. This library has a large focus on low/no GC allocations using unmanaged memory support provided by the VNLib.Utils library. No external dependencies outside of the VNLib ecosystem are required. The VNLib.Plugins and VNLib.Plugins.Essentials libraries are highly recommended for serving web content.</Description>
-    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Http</RepositoryUrl>
     <PackageReadmeFile>readme.md</PackageReadmeFile>

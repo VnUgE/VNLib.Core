@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VNLib.Plugins.Essentials</RootNamespace>
     <AssemblyName>VNLib.Plugins.Essentials</AssemblyName>
     <AnalysisLevel>latest-all</AnalysisLevel>
@@ -16,7 +16,7 @@
     <Company>Vaughn NUgent</Company>
     <PackageId>VNLib.Plugins.Essentials</PackageId>
     <Product>VNLib Essentials Plugin Library</Product>
-    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <Description>Provides essential web, sessions, users abstractions for building extensable web applications with satefull sessions, user based intraction with login and account security extensions.</Description>
     <PackageTags>VNLib, Plugins, VNLib.Plugins.Essentials, Essentials, Essential Plugins, HTTP Essentials, OAuth2</PackageTags>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>

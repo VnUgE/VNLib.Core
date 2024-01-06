@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VNLib.Plugins.Essentials.ServiceStack</RootNamespace>
     <AssemblyName>VNLib.Plugins.Essentials.ServiceStack</AssemblyName>
     <Nullable>enable</Nullable>
@@ -15,7 +15,7 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins.Essentials.ServiceStack</PackageId>
-    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <Description>
       Provides data structures for building a dynamic HTTP servicing stack with runtime plugin loading,
       dynamic endpoint routing, middleware* configuration, and multi-server managment.

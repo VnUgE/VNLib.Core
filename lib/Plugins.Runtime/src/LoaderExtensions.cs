@@ -56,7 +56,6 @@ namespace VNLib.Plugins.Runtime
         private sealed class TypedRegistration<T> : IPluginEventListener where T: class
         {
             private readonly ITypedPluginConsumer<T> _consumerEvents;
-            private readonly object? _userState;
 
             private T? _service;
             private readonly Type _type;
@@ -77,7 +76,7 @@ namespace VNLib.Plugins.Runtime
                     .First();
 
                 //Call load with the exported type
-                _consumerEvents.OnLoad(service, _userState);
+                _consumerEvents.OnLoad(service, state);
 
                 //Store for unload
                 _service = service;
@@ -86,7 +85,7 @@ namespace VNLib.Plugins.Runtime
             public void OnPluginUnloaded(PluginController controller, object? state)
             {
                 //Unload
-                _consumerEvents.OnUnload(_service!, _userState);
+                _consumerEvents.OnUnload(_service!, state);
                 _service = null;
             }
         }

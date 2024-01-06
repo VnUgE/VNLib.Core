@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -23,7 +23,7 @@
 */
 
 using System;
-using System.Runtime.Serialization;
+
 
 namespace VNLib.Net.Messaging.FBM
 {
@@ -42,10 +42,6 @@ namespace VNLib.Net.Messaging.FBM
         }
         ///<inheritdoc/>
         public FBMException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-        ///<inheritdoc/>
-        protected FBMException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

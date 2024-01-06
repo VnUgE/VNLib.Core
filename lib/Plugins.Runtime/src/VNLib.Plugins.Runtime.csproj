@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Nullable>enable</Nullable>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VNLib.Plugins.Runtime</RootNamespace>
     <AssemblyName>VNLib.Plugins.Runtime</AssemblyName>
     <AnalysisLevel>latest-all</AnalysisLevel>
@@ -14,7 +14,7 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins.Runtime</PackageId>
-    <Copyright>Copyright © 2023 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <Description>A runtime plugin loader for .NET. Allows runtime loading and tracking of .NET assemblies that export the VNLib.Plugin.IPlugin interface.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.Runtime</RepositoryUrl>

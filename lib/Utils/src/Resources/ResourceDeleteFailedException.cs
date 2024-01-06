@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,7 +23,7 @@
 */
 
 using System;
-using System.Runtime.Serialization;
+
 
 namespace VNLib.Utils.Resources
 {
@@ -35,6 +35,5 @@ namespace VNLib.Utils.Resources
         public ResourceDeleteFailedException() { }
         public ResourceDeleteFailedException(string message) : base(message) { }
         public ResourceDeleteFailedException(string message, Exception innerException) : base(message, innerException) { }
-        protected ResourceDeleteFailedException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
 }

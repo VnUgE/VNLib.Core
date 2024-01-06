@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,7 +23,7 @@
 */
 
 using System;
-using System.Runtime.Serialization;
+
 
 namespace VNLib.Plugins.Essentials.Users
 {
@@ -43,10 +43,6 @@ namespace VNLib.Plugins.Essentials.Users
 
         ///<inheritdoc/>
         public UserExistsException(string message, Exception innerException) : base(message, innerException)
-        { }
-
-        ///<inheritdoc/>
-        protected UserExistsException(SerializationInfo info, StreamingContext context) : base(info, context)
         { }
     }
 }

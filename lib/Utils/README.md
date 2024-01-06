@@ -1,6 +1,6 @@
 # VNLib.Utils
 
-A .NET 6 /C# library for common .NET operation and memory optimizations.  
+A .NET 8 /C# library for common .NET operation and memory optimizations.  
 
 ### Builds & Feeds
 Builds contain the individual components listed below packaged per-project, available for download on my website. Build packages will be tgz archives (except for nuget packages). You can obtain debug and release builds, along with per-project source code.  

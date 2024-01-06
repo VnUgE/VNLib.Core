@@ -475,10 +475,10 @@ namespace VNLib.Utils.Extensions
         {
             Span<char> buffer = writer.AsSpan();
 
-            //If the search and replacment parameters are the same length
+            //If the search and replacement parameters are the same length
             if (search.Length == replace.Length)
             {
-                buffer.ReplaceInPlace(search, replace);
+                ReplaceInPlace(buffer, search, replace);
                 return;
             }
 
@@ -490,24 +490,28 @@ namespace VNLib.Utils.Extensions
                 return;
             }
 
-            //Replacment might be empty
-            writer.Reset();
+            //Init new writer over the buffer
+            ForwardOnlyWriter<char> writer2 = new(buffer);
 
             do
             {
-                //Append the data before the split character
-                writer.Append(buffer[..start]);
+                //Append the data before the search chars
+                writer2.Append(buffer[..start]);
                 //Append the replacment
-                writer.Append(replace);
+                writer2.Append(replace);
                 //Shift buffer to the end of the 
                 buffer = buffer[(start + searchLen)..];
-                //search for next index
+                //search for next index beyond current index
                 start = buffer.IndexOf(search);
 
             } while (start > -1);
 
             //Write remaining data
-            writer.Append(replace);
+            writer2.Append(replace);
+
+            //Reset writer1 and advance it to the end of writer2
+            writer.Reset();
+            writer.Advance(writer2.Written);
         }
 
         /// <summary>

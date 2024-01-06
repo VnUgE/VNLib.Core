@@ -26,6 +26,8 @@ Again, go to my website below, my email address is available, go ahead and send 
 ### .NET Version Notice
 I prefer sticking with lts .NET versions and 8 just released, so I will likely be upgrading once its "stable" and I have the time to port and test everything. Core libraries will be first then downstream packages.  
 
+**Update** Upgrades to .NET 8 have started and breaking changes/obsolete apis have been addressed. Futher updates and improvements will be made to make use of new features and apis.
+
 ## Index/NameSpaces
 **VNLib.**
 - [Utils](lib/Utils/#) - A mutli-use library focused on reducing complexity for working with native resources, memory, asynchronous patterns and data-structures, object/resource pooling, critical resource handling, and common logging abstractions. 
