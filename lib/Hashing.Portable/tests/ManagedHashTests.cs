@@ -4,6 +4,7 @@ using System.Text;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils;
+using System.Diagnostics;
 
 
 namespace VNLib.Hashing.Tests
@@ -17,6 +18,9 @@ namespace VNLib.Hashing.Tests
             byte[] testData = Encoding.UTF8.GetBytes("Hello World!");
             using UnsafeMemoryHandle<byte> heapBuffer = MemoryUtil.UnsafeAlloc(64, false);
 
+            Trace.WriteLineIf(ManagedHash.SupportsSha3, "SHA3 is supported");
+            Trace.WriteLineIf(ManagedHash.SupportsBlake2b, "Blake2b is supported");
+
             //Test all supported algorithms
             foreach (HashAlg alg in Enum.GetValues<HashAlg>())
             {
@@ -24,6 +28,17 @@ namespace VNLib.Hashing.Tests
 
                 //Skip unsupported algorithms
                 if (alg == HashAlg.BlAKE2B && !ManagedHash.SupportsBlake2b) continue;
+
+                if (!ManagedHash.SupportsSha3)
+                {
+                    switch (alg)
+                    {
+                        case HashAlg.SHA3_256:
+                        case HashAlg.SHA3_384:
+                        case HashAlg.SHA3_512:
+                            continue;
+                    }
+                }
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHash(testData, heapBuffer.Span, alg);
@@ -58,6 +73,9 @@ namespace VNLib.Hashing.Tests
             byte[] testKey = RandomHash.GetRandomBytes(32);
             using UnsafeMemoryHandle<byte> heapBuffer = MemoryUtil.UnsafeAlloc(64, false);
 
+            Trace.WriteLineIf(ManagedHash.SupportsSha3, "SHA3 is supported");
+            Trace.WriteLineIf(ManagedHash.SupportsBlake2b, "Blake2b is supported");
+
             //Test all supported algorithms
             foreach (HashAlg alg in Enum.GetValues<HashAlg>())
             {
@@ -65,6 +83,17 @@ namespace VNLib.Hashing.Tests
 
                 //Skip unsupported algorithms
                 if (alg == HashAlg.BlAKE2B && !ManagedHash.SupportsBlake2b) continue;
+
+                if (!ManagedHash.SupportsSha3)
+                {
+                    switch (alg)
+                    {
+                        case HashAlg.SHA3_256:
+                        case HashAlg.SHA3_384:
+                        case HashAlg.SHA3_512:
+                            continue;
+                    }
+                }
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHmac(testKey, testData, heapBuffer.Span, alg);

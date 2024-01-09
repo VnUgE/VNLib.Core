@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -40,5 +40,19 @@ namespace VNLib.Utils.Native
 
         public NativeMemoryOutOfMemoryException()
         { }
+
+        /// <summary>
+        /// Throws an <see cref="NativeMemoryOutOfMemoryException"/> if the pointer is null
+        /// </summary>
+        /// <param name="value">The pointer value to test</param>
+        /// <param name="message">The message to use if the pointer is null</param>
+        /// <exception cref="NativeMemoryOutOfMemoryException"></exception>
+        public static void ThrowIfNullPointer(nint value, string? message = null)
+        {
+            if (value == 0)
+            {
+                throw new NativeMemoryOutOfMemoryException(message ?? "Failed to allocate or reallocte memory region");
+            }
+        }
     }
 }

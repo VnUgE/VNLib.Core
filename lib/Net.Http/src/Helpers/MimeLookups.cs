@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -23,6 +23,7 @@
 */
 
 
+using System.Collections.Frozen;
 using System.Collections.Generic;
 
 namespace VNLib.Net.Http
@@ -30,7 +31,7 @@ namespace VNLib.Net.Http
     public static partial class HttpHelpers
     {
         //Content type lookup dict
-        private static readonly IReadOnlyDictionary<ContentType, string> CtToMime = new Dictionary<ContentType, string>()
+        private static readonly FrozenDictionary<ContentType, string> CtToMime = new Dictionary<ContentType, string>()
         {
             { ContentType.NonSupported, "application/octet-stream" },
             { ContentType.UrlEncoded, "application/x-www-form-urlencoded" },
@@ -1179,8 +1180,9 @@ namespace VNLib.Net.Http
             { ContentType.Zir, "application/vnd.zul" },
             { ContentType.Zirz, "application/vnd.zul" },
             { ContentType.Zmm, "application/vnd.handheld-entertainment+xml" },
-        };
-        private static readonly IReadOnlyDictionary<string, ContentType> ExtensionToCt = new Dictionary<string, ContentType>()
+        }.ToFrozenDictionary();
+
+        private static readonly FrozenDictionary<string, ContentType> ExtensionToCt = new Dictionary<string, ContentType>()
         {
             { "aab", ContentType.Aab },
             { "aac", ContentType.Aac },
@@ -2327,8 +2329,9 @@ namespace VNLib.Net.Http
             { "zir", ContentType.Zir },
             { "zirz", ContentType.Zirz },
             { "zmm", ContentType.Zmm },
-        };
-        private static readonly IReadOnlyDictionary<string, ContentType> MimeToCt = new Dictionary<string, ContentType>()
+        }.ToFrozenDictionary();
+
+        private static readonly FrozenDictionary<string, ContentType> MimeToCt = new Dictionary<string, ContentType>()
         {
             { "application/x-www-form-urlencoded", ContentType.UrlEncoded },
             { "multipart/form-data", ContentType.MultiPart },
@@ -3230,12 +3233,12 @@ namespace VNLib.Net.Http
             { "application/zip", ContentType.Zip },
             { "application/vnd.zul", ContentType.Zir },
             { "application/vnd.handheld-entertainment+xml", ContentType.Zmm },
-        };
+        }.ToFrozenDictionary();
 
 
         /*
          * A string hashcode lookup table for MIME content types
          */
-        private static readonly IReadOnlyDictionary<int, ContentType> ContentTypeHashLookup = ComputeCodeHashLookup(MimeToCt);
+        private static readonly FrozenDictionary<int, ContentType> ContentTypeHashLookup = ComputeCodeHashLookup(MimeToCt);
     }
 }

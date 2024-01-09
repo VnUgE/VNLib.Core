@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -36,10 +36,10 @@
  */
 
 using System;
-using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Security.Authentication;
 
@@ -76,7 +76,7 @@ namespace VNLib.Net.Http
         internal static readonly Memory<byte> WriteOnlyScratchBuffer = new byte[64 * 1024];
 
         private readonly ITransportProvider Transport;
-        private readonly IReadOnlyDictionary<string, IWebRoot> ServerRoots;
+        private readonly FrozenDictionary<string, IWebRoot> ServerRoots;
         private readonly IWebRoot? _wildcardRoot;
         private readonly HttpConfig _config;
 
@@ -139,7 +139,7 @@ namespace VNLib.Net.Http
 
             _config = config;
             //Configure roots and their directories
-            ServerRoots = sites.ToDictionary(static r => r.Hostname, static tv => tv, StringComparer.OrdinalIgnoreCase);
+            ServerRoots = sites.ToFrozenDictionary(static r => r.Hostname, static tv => tv, StringComparer.OrdinalIgnoreCase);
             //Compile and store the timeout keepalive header
             KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
             //Create a new context store
@@ -164,9 +164,9 @@ namespace VNLib.Net.Http
 
         private static void ValidateConfig(in HttpConfig conf)
         {
-            _ = conf.HttpEncoding ?? throw new ArgumentException("HttpEncoding cannot be null", nameof(conf));
-            _ = conf.ServerLog ?? throw new ArgumentException("ServerLog cannot be null", nameof(conf));
-            _ = conf.MemoryPool ?? throw new ArgumentNullException(nameof(conf));
+            ArgumentNullException.ThrowIfNull(conf.HttpEncoding, nameof(conf.HttpEncoding));
+            ArgumentNullException.ThrowIfNull(conf.ServerLog, nameof(conf.ServerLog));
+            ArgumentNullException.ThrowIfNull(conf.MemoryPool, nameof(conf.MemoryPool));
 
             if (conf.ActiveConnectionRecvTimeout < -1)
             {

@@ -11,7 +11,7 @@ set(VNLIB_COMPRESS_SOURCES compression.c)
 #set options for enable botli and zlib
 option(ENABLE_BROTLI "Enable brotli compression" ON)
 option(ENABLE_ZLIB "Enable zlib compression" ON)
-option(ENABLE_RPMALLOC "Link local vnlib_rpmalloc allocator" OFF)
+option(ENABLE_RPMALLOC "Enable local source code vnlib_rpmalloc memory allocator" OFF)
 
 #add feature specific source files to the project
 if(ENABLE_BROTLI)
@@ -33,7 +33,7 @@ add_library(${CMAKE_PROJECT_NAME}_static STATIC ${VNLIB_COMPRESS_SOURCES} ${COMP
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
-	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME _vncompress)
+	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME vn_compress)
 endif()
 
 
@@ -279,6 +279,22 @@ if(ENABLE_ZLIB)
 	target_compile_options(lib_deflate PRIVATE ${Z_C_FLAGS})
 	
 	target_link_libraries(${CMAKE_PROJECT_NAME} lib_deflate)
+endif()
+
+if(NATIVE_HEAP_LIB_PATH)
+
+	#Include the nativeheap api header
+	include_directories(${NATIVE_HEAP_INCLUDES})
+	
+	#If manual heap linking is enabled, we need to link the native heap library
+	target_link_libraries(${CMAKE_PROJECT_NAME} ${NATIVE_HEAP_LIB_PATH})
+	
+	#Disable rpmalloc if we are linking a custom native heap
+	set(ENABLE_RPMALLOC OFF)
+
+	#add defintion to enable custom malloc heap overrides
+	target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE VNLIB_CUSTOM_MALLOC_ENABLE)
+
 endif()
 
 #Add support for rpmalloc memmory allocator

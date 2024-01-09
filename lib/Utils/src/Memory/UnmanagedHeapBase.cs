@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -78,10 +78,7 @@ namespace VNLib.Utils.Memory
             DangerousAddRef(ref handleCountIncremented);
 
             //Failed to increment ref count, class has been disposed
-            if (!handleCountIncremented)
-            {
-                throw new ObjectDisposedException("The handle has been released");
-            }
+            ObjectDisposedException.ThrowIf(handleCountIncremented == false, "The handle has been released");
 
             try
             {
@@ -102,8 +99,12 @@ namespace VNLib.Utils.Memory
                     //Alloc block without lock
                     block = AllocBlock(elements, size, zero);
                 }
+
+                //Check block 
+                NativeMemoryOutOfMemoryException.ThrowIfNullPointer(block);
+
                 //Check if block was allocated
-                return block != IntPtr.Zero ? block : throw new NativeMemoryOutOfMemoryException("Failed to allocate the requested block");
+                return block;
             }
             catch
             {
@@ -146,7 +147,7 @@ namespace VNLib.Utils.Memory
             //Decrement handle count
             DangerousRelease();
             //set block to invalid
-            block = IntPtr.Zero;
+            block = 0;
             return result;
         }
         
@@ -186,12 +187,9 @@ namespace VNLib.Utils.Memory
             {
                 newBlock = ReAllocBlock(block, elements, size, zero);
             }
-            
+
             //Check block 
-            if (newBlock == IntPtr.Zero)
-            {
-                throw new NativeMemoryOutOfMemoryException("The memory block could not be resized");
-            }
+            NativeMemoryOutOfMemoryException.ThrowIfNullPointer(newBlock, "The memory block could not be resized");
 
             //Set the new block
             block = newBlock;
@@ -228,11 +226,9 @@ namespace VNLib.Utils.Memory
         
         ///<inheritdoc/>
         public override int GetHashCode() => handle.GetHashCode();
-        
+
         ///<inheritdoc/>
-        public override bool Equals(object? obj)
-        {
-            return obj is UnmanagedHeapBase heap && !heap.IsInvalid && !heap.IsClosed && handle == heap.handle;
-        }
+        public override bool Equals(object? obj) 
+            => obj is UnmanagedHeapBase heap && !heap.IsInvalid && !heap.IsClosed && handle == heap.handle;
     }
 }

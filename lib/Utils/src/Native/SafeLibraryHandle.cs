@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -169,11 +169,10 @@ namespace VNLib.Utils.Native
         {
             //Increment handle count before obtaining a method
             bool success = false;
-            DangerousAddRef(ref success);
-            if (!success)
-            {
-                throw new ObjectDisposedException("The libary has been released!");
-            }
+            DangerousAddRef(ref success);            
+
+            ObjectDisposedException.ThrowIf(success == false, "The libary has been released!");
+
             try
             {
                 //Get the method pointer

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -539,7 +539,7 @@ namespace VNLib.Utils
             //Rent a bin buffer
             Span<byte> binBuffer = stackalloc byte[binSize];
             //Write memory to buffer
-            MemoryMarshal.Write(binBuffer, ref value);
+            MemoryMarshal.Write(binBuffer, in value);
             //Convert to base32
             return ToBase32String(binBuffer, withPadding);
         }

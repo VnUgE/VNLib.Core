@@ -520,10 +520,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CopyStruct<T>(ref byte source, T* target) where T : unmanaged
         {
-            if (target == null)
-            {
-                throw new ArgumentNullException(nameof(target));
-            }
+            ArgumentNullException.ThrowIfNull(target);
             CopyStruct(ref source, ref *target);
         }
 
@@ -593,11 +590,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CopyStruct<T>(T* source, ref byte target) where T : unmanaged
         {
-            if (source == null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
+            ArgumentNullException.ThrowIfNull(source);
             CopyStruct(ref *source, ref target);
         }
 
@@ -633,10 +626,7 @@ namespace VNLib.Utils.Memory
         public static void CopyStruct<T>(ref T source, Span<byte> target) where T : unmanaged
         {
             //check that the span is large enough to hold the structure
-            if (target.Length < sizeof(T))
-            {
-                throw new ArgumentException("Target span is smaller than the size of the structure");
-            }
+            ArgumentOutOfRangeException.ThrowIfLessThan(target.Length, sizeof(T), nameof(target));
 
             CopyStruct(ref source, ref MemoryMarshal.GetReference(target));
         }
@@ -657,10 +647,9 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CopyStruct<T>(T* source, Span<byte> target) where T : unmanaged
         {
-            if (source == null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentOutOfRangeException.ThrowIfLessThan(target.Length, sizeof(T), nameof(target));
+
             CopyStruct(ref *source, target);
         }
 
@@ -732,14 +721,8 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloneStruct<T>(T* source, T* target) where T : unmanaged
         {
-            if(source == null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-            if(target == null)
-            {
-                throw new ArgumentNullException(nameof(target));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(target);
 
             Unsafe.CopyBlockUnaligned(target, source, (uint)sizeof(T));
         }
@@ -1102,7 +1085,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nuint ByteSize<T>(IMemoryHandle<T> handle)
         {
-            _ = handle ?? throw new ArgumentNullException(nameof(handle));
+            ArgumentNullException.ThrowIfNull(handle);
             return checked(handle.Length * (nuint)Unsafe.SizeOf<T>());
         }
 
@@ -1167,12 +1150,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(IMemoryHandle<T> handle, nuint offset, nuint count)
-        {
-            if (offset + count > handle.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset), "Offset or count are beyond the range of the supplied memory handle");
-            }
-        }
+            => ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, handle.Length, nameof(count));
 
         /// <summary>
         /// Checks if the offset/count paramters for the given block
@@ -1185,11 +1163,9 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(ReadOnlySpan<T> block, int offset, int count)
         {
-            //Check span bounds
-            if (offset < 0 || count < 0 || offset + count > block.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset), "Offset or count are beyond the range of the supplied memory handle");
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(offset);
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, block.Length, nameof(count));
         }
 
         /// <summary>
@@ -1204,11 +1180,9 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(Span<T> block, int offset, int count)
         {
-            //Check span bounds
-            if (offset < 0 || count < 0 || offset + count > block.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset), "Offset or count are beyond the range of the supplied memory handle");
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(offset);
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, block.Length, nameof(count));
         }
 
         /// <summary>
@@ -1222,12 +1196,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(T[] block, nuint offset, nuint count)
-        {
-            if (offset + count > (ulong)block.LongLength)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset), "The offset or count is outside of the range of the block of memory");
-            }
-        }
+            => ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, (ulong)block.LongLength, nameof(count));
 
         #endregion
 
@@ -1242,11 +1211,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, nint elementOffset)
         {
-            if(elementOffset < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(elementOffset));
-            }
-
+            ArgumentOutOfRangeException.ThrowIfNegative(elementOffset);
             return PinArrayAndGetHandle(array, (nuint)elementOffset);
         }
 
@@ -1475,6 +1440,8 @@ namespace VNLib.Utils.Memory
                 }
             }
 
+            const nuint _avx32ByteAlignment = 0x20u;
+
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             private static void _avx32ByteCopy(
                 ref byte src,
@@ -1486,7 +1453,7 @@ namespace VNLib.Utils.Memory
                 Debug.Assert(Avx2.IsSupported, "AVX2 is not supported on this platform");
 
                 //determine the number of loops
-                nuint loopCount = count / (nuint)Vector256<byte>.Count;
+                nuint loopCount = count / _avx32ByteAlignment;
 
                 fixed (byte* srcPtr = &src, dstPtr = &dst)
                 {
@@ -1514,7 +1481,7 @@ namespace VNLib.Utils.Memory
             /// <param name="size">The block size to test</param>
             /// <returns>A value that indicates if the block size is 32byte aligned</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static bool Is32ByteAligned(nuint size) => unchecked(size % 0x20u) == 0;
+            public static bool Is32ByteAligned(nuint size) => unchecked(size % _avx32ByteAlignment) == 0;
         }
 
         private static class Refs

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -27,6 +27,7 @@ using System.IO;
 using System.Net;
 using System.Linq;
 using System.Net.Sockets;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -66,14 +67,14 @@ namespace VNLib.Net.Http
          * an HttpMethod enum value,
          */
 
-        private static readonly IReadOnlyDictionary<int, HttpMethod> MethodHashLookup = HashHttpMethods();
+        private static readonly FrozenDictionary<int, HttpMethod> MethodHashLookup = HashHttpMethods();
 
         /*
          * Provides a constant lookup table from an MIME http request header string to a .NET 
          * enum value (with some extra support)
          */
 
-        private static readonly IReadOnlyDictionary<string, HttpRequestHeader> RequestHeaderLookup = new Dictionary<string, HttpRequestHeader>(StringComparer.OrdinalIgnoreCase)
+        private static readonly FrozenDictionary<string, HttpRequestHeader> RequestHeaderLookup = new Dictionary<string, HttpRequestHeader>(StringComparer.OrdinalIgnoreCase)
         {
             {"CacheControl", HttpRequestHeader.CacheControl },
             {"Connection", HttpRequestHeader.Connection },
@@ -119,7 +120,7 @@ namespace VNLib.Net.Http
             //Custom request headers
             { "Content-Disposition", ContentDisposition },
             { "origin", Origin }
-        };
+        }.ToFrozenDictionary();
 
         /*
          * Provides a lookup table for request header hashcodes (that are hashed in 
@@ -128,28 +129,28 @@ namespace VNLib.Net.Http
          * during request parsing)
          * 
          */
-        private static readonly IReadOnlyDictionary<int, HttpRequestHeader> RequestHeaderHashLookup = ComputeCodeHashLookup(RequestHeaderLookup);
+        private static readonly FrozenDictionary<int, HttpRequestHeader> RequestHeaderHashLookup = ComputeCodeHashLookup(RequestHeaderLookup);
 
         /*
          * Provides a constant lookup table for http version hashcodes to an http
          * version enum value
          */
-        private static readonly IReadOnlyDictionary<int, HttpVersion> VersionHashLookup = new Dictionary<int, HttpVersion>()
+        private static readonly FrozenDictionary<int, HttpVersion> VersionHashLookup = new Dictionary<int, HttpVersion>()
         {
             { string.GetHashCode("HTTP/0.9", StringComparison.OrdinalIgnoreCase), HttpVersion.Http09 },
             { string.GetHashCode("HTTP/1.0", StringComparison.OrdinalIgnoreCase), HttpVersion.Http1 },
             { string.GetHashCode("HTTP/1.1", StringComparison.OrdinalIgnoreCase), HttpVersion.Http11 },
             { string.GetHashCode("HTTP/2.0", StringComparison.OrdinalIgnoreCase), HttpVersion.Http2 }
-        };
+        }.ToFrozenDictionary();
 
 
         //Pre-compiled strings for all status codes for http 0.9 1, 1.1
-        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V0_9_STATUS_CODES = GetStatusCodes("0.9");
-        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V1_STAUTS_CODES = GetStatusCodes("1.0");
-        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V1_1_STATUS_CODES = GetStatusCodes("1.1");
-        private static readonly IReadOnlyDictionary<HttpStatusCode, string> V2_STATUS_CODES = GetStatusCodes("2.0");
+        private static readonly FrozenDictionary<HttpStatusCode, string> V0_9_STATUS_CODES = GetStatusCodes("0.9");
+        private static readonly FrozenDictionary<HttpStatusCode, string> V1_STAUTS_CODES = GetStatusCodes("1.0");
+        private static readonly FrozenDictionary<HttpStatusCode, string> V1_1_STATUS_CODES = GetStatusCodes("1.1");
+        private static readonly FrozenDictionary<HttpStatusCode, string> V2_STATUS_CODES = GetStatusCodes("2.0");
 
-        private static IReadOnlyDictionary<HttpStatusCode, string> GetStatusCodes(string version)
+        private static FrozenDictionary<HttpStatusCode, string> GetStatusCodes(string version)
         {
             //Setup status code dict
             Dictionary<HttpStatusCode, string> statusCodes = new();
@@ -159,10 +160,10 @@ namespace VNLib.Net.Http
                 //Use a regex to write the status code value as a string
                 statusCodes[code] = $"HTTP/{version} {(int)code} {HttpRequestBuilderRegex.Replace(code.ToString(), " $1")}";
             }
-            return statusCodes;
+            return statusCodes.ToFrozenDictionary();
         }
         
-        private static IReadOnlyDictionary<int, HttpMethod> HashHttpMethods()
+        private static FrozenDictionary<int, HttpMethod> HashHttpMethods()
         {
             /*
              * Http methods are hashed at runtime using the HttpMethod enum
@@ -173,11 +174,11 @@ namespace VNLib.Net.Http
                 //Exclude the not supported method
                 .Except(new HttpMethod[] { HttpMethod.None })
                 .Select(m => KeyValuePair.Create(m.ToString(), m))
-            );
+            ).ToFrozenDictionary();
         }
 
-        private static IReadOnlyDictionary<int, T> ComputeCodeHashLookup<T>(IEnumerable<KeyValuePair<string, T>> enumerable)
-            => enumerable.ToDictionary(
+        private static FrozenDictionary<int, T> ComputeCodeHashLookup<T>(IEnumerable<KeyValuePair<string, T>> enumerable)
+            => enumerable.ToFrozenDictionary(
                 static kv => string.GetHashCode(kv.Key, StringComparison.OrdinalIgnoreCase),
                 static kv => kv.Value
             );

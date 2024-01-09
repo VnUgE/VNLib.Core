@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -174,7 +174,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* StructAlloc<T>(IUnmangedHeap heap, bool zero) where T : unmanaged
         {
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(heap);
             return (T*)heap.Alloc(1, (nuint)sizeof(T), zero);
         }
 
@@ -228,11 +228,9 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentNullException"></exception>
         public static void StructFree(IUnmangedHeap heap, void* structPtr)
         {
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
-            if(structPtr == null)
-            { 
-                throw new ArgumentNullException(nameof(structPtr)); 
-            }
+            ArgumentNullException.ThrowIfNull(heap);
+            ArgumentNullException.ThrowIfNull(structPtr);
+            
             //Get intpointer
             IntPtr ptr = (IntPtr)structPtr;
             //Free

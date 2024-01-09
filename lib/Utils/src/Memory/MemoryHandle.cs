@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -106,7 +106,7 @@ namespace VNLib.Utils.Memory
         public bool CanRealloc
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => Heap != null && Heap.CreationFlags.HasFlag(HeapCreation.SupportsRealloc);
+            get => !IsClosed && Heap != null && Heap.CreationFlags.HasFlag(HeapCreation.SupportsRealloc);
         }
 
         /// <summary>
@@ -184,11 +184,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe T* GetOffset(nuint elements)
         {
-            if (elements >= _length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(elements), "Element offset cannot be larger than allocated size");
-            }
-
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(elements, _length);
             this.ThrowIfClosed();
 
             //Get ptr and offset it
@@ -212,30 +208,26 @@ namespace VNLib.Utils.Memory
         ///</remarks>
         public unsafe MemoryHandle Pin(int elementIndex)
         {
-            if (elementIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(elementIndex));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(elementIndex);
 
             //Get ptr and guard checks before adding the referrence
             T* ptr = GetOffset((nuint)elementIndex);
 
             bool addRef = false;
+
             //use the pinned field as success val
             DangerousAddRef(ref addRef);
+
+            //If adding ref failed, the handle is closed
+            ObjectDisposedException.ThrowIf(!addRef, this);
+            
             //Create a new system.buffers memory handle from the offset ptr address
-            return !addRef
-                ? throw new ObjectDisposedException("Failed to increase referrence count on the memory handle because it was released")
-                : new MemoryHandle(ptr, pinnable: this);
+            return new MemoryHandle(ptr, pinnable: this);
         }
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
-        public void Unpin()
-        {
-            //Dec count on release
-            DangerousRelease();
-        }
+        public void Unpin() => DangerousRelease();
 
         ///<inheritdoc/>
         protected override bool ReleaseHandle() => Heap.Free(ref handle);

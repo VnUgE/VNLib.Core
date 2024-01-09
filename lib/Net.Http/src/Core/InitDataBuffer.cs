@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -87,7 +87,7 @@ namespace VNLib.Net.Http.Core
             get => MemoryMarshal.Read<int>(_positionSegment);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => MemoryMarshal.Write(_positionSegment, ref value);
+            set => MemoryMarshal.Write(_positionSegment, in value);
         }
 
         /// <summary>

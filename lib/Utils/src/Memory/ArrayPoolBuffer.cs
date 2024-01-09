@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -91,11 +91,8 @@ namespace VNLib.Utils.Memory
         /// <param name="minSize">Minimum size of the buffer</param>
         /// <param name="zero">Set the zero memory flag on close</param>
         public ArrayPoolBuffer(ArrayPool<T> pool, int minSize, bool zero = false)
-        {
-            Pool = pool ?? throw new ArgumentNullException(nameof(pool));
-            Buffer = pool.Rent(minSize, zero);
-            InitSize = minSize;
-        }
+            :this(pool, pool.Rent(minSize, zero), minSize)
+        { }
 
         /// <summary>
         /// Initialzies a new <see cref="ArrayPoolBuffer{T}"/> from the specified rented array
@@ -108,12 +105,13 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public ArrayPoolBuffer(ArrayPool<T> pool, T[] array, int size)
         {
-            Pool = pool ?? throw new ArgumentNullException(nameof(pool));
-            Buffer = array ?? throw new ArgumentNullException(nameof(array));
+            ArgumentNullException.ThrowIfNull(pool);
+            ArgumentNullException.ThrowIfNull(array);
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(size, array.Length);
 
-            if (size < 0 || size > array.Length)
-                throw new ArgumentOutOfRangeException(nameof(size));
-
+            Pool = pool;
+            Buffer = array;
             InitSize = size;
         }
 
@@ -209,7 +207,11 @@ namespace VNLib.Utils.Memory
 
         //Pin, will also check bounds
         ///<inheritdoc/>
-        public MemoryHandle Pin(int elementIndex) => MemoryUtil.PinArrayAndGetHandle(Buffer, elementIndex);
+        public MemoryHandle Pin(int elementIndex)
+        {
+            Check();
+            return MemoryUtil.PinArrayAndGetHandle(Buffer, elementIndex);
+        }
 
         void IPinnable.Unpin()
         {

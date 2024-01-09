@@ -71,6 +71,8 @@ namespace VNLib.Utils.Extensions
         /// <returns>A new <see cref="OpenResourceHandle{T}"/> encapsulating the rented array</returns>
         public static IMemoryHandle<T> SafeAlloc<T>(this ArrayPool<T> pool, int size, bool zero = false) where T : struct
         {
+            ArgumentNullException.ThrowIfNull(pool);
+
             T[] array = pool.Rent(size);
 
             if (zero)
@@ -94,6 +96,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T[] Rent<T>(this ArrayPool<T> pool, int size, bool zero)
         {
+            ArgumentNullException.ThrowIfNull(pool);
+
             //Rent the array
             T[] arr = pool.Rent(size);
             //If zero flag is set, zero only the used section
@@ -186,7 +190,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static MemoryManager<T> DirectAlloc<T>(this IUnmangedHeap heap, nint size, bool zero = false) where T : unmanaged
         {
-            return size >= 0 ? DirectAlloc<T>(heap, (nuint)size, zero) : throw new ArgumentOutOfRangeException(nameof(size), "The size paramter must be a positive integer");
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+            return DirectAlloc<T>(heap, (nuint)size, zero);
         }
         
         /// <summary>
@@ -200,7 +205,9 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe T* GetOffset<T>(this MemoryHandle<T> memory, nint elements) where T : unmanaged
         {
-            return elements >= 0 ? memory.GetOffset((nuint)elements) : throw new ArgumentOutOfRangeException(nameof(elements), "The elements paramter must be a positive integer");
+            ArgumentNullException.ThrowIfNull(memory);
+            ArgumentOutOfRangeException.ThrowIfNegative(elements);
+            return memory.GetOffset((nuint)elements);
         }
 
         /// <summary>
@@ -215,10 +222,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Resize<T>(this IResizeableMemoryHandle<T> memory, nint elements)
         {
-            if (elements < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(elements));
-            }
+            ArgumentNullException.ThrowIfNull(memory);
+            ArgumentOutOfRangeException.ThrowIfNegative(elements);
             memory.Resize((nuint)elements);
         }
 
@@ -235,10 +240,7 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ResizeIfSmaller<T>(this IResizeableMemoryHandle<T> handle, nint count)
         {
-            if(count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
             ResizeIfSmaller(handle, (nuint)count);
         }
 
@@ -255,6 +257,7 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ResizeIfSmaller<T>(this IResizeableMemoryHandle<T> handle, nuint count)
         {
+            ArgumentNullException.ThrowIfNull(handle);
             //Check handle size
             if(handle.Length < count)
             {
@@ -274,12 +277,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T GetOffsetRef<T>(this IMemoryHandle<T> block, nuint offset) 
         {
-            _ = block ?? throw new ArgumentNullException(nameof(block));
-            
-            if (offset >= block.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
+            ArgumentNullException.ThrowIfNull(block);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, block.Length);
 
             return ref Unsafe.Add(ref block.GetReference(), offset);
         }
@@ -297,12 +296,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref byte GetOffsetByteRef<T>(this IMemoryHandle<T> block, nuint offset) 
         {
-            _ = block ?? throw new ArgumentNullException(nameof(block));
-
-            if (offset >= block.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
+            ArgumentNullException.ThrowIfNull(block);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, block.Length);
 
             //Get the base reference, then offset by the desired number of elements and cast to a byte reference
             ref T baseRef = ref block.GetReference();
@@ -322,13 +317,10 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Span<T> GetOffsetSpan<T>(this IMemoryHandle<T> block, nuint offset, int size) 
         {
-            _ = block ?? throw new ArgumentNullException(nameof(block));
-            
-            if(size < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(size));
-            }
-            if(size == 0)
+            ArgumentNullException.ThrowIfNull(block);
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+
+            if (size == 0)
             {
                 return Span<T>.Empty;
             }
@@ -353,7 +345,9 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe Span<T> GetOffsetSpan<T>(this IMemoryHandle<T> block, nint offset, int size)
         {
-            return offset >= 0 ? block.GetOffsetSpan((nuint)offset, size) : throw new ArgumentOutOfRangeException(nameof(offset));
+            ArgumentNullException.ThrowIfNull(block);
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+            return block.GetOffsetSpan((nuint)offset, size);
         }
 
         /// <summary>
@@ -380,7 +374,9 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SubSequence<T> GetSubSequence<T>(this IMemoryHandle<T> block, nint offset, int size)
         {
-            return offset >= 0 ? new (block, (nuint)offset, size) : throw new ArgumentOutOfRangeException(nameof(offset));
+            ArgumentNullException.ThrowIfNull(block);
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+            return new (block, (nuint)offset, size);
         }
 
         /// <summary>
@@ -390,7 +386,8 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T">The unmanged data type to provide allocations from</typeparam>
         /// <returns>The new <see cref="MemoryPool{T}"/> heap wrapper.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryPool<T> ToPool<T>(this IUnmangedHeap heap, int maxBufferSize = int.MaxValue) where T : unmanaged => new PrivateBuffersMemoryPool<T>(heap, maxBufferSize);
+        public static MemoryPool<T> ToPool<T>(this IUnmangedHeap heap, int maxBufferSize = int.MaxValue) where T : unmanaged 
+            => new PrivateBuffersMemoryPool<T>(heap, maxBufferSize);
 
         /// <summary>
         /// Allocates a structure of the specified type on the current unmanged heap and optionally zero's its memory
@@ -403,7 +400,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe T* StructAlloc<T>(this IUnmangedHeap heap, bool zero = true) where T : unmanaged => MemoryUtil.StructAlloc<T>(heap, zero);
+        public static unsafe T* StructAlloc<T>(this IUnmangedHeap heap, bool zero = true) where T : unmanaged 
+            => MemoryUtil.StructAlloc<T>(heap, zero);
 
         /// <summary>
         /// Allocates a structure of the specified type on the current unmanged heap and optionally zero's its memory
@@ -416,7 +414,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ref T StructAllocRef<T>(this IUnmangedHeap heap, bool zero = true) where T : unmanaged => ref MemoryUtil.StructAllocRef<T>(heap, zero);
+        public static ref T StructAllocRef<T>(this IUnmangedHeap heap, bool zero = true) where T : unmanaged 
+            => ref MemoryUtil.StructAllocRef<T>(heap, zero);
 
 
         /// <summary>
@@ -427,7 +426,8 @@ namespace VNLib.Utils.Extensions
         /// <param name="heap"></param>
         /// <param name="structPtr">A reference/pointer to the structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void StructFree<T>(this IUnmangedHeap heap, T* structPtr) where T : unmanaged => MemoryUtil.StructFree(heap, structPtr);
+        public static unsafe void StructFree<T>(this IUnmangedHeap heap, T* structPtr) where T : unmanaged 
+            => MemoryUtil.StructFree(heap, structPtr);
 
         /// <summary>
         /// Frees a structure at the specified address from the this heap. 
@@ -437,7 +437,8 @@ namespace VNLib.Utils.Extensions
         /// <param name="heap"></param>
         /// <param name="structRef">A reference to the structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void StructFreeRef<T>(this IUnmangedHeap heap, ref T structRef) where T : unmanaged => MemoryUtil.StructFreeRef(heap, ref structRef);
+        public static void StructFreeRef<T>(this IUnmangedHeap heap, ref T structRef) where T : unmanaged
+            => MemoryUtil.StructFreeRef(heap, ref structRef);
 
         /// <summary>
         /// Allocates a block of unmanaged memory of the number of elements to store of an unmanged type
@@ -452,7 +453,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ObjectDisposedException"></exception>
         public static unsafe MemoryHandle<T> Alloc<T>(this IUnmangedHeap heap, nuint elements, bool zero = false) where T : unmanaged
         {
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(heap);
             //Minimum of one element
             elements = Math.Max(elements, 1);
             //If zero flag is set then specify zeroing memory
@@ -475,7 +476,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static MemoryHandle<T> Alloc<T>(this IUnmangedHeap heap, nint elements, bool zero = false) where T : unmanaged
         {
-            return elements >= 0 ? Alloc<T>(heap, (nuint)elements, zero) : throw new ArgumentOutOfRangeException(nameof(elements));
+            ArgumentOutOfRangeException.ThrowIfNegative(elements);
+            return Alloc<T>(heap, (nuint)elements, zero);
         }
 
         /// <summary>
@@ -532,6 +534,7 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void WriteAndResize<T>(this IResizeableMemoryHandle<T> handle, ReadOnlySpan<T> input) where T: unmanaged
         {
+            ArgumentNullException.ThrowIfNull(handle);
             handle.Resize(input.Length);
             MemoryUtil.Copy(input, 0, handle, 0, input.Length);
         }
@@ -552,6 +555,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(this IUnmangedHeap heap, int elements, bool zero = false) where T : unmanaged
         {
+            ArgumentNullException.ThrowIfNull(heap);
+
             if (elements < 1)
             {
                 //Return an empty handle
@@ -583,7 +588,7 @@ namespace VNLib.Utils.Extensions
             Span<byte> output = buffer.Remaining[..size];
 
             //Format value and write to buffer
-            MemoryMarshal.Write(output, ref value);
+            MemoryMarshal.Write(output, in value);
 
             //If byte order is reversed, reverse elements
             if (!BitConverter.IsLittleEndian)
@@ -608,7 +613,7 @@ namespace VNLib.Utils.Extensions
             Span<byte> output = buffer.Remaining.Span[..size];
 
             //Format value and write to buffer
-            MemoryMarshal.Write(output, ref value);
+            MemoryMarshal.Write(output, in value);
 
             //If byte order is reversed, reverse elements
             if (BitConverter.IsLittleEndian)
@@ -676,10 +681,8 @@ namespace VNLib.Utils.Extensions
         /// <returns>The actual number of bytes written at the location indicated by the bytes parameter.</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetBytes(this Encoder enc, char[] chars, int offset, int charCount, ref ForwardOnlyWriter<byte> writer, bool flush)
-        {
-            return GetBytes(enc, chars.AsSpan(offset, charCount), ref writer, flush);
-        }
+        public static int GetBytes(this Encoder enc, char[] chars, int offset, int charCount, ref ForwardOnlyWriter<byte> writer, bool flush) 
+            => GetBytes(enc, chars.AsSpan(offset, charCount), ref writer, flush);
 
         /// <summary>
         /// Encodes a set of characters in the input characters span and any characters
@@ -696,6 +699,7 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetBytes(this Encoder enc, ReadOnlySpan<char> chars, ref ForwardOnlyWriter<byte> writer, bool flush)
         {
+            ArgumentNullException.ThrowIfNull(enc);
             //Encode the characters
             int written = enc.GetBytes(chars, writer.Remaining, flush);
             //Update the writer position
@@ -715,6 +719,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static int GetBytes(this Encoding encoding, ReadOnlySpan<char> chars, ref ForwardOnlyWriter<byte> writer)
         {
+            ArgumentNullException.ThrowIfNull(encoding);
             //Encode the characters
             int written = encoding.GetBytes(chars, writer.Remaining);
             //Update the writer position
@@ -734,6 +739,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static int GetChars(this Encoding encoding, ReadOnlySpan<byte> bytes, ref ForwardOnlyWriter<char> writer)
         {
+            ArgumentNullException.ThrowIfNull(encoding);
             int charCount = encoding.GetCharCount(bytes);
             //Encode the characters
             _ = encoding.GetChars(bytes, writer.Remaining);
@@ -770,10 +776,10 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static T[] Slice<T>(this T[] arr, int start)
         {
-            if(start < 0 || start > arr.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(start));
-            }
+            ArgumentNullException.ThrowIfNull(arr);
+            ArgumentOutOfRangeException.ThrowIfNegative(start);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start, arr.Length);
+           
             Range sliceRange = new(start, arr.Length - start);
             return RuntimeHelpers.GetSubArray(arr, sliceRange);
         }
@@ -790,22 +796,16 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static T[] Slice<T>(this T[] arr, int start, int count)
         {
-            if(start < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(start));
-            }
-            if(count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
-            if(start + count >= arr.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
+            ArgumentNullException.ThrowIfNull(arr);
+            ArgumentOutOfRangeException.ThrowIfNegative(start);
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start + count, arr.Length);
+            
             if(count == 0)
             {
-                return Array.Empty<T>();
+                return [];
             }
+
             //Calc the slice range
             Range sliceRange = new(start, start + count);
             return RuntimeHelpers.GetSubArray(arr, sliceRange);
@@ -822,11 +822,17 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, nint start)
         {
-            _ = handle ?? throw new ArgumentNullException(nameof(handle));
-            if(start < 0 || (uint)start > handle.Length)
+            ArgumentNullException.ThrowIfNull(handle);
+            ArgumentOutOfRangeException.ThrowIfNegative(start);
+
+            //Allow empty spans for empty handles or last elements
+            if((nuint)start == handle.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(start));
+                return Span<T>.Empty;
             }
+
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((nuint)start, handle.Length);
+
             //calculate a remaining count
             int count = checked((int)(handle.Length - (uint)start));            
             //call the other overload
@@ -839,56 +845,28 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
         /// <param name="start">Intial offset into the handle</param>
-        /// <returns>The sub-sequence of the current handle</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, int start) => AsSpan(handle, (nint)start);      
-
-        /// <summary>
-        /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="handle"></param>
-        /// <param name="start">Intial offset into the handle</param>
         /// <param name="count">The number of elements within the new sequence</param>
         /// <returns>The sub-sequence of the current handle</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, nint start, int count)
         {
-            _ = handle ?? throw new ArgumentNullException(nameof(handle));
-            if(start < 0)
+            ArgumentNullException.ThrowIfNull(handle);
+            ArgumentOutOfRangeException.ThrowIfNegative(start);
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
+
+            //Allow empty spans for empty handles
+            if (count == 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(start));
-            }
-            if(count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
+                return Span<T>.Empty;
             }
 
             //guard against buffer overrun
             MemoryUtil.CheckBounds(handle, (nuint)start, (nuint)count);
 
-            if(count == 0)
-            {
-                return Span<T>.Empty;
-            }
-
             //Get the offset ref and create a new span from the pointer
             ref T asRef = ref handle.GetOffsetRef((nuint)start);
             return MemoryMarshal.CreateSpan(ref asRef, count);
         }
-
-        /// <summary>
-        /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="handle"></param>
-        /// <param name="start">Intial offset into the handle</param>
-        /// <param name="count">The number of elements within the new sequence</param>
-        /// <returns>The sub-sequence of the current handle</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> AsSpan<T>(this IMemoryHandle<T> handle, int start, int count) => AsSpan(handle, (nint)start, count);
 
         /// <summary>
         /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
@@ -920,12 +898,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="handle"></param>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ThrowIfClosed(this SafeHandle handle)
-        {
-            if (handle.IsClosed || handle.IsInvalid)
-            {
-                throw new ObjectDisposedException(handle.GetType().Name);
-            }
-        }
+        public static void ThrowIfClosed(this SafeHandle handle) 
+            => ObjectDisposedException.ThrowIf(handle.IsClosed || handle.IsInvalid, handle);
     }
 }

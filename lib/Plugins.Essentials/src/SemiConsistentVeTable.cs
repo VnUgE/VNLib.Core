@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -26,6 +26,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
@@ -60,7 +61,9 @@ namespace VNLib.Plugins.Essentials
         /// A "lookup table" that represents virtual endpoints to be processed when an
         /// incomming connection matches its path parameter
         /// </summary>
-        private IReadOnlyDictionary<string, IVirtualEndpoint<HttpEntity>> VirtualEndpoints = new Dictionary<string, IVirtualEndpoint<HttpEntity>>(StringComparer.OrdinalIgnoreCase);
+        private FrozenDictionary<string, IVirtualEndpoint<HttpEntity>> VirtualEndpoints =
+            new Dictionary<string, IVirtualEndpoint<HttpEntity>>(StringComparer.OrdinalIgnoreCase)
+            .ToFrozenDictionary();
 
 
         /*
@@ -112,15 +115,17 @@ namespace VNLib.Plugins.Essentials
                     newTable.Add(ep.Path, ep);
                 }
 
+                FrozenDictionary<string, IVirtualEndpoint<HttpEntity>> newTableFrozen = newTable.ToFrozenDictionary();
+
                 //Store the new table
-                _ = Interlocked.Exchange(ref VirtualEndpoints, newTable);
+                _ = Interlocked.Exchange(ref VirtualEndpoints, newTableFrozen);
             }
         }
 
         ///<inheritdoc/>
         public void RemoveEndpoint(params IEndpoint[] eps)
         {
-            _ = eps ?? throw new ArgumentNullException(nameof(eps));
+            ArgumentNullException.ThrowIfNull(eps);
             //Call remove on path
             RemoveEndpoint(eps.Select(static s => s.Path).ToArray());
         }
@@ -128,7 +133,7 @@ namespace VNLib.Plugins.Essentials
         ///<inheritdoc/>
         public void RemoveEndpoint(params string[] paths)
         {
-            _ = paths ?? throw new ArgumentNullException(nameof(paths));
+            ArgumentNullException.ThrowIfNull(paths);
 
             //Make sure all endpoints specify a path
             if (paths.Any(static e => string.IsNullOrWhiteSpace(e)))
@@ -152,8 +157,10 @@ namespace VNLib.Plugins.Essentials
                     _ = newTable.Remove(eps);
                 }
 
+                FrozenDictionary<string, IVirtualEndpoint<HttpEntity>> newTableFrozen = newTable.ToFrozenDictionary();
+
                 //Store the new table
-                _ = Interlocked.Exchange(ref VirtualEndpoints, newTable);
+                _ = Interlocked.Exchange(ref VirtualEndpoints, newTableFrozen);
             }
         }
 

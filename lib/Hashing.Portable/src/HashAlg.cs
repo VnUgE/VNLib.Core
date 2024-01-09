@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -57,6 +57,26 @@ namespace VNLib.Hashing
         /// WARNING: This hashing method is considered insecure and cannot be corrected.
         /// </summary>
         MD5 = 16,
+
+#pragma warning disable CA1707 // Identifiers should not contain underscores
+
+        /// <summary>
+        /// Defines the SHA3-512 hashing algorithm. NOTE: May not be supported on all platforms.
+        /// Inspect the value of <see cref="ManagedHash.SupportsSha3"/>
+        /// </summary>
+        SHA3_512 = 364,
+        /// <summary>
+        /// Defines the SHA3-384 hashing algorithm. NOTE: May not be supported on all platforms.
+        /// Inspect the value of <see cref="ManagedHash.SupportsSha3"/>
+        /// </summary>
+        SHA3_384 = 348,
+        /// <summary>
+        /// Defines the SHA3-256 hashing algorithm. NOTE: May not be supported on all platforms.
+        /// Inspect the value of <see cref="ManagedHash.SupportsSha3"/>
+        /// </summary>
+        SHA3_256 = 332,
+
+#pragma warning restore CA1707 // Identifiers should not contain underscores
 
         /*
          * The blake2 value is negative because the hash size is variable and the enum value 

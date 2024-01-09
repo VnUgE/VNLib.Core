@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -75,7 +75,7 @@ namespace VNLib.Utils.IO
         public static VnMemoryStream FromHandle(IResizeableMemoryHandle<byte> handle, bool ownsHandle, nint length, bool readOnly)
         {
             //Check the handle
-            _ = handle ?? throw new ArgumentNullException(nameof(handle));
+            ArgumentNullException.ThrowIfNull(handle);
 
             return handle.CanRealloc || readOnly
                 ? new VnMemoryStream(handle, length, readOnly, ownsHandle)
@@ -121,7 +121,7 @@ namespace VNLib.Utils.IO
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public VnMemoryStream(IUnmangedHeap heap, nuint bufferSize, bool zero)
         {
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(heap);
             _buffer = heap.Alloc<byte>(bufferSize, zero);
         }
        
@@ -132,7 +132,7 @@ namespace VNLib.Utils.IO
         /// <param name="data">Initial data</param>
         public VnMemoryStream(IUnmangedHeap heap, ReadOnlySpan<byte> data)
         {
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(heap);
             //Alloc the internal buffer to match the data stream
             _buffer = heap.AllocAndCopy(data);
             //Set length
@@ -147,7 +147,7 @@ namespace VNLib.Utils.IO
         /// <param name="data">Initial data</param>
         public VnMemoryStream(IUnmangedHeap heap, ReadOnlyMemory<byte> data)
         {
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(heap);
             //Alloc the internal buffer to match the data stream
             _buffer = heap.AllocAndCopy(data);
             //Set length
@@ -200,12 +200,9 @@ namespace VNLib.Utils.IO
         /// <exception cref="IOException"></exception>
         public override void CopyTo(Stream destination, int bufferSize)
         {
-            _ = destination ?? throw new ArgumentNullException(nameof(destination));
-            if(bufferSize < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(bufferSize), "Buffer size must be greater than 0");
-            }
-            
+            ArgumentNullException.ThrowIfNull(destination);
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(bufferSize, 0);
+   
             if (!destination.CanWrite)
             {
                 throw new IOException("The destinaion stream is not writeable");
@@ -239,12 +236,8 @@ namespace VNLib.Utils.IO
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public override async Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
         {
-            _ = destination ?? throw new ArgumentNullException(nameof(destination));
-
-            if (bufferSize < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(bufferSize), "Buffer size must be greater than 0");
-            }
+            ArgumentNullException.ThrowIfNull(destination);
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(bufferSize, 0);
 
             if (!destination.CanWrite)
             {
@@ -400,14 +393,9 @@ namespace VNLib.Utils.IO
         ///<inheritdoc/>
         public override long Seek(long offset, SeekOrigin origin)
         {
-            if (offset < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset), "Offset cannot be less than 0");
-            }
-            if(offset > nint.MaxValue)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset), "Offset cannot be less than nint.MaxValue");
-            }
+            //gaurd for overflow, offset cannot be greater than platform pointer size
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, nint.MaxValue);
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(offset, nint.MinValue);
 
             //safe cast to nint
             nint _offset = (nint)offset;
@@ -415,16 +403,38 @@ namespace VNLib.Utils.IO
             switch (origin)
             {
                 case SeekOrigin.Begin:
+
+                    ArgumentOutOfRangeException.ThrowIfNegative(offset);
+                    ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, _length);
+
                     //Length will never be greater than nint.Max so output will never exceed nint.max
                     return _position = Math.Min(_length, _offset);
+
                 case SeekOrigin.Current:
+
+                    if(_offset < 0)
+                    {
+                        ArgumentOutOfRangeException.ThrowIfLessThan(offset, -_position);
+                    }
+                    else
+                    {
+                        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, LenToPosDiff);
+                    }
+
                     //Calc new seek position from current position
                     nint newPos = _position + _offset;
                     return _position = Math.Min(_length, newPos);
+
                 case SeekOrigin.End:
+
+                    //Must be negative value
+                    ArgumentOutOfRangeException.ThrowIfGreaterThan(_offset, 0, nameof(offset));
+                    ArgumentOutOfRangeException.ThrowIfLessThan(_offset, -_length, nameof(offset));
+
                     //Calc new seek position from end of stream, should be len -1 so 0 can be specified from the end
-                    nint realIndex = _length - (_offset - 1);
+                    nint realIndex = _length + _offset;
                     return _position = Math.Min(realIndex, 0);
+
                 default:
                     throw new ArgumentException("Stream operation is not supported on current stream");
             }
@@ -446,14 +456,9 @@ namespace VNLib.Utils.IO
             {
                 throw new NotSupportedException("This stream is readonly");
             }
-            if (value < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), "Value cannot be less than 0");
-            }
-            if(value > nint.MaxValue)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), "Value cannot be greater than nint.MaxValue");
-            }
+
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, nint.MaxValue);
             
             nint _value = (nint)value;
 
@@ -468,9 +473,11 @@ namespace VNLib.Utils.IO
         }
 
         ///<inheritdoc/>
+        ///<exception cref="OutOfMemoryException"></exception>
         public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
 
         ///<inheritdoc/>
+        ///<exception cref="OutOfMemoryException"></exception>
         public override void Write(ReadOnlySpan<byte> buffer)
         {
             if (_isReadonly)
@@ -494,6 +501,7 @@ namespace VNLib.Utils.IO
         }
 
         ///<inheritdoc/>
+        ///<exception cref="OutOfMemoryException"></exception>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             //Write synchronously and return a completed task
@@ -502,6 +510,7 @@ namespace VNLib.Utils.IO
         }
 
         ///<inheritdoc/>
+        ///<exception cref="OutOfMemoryException"></exception>
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
             //Write synchronously and return a completed task
@@ -510,6 +519,7 @@ namespace VNLib.Utils.IO
         }
 
         ///<inheritdoc/>
+        ///<exception cref="OutOfMemoryException"></exception>
         public override void WriteByte(byte value)
         {
             Span<byte> buf = MemoryMarshal.CreateSpan(ref value, 1);
