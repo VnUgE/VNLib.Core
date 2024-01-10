@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Diagnostics;
 
 namespace VNLib.Net.Http.Core.Compression
 {
@@ -33,6 +34,7 @@ namespace VNLib.Net.Http.Core.Compression
 
         public ManagedHttpCompressor(IHttpCompressorManager provider)
         {
+            Debug.Assert(provider != null, "Expected non-null provider");
             _provider = provider;
         }
 
@@ -52,6 +54,10 @@ namespace VNLib.Net.Http.Core.Compression
         ///<inheritdoc/>
         public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output)
         {
+            Debug.Assert(initialized);
+            Debug.Assert(_compressor != null);
+            Debug.Assert(!output.IsEmpty, "Expected non-zero output buffer");
+
             //Compress the block
             return _provider.CompressBlock(_compressor!, input, output);
         }
@@ -59,6 +65,10 @@ namespace VNLib.Net.Http.Core.Compression
         ///<inheritdoc/>
         public int Flush(Memory<byte> output)
         {
+            Debug.Assert(initialized);
+            Debug.Assert(_compressor != null);
+            Debug.Assert(!output.IsEmpty, "Expected non-zero output buffer");
+
             return _provider.Flush(_compressor!, output);
         }
 
@@ -67,6 +77,8 @@ namespace VNLib.Net.Http.Core.Compression
         {
             //Defer alloc the compressor
             _compressor ??= _provider.AllocCompressor();
+
+            Debug.Assert(_compressor != null);
 
             //Init the compressor and get the block size
             BlockSize = _provider.InitCompressor(_compressor, compMethod);
@@ -80,7 +92,9 @@ namespace VNLib.Net.Http.Core.Compression
             //Deinit compressor if initialized
             if (initialized)
             {
-                _provider.DeinitCompressor(_compressor!);
+                Debug.Assert(_compressor != null, "Compressor was initialized, exepcted a non null instance");
+
+                _provider.DeinitCompressor(_compressor);
                 initialized = false;
             }
         }

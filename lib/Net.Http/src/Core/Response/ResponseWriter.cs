@@ -265,6 +265,7 @@ namespace VNLib.Net.Http.Core.Response
 
             //Compress the trimmed block
             CompressionResult res = comp.CompressBlock(readSegment, output);
+            ValidateCompressionResult(in res);
 
             //Commit input bytes
             reader.Advance(res.BytesRead);
@@ -280,11 +281,19 @@ namespace VNLib.Net.Http.Core.Response
 
             //Compress the trimmed block
             CompressionResult res = comp.CompressBlock(reader.Window, output);
+            ValidateCompressionResult(in res);
 
             //Commit input bytes
             reader.Advance(res.BytesRead);
 
             return writer.Advance(res.BytesWritten) == 0;
+        }
+
+        [Conditional("DEBUG")]
+        private static void ValidateCompressionResult(in CompressionResult result)
+        {
+            Debug.Assert(result.BytesRead > -1, "Compression result returned a negative bytes read value");
+            Debug.Assert(result.BytesWritten > -1, "Compression result returned a negative bytes written value");
         }
 
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
