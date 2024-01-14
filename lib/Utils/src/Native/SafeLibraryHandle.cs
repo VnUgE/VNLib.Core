@@ -61,7 +61,7 @@ namespace VNLib.Utils.Native
         /// <exception cref="DllNotFoundException"></exception>
         public static SafeLibraryHandle LoadLibrary(string libPath, DllImportSearchPath searchPath = DllImportSearchPath.ApplicationDirectory)
         {
-            _ = libPath ?? throw new ArgumentNullException(nameof(libPath));
+            ArgumentNullException.ThrowIfNull(libPath);
             //See if the path includes a file extension
             return TryLoadLibrary(libPath, searchPath, out SafeLibraryHandle? lib)
                 ? lib

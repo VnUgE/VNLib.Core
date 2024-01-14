@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -200,7 +200,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static Task<bool> WaitAsync(this WaitHandle handle, int timeoutMs = Timeout.Infinite)
         {
-            _ = handle ?? throw new ArgumentNullException(nameof(handle));
+            ArgumentNullException.ThrowIfNull(handle);
             //test non-blocking handle state
             if (handle.WaitOne(0))
             {

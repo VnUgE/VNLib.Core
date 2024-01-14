@@ -114,7 +114,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentNullException"></exception>
         public static VnString FromBinary(ReadOnlySpan<byte> data, Encoding encoding, IUnmangedHeap? heap = null)
         {
-            _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
+            ArgumentNullException.ThrowIfNull(encoding);
 
             if (data.IsEmpty)
             {
@@ -186,9 +186,9 @@ namespace VNLib.Utils.Memory
         /// <exception cref="InvalidOperationException"></exception>
         public static VnString FromStream(Stream stream, Encoding encoding, IUnmangedHeap heap, int bufferSize)
         {
-            _ = stream ?? throw new ArgumentNullException(nameof(stream));
-            _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentNullException.ThrowIfNull(encoding);
+            ArgumentNullException.ThrowIfNull(heap);
 
             //Make sure the stream is readable
             if (!stream.CanRead)
@@ -273,9 +273,9 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OutOfMemoryException"></exception>
         public static async ValueTask<VnString> FromStreamAsync(Stream stream, Encoding encoding, IUnmangedHeap heap, int bufferSize)
         {
-            _ = stream ?? throw new ArgumentNullException(nameof(stream));
-            _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentNullException.ThrowIfNull(encoding);
+            ArgumentNullException.ThrowIfNull(heap);
             
             //Make sure the stream is readable
             if (!stream.CanRead)
@@ -505,7 +505,7 @@ namespace VNLib.Utils.Memory
         ///<exception cref="ArgumentNullException"></exception>
         public int CompareTo(VnString? other)
         {
-            _ = other ?? throw new ArgumentNullException(nameof(other));
+            ArgumentNullException.ThrowIfNull(other);
             return AsSpan().CompareTo(other.AsSpan(), StringComparison.Ordinal);
         }
 

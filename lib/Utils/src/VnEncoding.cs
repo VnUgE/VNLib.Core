@@ -55,7 +55,7 @@ namespace VNLib.Utils
         /// <returns>A <see cref="Stream"/> contating the encoded data</returns>
         public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding, IUnmangedHeap? heap = null)
         {
-            _ = encoding ?? throw new ArgumentNullException(nameof(encoding));
+            ArgumentNullException.ThrowIfNull(encoding);
 
             //Assign default heap if not specified
             heap ??= MemoryUtil.Shared;

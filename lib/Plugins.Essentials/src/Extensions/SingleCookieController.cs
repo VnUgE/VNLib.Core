@@ -71,21 +71,21 @@ namespace VNLib.Plugins.Essentials.Extensions
         ///<inheritdoc/>
         public void ExpireCookie(IHttpEvent entity, bool force)
         {
-            _ = entity ?? throw new ArgumentNullException(nameof(entity));
+            ArgumentNullException.ThrowIfNull(entity);
             SetCookieInternal(entity, string.Empty, force);
         }
 
         ///<inheritdoc/>
         public string? GetCookie(IHttpEvent entity)
         {
-            _ = entity ?? throw new ArgumentNullException(nameof(entity));
+            ArgumentNullException.ThrowIfNull(entity);
             return entity.Server.RequestCookies.GetValueOrDefault(Name);
         }
 
         ///<inheritdoc/>
         public void SetCookie(IHttpEvent entity, string value)
         {
-            _ = entity ?? throw new ArgumentNullException(nameof(entity));
+            ArgumentNullException.ThrowIfNull(entity);
             SetCookieInternal(entity, value, true);
         }
 

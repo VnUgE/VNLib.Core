@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,7 +23,7 @@
 */
 
 using System;
-using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 using VNLib.Utils.Extensions;
 
@@ -59,20 +59,20 @@ namespace VNLib.Utils.Memory
         /// <param name="rows">Number of rows in the table</param>
         /// <param name="cols">Number of columns in the table</param>
         public VnTable(uint rows, uint cols) : this(MemoryUtil.Shared, rows, cols) { }
-        
+
         /// <summary>
         /// Creates a new 2 dimensional table in unmanaged heap memory, using the specified heap.
         /// User should dispose of the table when no longer in use
         /// </summary>
-        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate table memory from</param>
+        /// <param name="heap"><see cref="IUnmangedHeap"/> to allocate table memory from</param>
         /// <param name="rows">Number of rows in the table</param>
         /// <param name="cols">Number of columns in the table</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        /// <exception cref="OverflowException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
         public VnTable(IUnmangedHeap heap, uint rows, uint cols)
         {
-            if (rows < 0 || cols < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(rows), "Row and coulmn number must be 0 or larger");
-            }
             //empty table
             if (rows == 0 && cols == 0)
             {
@@ -80,17 +80,14 @@ namespace VNLib.Utils.Memory
             }
             else
             {
-                _ = heap ?? throw new ArgumentNullException(nameof(heap));
-
-                this.Rows = rows;
-                this.Cols = cols;
-
                 ulong tableSize = checked((ulong)rows * (ulong)cols);
 
-                if ((tableSize * (uint)Unsafe.SizeOf<T>()) > nuint.MaxValue)
-                {
-                    throw new ArgumentOutOfRangeException("Rows and cols","Table size is too large");
-                }
+                ArgumentNullException.ThrowIfNull(heap);
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(tableSize, nuint.MinValue);
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(MemoryUtil.ByteCount<T>((nuint)tableSize), nuint.MaxValue, nameof(rows));
+
+                Rows = rows;
+                Cols = cols;
 
                 //Alloc a buffer with zero memory enabled, with Rows * Cols number of elements
                 BufferHandle = heap.Alloc<T>((nuint)tableSize, true);
@@ -108,26 +105,11 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public T Get(uint row, uint col)
         {
-            Check();
-            if (this.Empty)
-            {
-                throw new InvalidOperationException("Table is empty");
-            }
-            if (row < 0 || col < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(row), "Row or column address less than 0");
-            }
-            if (row > this.Rows)
-            {
-                throw new ArgumentOutOfRangeException(nameof(row), "Row out of range of current table");
-            }
-            if (col > this.Cols)
-            {
-                throw new ArgumentOutOfRangeException(nameof(col), "Column address out of range of current table");
-            }
+            ValidateArgs(row, col);
+
             //Calculate the address in memory for the item
             //Calc row offset
-            ulong address = checked(row * this.Cols);
+            ulong address = checked(row * Cols);
             
             //Calc column offset
             address += col;
@@ -151,26 +133,10 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Set(uint row, uint col, T item)
         {
-            Check();
-            if (this.Empty)
-            {
-                throw new InvalidOperationException("Table is empty");
-            }
-            if (row < 0 || col < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(row), "Row or column address less than 0");
-            }
-            if (row > this.Rows)
-            {
-                throw new ArgumentOutOfRangeException(nameof(row), "Row out of range of current table");
-            }
-            if (col > this.Cols)
-            {
-                throw new ArgumentOutOfRangeException(nameof(col), "Column address out of range of current table");
-            }
-            
+            ValidateArgs(row, col);
+
             //Calculate the address in memory for the item
-            
+
             //Calc row offset
             ulong address = checked(Cols * row);
             
@@ -183,7 +149,23 @@ namespace VNLib.Utils.Memory
                 *BufferHandle!.GetOffset((nuint)address) = item;
             }
         }
-        
+
+        private void ValidateArgs(uint row, uint col)
+        {
+            Check();
+
+            if (Empty)
+            {
+                throw new InvalidOperationException("Table is empty");
+            }
+
+            //If not empty expect a non-null handle
+            Debug.Assert(BufferHandle != null, nameof(BufferHandle) + " != null");
+
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(row, Rows);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(col, Cols);
+        }
+
         /// <summary>
         /// Equivalent to <see cref="VnTable{T}.Get(uint, uint)"/> and <see cref="VnTable{T}.Set(uint, uint, T)"/>
         /// </summary>

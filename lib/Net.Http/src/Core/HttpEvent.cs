@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -71,8 +71,8 @@ namespace VNLib.Net.Http
             {
                 throw new InvalidOperationException("A protocol handler was already specified");
             }
-            
-            _ = protocolHandler ?? throw new ArgumentNullException(nameof(protocolHandler));
+
+            ArgumentNullException.ThrowIfNull(protocolHandler);
             
             //Set 101 status code
             Context.Respond(HttpStatusCode.SwitchingProtocols);
@@ -87,11 +87,7 @@ namespace VNLib.Net.Http
         void IHttpEvent.CloseResponse(HttpStatusCode code, ContentType type, Stream stream, long length)
         {
             ArgumentNullException.ThrowIfNull(stream, nameof(stream));
-
-            if(length < 0)
-            {
-                throw new ArgumentException("Length must be greater than or equal to 0", nameof(length));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(length);
 
             //Check if the stream is valid. We will need to read the stream, and we will also need to get the length property 
             if (!stream.CanRead)

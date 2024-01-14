@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -132,7 +132,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentNullException"></exception>
         public static void Split<T>(this ReadOnlySpan<char> value, ReadOnlySpan<char> splitter, StringSplitOptions options, ReadOnlySpanAction<char, T> splitCb, T state)
         {
-            _ = splitCb ?? throw new ArgumentNullException(nameof(splitCb));
+            ArgumentNullException.ThrowIfNull(splitCb);
 
             //Get span over string
             ForwardOnlyReader<char> reader = new(value);

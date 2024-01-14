@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -42,7 +42,7 @@ namespace VNLib.Utils
         /// <exception cref="ArgumentNullException"></exception>
         public ArgumentList(string[] args)
         {
-            _ = args ?? throw new ArgumentNullException(nameof(args));
+            ArgumentNullException.ThrowIfNull(args);
             _args = args.ToList();
         }
 
@@ -53,7 +53,7 @@ namespace VNLib.Utils
         /// <exception cref="ArgumentNullException"></exception>
         public ArgumentList(IReadOnlyList<string> args)
         {
-            _ = args ?? throw new ArgumentNullException(nameof(args));
+            ArgumentNullException.ThrowIfNull(args);
             _args = args.ToList();
         }
 

@@ -106,7 +106,7 @@ namespace VNLib.Utils.Memory.Caching
         /// <exception cref="ObjectDisposedException"></exception>
         public virtual void Return(T item)
         {
-            _ = item ?? throw new ArgumentNullException(nameof(item));
+            ArgumentNullException.ThrowIfNull(item);
 
             Check();
 

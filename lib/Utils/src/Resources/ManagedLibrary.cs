@@ -189,7 +189,7 @@ namespace VNLib.Utils.Resources
         /// <exception cref="FileNotFoundException"></exception>
         public static ManagedLibrary LoadManagedAssembly(string assemblyName, AssemblyLoadContext loadContext)
         {
-            _ = loadContext ?? throw new ArgumentNullException(nameof(loadContext));
+            ArgumentNullException.ThrowIfNull(loadContext);
 
             //Make sure the file exists
             if (!FileOperations.FileExists(assemblyName))
@@ -218,8 +218,8 @@ namespace VNLib.Utils.Resources
             BindingFlags flags = BindingFlags.Public
         ) where TDelegate : Delegate
         {
-            _ = obj ?? throw new ArgumentNullException(nameof(obj));
-           return TryGetMethodInternal<TDelegate>(obj.GetType(), methodName, obj, flags | BindingFlags.Instance);
+            ArgumentNullException.ThrowIfNull(obj);
+            return TryGetMethodInternal<TDelegate>(obj.GetType(), methodName, obj, flags | BindingFlags.Instance);
         }
 
         /// <summary>
@@ -271,7 +271,7 @@ namespace VNLib.Utils.Resources
 
         private static TDelegate? TryGetMethodInternal<TDelegate>(Type type, string methodName, object? target, BindingFlags flags) where TDelegate : Delegate
         {
-            _ = type ?? throw new ArgumentNullException(nameof(type));
+            ArgumentNullException.ThrowIfNull(type);
 
             //Get delegate argument types incase of a method overload
             Type[] delegateArgs = typeof(TDelegate).GetMethod("Invoke")!

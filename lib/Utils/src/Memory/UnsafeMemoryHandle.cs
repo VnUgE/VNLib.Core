@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -93,10 +93,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         internal UnsafeMemoryHandle(ArrayPool<T> pool, T[] array, int elements)
         {
-            if (elements < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(elements));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(elements);
             //Pool and array is required
             _pool = pool ?? throw new ArgumentNullException(nameof(pool));
             _poolArr = array ?? throw new ArgumentNullException(nameof(array));
