@@ -40,7 +40,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// A value that indicates if the table does not contain any values
         /// </summary>
-        public bool Empty { get; }
+        public bool Empty => Rows == 0 && Cols == 0;
         
         /// <summary>
         /// The number of rows in the table
@@ -74,16 +74,12 @@ namespace VNLib.Utils.Memory
         public VnTable(IUnmangedHeap heap, uint rows, uint cols)
         {
             //empty table
-            if (rows == 0 && cols == 0)
-            {
-                Empty = true;
-            }
-            else
+            if (rows != 0 || cols != 0)
             {
                 ulong tableSize = checked((ulong)rows * (ulong)cols);
 
                 ArgumentNullException.ThrowIfNull(heap);
-                ArgumentOutOfRangeException.ThrowIfGreaterThan(tableSize, nuint.MinValue);
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(tableSize, nuint.MaxValue);
                 ArgumentOutOfRangeException.ThrowIfGreaterThan(MemoryUtil.ByteCount<T>((nuint)tableSize), nuint.MaxValue, nameof(rows));
 
                 Rows = rows;
@@ -106,6 +102,8 @@ namespace VNLib.Utils.Memory
         public T Get(uint row, uint col)
         {
             ValidateArgs(row, col);
+
+            Debug.Assert(BufferHandle != null, nameof(BufferHandle) + " != null");
 
             //Calculate the address in memory for the item
             //Calc row offset
@@ -135,6 +133,8 @@ namespace VNLib.Utils.Memory
         {
             ValidateArgs(row, col);
 
+            Debug.Assert(BufferHandle != null, nameof(BufferHandle) + " != null");
+
             //Calculate the address in memory for the item
 
             //Calc row offset
@@ -153,17 +153,8 @@ namespace VNLib.Utils.Memory
         private void ValidateArgs(uint row, uint col)
         {
             Check();
-
-            if (Empty)
-            {
-                throw new InvalidOperationException("Table is empty");
-            }
-
-            //If not empty expect a non-null handle
-            Debug.Assert(BufferHandle != null, nameof(BufferHandle) + " != null");
-
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(row, Rows);
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(col, Cols);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(row, Rows);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(col, Cols);
         }
 
         /// <summary>
@@ -191,16 +182,14 @@ namespace VNLib.Utils.Memory
             get
             {
                 Check();
-                return !Empty ? *(BufferHandle!.GetOffset(index)) : throw new InvalidOperationException("Cannot index an empty table");
+                ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, (ulong)Rows * (ulong)Cols);
+                return *(BufferHandle!.GetOffset(index));
             }
 
             set
             {
                 Check();
-                if (Empty)
-                {
-                    throw new InvalidOperationException("Cannot index an empty table");
-                }
+                ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, (ulong)Rows * (ulong)Cols);
                 *(BufferHandle!.GetOffset(index)) = value;
             }
         }
@@ -208,11 +197,8 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         protected override void Free()
         {
-            if (!Empty)
-            {
-                //Dispose the buffer
-                BufferHandle!.Dispose();
-            }
+            //Dispose the buffer
+            BufferHandle?.Dispose();
         }
     }
 }

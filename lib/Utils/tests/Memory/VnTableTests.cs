@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -41,6 +41,12 @@ namespace VNLib.Utils.Memory.Tests
                 //Test 0 rows/cols
                 Assert.IsTrue(0 == empty.Rows);
                 Assert.IsTrue(0 == empty.Cols);
+
+                //Test that empty table throws on access
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = empty[0, 0]);
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = empty.Get(0, 0));
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => empty.Set(0, 0, 10));
+                Assert.ThrowsException<ArgumentOutOfRangeException>(() => empty[0, 0] = 10);
             }
 
             using (VnTable<int> table = new(40000, 10000))
@@ -51,6 +57,16 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsTrue(40000 == table.Rows);
                 Assert.IsTrue(10000 == table.Cols);
             }
+
+            //Test params
+            Assert.ThrowsException<ArgumentNullException>(() => _ = new VnTable<int>(null!, 1, 1));
+
+            /*
+             * Try-catch is used because underlying heaps 
+             * may cause different OOM exceptions to be raised
+             * but still have a base class of OutOfMemoryException.
+             * So catch covers all OOM exceptions.
+             */
 
             try
             {
@@ -64,20 +80,6 @@ namespace VNLib.Utils.Memory.Tests
             {
                 Assert.Fail("Table overflow creation test failed because another exception type was raised, {0}", ex.GetType().Name);
             }
-        }
-
-        [TestMethod()]
-        public void VnTableTest1()
-        {
-            //No throw if empty
-            using VnTable<int> table = new(null!,0, 0);
-
-            //Throw if table is not empty
-            Assert.ThrowsException<ArgumentNullException>(() =>
-            {
-                using VnTable<int> table = new(null!,1, 1);
-            });
-
         }
 
         [TestMethod()]
@@ -119,28 +121,33 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsTrue(value == table[row, col]);
                 Assert.IsTrue(value == table.Get(row, col));
             }
-        
 
-            using (VnTable<int> table = new(11, 11))
-            {
-                //Test index at 10,10
-                TestIndexAt(table, 10, 10, 11);
-                //Test same index with different value using the .set() method
-                TestSetAt(table, 10, 10, 25);
 
-                //Test direct access
-                TestSetDirectAccess(table, 10, 10, 50);
+            using VnTable<int> table = new(11, 11);
+            
+            //Test index at 10,10
+            TestIndexAt(table, 10, 10, 11);
+            //Test same index with different value using the .set() method
+            TestSetAt(table, 10, 10, 25);
+
+            //Test direct access
+            TestSetDirectAccess(table, 10, 10, 50);
                 
-                TestGetDirectAccess(table, 10, 10, 37);
+            TestGetDirectAccess(table, 10, 10, 37);
 
-                //Test index at 0,0
-                TestIndexAt(table, 0, 0, 13);
-                TestSetAt(table, 0, 0, 85);
+            //Test index at 0,0
+            TestIndexAt(table, 0, 0, 13);
+            TestSetAt(table, 0, 0, 85);
 
-                //Test at 0,0
-                TestSetDirectAccess(table, 0, 0, 100);
-                TestGetDirectAccess(table, 0, 0, 86);
-            }
+            //Test at 0,0
+            TestSetDirectAccess(table, 0, 0, 100);
+            TestGetDirectAccess(table, 0, 0, 86);
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = table[11, 11]);
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = table.Get(11, 11));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => table.Set(11, 11, 10));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => table[11, 11] = 10);
         }
 
         [TestMethod()]
