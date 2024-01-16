@@ -193,12 +193,8 @@ namespace VNLib.Utils.Memory
                 *(BufferHandle!.GetOffset(index)) = value;
             }
         }
-        
+
         ///<inheritdoc/>
-        protected override void Free()
-        {
-            //Dispose the buffer
-            BufferHandle?.Dispose();
-        }
+        protected override void Free() => BufferHandle?.Dispose();
     }
 }

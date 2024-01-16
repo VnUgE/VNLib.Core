@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -47,7 +47,7 @@ namespace VNLib.Utils.Memory
     /// </remarks>
     [ComVisible(false)]
     [SupportedOSPlatform("Windows")]
-    public sealed class Win32PrivateHeap : UnmanagedHeapBase
+    public sealed partial class Win32PrivateHeap : UnmanagedHeapBase
     {
         private const string KERNEL_DLL = "Kernel32";
        
@@ -60,40 +60,40 @@ namespace VNLib.Utils.Memory
         public const DWORD HEAP_ZERO_MEMORY = 0x08;
 
 
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern LPVOID GetProcessHeap();
+        private static partial LPVOID GetProcessHeap();
 
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern LPVOID HeapAlloc(IntPtr hHeap, DWORD flags, nuint dwBytes);
+        private static partial LPVOID HeapAlloc(IntPtr hHeap, DWORD flags, nuint dwBytes);
         
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern LPVOID HeapReAlloc(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem, nuint dwBytes);
+        private static partial LPVOID HeapReAlloc(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem, nuint dwBytes);
         
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool HeapFree(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem);
+        private static partial bool HeapFree(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem);
 
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern LPVOID HeapCreate(DWORD flOptions, nuint dwInitialSize, nuint dwMaximumSize);
+        private static partial LPVOID HeapCreate(DWORD flOptions, nuint dwInitialSize, nuint dwMaximumSize);
         
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool HeapDestroy(IntPtr hHeap);
+        private static partial bool HeapDestroy(IntPtr hHeap);
         
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool HeapValidate(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem);
+        private static partial bool HeapValidate(IntPtr hHeap, DWORD dwFlags, LPVOID lpMem);
         
-        [DllImport(KERNEL_DLL, SetLastError = true, ExactSpelling = true)]
+        [LibraryImport(KERNEL_DLL, SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        private static extern nuint HeapSize(IntPtr hHeap, DWORD flags, LPVOID lpMem);
+        private static partial nuint HeapSize(IntPtr hHeap, DWORD flags, LPVOID lpMem);
 
         #endregion
 

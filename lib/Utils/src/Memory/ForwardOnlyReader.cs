@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Runtime.CompilerServices;
 
 namespace VNLib.Utils.Memory
 {
@@ -43,6 +44,7 @@ namespace VNLib.Utils.Memory
         /// of the specified type using the specified internal buffer
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ForwardOnlyReader(ReadOnlySpan<T> buffer)
         {
             _segment = buffer;
@@ -57,6 +59,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="buffer">The buffer to read from</param>
         /// <param name="offset">The offset within the supplied buffer to begin the reader at</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ForwardOnlyReader(ReadOnlySpan<T> buffer, int offset)
         {
             _segment = buffer[offset..];

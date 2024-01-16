@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -32,19 +32,19 @@ namespace VNLib.Utils.IO
     /// <summary>
     /// Contains cross-platform optimized filesystem operations.
     /// </summary>
-    public static class FileOperations
+    public static partial class FileOperations
     {
         public const int INVALID_FILE_ATTRIBUTES = -1;        
         
-        [DllImport("Shlwapi", SetLastError = true, CharSet = CharSet.Auto)]
+        [LibraryImport("Shlwapi", EntryPoint = "PathFileExistsW", StringMarshalling = StringMarshalling.Utf16)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return:MarshalAs(UnmanagedType.Bool)]
-        private static unsafe extern bool PathFileExists([MarshalAs(UnmanagedType.LPWStr)] string path);
+        private static unsafe partial bool PathFileExists([MarshalAs(UnmanagedType.LPWStr)] string path);
 
-        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Auto)]
+        [LibraryImport("kernel32", EntryPoint = "GetFileAttributesW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [return:MarshalAs(UnmanagedType.I4)]
-        private static unsafe extern int GetFileAttributes([MarshalAs(UnmanagedType.LPWStr)] string path);
+        private static unsafe partial int GetFileAttributes([MarshalAs(UnmanagedType.LPWStr)] string path);
 
         static readonly bool IsWindows = OperatingSystem.IsWindows();
 

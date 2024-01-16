@@ -148,7 +148,7 @@ namespace VNLib.Utils
         public readonly bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) => ErrorCode.TryFormat(destination, out charsWritten, format, provider);
 
         ///<inheritdoc/>
-        public readonly string ToString(string format, IFormatProvider? formatProvider) => ErrorCode.ToString(format, formatProvider);
+        public readonly string ToString(string? format, IFormatProvider? formatProvider) => ErrorCode.ToString(format, formatProvider);
 
         public static ERRNO operator +(ERRNO err, int add) => new(err.ErrorCode + add);
         public static ERRNO operator +(ERRNO err, nint add) => new(err.ErrorCode + add);

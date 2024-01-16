@@ -112,6 +112,7 @@ namespace VNLib.Utils.Memory
         /// <param name="heap">The heap the initial memory block belongs to</param>
         /// <param name="initial">A pointer to the unmanaged memory block</param>
         /// <param name="elements">The number of elements this block points to</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal UnsafeMemoryHandle(IUnmangedHeap heap, IntPtr initial, int elements)
         {
             _pool = null;
@@ -156,10 +157,8 @@ namespace VNLib.Utils.Memory
         public readonly MemoryHandle Pin(int elementIndex)
         {
             //Guard size
-            if (elementIndex < 0 || elementIndex >= _length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(elementIndex));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(elementIndex);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(elementIndex, _length);
 
             switch (_handleType)
             {

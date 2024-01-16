@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -45,13 +45,7 @@ namespace VNLib.Utils
         /// </summary>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected virtual void Check()
-        {
-            if (Disposed)
-            {
-                throw new ObjectDisposedException("Object has been disposed");
-            }
-        }
+        protected virtual void Check() => ObjectDisposedException.ThrowIf(Disposed, this);
 
         /// <summary>
         /// Sets the internal state to diposed without calling <see cref="Free"/> operation.
@@ -59,6 +53,7 @@ namespace VNLib.Utils
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void SetDisposedState() => Disposed = true;
+
         ///<inheritdoc/>
         protected virtual void Dispose(bool disposing)
         {

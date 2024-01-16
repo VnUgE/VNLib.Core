@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Runtime.CompilerServices;
 
 namespace VNLib.Utils.Memory
 {
@@ -55,6 +56,7 @@ namespace VNLib.Utils.Memory
         /// Creates a new <see cref="ForwardOnlyWriter{T}"/> assigning the specified buffer
         /// </summary>
         /// <param name="buffer">The buffer to write data to</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ForwardOnlyWriter(Span<T> buffer)
         {
             Buffer = buffer;
@@ -67,6 +69,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="buffer">The buffer to write data to</param>
         /// <param name="offset">The offset to begin the writer at</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ForwardOnlyWriter(Span<T> buffer, int offset)
         {
             Buffer = buffer[offset..];
@@ -87,10 +90,7 @@ namespace VNLib.Utils.Memory
         public void Append(ReadOnlySpan<T> data)
         {
             //Make sure the current window is large enough to buffer the new string
-            if (data.Length > RemainingSize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(Remaining) ,"The internal buffer does not have enough buffer space");
-            }
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(Remaining));
             Span<T> window = Buffer[Written..];
             //write data to window
             data.CopyTo(window);
@@ -106,10 +106,7 @@ namespace VNLib.Utils.Memory
         public void Append(T c)
         {
             //Make sure the current window is large enough to buffer the new string
-            if (RemainingSize == 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(Remaining), "The internal buffer does not have enough buffer space");
-            }
+            ArgumentOutOfRangeException.ThrowIfZero(RemainingSize);
             //Write data to buffer and increment the buffer position
             Buffer[Written++] = c;
         }
@@ -121,10 +118,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Advance(int count)
         {
-            if (count > RemainingSize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(Remaining), "The internal buffer does not have enough buffer space");
-            }
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(count, RemainingSize, nameof(Remaining));
             Written += count;
         }
 

@@ -1376,6 +1376,7 @@ namespace VNLib.Utils.Memory
 
         private static class CopyUtilCore
         {
+            const nuint _avx32ByteAlignment = 0x20u;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             public static bool MemmoveByRef(ref byte srcByte, ref byte dstByte, nuint byteCount, bool forceAcceleration)
@@ -1396,7 +1397,7 @@ namespace VNLib.Utils.Memory
                     if (forceAcceleration)
                     {
                         //not aligned, so we need to only copy the aligned portion
-                        nuint remainder = byteCount % 0x20u;
+                        nuint remainder = byteCount % _avx32ByteAlignment;
                         nuint alignedCount = byteCount - remainder;
 
                         //Copy aligned portion
@@ -1439,8 +1440,7 @@ namespace VNLib.Utils.Memory
                     return false;
                 }
             }
-
-            const nuint _avx32ByteAlignment = 0x20u;
+          
 
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
             private static void _avx32ByteCopy(
@@ -1451,6 +1451,7 @@ namespace VNLib.Utils.Memory
             {
                 Debug.Assert(Is32ByteAligned(count), "Byte count must be 32 byte aligned");
                 Debug.Assert(Avx2.IsSupported, "AVX2 is not supported on this platform");
+                Debug.Assert(_avx32ByteAlignment == (nuint)Vector256<byte>.Count, "AVX2 vector size is not 32 bytes");
 
                 //determine the number of loops
                 nuint loopCount = count / _avx32ByteAlignment;

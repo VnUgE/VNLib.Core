@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -193,7 +193,7 @@ namespace VNLib.Utils.Memory
             //Make sure the stream is readable
             if (!stream.CanRead)
             {
-                throw new InvalidOperationException();
+                throw new IOException("The input stream is not readable");
             }
             //See if the stream is a vn memory stream
             if (stream is VnMemoryStream vnms)
@@ -380,12 +380,9 @@ namespace VNLib.Utils.Memory
         {
             //Check
             Check();
-
-            //Check bounds
-            if (start < 0 || (start + count) >= Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(start, nameof(start));
+            ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start + count, Length, nameof(start));
 
             //get sub-sequence slice for the current string
             SubSequence<char> sub = _stringSequence.Slice((nuint)start, count);
@@ -449,12 +446,8 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <returns><see cref="string"/> representation of internal data</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public override string ToString()
-        {
-            //Create a new 
-            return AsSpan().ToString();
-        }
-       
+        public override string ToString() => AsSpan().ToString();
+
         /// <summary>
         /// Gets the value of the character at the specified index
         /// </summary>
@@ -471,7 +464,7 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         public override bool Equals(object? obj)
         {
-            if(obj == null)
+            if(obj is null)
             {
                 return false;
             }
@@ -484,9 +477,9 @@ namespace VNLib.Utils.Memory
             };
         }
         ///<inheritdoc/>
-        public bool Equals(VnString? other) => !ReferenceEquals(other, null) && Equals(other.AsSpan());
+        public bool Equals(VnString? other) => other is not null && Equals(other.AsSpan());
         ///<inheritdoc/>
-        public bool Equals(VnString? other, StringComparison stringComparison) => !ReferenceEquals(other, null) && Equals(other.AsSpan(), stringComparison);
+        public bool Equals(VnString? other, StringComparison stringComparison) => other is not null && Equals(other.AsSpan(), stringComparison);
         ///<inheritdoc/>
         public bool Equals(string? other) => Equals(other.AsSpan());
         ///<inheritdoc/>

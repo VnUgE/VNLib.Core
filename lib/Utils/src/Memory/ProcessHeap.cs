@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -93,16 +93,13 @@ namespace VNLib.Utils.Memory
             nuint bytes = checked(elements * size);
             
             //Alloc
-            void* newBlock = NativeMemory.Realloc(block.ToPointer(), bytes);
-            
+            nint newBlock = (nint)NativeMemory.Realloc(block.ToPointer(), bytes);
+
             //Check
-            if (newBlock == null)
-            {
-                throw new NativeMemoryOutOfMemoryException("Failed to resize the allocated block");
-            }
+            NativeMemoryOutOfMemoryException.ThrowIfNullPointer(newBlock, "Failed to resize the allocated block");
 
             //Assign block ptr
-            block = (IntPtr)newBlock;
+            block = newBlock;
         }
     }
 }
