@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -56,7 +56,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <summary>
         /// The body segment of the response message
         /// </summary>
-        public readonly ReadOnlySpan<byte> ResponseBody => IsSet ? Helpers.GetRemainingData(MessagePacket!) : ReadOnlySpan<byte>.Empty;
+        public readonly ReadOnlySpan<byte> ResponseBody => IsSet ? Helpers.GetRemainingData(MessagePacket!) : [];
 
         /// <summary>
         /// Initailzies a response message structure and parses response

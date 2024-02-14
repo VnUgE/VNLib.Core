@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -92,6 +92,18 @@ namespace VNLib.Net.Http
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         void CloseResponse(HttpStatusCode code, ContentType type, IMemoryResponseReader entity);
+
+        /// <summary>
+        /// Responds to a client with an <see cref="IHttpStreamResponse"/> containing data to be sent 
+        /// to user of a given contentType.
+        /// </summary>
+        /// <param name="code">The http status code</param>
+        /// <param name="type">The entity content type</param>
+        /// <param name="entity">The entity body to stream to the client</param>
+        /// <param name="length">The length in bytes of the stream data</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        void CloseResponse(HttpStatusCode code, ContentType type, IHttpStreamResponse entity, long length);
 
         /// <summary>
         /// Configures the server to change protocols from HTTP to the specified 

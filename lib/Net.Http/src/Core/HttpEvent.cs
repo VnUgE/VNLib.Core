@@ -98,6 +98,7 @@ namespace VNLib.Net.Http
             //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
             if (length == 0)
             {
+                stream.Dispose();
                 return;
             }
 
@@ -121,11 +122,12 @@ namespace VNLib.Net.Http
         ///<inheritdoc/>
         void IHttpEvent.CloseResponse(HttpStatusCode code, ContentType type, IMemoryResponseReader entity)
         {
-            ArgumentNullException.ThrowIfNull(entity, nameof(entity));
+            ArgumentNullException.ThrowIfNull(entity);
 
             //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
             if (entity.Remaining == 0)
             {
+                entity.Close();
                 return;
             }
 
@@ -134,6 +136,36 @@ namespace VNLib.Net.Http
 
             //Store the memory reader input
             if (!Context.ResponseBody.TrySetResponseBody(entity))
+            {
+                throw new InvalidOperationException("A response body has already been set");
+            }
+
+            //User may want to set the content type header themselves
+            if (type != ContentType.NonSupported)
+            {
+                //Set content type header after body
+                Context.Response.Headers.Set(HttpResponseHeader.ContentType, HttpHelpers.GetContentTypeString(type));
+            }
+        }
+
+        ///<inheritdoc/>
+        void IHttpEvent.CloseResponse(HttpStatusCode code, ContentType type, IHttpStreamResponse stream, long length)
+        {
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentOutOfRangeException.ThrowIfNegative(length);
+
+            //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
+            if (length == 0)
+            {
+                stream.Dispose();
+                return;
+            }
+
+            //Set status code
+            Context.Response.SetStatusCode(code);
+
+            //Finally store the stream input
+            if (!Context.ResponseBody.TrySetResponseBody(stream, length))
             {
                 throw new InvalidOperationException("A response body has already been set");
             }

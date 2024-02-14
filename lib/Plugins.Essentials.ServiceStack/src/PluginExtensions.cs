@@ -25,7 +25,6 @@
 using System.Linq;
 using System.Collections.Generic;
 
-using VNLib.Utils.Logging;
 using VNLib.Plugins.Essentials.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
@@ -53,14 +52,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             return Enumerable.Empty<IEndpoint>();
         }
 
-        /// <summary>
-        /// Loads all plugins that implement <see cref="IWebPlugin"/> interface into the 
-        /// service stack
-        /// </summary>
-        /// <param name="stack"></param>
-        /// <param name="logProvider">A log provider for writing loading logs to</param>
-        public static void LoadPlugins(this HttpServiceStack stack, ILogProvider logProvider) => (stack.PluginManager as PluginManager)!.LoadPlugins(logProvider);
-
-        internal static PluginLoadEventListener GetListener(this ServiceDomain domain) => new(domain);
+        internal static PluginRutimeEventHandler GetListener(this ServiceDomain domain) => new(domain);
     }
 }

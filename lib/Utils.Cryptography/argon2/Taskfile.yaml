@@ -9,7 +9,6 @@
 version: '3'
 
 vars:
-  MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
   PROJECT_NAME: 'Argon2'
   MODULE_NAME: 'vnlib.core'
 
@@ -27,28 +26,10 @@ tasks:
     cmds:
      #init cmake build with greedy enabled
      - cmake -B./build
+ 
+     - cmake --build build/ --config Debug
+     - cmake --build build/ --config Release 
 
-     #build the rpmalloc library in debug mode first 
-     - task: build-win
-     - task: build-gnumake  
-
-  #build using msbuild for rpmalloc libraries for debug and release modes
-  build-win:
-    platforms: ['windows']
-    internal: true
-    cmds:
-     #build solution in debug mode
-     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=debug {{.BUILD_FLAGS}} {{.MS_ARGS}} 
-     #build in release
-     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=release {{.BUILD_FLAGS}} {{.MS_ARGS}} 
-  
-  #build using gnu make
-  build-gnumake:
-    platforms: ['linux']
-    internal: true
-    cmds:
-     #build project with make
-     - cd build && make
  
   postbuild_success:
     vars:
@@ -93,10 +74,9 @@ tasks:
      - powershell -Command "Copy-Item -Path ./include/argon2.h -Destination '{{.TARGET}}/argon2.h'"
   
   pack_source:
-    dir: '{{.USER_WORKING_DIR}}'
     cmds:
      #just pack up current directory, excluding build, bin, and git directories
-     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czvf bin/src.tgz *"
+     - powershell -Command "tar --exclude build/* --exclude bin/* -czf bin/src.tgz ."
 
 
   clean:

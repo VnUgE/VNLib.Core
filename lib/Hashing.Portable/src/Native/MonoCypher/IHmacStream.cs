@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -41,6 +41,6 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <param name="key">A reference to the first byte of key data to import</param>
         /// <param name="keySize">The size of the key buffer</param>
         /// <exception cref="System.ArgumentException"></exception>
-        void Initialize(ref byte key, byte keySize);
+        void Initialize(ref readonly byte key, byte keySize);
     }
 }

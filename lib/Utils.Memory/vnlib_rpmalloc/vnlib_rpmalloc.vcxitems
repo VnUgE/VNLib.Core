@@ -16,7 +16,7 @@
   <ItemGroup>
     <Text Include="$(MSBuildThisFileDirectory)build.readme.txt" />
     <Text Include="$(MSBuildThisFileDirectory)CMakeLists.txt" />
-    <Text Include="$(MSBuildThisFileDirectory)license.txt" />
+    <Text Include="$(MSBuildThisFileDirectory)license" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)vnlib_rpmalloc.c" />

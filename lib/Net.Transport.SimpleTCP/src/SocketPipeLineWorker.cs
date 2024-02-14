@@ -52,6 +52,8 @@ namespace VNLib.Net.Transport.Tcp
         private readonly Timer SendTimer;
         private readonly Stream RecvStream;
 
+        private bool _started;
+
         /// <summary>
         /// Initalizes a new reusable socket pipeline worker
         /// </summary>
@@ -82,10 +84,16 @@ namespace VNLib.Net.Transport.Tcp
         {
             _sysSocketBufferSize = 0;
 
-            //Reset pipes for use
-            SendPipe.Reset();
-            RecvPipe.Reset();
+            //Only reset pipeline if it was started
+            if (_started)
+            {
+                //Reset pipes for use
+                SendPipe.Reset();
+                RecvPipe.Reset();
+            }
 
+            //clear started flag
+            _started = false;
             return true;
         }
 
@@ -135,6 +143,8 @@ namespace VNLib.Net.Transport.Tcp
             Exception? errCause = null;
             ReadOnlySequence<byte>.Enumerator enumerator;
             ForwardOnlyMemoryReader<byte> segmentReader;
+
+            _started |= true;
 
             try
             {
@@ -230,6 +240,8 @@ namespace VNLib.Net.Transport.Tcp
         {            
             Exception? cause = null;
             Memory<byte> buffer;
+
+            _started |= true;
 
             try
             {

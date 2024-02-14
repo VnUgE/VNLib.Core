@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -39,7 +39,7 @@ static void _brFreeCallback(void* opaque, void* address)
 {
 	(void)opaque;
 	
-	//Brotli may pass a null address to the free callback
+	/*Brotli may pass a null address to the free callback*/
 	if (address)
 	{
 		vnfree(address);
@@ -50,6 +50,8 @@ static void _brFreeCallback(void* opaque, void* address)
 int BrAllocCompressor(CompressorState* state)
 {
 	BrotliEncoderState* comp;
+
+	assert(state != NULL);
 
 	/*
 	* Never allow no compression, it is not supported by the br encoder
@@ -121,6 +123,8 @@ int BrAllocCompressor(CompressorState* state)
 
 void BrFreeCompressor(CompressorState* state)
 {
+	assert(state != NULL);
+
 	/*
 	* Free the compressor instance if it exists
 	*/

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -38,38 +38,27 @@ namespace VNLib.Net.Http.Core
     /// <summary>
     /// Structure implementation of <see cref="IVnTextReader"/>
     /// </summary>
-    internal struct TransportReader : IVnTextReader
+    /// <remarks>
+    /// Initializes a new <see cref="TransportReader"/> for reading text lines from the transport stream
+    /// </remarks>
+    /// <param name="transport">The transport stream to read data from</param>
+    /// <param name="buffer">The shared binary buffer</param>
+    /// <param name="encoding">The encoding to use when reading bianry</param>
+    /// <param name="lineTermination">The line delimiter to search for</param>
+    internal struct TransportReader(Stream transport, IHttpHeaderParseBuffer buffer, Encoding encoding, ReadOnlyMemory<byte> lineTermination) : IVnTextReader
     {
         ///<inheritdoc/>
-        public readonly Encoding Encoding { get; }
+        public readonly Encoding Encoding => encoding;
 
         ///<inheritdoc/>
-        public readonly ReadOnlyMemory<byte> LineTermination { get; }
+        public readonly ReadOnlyMemory<byte> LineTermination => lineTermination;
 
         ///<inheritdoc/>
-        public readonly Stream BaseStream { get; }      
+        public readonly Stream BaseStream => transport;
+       
+        private readonly uint MaxBufferSize = (uint)buffer.BinSize;
 
-        private readonly IHttpHeaderParseBuffer Buffer;
-        private readonly uint MaxBufferSize;
-
-        private BufferPosition _position;
-
-        /// <summary>
-        /// Initializes a new <see cref="TransportReader"/> for reading text lines from the transport stream
-        /// </summary>
-        /// <param name="transport">The transport stream to read data from</param>
-        /// <param name="buffer">The shared binary buffer</param>
-        /// <param name="encoding">The encoding to use when reading bianry</param>
-        /// <param name="lineTermination">The line delimiter to search for</param>
-        public TransportReader(Stream transport, IHttpHeaderParseBuffer buffer, Encoding encoding, ReadOnlyMemory<byte> lineTermination)
-        {
-            Encoding = encoding;
-            BaseStream = transport;
-            LineTermination = lineTermination;
-            Buffer = buffer;
-            MaxBufferSize = (uint)buffer.BinSize;
-            _position = default;
-        }
+        private BufferPosition _position = default;
 
 
         /// <summary>
@@ -77,9 +66,9 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         /// <returns></returns>
         private readonly Span<byte> GetDataSegment() 
-            => Buffer.GetBinSpan((int)_position.WindowStart, (int)_position.GetWindowSize());
+            => buffer.GetBinSpan((int)_position.WindowStart, (int)_position.GetWindowSize());
 
-        private readonly Span<byte> GetRemainingSegment() => Buffer.GetBinSpan((int)_position.WindowEnd);
+        private readonly Span<byte> GetRemainingSegment() => buffer.GetBinSpan((int)_position.WindowEnd);
 
         ///<inheritdoc/>
         public readonly int Available => (int)_position.GetWindowSize();
@@ -103,7 +92,7 @@ namespace VNLib.Net.Http.Core
         public void FillBuffer()
         {
             //Read from stream into the remaining buffer segment
-            int read = BaseStream.Read(GetRemainingSegment());
+            int read = transport.Read(GetRemainingSegment());
             Debug.Assert(read > -1, "Read should never be negative");
 
             //Update the end of the buffer window to the end of the read data
@@ -120,7 +109,7 @@ namespace VNLib.Net.Http.Core
             if (_position.WindowStart > 0)
             {
                 //Get a ref to the entire buffer segment, then do an in-place move to shift the data to the start of the buffer
-                ref byte ptr = ref Buffer.DangerousGetBinRef(0);
+                ref byte ptr = ref buffer.DangerousGetBinRef(0);
                 MemoryUtil.Memmove(ref ptr, _position.WindowStart, ref ptr, 0, windowSize);
 
                 /*

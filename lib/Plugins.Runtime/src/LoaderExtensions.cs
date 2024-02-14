@@ -250,7 +250,7 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="AggregateException"></exception>
         public static void InvokeUnload(this IPluginStack runtime)
         {
-            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            ArgumentNullException.ThrowIfNull(runtime);
 
             //try unloading all plugins
             runtime.Plugins.TryForeach(static p => p.UnloadPlugins());
@@ -265,10 +265,14 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="AggregateException"></exception>
         public static void UnloadAll(this IPluginStack runtime)
         {
-            _ = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            ArgumentNullException.ThrowIfNull(runtime);
 
-            //try unloading all plugins and their loaders
-            runtime.Plugins.TryForeach(static p => p.UnloadAll());
+            //try unloading all plugins and their loaders, dont invoke GC on each unload
+            runtime.Plugins.TryForeach(static p => p.UnloadAll(false));
+
+            //Invoke a gc 
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
 
         /// <summary>
@@ -282,7 +286,11 @@ namespace VNLib.Plugins.Runtime
             ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
 
             //try reloading all plugins
-            runtime.Plugins.TryForeach(static p => p.ReloadPlugins());
+            runtime.Plugins.TryForeach(static p => p.ReloadPlugins(false));
+
+            //Invoke a gc
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
 
         /// <summary>

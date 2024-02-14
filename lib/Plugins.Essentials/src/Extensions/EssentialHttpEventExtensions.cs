@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -782,7 +782,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="PathTooLongException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static DirectoryInfo GetRootDir(this HttpEntity ev) => new(ev.RequestedRoot.Directory);
+        public static DirectoryInfo GetRootDir(this HttpEntity ev) => new(ev.RequestedRoot.Options.Directory);
         
         /// <summary>
         /// Returns the MIME string representation of the content type of the uploaded file.

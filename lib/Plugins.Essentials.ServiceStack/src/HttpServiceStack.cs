@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -29,6 +29,7 @@ using System.Collections.Generic;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
+using VNLib.Utils.Logging;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -94,6 +95,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             WaitForAllTask = Task.WhenAll(runners)
                 .ContinueWith(OnAllServerExit, CancellationToken.None, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Default);
         }
+
+        /// <summary>
+        /// Loads all plugins into the service stack
+        /// </summary>
+        /// <param name="logProvider">A log provider for writing loading logs to</param>
+        public void LoadPlugins(ILogProvider logProvider) => _plugins.LoadPlugins(logProvider);
 
         /// <summary>
         /// Stops listening on all configured servers and returns a task that completes 

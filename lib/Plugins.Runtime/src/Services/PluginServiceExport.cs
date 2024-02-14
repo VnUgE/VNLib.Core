@@ -29,21 +29,9 @@ namespace VNLib.Plugins.Runtime.Services
     /// <summary>
     /// An immutable wrapper for an exported service by an <see cref="IPlugin"/>
     /// </summary>
-    public readonly record struct PluginServiceExport
-    {
-        /// <summary>
-        /// The exported service type
-        /// </summary>
-        public readonly Type ServiceType { get; init; }
+    /// <param name="Flags">The export flags</param>
+    /// <param name="Service">The exported service instance</param>
+    /// <param name="ServiceType">The exported service type</param>
+    public readonly record struct PluginServiceExport(Type ServiceType, object Service, ExportFlags Flags);
 
-        /// <summary>
-        /// The exported service instance
-        /// </summary>
-        public readonly object Service { get; init; }
-
-        /// <summary>
-        /// The export flags
-        /// </summary>
-        public readonly ExportFlags Flags { get; init; }
-    }
 }

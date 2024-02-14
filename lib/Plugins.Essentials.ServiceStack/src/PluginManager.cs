@@ -36,22 +36,15 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// A sealed type that manages the plugin interaction layer. Manages the lifetime of plugin
     /// instances, exposes controls, and relays stateful plugin events.
     /// </summary>
-    internal sealed class PluginManager : VnDisposeable, IHttpPluginManager
+    internal sealed class PluginManager(IPluginInitializer stack) : VnDisposeable, IHttpPluginManager
     {
-        private readonly IPluginInitializer _stack;     
 
         /// <summary>
         /// The collection of internal controllers
         /// </summary>
         public IEnumerable<IManagedPlugin> Plugins => _loadedPlugins;
 
-        private IManagedPlugin[] _loadedPlugins;
-
-        public PluginManager(IPluginInitializer stack)
-        {
-            _stack = stack;
-            _loadedPlugins = Array.Empty<IManagedPlugin>();
-        }
+        private IManagedPlugin[] _loadedPlugins = [];
 
         /// <summary>
         /// Configures the manager to capture and manage plugins within a plugin stack
@@ -61,12 +54,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// <exception cref="AggregateException"></exception>
         public void LoadPlugins(ILogProvider debugLog)
         {
-            _ = _stack ?? throw new InvalidOperationException("Plugin stack has not been set.");
+            _ = stack ?? throw new InvalidOperationException("Plugin stack has not been set.");
 
             Check();
 
             //Initialize the plugin stack and store the loaded plugins
-            _loadedPlugins = _stack.InitializePluginStack(debugLog);
+            _loadedPlugins = stack.InitializePluginStack(debugLog);
 
             debugLog.Information("Plugin loading completed");
         }
@@ -94,7 +87,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             Check();
 
             //Reload all plugins, causing an event cascade
-            _stack.ReloadPlugins();
+            stack.ReloadPlugins();
         }
 
         /// <inheritdoc/>
@@ -103,7 +96,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             Check();
 
             //Unload all plugin controllers
-            _stack.UnloadPlugins();
+            stack.UnloadPlugins();
 
             /*
              * All plugin instances must be destroyed because the 
@@ -116,10 +109,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         protected override void Free()
         {
             //Clear plugin table
-            _loadedPlugins = Array.Empty<IManagedPlugin>();
+            _loadedPlugins = [];
 
             //Dispose the plugin stack
-            _stack.Dispose();
+            stack.Dispose();
         }
     }
 }

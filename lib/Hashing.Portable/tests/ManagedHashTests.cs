@@ -1,11 +1,10 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using System.Text;
-
-using VNLib.Utils.Memory;
-using VNLib.Utils;
 using System.Diagnostics;
 
+using VNLib.Utils;
+using VNLib.Utils.Memory;
 
 namespace VNLib.Hashing.Tests
 {
@@ -27,18 +26,7 @@ namespace VNLib.Hashing.Tests
                 if (alg == HashAlg.None) continue;
 
                 //Skip unsupported algorithms
-                if (alg == HashAlg.BlAKE2B && !ManagedHash.SupportsBlake2b) continue;
-
-                if (!ManagedHash.SupportsSha3)
-                {
-                    switch (alg)
-                    {
-                        case HashAlg.SHA3_256:
-                        case HashAlg.SHA3_384:
-                        case HashAlg.SHA3_512:
-                            continue;
-                    }
-                }
+                if (!ManagedHash.IsAlgSupported(alg)) continue;
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHash(testData, heapBuffer.Span, alg);
@@ -82,18 +70,7 @@ namespace VNLib.Hashing.Tests
                 if (alg == HashAlg.None) continue;
 
                 //Skip unsupported algorithms
-                if (alg == HashAlg.BlAKE2B && !ManagedHash.SupportsBlake2b) continue;
-
-                if (!ManagedHash.SupportsSha3)
-                {
-                    switch (alg)
-                    {
-                        case HashAlg.SHA3_256:
-                        case HashAlg.SHA3_384:
-                        case HashAlg.SHA3_512:
-                            continue;
-                    }
-                }
+                if (!ManagedHash.IsAlgSupported(alg)) continue;
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHmac(testKey, testData, heapBuffer.Span, alg);

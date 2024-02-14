@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -60,15 +60,15 @@ namespace VNLib.Hashing.Native.MonoCypher
         public static IArgon2Library Argon2CreateLibrary(this MonoCypherLibrary Library, IUnmangedHeap heap)
         {
             //Validate arguments
-            _ = Library ?? throw new ArgumentNullException(nameof(Library));
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(Library);
+            ArgumentNullException.ThrowIfNull(heap);
             return new Argon2HashLib(Library, heap);
         }
 
         private static void Hash(this MonoCypherLibrary library, IUnmangedHeap heap, Argon2Context* context)
         {
-            _ = library ?? throw new ArgumentNullException(nameof(library));
-            _ = heap ?? throw new ArgumentNullException(nameof(heap));
+            ArgumentNullException.ThrowIfNull(library);
+            ArgumentNullException.ThrowIfNull(heap);
 
             //Validate context
             ValidateContext(context);
@@ -117,10 +117,7 @@ namespace VNLib.Hashing.Native.MonoCypher
 
         private static void ValidateContext(Argon2Context* context)
         {
-            if(context == null)
-            {
-                throw new ArgumentNullException(nameof(context));
-            }
+            ArgumentNullException.ThrowIfNull(context);
 
             if (context->outptr == null || context->outlen == 0)
             {
@@ -144,10 +141,7 @@ namespace VNLib.Hashing.Native.MonoCypher
             ///<inheritdoc/>
             public int Argon2Hash(IntPtr context)
             {
-                if(context == IntPtr.Zero)
-                {
-                    throw new ArgumentNullException(nameof(context), "");
-                }
+                ArgumentNullException.ThrowIfNull((void*)context);
 
                 //Invoke hash with argon2 context pointer
                 Hash(Library, BufferHeap, (Argon2Context*)context);

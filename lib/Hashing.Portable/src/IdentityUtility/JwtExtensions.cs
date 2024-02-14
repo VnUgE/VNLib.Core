@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -49,6 +49,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="jso">Optional serialize options</param>
         public static void WriteHeader<T>(this JsonWebToken jwt, T header, JsonSerializerOptions? jso = null) where T: class
         {
+            ArgumentNullException.ThrowIfNull(jwt);
+
             byte[] data = JsonSerializer.SerializeToUtf8Bytes(header, jso);
             jwt.WriteHeader(data);
         }
@@ -62,6 +64,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="jso">Optional serialize options</param>
         public static void WritePayload<T>(this JsonWebToken jwt, T payload, JsonSerializerOptions? jso = null)
         {
+            ArgumentNullException.ThrowIfNull(jwt);
+
             byte[] data = JsonSerializer.SerializeToUtf8Bytes(payload, jso);
             jwt.WritePayload(data);
         }
@@ -77,6 +81,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static JsonDocument GetPayload(this JsonWebToken jwt)
         {
+            ArgumentNullException.ThrowIfNull(jwt);
+
             ReadOnlySpan<byte> payload = jwt.PayloadData;
             if (payload.IsEmpty)
             {
@@ -109,6 +115,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static JsonDocument GetHeader(this JsonWebToken jwt)
         {
+            ArgumentNullException.ThrowIfNull(jwt);
+
             ReadOnlySpan<byte> header = jwt.HeaderData;
             if (header.IsEmpty)
             {
@@ -153,6 +161,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static T? GetPayload<T>(this JsonWebToken jwt, JsonSerializerOptions? jso = null)
         {
+            ArgumentNullException.ThrowIfNull(jwt);
+
             ReadOnlySpan<byte> payload = jwt.PayloadData;
             if (payload.IsEmpty)
             {
@@ -192,7 +202,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static void Sign(this JsonWebToken jwt, HashAlgorithm signatureAlgorithm)
         {
-            _ = signatureAlgorithm ?? throw new ArgumentNullException(nameof(signatureAlgorithm));
+            ArgumentNullException.ThrowIfNull(jwt);
+            ArgumentNullException.ThrowIfNull(signatureAlgorithm);
 
             //Calculate the size of the buffer to use for the current algorithm
             int bufferSize = signatureAlgorithm.HashSize / 8;
@@ -221,7 +232,9 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static void Sign(this JsonWebToken jwt, RSA rsa, HashAlg alg, RSASignaturePadding padding)
         {
-            _ = rsa ?? throw new ArgumentNullException(nameof(rsa));
+            ArgumentNullException.ThrowIfNull(jwt);
+            ArgumentNullException.ThrowIfNull(rsa);
+            ArgumentNullException.ThrowIfNull(padding);
 
             //Init new rsa provider
             RSASignatureProvider sig = new(rsa, alg, padding);
@@ -242,7 +255,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static void Sign(this JsonWebToken jwt, ECDsa alg, HashAlg hashAlg, DSASignatureFormat sigFormat = DSASignatureFormat.IeeeP1363FixedFieldConcatenation)
         {
-            _ = alg ?? throw new ArgumentNullException(nameof(alg));
+            ArgumentNullException.ThrowIfNull(jwt);
+            ArgumentNullException.ThrowIfNull(alg);
 
             //Init new ec provider
             ECDSASignatureProvider sig = new(alg, sigFormat);
@@ -333,8 +347,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static bool Verify(this JsonWebToken jwt, HashAlgorithm verificationAlg)
         {
-            _ = jwt ?? throw new ArgumentNullException(nameof(jwt));
-            _ = verificationAlg ?? throw new ArgumentNullException(nameof(verificationAlg));
+            ArgumentNullException.ThrowIfNull(jwt);
+            ArgumentNullException.ThrowIfNull(verificationAlg);
             
             //Calculate the size of the buffer to use for the current algorithm and make sure it will include the utf8 encoding
             int hashBufferSize = Base64.GetMaxEncodedToUtf8Length(verificationAlg.HashSize / 8);
@@ -369,9 +383,12 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="provider">The <see cref="IJwtSignatureVerifier"/> used to verify the message digest</param>
         /// <param name="alg">The <see cref="HashAlg"/> used to compute the message digest</param>
         /// <returns>True if the siganture matches the computed on, false otherwise</returns>
+        /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InternalBufferTooSmallException"></exception>
-        public static bool Verify<T>(this JsonWebToken jwt, in T provider, HashAlg alg) where T : IJwtSignatureVerifier
+        public static bool Verify<T>(this JsonWebToken jwt, ref readonly T provider, HashAlg alg) where T : IJwtSignatureVerifier
         {
+            ArgumentNullException.ThrowIfNull(jwt);
+
             ReadOnlySpan<byte> signature = jwt.SignatureData;
 
             int sigBufSize = CalcPadding(signature.Length) + signature.Length;
@@ -421,6 +438,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InternalBufferTooSmallException"></exception>
         public static bool Verify(this JsonWebToken jwt, ReadOnlySpan<byte> key, HashAlg alg)
         {
@@ -466,8 +484,9 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static bool Verify(this JsonWebToken jwt, RSA alg, HashAlg hashAlg, RSASignaturePadding padding)
         {
-            _ = jwt ?? throw new ArgumentNullException(nameof(jwt));
-            _ = alg ?? throw new ArgumentNullException(nameof(alg));
+            ArgumentNullException.ThrowIfNull(jwt);
+            ArgumentNullException.ThrowIfNull(alg);
+            ArgumentNullException.ThrowIfNull(padding);
 
             //Inint verifier
             RSASignatureVerifier verifier = new(alg, hashAlg, padding);
@@ -490,7 +509,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static bool Verify(this JsonWebToken jwt, ECDsa alg, HashAlg hashAlg, DSASignatureFormat signatureFormat = DSASignatureFormat.IeeeP1363FixedFieldConcatenation)
         {
-            _ = alg ?? throw new ArgumentNullException(nameof(alg));
+            ArgumentNullException.ThrowIfNull(jwt);
+            ArgumentNullException.ThrowIfNull(alg);
 
             //Inint verifier
             ECDSASignatureVerifier verifier = new(alg, signatureFormat);
@@ -501,44 +521,41 @@ namespace VNLib.Hashing.IdentityUtility
         /*
          * Simple ecdsa and rsa providers
          */
-        private readonly record struct ECDSASignatureProvider(ECDsa SigAlg, DSASignatureFormat Format) : IJwtSignatureProvider
+        private readonly struct ECDSASignatureProvider(ECDsa SigAlg, DSASignatureFormat Format) : IJwtSignatureProvider
         {
             ///<inheritdoc/>
             public readonly int RequiredBufferSize { get; } = 512;
 
             ///<inheritdoc/>
-            public readonly ERRNO ComputeSignatureFromHash(ReadOnlySpan<byte> hash, Span<byte> outputBuffer)
-            {
-                return SigAlg.TrySignHash(hash, outputBuffer, Format, out int written) ? written : ERRNO.E_FAIL;
-            }
+            public readonly ERRNO ComputeSignatureFromHash(ReadOnlySpan<byte> hash, Span<byte> outputBuffer) 
+                => SigAlg.TrySignHash(hash, outputBuffer, Format, out int written) ? written : ERRNO.E_FAIL;
         }
 
-        internal readonly record struct RSASignatureProvider(RSA SigAlg, HashAlg Slg, RSASignaturePadding Padding) : IJwtSignatureProvider
+        internal readonly struct RSASignatureProvider(RSA SigAlg, HashAlg Slg, RSASignaturePadding Padding) : IJwtSignatureProvider
         {
             ///<inheritdoc/>
             public readonly int RequiredBufferSize { get; } = 1024;
 
             ///<inheritdoc/>
-            public readonly ERRNO ComputeSignatureFromHash(ReadOnlySpan<byte> hash, Span<byte> outputBuffer)
-            {
-                return !SigAlg.TrySignHash(hash, outputBuffer, Slg.GetAlgName(), Padding, out int written) ? written : ERRNO.E_FAIL;
-            }
+            public readonly ERRNO ComputeSignatureFromHash(ReadOnlySpan<byte> hash, Span<byte> outputBuffer) 
+                => !SigAlg.TrySignHash(hash, outputBuffer, Slg.GetAlgName(), Padding, out int written) ? written : ERRNO.E_FAIL;
         }
 
         /*
          * ECDSA and rsa verifiers
          */
-        internal readonly record struct ECDSASignatureVerifier(ECDsa Alg, DSASignatureFormat Format) : IJwtSignatureVerifier
+        internal readonly struct ECDSASignatureVerifier(ECDsa Alg, DSASignatureFormat Format) : IJwtSignatureVerifier
         {
-            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature) => Alg.VerifyHash(messageHash, signature);
+            ///<inheritdoc/>
+            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature) 
+                => Alg.VerifyHash(messageHash, signature, Format);
         }
 
-        internal readonly record struct RSASignatureVerifier(RSA Alg, HashAlg HashAlg, RSASignaturePadding Padding) : IJwtSignatureVerifier
+        internal readonly struct RSASignatureVerifier(RSA Alg, HashAlg HashAlg, RSASignaturePadding Padding) : IJwtSignatureVerifier
         {
-            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature)
-            {
-                return Alg.VerifyHash(messageHash, signature, HashAlg.GetAlgName(), Padding);
-            }
+            ///<inheritdoc/>
+            public readonly bool Verify(ReadOnlySpan<byte> messageHash, ReadOnlySpan<byte> signature) 
+                => Alg.VerifyHash(messageHash, signature, HashAlg.GetAlgName(), Padding);
         }
     }
 }

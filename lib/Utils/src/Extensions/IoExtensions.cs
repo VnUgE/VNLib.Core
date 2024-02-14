@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -55,7 +55,7 @@ namespace VNLib.Utils.Extensions
         [UnsupportedOSPlatform("tvos")]
         public static void Unlock(this FileStream fs)
         {
-            _ = fs ?? throw new ArgumentNullException(nameof(fs));
+            ArgumentNullException.ThrowIfNull(fs);
             //Unlock the entire file
             fs.Unlock(0, fs.Length);
         }
@@ -69,7 +69,7 @@ namespace VNLib.Utils.Extensions
         [UnsupportedOSPlatform("tvos")]
         public static void Lock(this FileStream fs)
         {
-            _ = fs ?? throw new ArgumentNullException(nameof(fs));
+            ArgumentNullException.ThrowIfNull(fs);
             //Lock the entire length of the file
             fs.Lock(0, fs.Length);
         }
@@ -88,15 +88,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentException"></exception>
         public static async ValueTask CopyToAsync(this Stream source, Stream dest, int bufferSize, IUnmangedHeap heap, CancellationToken token = default)
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            if (heap is null)
-            {
-                throw new ArgumentNullException(nameof(heap));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(heap);
 
             if (source.CanSeek)
             {
@@ -123,10 +116,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentException"></exception>
         public static async ValueTask CopyToAsync(this Stream source, Stream dest, long count, int bufferSize, IUnmangedHeap heap, CancellationToken token = default)
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(dest);
 
             if (source.CanSeek)
             {
@@ -148,16 +139,9 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentNullException"></exception>
         public static void CopyTo(this Stream source, Stream dest, IUnmangedHeap? heap = null)
         {
-            if (dest is null)
-            {
-                throw new ArgumentNullException(nameof(dest));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(dest);
 
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-            
             if (!source.CanRead)
             {
                 throw new ArgumentException("Source stream is unreadable", nameof(source));
@@ -203,16 +187,9 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentNullException"></exception>
         public static void CopyTo(this Stream source, Stream dest, long count, IUnmangedHeap? heap = null)
         {
-            if (dest is null)
-            {
-                throw new ArgumentNullException(nameof(dest));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(dest);
 
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-            
             if (!source.CanRead)
             {
                 throw new ArgumentException("Source stream is unreadable", nameof(source));
@@ -263,16 +240,9 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentException"></exception>
         public static async ValueTask CopyToAsync(this Stream source, Stream dest, Memory<byte> buffer, CancellationToken token = default)
         {
-            if (dest is null)
-            {
-                throw new ArgumentNullException(nameof(dest));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(dest);
 
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-            
             //Make sure source can be read from, and dest can be written to
             if (!source.CanRead)
             {
@@ -310,15 +280,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentException"></exception>
         public static async ValueTask CopyToAsync(this Stream source, Stream dest, Memory<byte> buffer, long count, CancellationToken token = default)
         {
-            if (dest is null)
-            {
-                throw new ArgumentNullException(nameof(dest));
-            }
-
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(dest);
             
             //Make sure source can be read from, and dest can be written to
             if (!source.CanRead)
@@ -373,7 +336,8 @@ namespace VNLib.Utils.Extensions
             int bufferSize = 4096,
             FileOptions options = FileOptions.None)
         {
-            _ = dir ?? throw new ArgumentNullException(nameof(dir));
+            ArgumentNullException.ThrowIfNull(dir);
+            ArgumentNullException.ThrowIfNull(fileName);
             string fullPath = Path.Combine(dir.FullName, fileName);
             return new FileStream(fullPath, mode, access, share, bufferSize, options);
         }
@@ -386,7 +350,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void DeleteFile(this DirectoryInfo dir, string fileName)
         {
-            _ = dir ?? throw new ArgumentNullException(nameof(dir));
+            ArgumentNullException.ThrowIfNull(dir);
+            ArgumentNullException.ThrowIfNull(fileName);
             string fullPath = Path.Combine(dir.FullName, fileName);
             File.Delete(fullPath);
         }
@@ -400,7 +365,8 @@ namespace VNLib.Utils.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool FileExists(this DirectoryInfo dir, string fileName)
         {
-            _ = dir ?? throw new ArgumentNullException(nameof(dir));
+            ArgumentNullException.ThrowIfNull(dir);
+            ArgumentNullException.ThrowIfNull(fileName);
             string fullPath = Path.Combine(dir.FullName, fileName);
             return FileOperations.FileExists(fullPath);
         }
@@ -415,7 +381,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>A new <see cref="ISimpleFilesystem"/> with a new filesystem directory scope</returns>
         public static ISimpleFilesystem CreateNewScope(this ISimpleFilesystem fs, string offsetPath) => new FsScope(fs, offsetPath);
 
-        private sealed record class FsScope(ISimpleFilesystem Parent, string OffsetPath) : ISimpleFilesystem
+        private sealed class FsScope(ISimpleFilesystem Parent, string OffsetPath) : ISimpleFilesystem
         {
 
             ///<inheritdoc/>
@@ -467,7 +433,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>A <see cref="ISimpleFilesystem"/> wrapper around the <see cref="IsolatedStorageDirectory"/></returns>
         public static ISimpleFilesystem CreateSimpleFs(this IsolatedStorageDirectory dir) => new IsolatedStorageSimpleFs(dir);
 
-        private sealed record class IsolatedStorageSimpleFs(IsolatedStorageDirectory Directory) : ISimpleFilesystem
+        private sealed class IsolatedStorageSimpleFs(IsolatedStorageDirectory Directory) : ISimpleFilesystem
         {
             ///<inheritdoc/>
             public string GetExternalFilePath(string filePath) => Directory.GetFullFilePath(filePath);

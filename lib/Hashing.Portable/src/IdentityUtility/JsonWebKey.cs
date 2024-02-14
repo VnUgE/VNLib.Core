@@ -96,6 +96,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="EncryptionTypeNotSupportedException"></exception>
         public static bool VerifyFromJwk<TKey>(this JsonWebToken token, in TKey jwk) where TKey: notnull, IJsonWebKey
         {            
+            ArgumentNullException.ThrowIfNull(token);
+
             //Use and alg are required here
             if(jwk.KeyUse != JwkKeyUsage.Signature || jwk.Algorithm == null)
             {
@@ -441,7 +443,7 @@ namespace VNLib.Hashing.IdentityUtility
             }
             else
             {
-                //bin buffer for temp decoding
+                //bin buffer for temp decoding with some extra space just incase
                 using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAlloc(base64.Length + 16, false);
 
                 //base64url decode

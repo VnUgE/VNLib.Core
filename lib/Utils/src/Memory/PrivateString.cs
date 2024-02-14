@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -152,12 +152,14 @@ namespace VNLib.Utils.Memory
         /// <param name="data">The string reference to wrap</param>
         /// <param name="ownsString">A value that indicates if the string memory is owned by the instance</param>
         /// <returns>The new private string wrapper, or null if the value is null</returns>
+        [return:NotNullIfNotNull(nameof(data))]
         public static PrivateString? ToPrivateString(string? data, bool ownsString) => data == null ? null : new(data, ownsString);
 
         /// <summary>
         /// Casts the <see cref="PrivateString"/> to a <see cref="string"/>
         /// </summary>
         /// <param name="str"></param>
+        [return: NotNullIfNotNull(nameof(str))]
         public static explicit operator string?(PrivateString? str) => str?.StringRef;
 
         /// <summary>

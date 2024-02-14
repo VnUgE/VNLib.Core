@@ -669,7 +669,7 @@ namespace VNLib.Utils
                     {
                         //Percent encode
                         utf8Output[outPos++] = 0x25;  // '%'
-                                                      //Calc and store the encoded by the upper 4 bits
+                         //Calc and store the encoded by the upper 4 bits
                         utf8Output[outPos++] = lookupTable[(value & 0xf0) >> 4];
                         //Store lower 4 bits in encoded value
                         utf8Output[outPos++] = lookupTable[value & 0x0f];
@@ -771,12 +771,9 @@ namespace VNLib.Utils
 
                 ERRNO encoded = PercentEncode(utf8Bytes, output, allowedChars);
 
-                if(encoded <= 0)
-                {
-                    throw new FormatException("Failed to percent encode the input data");
-                }
-
-                return Encoding.UTF8.GetString(output);
+                return encoded > 0 
+                    ? Encoding.UTF8.GetString(output) 
+                    : throw new FormatException("Failed to percent encode the input data");
             }
             else
             {
@@ -785,12 +782,9 @@ namespace VNLib.Utils
                 
                 ERRNO encoded = PercentEncode(utf8Bytes, handle.Span, allowedChars);
 
-                if (encoded <= 0)
-                {
-                    throw new FormatException("Failed to percent encode the input data");
-                }
-
-                return Encoding.UTF8.GetString(handle.AsSpan(0, encoded));
+                return encoded > 0
+                    ? Encoding.UTF8.GetString(handle.AsSpan(0, encoded))
+                    : throw new FormatException("Failed to percent encode the input data");
             }
         }     
 
@@ -1054,26 +1048,16 @@ namespace VNLib.Utils
         /// <exception cref="ArgumentException"></exception>
         public static string ToBase64UrlSafeStringInPlace(Span<byte> rawData, int length, bool includePadding)
         {
+            ERRNO converted = Base64UrlEncodeInPlace(rawData, length, includePadding);
+
             //Encode in place
-            if (Base64.EncodeToUtf8InPlace(rawData, length, out int converted) != OperationStatus.Done)
+            if (converted < 1)
             {
                 throw new ArgumentException("The input buffer was not large enough to encode in-place", nameof(rawData));
             }
 
-            //trim to converted size
-            Span<byte> base64 = rawData[..converted];
-
-            //Make url safe
-            Base64ToUrlSafeInPlace(base64);
-
-            //Remove padding
-            if (!includePadding)
-            {
-                base64 = base64.TrimEnd((byte)0x3d);
-            }
-
             //Convert to string
-            return Encoding.UTF8.GetString(base64);
+            return Encoding.UTF8.GetString(rawData[..(int)converted]);
         }
 
         /// <summary>
@@ -1086,6 +1070,11 @@ namespace VNLib.Utils
         /// <exception cref="ArgumentException"></exception>
         public static string ToBase64UrlSafeString(ReadOnlySpan<byte> rawData, bool includePadding)
         {
+            if (rawData.IsEmpty)
+            {
+                throw new ArgumentException("The input buffer was empty", nameof(rawData));
+            }
+
             int maxBufSize = Base64.GetMaxEncodedToUtf8Length(rawData.Length);
             
             if(maxBufSize > MAX_STACKALLOC)

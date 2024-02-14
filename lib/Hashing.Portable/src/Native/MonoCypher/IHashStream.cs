@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -42,7 +42,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// </summary>
         /// <param name="mRef">A reference to the first byte of the sequence</param>
         /// <param name="mSize">The size of the sequence</param>
-        void Update(ref byte mRef, uint mSize);
+        void Update(ref readonly byte mRef, uint mSize);
 
         /// <summary>
         /// Flushes the hash of this stream to the specified buffer

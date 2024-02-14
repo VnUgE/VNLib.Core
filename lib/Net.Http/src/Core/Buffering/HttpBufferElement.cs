@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -63,16 +63,10 @@ namespace VNLib.Net.Http.Core.Buffering
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual ref byte DangerousGetBinRef(int offset)
         {
-            if (offset >= _handle.Size)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
-
-            //Get ref to pinned memory
-            ref byte start = ref _handle.GetRef();
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, _handle.Size);
 
             //Add offset to ref
-            return ref Unsafe.Add(ref start, offset);
+            return ref Unsafe.Add(ref _handle.GetRef(), offset);
         }
 
         ///<inheritdoc/>
@@ -85,9 +79,9 @@ namespace VNLib.Net.Http.Core.Buffering
             => (offset + size) < _handle.Size ? _handle.GetSpan(offset, size) : throw new ArgumentOutOfRangeException(nameof(offset));
 
 
-        private readonly struct HandleState
+        private struct HandleState
         {
-            private readonly MemoryHandle _handle;
+            private MemoryHandle _handle;
             private readonly IntPtr _pointer;
             
             public readonly int Size;

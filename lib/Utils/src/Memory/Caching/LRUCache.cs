@@ -32,7 +32,7 @@ namespace VNLib.Utils.Memory.Caching
     /// </summary>
     /// <typeparam name="TKey">The key for O(1) lookups</typeparam>
     /// <typeparam name="TValue">The value to store within cache</typeparam>
-    public abstract class LRUCache<TKey, TValue> : LRUDataStore<TKey, TValue> where TKey : notnull
+    public abstract class LRUCache<TKey, TValue> : LRUCollection<TKey, TValue> where TKey : notnull
     {
         ///<inheritdoc/>
         protected LRUCache(): base()
@@ -59,7 +59,7 @@ namespace VNLib.Utils.Memory.Caching
         /// Adds a new record to the LRU cache 
         /// </summary>
         /// <param name="item">A <see cref="KeyValuePair{TKey, TValue}"/> to add to the cache store</param>
-        public override void Add(in KeyValuePair<TKey, TValue> item)
+        public override void Add(ref readonly KeyValuePair<TKey, TValue> item)
         {
             //See if the store is at max capacity and an item needs to be evicted
             if (Count == MaxCapacity)
@@ -123,7 +123,7 @@ namespace VNLib.Utils.Memory.Caching
         /// Invoked when a record is evicted from the cache
         /// </summary>
         /// <param name="evicted">The record that is being evicted</param>
-        protected abstract void Evicted(ref KeyValuePair<TKey, TValue> evicted);
+        protected abstract void Evicted(ref readonly KeyValuePair<TKey, TValue> evicted);
 
         /// <summary>
         /// Invoked when an entry was requested and was not found in cache.

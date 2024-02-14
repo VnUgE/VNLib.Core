@@ -86,7 +86,7 @@ namespace VNLib.Utils.Memory
         /// <see cref="ArrayPool{T}"/>
         /// </summary>
         /// <param name="elements">The number of elements to store</param>
-        /// <param name="array">The array reference to store/param>
+        /// <param name="array">The array reference to store</param>
         /// <param name="pool">The explicit pool to alloc buffers from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>

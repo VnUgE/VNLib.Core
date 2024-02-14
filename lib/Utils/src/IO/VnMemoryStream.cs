@@ -28,7 +28,6 @@ using System.Buffers;
 using System.Threading;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
@@ -520,11 +519,7 @@ namespace VNLib.Utils.IO
 
         ///<inheritdoc/>
         ///<exception cref="OutOfMemoryException"></exception>
-        public override void WriteByte(byte value)
-        {
-            Span<byte> buf = MemoryMarshal.CreateSpan(ref value, 1);
-            Write(buf);
-        }
+        public override void WriteByte(byte value) => Write(new Span<byte>(ref value));
 
         /// <summary>
         /// Allocates and copies internal buffer to new managed byte[]

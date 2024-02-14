@@ -52,17 +52,9 @@ namespace VNLib.Plugins.Runtime
          */
         private readonly object _stateLock = new();
 
-        private readonly List<LivePlugin> _plugins;
-        private readonly List<KeyValuePair<IPluginEventListener, object?>> _listeners;
-        private readonly PluginServicePool _servicePool;
-     
-
-        internal PluginController()
-        {
-            _plugins = new ();
-            _listeners = new ();
-            _servicePool = new ();
-        }
+        private readonly List<LivePlugin> _plugins = [];
+        private readonly List<KeyValuePair<IPluginEventListener, object?>> _listeners = [];
+        private readonly PluginServicePool _servicePool = new();
 
         /// <summary>
         /// The current collection of plugins. Valid before the unload event.
@@ -73,7 +65,7 @@ namespace VNLib.Plugins.Runtime
         ///<exception cref="ArgumentNullException"></exception>
         public void Register(IPluginEventListener listener, object? state = null)
         {
-            _ = listener ?? throw new ArgumentNullException(nameof(listener));
+            ArgumentNullException.ThrowIfNull(listener);
 
             lock (_stateLock)
             {
@@ -87,12 +79,12 @@ namespace VNLib.Plugins.Runtime
             lock(_stateLock)
             {
                 //Remove listener
-                return _listeners.RemoveAll(p => p.Key == listener) > 0;
+                return _listeners.RemoveAll(p => ReferenceEquals(p.Key, listener)) > 0;
             }
         }
 
         /// <summary>
-        /// Populates the given <see cref="IServiceContainer"/> with all services
+        /// Returns an array of all exported services from all loaded plugins
         /// </summary>
         public PluginServiceExport[] GetExportedServices() => _servicePool.GetServices();
 
@@ -118,8 +110,8 @@ namespace VNLib.Plugins.Runtime
         {
             lock (_stateLock)
             {
-                _plugins.TryForeach(lp => lp.InitConfig(configData.AsSpan()));
-                _plugins.TryForeach(lp => lp.InitLog(cliArgs));
+                _plugins.ForEach(lp => lp.InitConfig(configData.AsSpan()));
+                _plugins.ForEach(lp => lp.InitLog(cliArgs));
             }
         }
 
@@ -131,10 +123,10 @@ namespace VNLib.Plugins.Runtime
                 _plugins.TryForeach(static p => p.LoadPlugin());
 
                 //Load all services into the service pool
-                _plugins.TryForeach(p => p.GetServices(_servicePool));
+                _plugins.ForEach(p => p.GetServices(_servicePool));
 
                 //Notify event handlers
-                _listeners.TryForeach(l => l.Key.OnPluginLoaded(this, l.Value));
+                _listeners.ForEach(l => l.Key.OnPluginLoaded(this, l.Value));
             }
         }
 
@@ -145,7 +137,7 @@ namespace VNLib.Plugins.Runtime
                 try
                 {
                     //Notify event handlers
-                    _listeners.TryForeach(l => l.Key.OnPluginUnloaded(this, l.Value));
+                    _listeners.ForEach(l => l.Key.OnPluginUnloaded(this, l.Value));
 
                     //Unload plugin instances
                     _plugins.TryForeach(static p => p.UnloadPlugin());

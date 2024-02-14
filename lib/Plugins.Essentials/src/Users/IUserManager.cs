@@ -70,11 +70,11 @@ namespace VNLib.Plugins.Essentials.Users
         /// <summary>
         /// Attempts to get a user object without their password from the database asynchronously
         /// </summary>
-        /// <param name="emailAddress">The user's email address</param>
+        /// <param name="username">The user's uinque username</param>
         /// <param name="cancellationToken">A token to cancel the operation</param>
         /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        Task<IUser?> GetUserFromEmailAsync(string emailAddress, CancellationToken cancellationToken = default);
+        Task<IUser?> GetUserFromUsernameAsync(string username, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Creates a new user account in the store as per the request. The user-id field is optional, 

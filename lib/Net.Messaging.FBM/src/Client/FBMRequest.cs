@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -97,7 +97,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="messageId">The custom message id</param>
         /// <param name="config">The fbm client config storing required config variables</param>
         public FBMRequest(int messageId, in FBMClientConfig config)
-        :this(messageId, config.MemoryManager, config.MessageBufferSize, config.HeaderEncoding)
+            :this(messageId, config.MemoryManager, config.MessageBufferSize, config.HeaderEncoding)
         { }
 
         /// <summary>
@@ -110,8 +110,10 @@ namespace VNLib.Net.Messaging.FBM.Client
         public FBMRequest(int messageId, IFBMMemoryManager manager, int bufferSize, Encoding headerEncoding)
         {
             MessageId = messageId;
-            HeaderEncoding = headerEncoding ?? throw new ArgumentNullException(nameof(headerEncoding));
-            _ = manager ?? throw new ArgumentNullException(nameof(manager));
+            ArgumentNullException.ThrowIfNull(manager);
+            ArgumentNullException.ThrowIfNull(headerEncoding);
+
+            HeaderEncoding = headerEncoding;
 
             //Configure waiter
             Waiter = new FBMMessageWaiter(this);
@@ -283,15 +285,11 @@ namespace VNLib.Net.Messaging.FBM.Client
                 _request = request;
 
                 //Configure timer
-                _timer = new(OnCancelled, this, Timeout.Infinite, Timeout.Infinite);
+                _timer = new(OnTimeout, this, Timeout.Infinite, Timeout.Infinite);
             }
 
             ///<inheritdoc/>
-            public void OnBeginRequest()
-            {
-                //Configure new tcs
-                _tcs = new(TaskCreationOptions.None);
-            }
+            public void OnBeginRequest() => _tcs = new(TaskCreationOptions.None);
 
             ///<inheritdoc/>
             public void OnEndRequest()
@@ -360,7 +358,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                     if (cancellation.CanBeCanceled)
                     {
                         //Register cancellation
-                        _token = cancellation.Register(OnCancelled, this);
+                        _token = cancellation.Register(OnCancelled, this, false);
                     }
                 }
 
@@ -372,6 +370,12 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             //Set cancelled state if exists, the task may have already completed
             private void OnCancelled(object? state) => _tcs?.TrySetCanceled();
+
+            private void OnTimeout(object? state)
+            {
+               TimeoutException to = new("A response was not received in the desired timeout period. Operation aborted");
+                _tcs?.TrySetException(to);
+            }
 
             ///<inheritdoc/>
             public void Dispose()

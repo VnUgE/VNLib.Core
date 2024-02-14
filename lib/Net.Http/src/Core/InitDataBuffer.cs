@@ -36,20 +36,14 @@ namespace VNLib.Net.Http.Core
     /// A structure that buffers data remaining from an initial transport read. Stored 
     /// data will be read by copying.
     /// </summary>
-    internal readonly record struct InitDataBuffer
+    internal readonly struct InitDataBuffer(ArrayPool<byte> pool, byte[] buffer, int size)
     {
         const int POSITION_SEG_SIZE = sizeof(int);
 
-        readonly int _dataSize;
-        readonly byte[] _buffer;
-        readonly ArrayPool<byte> _pool;
-
-        InitDataBuffer(ArrayPool<byte> pool, byte[] buffer, int size)
-        {
-            _pool = pool;
-            _buffer = buffer;
-            _dataSize = size;
-        }
+        readonly int _dataSize = size;
+        readonly byte[] _buffer = buffer;
+        readonly ArrayPool<byte> _pool = pool;
+     
 
         /// <summary>
         /// Allocates the correct size buffer for the given data size
@@ -65,7 +59,7 @@ namespace VNLib.Net.Http.Core
             return new(pool, buffer, dataSize);
         }
 
-        readonly Span<byte> _positionSegment
+        private readonly Span<byte> _positionSegment
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _buffer.AsSpan(0, POSITION_SEG_SIZE);
@@ -126,10 +120,6 @@ namespace VNLib.Net.Http.Core
         /// Releases the internal buffer back to its pool
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal readonly void Release()
-        {
-            //Return buffer back to pool
-            _pool.Return(_buffer);
-        }
+        internal readonly void Release() => _pool.Return(_buffer);
     }
 }

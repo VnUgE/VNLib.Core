@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -54,10 +54,21 @@ namespace VNLib.Hashing.Native.MonoCypher
         [SafeMethodName("Blake2GetHashSize")]
         internal delegate uint Blake2GetHashSize(IntPtr context);
 
-
+        /// <summary>
+        /// The maximum hash size (in bytes) the Blake2b algorithm supports
+        /// </summary>
         public const int MaxHashSize = 64;
+        /// <summary>
+        /// The maximum key size (in bytes) the Blake2b algorithm supports
+        /// </summary>
         public const int MaxKeySize = 64;
+        /// <summary>
+        /// The minimum suggested hash size (in bytes) for KDFs
+        /// </summary>
         public const int MinSuggestedKDFHashSize = 32;
+        /// <summary>
+        /// The minimum suggested hash size (in bytes) for MACs
+        /// </summary>
         public const int MinSuggestedMACHashSize = 16;
 
         /// <summary>
@@ -265,6 +276,7 @@ namespace VNLib.Hashing.Native.MonoCypher
             return output.Length;
         }
 
+        //Error codes from the native library
         const int ERR_NULL_PTR = -1;
         const int ERR_HASH_LEN_INVLID = -16;
         const int ERR_KEY_LEN_INVALID = -17;
@@ -272,6 +284,8 @@ namespace VNLib.Hashing.Native.MonoCypher
 
         private static void ThrowOnBlake2Error(int result)
         {
+#pragma warning disable CA2208 // Instantiate argument exceptions correctly
+
             switch (result)
             {
                 //Success
@@ -288,12 +302,13 @@ namespace VNLib.Hashing.Native.MonoCypher
                     throw new ArgumentOutOfRangeException("keyLen", "The key length is invalid");
 
                 case ERR_KEY_PTR_INVALID:
-                    throw new ArgumentException("The key pointer is null");
+                    throw new ArgumentNullException("key","The key pointer is null");
 
                 default:
                     throw new Exception($"An unknown error occured while hashing: {result}");
 
             }
+#pragma warning restore CA2208 // Instantiate argument exceptions correctly
         }
 
         private sealed class Blake2Stream : SafeHandle, IHashStream, IHmacStream
@@ -353,17 +368,14 @@ namespace VNLib.Hashing.Native.MonoCypher
             }
 
             ///<inheritdoc/>
-            public void Initialize(ref byte key, byte keySize)
+            public void Initialize(ref readonly byte key, byte keySize)
             {
-                if (Unsafe.IsNullRef(ref key))
+                if (Unsafe.IsNullRef(in key))
                 {
                     throw new ArgumentNullException(nameof(key));
                 }
 
-                if(keySize > MaxKeySize)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(keySize), $"The key size must be between 1 and {MaxKeySize} inclusive bytes");
-                }
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(keySize, MaxKeySize);
 
                 //Make sure context is initialized
                 InitContextHandle();
@@ -377,11 +389,11 @@ namespace VNLib.Hashing.Native.MonoCypher
             }
 
             ///<inheritdoc/>
-            public void Update(ref byte mRef, uint mSize)
+            public void Update(ref readonly byte mRef, uint mSize)
             {
                 this.ThrowIfClosed();
 
-                if (Unsafe.IsNullRef(ref mRef))
+                if (Unsafe.IsNullRef(in mRef))
                 {
                     throw new ArgumentNullException(nameof(mRef));
                 }
@@ -401,10 +413,7 @@ namespace VNLib.Hashing.Native.MonoCypher
 
             private void InitContextHandle()
             {
-                if (IsClosed)
-                {
-                    throw new ObjectDisposedException(nameof(Blake2Stream));
-                }
+                ObjectDisposedException.ThrowIf(IsClosed, this);
 
                 //alloc buffer on the heap if not allocated
                 if (handle == IntPtr.Zero)

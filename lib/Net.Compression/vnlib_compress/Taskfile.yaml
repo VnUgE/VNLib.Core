@@ -18,32 +18,19 @@ tasks:
     cmds:
      - cmd: echo "Building vnlib_compress"
        silent: true
+    
+    #make third-party dir before cloning libs
+     - cmd: powershell -Command "mkdir '{{.THIRD_PARTY_DIR}}' -Force"
+       ignore_error: true  
 
-     #make dirs on non-win
-     - cmd: mkdir {{.THIRD_PARTY_DIR}}
-       platforms: ['linux', 'darwin']
-
-     #make dirs on windows
-     - cmd: powershell -Command "mkdir {{.THIRD_PARTY_DIR}} -Force"
-       platforms: ['windows']
-
-     #clone libs
-     - cmd: cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/cloudflare/zlib.git
-       ignore_error: true
-
-     - cmd: cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/google/brotli.git
-       ignore_error: true
+     - task: zlib
+     - task: brotli
  
      #invoke cmake for build
-     - cmake -B./build -DCMAKE_BUILD_TYPE=RELEASE {{.CMAKE_ARGS}}
+     - cmake -B./build {{.CMAKE_ARGS}}
  
-     #build for Windows
-     - cmd: cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=release {{.BUILD_FLAGS}}
-       platforms: ['windows']
-
-     #using make
-     - cmd: cd build && make
-       platforms: ['linux', 'darwin']
+     #build for platform
+     - cmake --build build/ --config Release
           
 
   #when build succeeds, archive the output into a tgz 
@@ -51,13 +38,28 @@ tasks:
     cmds:
      - cmd: powershell mkdir -Force './bin'
      #copy source code to target
-     - powershell -Command "tar --exclude build/* --exclude .vs/* --exclude bin/* -czvf bin/src.tgz ."
-
-  postbuild_failed:
-    cmds: []
+     - powershell -Command "tar --exclude build/* --exclude .vs/* --exclude bin/* -czf bin/src.tgz ."
 
 #Remove the output dirs on clean
   clean:
     ignore_error: true
     cmds:
      - cmd: powershell Remove-Item -Recurse './bin'
+
+  #update or install the cloudflare fork of zlib library 
+  zlib:
+    internal: true
+    status:
+     - cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/cloudflare/zlib.git
+
+    cmds:
+     - cd {{.THIRD_PARTY_DIR}}/zlib && git pull
+  
+  #update or install the google brotli library
+  brotli:
+    internal: true
+    status:
+     - cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/google/brotli.git  
+    cmds:
+     - cd {{.THIRD_PARTY_DIR}}/brotli && git pull
+    

@@ -39,7 +39,7 @@ namespace VNLib.Net.Http.Core
     /// <param name="Buffer">The buffer containing the segment data</param>
     /// <param name="Offset">The offset in the buffer to begin the segment at</param>
     /// <param name="Length">The length of the segment</param>
-    internal readonly record struct HttpEncodedSegment(byte[] Buffer, uint Offset, uint Length)
+    internal readonly record struct HttpEncodedSegment(byte[] Buffer, uint Offset, ushort Length)
     {
         /// <summary>
         /// Validates the bounds of the array so calls to <see cref="DangerousCopyTo(Span{byte})"/>
@@ -88,8 +88,8 @@ namespace VNLib.Net.Http.Core
             ref byte src = ref MemoryMarshal.GetArrayDataReference(Buffer);
 
             //Call memmove with the buffer offset and desired length
-            MemoryUtil.Memmove(ref src, Offset, ref output, 0, Length);
-            return (int)Length;
+            MemoryUtil.SmallMemmove(ref src, Offset, ref output, 0, Length);
+            return Length;
         }
 
         /// <summary>
@@ -99,10 +99,11 @@ namespace VNLib.Net.Http.Core
         /// <param name="data">The string data to encode</param>
         /// <param name="enc">The encoder used to convert the character data to bytes</param>
         /// <returns>The initalized <see cref="HttpEncodedSegment"/> structure</returns>
+        /// <exception cref="OverflowException"></exception>
         public static HttpEncodedSegment FromString(string data, Encoding enc)
         {
             byte[] encoded = enc.GetBytes(data);
-            return new HttpEncodedSegment(encoded, 0, (uint)encoded.Length);
+            return new HttpEncodedSegment(encoded, 0, checked((ushort)encoded.Length));
         }
     }
 }

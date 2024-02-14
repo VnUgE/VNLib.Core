@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -156,6 +156,9 @@ namespace VNLib.Utils.Extensions
         /// <returns>A new document with a parent root containing the combined objects</returns>
         public static JsonDocument Merge(this JsonDocument initial, JsonDocument other, string initalName, string secondName)
         {
+            ArgumentNullException.ThrowIfNull(initial);
+            ArgumentNullException.ThrowIfNull(other);
+
             //Open a new memory buffer
             using VnMemoryStream ms = new();
             //Encapuslate the memory stream in a writer

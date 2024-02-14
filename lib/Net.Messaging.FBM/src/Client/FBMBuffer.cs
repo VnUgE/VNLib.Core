@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -123,17 +123,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         Span<char> IFBMHeaderBuffer.GetSpan() => MemoryMarshal.Cast<byte, char>(Handle.GetSpan());
 
 
-        private sealed class BinaryRequestAccumulator : IDataAccumulator<byte>
+        private sealed class BinaryRequestAccumulator(FBMBuffer Buffer, int Size) : IDataAccumulator<byte>
         {
-            private readonly int Size;
-            private readonly FBMBuffer Buffer;
-
-            internal BinaryRequestAccumulator(FBMBuffer buffer, int size)
-            {
-                Buffer = buffer;
-                Size = size;
-            }
-
             ///<inheritdoc/>
             public int AccumulatedSize { get; private set; }
 
@@ -168,12 +159,8 @@ namespace VNLib.Net.Messaging.FBM.Client
          * a finite amount of data to be written to the accumulator since
          * it uses a fixed size internal buffer.
          */
-        private sealed class BufferWriter : IBufferWriter<byte>
-        {
-            private readonly FBMBuffer Buffer;
-
-            public BufferWriter(FBMBuffer buffer) => Buffer = buffer;
-
+        private sealed class BufferWriter(FBMBuffer Buffer) : IBufferWriter<byte>
+        {           
             ///<inheritdoc/>
             public void Advance(int count) => Buffer._requestAccumulator.Advance(count);
 

@@ -147,6 +147,7 @@ namespace VNLib.Utils.Native
             libary = null;
             return false;
         }
+        
         private static string? GetLibraryFile(string dirPath, string libPath, SearchOption search)
         {
             //slice the lib to its file name
@@ -154,6 +155,59 @@ namespace VNLib.Utils.Native
             libPath = Path.ChangeExtension(libPath, OperatingSystem.IsWindows() ? ".dll" : ".so");
             //Select the first file that matches the name
             return Directory.EnumerateFiles(dirPath, libPath, search).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Loads a native function pointer from the library of the specified name and 
+        /// creates a new managed delegate
+        /// </summary>
+        /// <typeparam name="T">The native method delegate type</typeparam>
+        /// <param name="functionName">The name of the native function</param>
+        /// <returns>A wapper handle around the native method delegate</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
+        /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
+        public SafeMethodHandle<T> GetFunction<T>(string functionName) where T : Delegate
+        {
+            //Increment handle count before obtaining a method
+            bool success = false;
+            DangerousAddRef(ref success);            
+
+            ObjectDisposedException.ThrowIf(success == false, "The libary has been released!");
+
+            try
+            {
+                //Get the method pointer
+                IntPtr nativeMethod = NativeLibrary.GetExport(handle, functionName);
+                //Get the delegate for the function pointer
+                T method = Marshal.GetDelegateForFunctionPointer<T>(nativeMethod);
+                return new(this, method);
+            }
+            catch
+            {
+                DangerousRelease();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Gets an delegate wrapper for the specified native function without tracking its referrence.
+        /// The caller must manage the <see cref="SafeLibraryHandle"/> referrence count in order
+        /// to not leak resources or cause process corruption
+        /// </summary>
+        /// <typeparam name="T">The native method delegate type</typeparam>
+        /// <param name="functionName">The name of the native library function</param>
+        /// <returns>A the delegate wrapper on the native method</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
+        /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
+        public T DangerousGetFunction<T>(string functionName) where T : Delegate
+        {
+            this.ThrowIfClosed();
+            //Get the method pointer
+            IntPtr nativeMethod = NativeLibrary.GetExport(handle, functionName);
+            //Get the delegate for the function pointer
+            return Marshal.GetDelegateForFunctionPointer<T>(nativeMethod);
         }
 
         /// <summary>
@@ -165,28 +219,9 @@ namespace VNLib.Utils.Native
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
         /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
-        public SafeMethodHandle<T> GetMethod<T>(string methodName) where T : Delegate
-        {
-            //Increment handle count before obtaining a method
-            bool success = false;
-            DangerousAddRef(ref success);            
+        [Obsolete("Updated naming, use GetFunction<T>() instead")]
+        public SafeMethodHandle<T> GetMethod<T>(string methodName) where T : Delegate => GetFunction<T>(methodName);
 
-            ObjectDisposedException.ThrowIf(success == false, "The libary has been released!");
-
-            try
-            {
-                //Get the method pointer
-                IntPtr nativeMethod = NativeLibrary.GetExport(handle, methodName);
-                //Get the delegate for the function pointer
-                T method = Marshal.GetDelegateForFunctionPointer<T>(nativeMethod);
-                return new(this, method);
-            }
-            catch
-            {
-                DangerousRelease();
-                throw;
-            }
-        }
         /// <summary>
         /// Gets an delegate wrapper for the specified method without tracking its referrence.
         /// The caller must manage the <see cref="SafeLibraryHandle"/> referrence count in order
@@ -198,14 +233,9 @@ namespace VNLib.Utils.Native
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
         /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
-        public T DangerousGetMethod<T>(string methodName) where T : Delegate
-        {
-            this.ThrowIfClosed();
-            //Get the method pointer
-            IntPtr nativeMethod = NativeLibrary.GetExport(handle, methodName);
-            //Get the delegate for the function pointer
-            return Marshal.GetDelegateForFunctionPointer<T>(nativeMethod);
-        }
+        [Obsolete("Updated naming, use DangerousGetFunction<T>() instead")]
+        public T DangerousGetMethod<T>(string methodName) where T : Delegate => DangerousGetFunction<T>(methodName);
+
 
         ///<inheritdoc/>
         protected override bool ReleaseHandle()

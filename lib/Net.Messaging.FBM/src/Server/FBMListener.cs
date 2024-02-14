@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -41,20 +41,18 @@ namespace VNLib.Net.Messaging.FBM.Server
     /// A FBM protocol listener. Listens for messages on a <see cref="WebSocketSession"/>
     /// and raises events on requests.
     /// </summary>
-    public class FBMListener
+    /// <remarks>
+    /// Creates a new <see cref="FBMListener"/> instance ready for 
+    /// processing connections
+    /// </remarks>
+    /// <param name="heap">The heap to alloc buffers from</param>
+    /// <exception cref="ArgumentNullException"></exception>
+    public class FBMListener(IFBMMemoryManager heap)
     {     
 
         public const int SEND_SEMAPHORE_TIMEOUT_MS = 10 * 1000;
 
-        private readonly IFBMMemoryManager MemoryManger;
-
-        /// <summary>
-        /// Creates a new <see cref="FBMListener"/> instance ready for 
-        /// processing connections
-        /// </summary>
-        /// <param name="heap">The heap to alloc buffers from</param>
-        /// <exception cref="ArgumentNullException"></exception>
-        public FBMListener(IFBMMemoryManager heap) => MemoryManger = heap ?? throw new ArgumentNullException(nameof(heap));
+        private readonly IFBMMemoryManager MemoryManger = heap ?? throw new ArgumentNullException(nameof(heap));
 
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
@@ -68,8 +66,8 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <returns>A <see cref="Task"/> that completes when the connection closes</returns>
         public async Task ListenAsync(WebSocketSession wss, IFBMServerMessageHandler handler, FBMListenerSessionParams args)
         {
-            _ = wss ?? throw new ArgumentNullException(nameof(wss));
-            _ = handler ?? throw new ArgumentNullException(nameof(handler));
+            ArgumentNullException.ThrowIfNull(wss);
+            ArgumentNullException.ThrowIfNull(handler);
 
             ListeningSession session = new(wss, handler, in args, MemoryManger);
 
@@ -79,7 +77,9 @@ namespace VNLib.Net.Messaging.FBM.Server
             //Start a task to process the queue
             Task queueWorker = QueueWorkerDoWork(workQueue, session);
 
-            //Alloc buffer
+            /*
+             * Alloc a top level receive buffer directly from the memory manager
+             */
             IFBMMemoryHandle memHandle = MemoryManger.InitHandle();
             MemoryManger.AllocBuffer(memHandle, args.RecvBufferSize);
 
@@ -232,7 +232,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                              * WARNING!
                              * this code relies on the managed websocket impl that the websocket will read 
                              * the entire buffer before returning. If this is not the case, this code will
-                             * overwrite the memory buffer on the next call to move next.
+                             * overwrite the memory buffer on the next call to MoveNext().
                              */
 
                             //Move to next segment
@@ -316,10 +316,12 @@ namespace VNLib.Net.Messaging.FBM.Server
                 Cancellation.Cancel();
 
                 //If dispose happens without any outstanding requests, we can dispose the session
-                if (_counter == 0)
+                if (_pendingRequests == 0)
                 {
                     CleanupInternal();
                 }
+
+                //Internal data cannot be cleaned, because requests are still outstanding, fallback to reference counting
             }
 
             private void CleanupInternal()
@@ -331,7 +333,7 @@ namespace VNLib.Net.Messaging.FBM.Server
             }
 
 
-            private uint _counter;
+            private uint _pendingRequests;
 
             /// <summary>
             /// Rents a new <see cref="FBMContext"/> instance from the pool
@@ -341,15 +343,12 @@ namespace VNLib.Net.Messaging.FBM.Server
             /// <exception cref="ObjectDisposedException"></exception>
             public FBMContext RentContext()
             {
-                if (Cancellation.IsCancellationRequested)
-                {
-                    throw new ObjectDisposedException("The instance has been disposed");
-                }
+                ObjectDisposedException.ThrowIf(Cancellation.IsCancellationRequested, this);
 
                 //Rent context
                 FBMContext ctx = CtxStore.Rent();
-                //Increment counter
-                Interlocked.Increment(ref _counter);
+                //Increment reference count counter
+                Interlocked.Increment(ref _pendingRequests);
 
                 return ctx;
             }
@@ -365,7 +364,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                 //Return the context
                 CtxStore.Return(ctx);
 
-                uint current = Interlocked.Decrement(ref _counter);
+                uint current = Interlocked.Decrement(ref _pendingRequests);
 
                 //No more contexts in use, dispose internals
                 if (Cancellation.IsCancellationRequested && current == 0)

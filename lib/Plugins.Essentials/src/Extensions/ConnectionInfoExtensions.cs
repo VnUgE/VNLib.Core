@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -165,10 +165,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void SetContentRangeHeader(this IHttpEvent entity, in HttpRange range, long length)
         {
-            if(length < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(length), "Length must be greater than or equal to zero");
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(length);
 
             ulong start;
             ulong end;
@@ -216,6 +213,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <returns>true if the user-agent specified the cors security header</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCors(this IConnectionInfo server) => "cors".Equals(server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
+
         /// <summary>
         /// Determines if the User-Agent specified "cross-site" in the Sec-Site header, OR 
         /// the connection spcified an origin header and the origin's host does not match the 
@@ -228,6 +226,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             return "cross-site".Equals(server.Headers[SEC_HEADER_SITE], StringComparison.OrdinalIgnoreCase) 
                 || (server.Origin != null && !server.RequestUri.DnsSafeHost.Equals(server.Origin.DnsSafeHost, StringComparison.Ordinal));
         }
+
         /// <summary>
         /// Is the connection user-agent created, or automatic
         /// </summary>
@@ -235,12 +234,14 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <returns>true if sec-user header was set to "?1"</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsUserInvoked(this IConnectionInfo server) => "?1".Equals(server.Headers[SEC_HEADER_USER], StringComparison.OrdinalIgnoreCase);
+
         /// <summary>
         /// Was this request created from normal user navigation
         /// </summary>
         /// <returns>true if sec-mode set to "navigate"</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNavigation(this IConnectionInfo server) => "navigate".Equals(server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
+
         /// <summary>
         /// Determines if the client specified "no-cache" for the cache control header, signalling they do not wish to cache the entity
         /// </summary>
@@ -250,6 +251,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             string? cache_header = server.Headers[HttpRequestHeader.CacheControl];
             return !string.IsNullOrWhiteSpace(cache_header) && cache_header.Contains("no-cache", StringComparison.OrdinalIgnoreCase);
         }
+
         /// <summary>
         /// Sets the response cache headers to match the requested caching type. Does not check against request headers
         /// </summary>
@@ -266,6 +268,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Set the cache hader string using the http helper class
             server.Headers[HttpResponseHeader.CacheControl] = HttpHelpers.GetCacheString(type, maxAge);
         }
+
         /// <summary>
         /// Sets the Cache-Control response header to <see cref="NO_CACHE_RESPONSE_HEADER_VALUE"/>
         /// and the pragma response header to 'no-cache'
@@ -291,6 +294,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool EnpointPortsMatch(this IConnectionInfo server) => server.RequestUri.Port == server.LocalEndpoint.Port;
+
         /// <summary>
         /// Determines if the host of the current request URI matches the referer header host
         /// </summary>
@@ -300,6 +304,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         {
             return server.RequestUri.DnsSafeHost.Equals(server.Referer?.DnsSafeHost, StringComparison.OrdinalIgnoreCase);
         }
+
         /// <summary>
         /// Expires a client's cookie
         /// </summary>
@@ -314,6 +319,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         {
             server.SetCookie(name, string.Empty, domain, path, TimeSpan.Zero, sameSite, false, secure);
         }
+
         /// <summary>
         /// Sets a cookie with an infinite (session life-span)
         /// </summary>
@@ -403,6 +409,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Get user-agent and determine if its a browser
             return server.UserAgent != null && !server.UserAgent.Contains("bot", StringComparison.OrdinalIgnoreCase) && server.UserAgent.Contains("Mozilla", StringComparison.OrdinalIgnoreCase);
         }
+
         /// <summary>
         /// Determines if the current connection is the loopback/internal network adapter
         /// </summary>
@@ -443,6 +450,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <returns>The real ip of the connection</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IPAddress GetTrustedIp(this IConnectionInfo server) => GetTrustedIp(server, server.IsBehindDownStreamServer());
+
         /// <summary>
         /// Gets the real IP address of the request if behind a trusted downstream server, otherwise returns the transport remote ip address
         /// </summary>

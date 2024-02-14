@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -22,6 +22,7 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System.Threading;
 using System.Reflection;
 using System.Collections.Generic;
 
@@ -67,10 +68,14 @@ namespace VNLib.Plugins.Essentials.Middleware
         }
 
         ///<inheritdoc/>
-        public LinkedListNode<IHttpMiddleware>? GetCurrentHead() => _middlewares.First;
+        public LinkedListNode<IHttpMiddleware>? GetCurrentHead()
+        {
+            LinkedList<IHttpMiddleware> currentTable = Volatile.Read(ref _middlewares);
+            return currentTable.First;
+        }
 
         ///<inheritdoc/>
-        public void RemoveMiddleware(IHttpMiddleware middleware)
+        public void Remove(IHttpMiddleware middleware)
         {
             lock (_middlewares)
             {
@@ -81,7 +86,7 @@ namespace VNLib.Plugins.Essentials.Middleware
                 newTable.Remove(middleware);
 
                 //Replace the current table with the new one
-                _middlewares = newTable;
+                Volatile.Write(ref _middlewares, newTable);
             }
         }
     }

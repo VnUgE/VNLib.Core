@@ -119,18 +119,19 @@ namespace VNLib.Plugins.Runtime
         /// Manually reload the internal <see cref="IPluginAssemblyLoader"/>
         /// which will reload the assembly and re-initialize the controller
         /// </summary>
+        /// <param name="forceGc">A value that indicates if the current unload should cause a manual garbage collection</param>
         /// <exception cref="AggregateException"></exception>
         /// <exception cref="NotSupportedException"></exception>
-        public void ReloadPlugins()
+        public void ReloadPlugins(bool forceGc)
         {
             //Not unloadable
-            if (!Loader.Config.Unloadable)
+            if (!Config.Unloadable)
             {
                 throw new NotSupportedException("The loading context is not unloadable, you may not dynamically reload plugins");
             }
-            
+
             //All plugins must be unloaded first
-            UnloadPlugins();
+            UnloadAll(forceGc);
 
             //Reload the assembly and 
             InitializeController();
@@ -152,8 +153,9 @@ namespace VNLib.Plugins.Runtime
         /// then attempts to unload the <see cref="IPluginAssemblyLoader"/> if dynamic unloading 
         /// is enabled, otherwise does nothing.
         /// </summary>
+        /// <param name="forceGc">A value that indicates if the current unload should cause a manual garbage collection</param>
         /// <exception cref="AggregateException"></exception>
-        public void UnloadAll()
+        public void UnloadAll(bool forceGc)
         {
             UnloadPlugins();
 
@@ -161,6 +163,13 @@ namespace VNLib.Plugins.Runtime
             if (Config.Unloadable)
             {
                 Loader.Unload();
+            }
+
+            //Optionally wait for GC to finish
+            if (forceGc)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
             }
         }
 

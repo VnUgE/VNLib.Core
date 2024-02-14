@@ -39,7 +39,7 @@ using VNLib.Plugins.Runtime.Services;
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
 
-    internal sealed record class PluginStackInitializer(PluginLoadEventListener Listener, IPluginStack Stack, IManualPlugin[] ManualPlugins, bool ConcurrentLoad) 
+    internal sealed class PluginStackInitializer(PluginRutimeEventHandler Listener, IPluginStack Stack, IManualPlugin[] ManualPlugins, bool ConcurrentLoad) 
         : IPluginInitializer
     {
         private readonly LinkedList<IManagedPlugin> _managedPlugins = new();
@@ -64,7 +64,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             Array.ForEach(wrapper, p => p.Plugin.Controller.Register(Listener, p));
 
             //Add manual plugins to list of managed plugins
-            Array.ForEach(ManualPlugins, p => _manualPlugins.AddLast(new ManualPluginWrapper(p)));
+            Array.ForEach(ManualPlugins, p => _manualPlugins.AddLast(new ManualPluginWrapper(Listener, p)));
         }
 
         ///<inheritdoc/>
@@ -103,7 +103,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 _loadedPlugins.TryForeach(_loadedPlugins => LoadPlugin(_loadedPlugins, debugLog));
             }
 
-            return _loadedPlugins.ToArray();
+            return [.. _loadedPlugins];
         }
 
         ///<inheritdoc/>
@@ -112,7 +112,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             Stack.UnloadAll();
 
             //Unload manual plugins in listener
-            _managedPlugins.TryForeach(mp => Listener.OnPluginUnloaded(mp));
             _manualPlugins.TryForeach(static mp => mp.Unload());
         }
 
@@ -121,13 +120,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             Stack.ReloadAll();
 
-            //Unload manual plugins in listener, then call the unload method
-            _managedPlugins.TryForeach(mp => Listener.OnPluginUnloaded(mp));
+            //Unload manual plugins in listener
             _manualPlugins.TryForeach(static mp => mp.Unload());
 
             //Load, then invoke on-loaded events 
             _manualPlugins.TryForeach(static mp => mp.Load());
-            _managedPlugins.TryForeach(mp => Listener.OnPluginLoaded(mp));
         }
 
         ///<inheritdoc/>
@@ -191,8 +188,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 else if (plugin is ManualPluginWrapper mpw)
                 {
                     mpw.Load();
-                    //Call the on-load event in listener explicitly
-                    Listener.OnPluginLoaded(plugin);
                 }
                 else
                 {
@@ -219,14 +214,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             private ServiceContainer? _services;
 
             ///<inheritdoc/>
-            public IServiceContainer Services
-            {
-                get
-                {
-                    _ = _services ?? throw new InvalidOperationException("The service container is not currently loaded");
-                    return _services!;
-                }
-            }
+            public IServiceContainer Services => _services ?? throw new InvalidOperationException("The service container is not currently loaded");
 
             /*
             * Automatically called after the plugin has successfully loaded
@@ -275,7 +263,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             public override string ToString() => Path.GetFileName(Plugin.Config.AssemblyFile);
         }
 
-        private sealed record class ManualPluginWrapper(IManualPlugin Plugin) : IManagedPlugin, IDisposable
+        private sealed record class ManualPluginWrapper(PluginRutimeEventHandler Listener, IManualPlugin Plugin) : IManagedPlugin, IDisposable
         {
             private ServiceContainer _container = new();
 
@@ -286,10 +274,16 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             {
                 Plugin.Load();
                 Plugin.GetAllExportedServices(Services);
+
+                //Finally notify of load
+                Listener.OnPluginLoaded(this);
             }
 
             public void Unload()
             {
+                //Notify of unload
+                Listener.OnPluginUnloaded(this);
+
                 Plugin.Unload();
 
                 //Unload and re-init container

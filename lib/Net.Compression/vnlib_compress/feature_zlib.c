@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -49,6 +49,8 @@ int DeflateAllocCompressor(CompressorState* state)
 {	
 	int result, compLevel;
 	z_stream* stream;
+
+	assert(state);
 
 	/*
 	* Allocate the z-stream state on the heap so we can
@@ -148,6 +150,8 @@ int DeflateAllocCompressor(CompressorState* state)
 int DeflateFreeCompressor(CompressorState* state)
 {
 	int result;
+
+	assert(state);
 
 	/*
 	* Free the z-stream state, only if the compressor is initialized

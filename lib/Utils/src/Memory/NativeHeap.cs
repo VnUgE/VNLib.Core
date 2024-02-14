@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -28,6 +28,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Native;
+using VNLib.Utils.Extensions;
 
 namespace VNLib.Utils.Memory
 {
@@ -58,17 +59,16 @@ namespace VNLib.Utils.Memory
         /// <returns>The newly initialized <see cref="NativeHeap"/></returns>
         public unsafe static NativeHeap LoadHeap(string dllPath, DllImportSearchPath searchPath, HeapCreation creationFlags, ERRNO flags)
         {
-            //Create a flags structure
-            UnmanagedHeapDescriptor hf;
-            UnmanagedHeapDescriptor* hFlags = &hf;
-
-            //Set defaults
-            hFlags->Flags = flags;
-            hFlags->CreationFlags = creationFlags;
-            hFlags->HeapPointer = IntPtr.Zero;
+            //Create a flags structure with defaults
+            UnmanagedHeapDescriptor hFlags = new()
+            {
+                CreationFlags = creationFlags,
+                Flags = flags,
+                HeapPointer = IntPtr.Zero
+            };
 
             //Create the heap
-            return LoadHeapCore(dllPath, searchPath, hFlags);
+            return LoadHeapCore(dllPath, searchPath, &hFlags);
         }
 
         private unsafe static NativeHeap LoadHeapCore(string path, DllImportSearchPath searchPath, UnmanagedHeapDescriptor* flags)
@@ -78,34 +78,20 @@ namespace VNLib.Utils.Memory
             try
             {
                 //Open method table
-                HeapMethods table = new()
-                {
-                    //Get method delegates
-                    Alloc = library.DangerousGetMethod<AllocDelegate>(ALLOCATE_METHOD_NAME),
-
-                    Destroy = library.DangerousGetMethod<DestroyHeapDelegate>(DESTROY_METHOD_NAME),
-
-                    Free = library.DangerousGetMethod<FreeDelegate>(FREE_METHOD_NAME),
-
-                    Realloc = library.DangerousGetMethod<ReallocDelegate>(REALLOC_METHOD_NAME),
-
-                    Library = library
-                };
+                HeapMethods table = new(library);
 
                 Trace.WriteLine($"Creating user defined native heap at {path}");
 
                 //Get the create method
-                CreateHeapDelegate create = library.DangerousGetMethod<CreateHeapDelegate>(CREATE_METHOD_NAME);
+                CreateHeapDelegate create = library.DangerousGetFunction<CreateHeapDelegate>();
 
                 //Create the new heap
-                bool success = create(flags);
-                
-                if (!success)
+                if (!create(flags))
                 {
                     throw new NativeMemoryException("Failed to create the new heap, the heap create method returned a null pointer");
                 }
 
-                Trace.WriteLine($"Successfully created user defined native heap {flags->HeapPointer:x} with flags {flags->CreationFlags:x}");
+                Trace.WriteLine($"Successfully created user defined native heap 0x{flags->HeapPointer:x} with flags 0x{flags->CreationFlags:x}");
 
                 //Return the neap heap
                 return new(flags, table);
@@ -153,7 +139,7 @@ namespace VNLib.Utils.Memory
             //Cleanup the method table
             MethodTable = default;
 
-            Trace.WriteLine($"Successfully deestroyed user defined heap {handle:x}");
+            Trace.WriteLine($"Successfully deestroyed user defined heap 0x{handle:x}");
 
             return ret;
         }
@@ -162,14 +148,19 @@ namespace VNLib.Utils.Memory
          * Delegate methods match the native header impl for unmanaged heaps
          */
 
+        [SafeMethodName(CREATE_METHOD_NAME)]
         unsafe delegate ERRNO CreateHeapDelegate(UnmanagedHeapDescriptor* createFlags);
 
+        [SafeMethodName(ALLOCATE_METHOD_NAME)]
         delegate IntPtr AllocDelegate(IntPtr handle, nuint elements, nuint alignment, [MarshalAs(UnmanagedType.Bool)] bool zero);
 
+        [SafeMethodName(REALLOC_METHOD_NAME)]
         delegate IntPtr ReallocDelegate(IntPtr heap, IntPtr block, nuint elements, nuint alignment, [MarshalAs(UnmanagedType.Bool)] bool zero);
 
+        [SafeMethodName(FREE_METHOD_NAME)]
         delegate ERRNO FreeDelegate(IntPtr heap, IntPtr block);
 
+        [SafeMethodName(DESTROY_METHOD_NAME)]
         delegate ERRNO DestroyHeapDelegate(IntPtr heap);
 
         [StructLayout(LayoutKind.Sequential)]
@@ -182,17 +173,12 @@ namespace VNLib.Utils.Memory
             public HeapCreation CreationFlags;
         }
 
-        readonly record struct HeapMethods
+        readonly record struct HeapMethods(SafeLibraryHandle Library)
         {
-            public readonly SafeLibraryHandle Library { get; init; }
-
-            public readonly AllocDelegate Alloc { get; init; }
-
-            public readonly ReallocDelegate Realloc { get; init; }
-
-            public readonly FreeDelegate Free { get; init; }
-
-            public readonly DestroyHeapDelegate Destroy { get; init; }
+            public readonly AllocDelegate Alloc = Library.DangerousGetFunction<AllocDelegate>();
+            public readonly ReallocDelegate Realloc = Library.DangerousGetFunction<ReallocDelegate>();
+            public readonly FreeDelegate Free = Library.DangerousGetFunction<FreeDelegate>();
+            public readonly DestroyHeapDelegate Destroy = Library.DangerousGetFunction<DestroyHeapDelegate>();
         }
     }
 }

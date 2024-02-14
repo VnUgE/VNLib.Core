@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -42,6 +42,16 @@ namespace VNLib.Hashing.IdentityUtility
         internal const byte SAEF_PERIOD = 0x2e;
         internal const byte PADDING_BYTES = 0x3d;
 
+        private const int E_INVALID_DATA = 0;
+        private const int E_INVALID_HEADER = -1;
+        private const int E_INVALID_PAYLOAD = -2;
+
+        private static readonly string[] ERR_STRINGS = [
+            "The supplied data buffer is empty or malformatted",
+            "The supplied data is not a valid Json Web Token, header end symbol could not be found",
+            "The supplied data is not a valid Json Web Token, payload end symbol could not be found"
+        ];
+
         /// <summary>
         /// Parses a JWT from a Base64URL encoded character buffer
         /// </summary>
@@ -57,10 +67,7 @@ namespace VNLib.Hashing.IdentityUtility
             heap ??= MemoryUtil.Shared;
             textEncoding ??= Encoding.UTF8;
 
-            if (urlEncJwtString.IsEmpty)
-            {
-                throw new ArgumentException("The JWT string is empty", nameof(urlEncJwtString));
-            }
+            ArgumentOutOfRangeException.ThrowIfZero(urlEncJwtString.Length, nameof(urlEncJwtString));
 
             //Calculate the decoded size of the characters to alloc a buffer
             int utf8Size = textEncoding.GetByteCount(urlEncJwtString);
@@ -74,6 +81,63 @@ namespace VNLib.Hashing.IdentityUtility
             //Parse and return the jwt
             return ParseRaw(binBuffer.Span[..utf8Size], heap);
         }
+
+        /// <summary>
+        /// Attempts to parse a buffer of UTF8 bytes of url encoded base64 characters
+        /// </summary>
+        /// <param name="utf8JWTData">The utf8 encoded data to parse</param>
+        /// <param name="jwt">The JWT output reference</param>
+        /// <param name="heap">The heap to allocate internal buffers from</param>
+        /// <returns>A positive ERRNO value, 0 or negative numbers if the parsing failed</returns>
+        /// <exception cref="OutOfMemoryException"></exception>
+        public static ERRNO TryParseRaw(ReadOnlySpan<byte> utf8JWTData, out JsonWebToken? jwt, IUnmangedHeap? heap = null)
+        {
+            if(utf8JWTData.IsEmpty)
+            {
+                jwt = null;
+                return E_INVALID_DATA;
+            }
+
+            //Set default heap of non was specified
+            heap ??= MemoryUtil.Shared;
+
+            //Alloc the token and copy the supplied data to a new mem stream
+            jwt = new(heap, new (heap, utf8JWTData));
+            try
+            {
+                ForwardOnlyReader<byte> reader = new(utf8JWTData);
+
+                //Search for the first period to indicate the end of the header section
+                jwt.HeaderEnd = reader.Window.IndexOf(SAEF_PERIOD);
+
+                //Make sure a '.' was found
+                if (jwt.HeaderEnd < 0)
+                {
+                    return E_INVALID_HEADER;
+                }
+
+                //Shift buffer window
+                reader.Advance(jwt.PayloadStart);
+
+                //Search for next period to end the payload
+                jwt.PayloadEnd = jwt.PayloadStart + reader.Window.LastIndexOf(SAEF_PERIOD);
+
+                //Make sure a '.' was found
+                if (jwt.PayloadEnd < 0)
+                {
+                    return E_INVALID_PAYLOAD;
+                }
+                //signature is set automatically
+                //return the new token
+                return ERRNO.SUCCESS;
+            }
+            catch
+            {
+                jwt.Dispose();
+                jwt = null;
+                throw;
+            }
+        }
         
         /// <summary>
         /// Parses a buffer of UTF8 bytes of url encoded base64 characters
@@ -86,49 +150,21 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="OutOfMemoryException"></exception>
         public static JsonWebToken ParseRaw(ReadOnlySpan<byte> utf8JWTData, IUnmangedHeap? heap = null)
         {
-            if (utf8JWTData.IsEmpty)
+            int result = TryParseRaw(utf8JWTData, out JsonWebToken? jwt, heap);
+
+            //Raise exception if the parse failed
+            switch (result)
             {
-                throw new ArgumentException("JWT data may not be empty", nameof(utf8JWTData));
+                case 1:
+                    break;
+                case 0:
+                    throw new ArgumentException(ERR_STRINGS[result]);
+                default:
+                    //Since error codes are negative, use the absolute value to index the error strings
+                    throw new FormatException(ERR_STRINGS[Math.Abs(result)]);
             }
-            
-            //Set default heap of non was specified
-            heap ??= MemoryUtil.Shared;
 
-            //Alloc the token and copy the supplied data to a new mem stream
-            JsonWebToken jwt = new(heap, new (heap, utf8JWTData));
-            try
-            {
-                ForwardOnlyReader<byte> reader = new(utf8JWTData);
-               
-                //Search for the first period to indicate the end of the header section
-                jwt.HeaderEnd = reader.Window.IndexOf(SAEF_PERIOD);
-
-                //Make sure a '.' was found
-                if (jwt.HeaderEnd < 0)
-                {
-                    throw new FormatException("The supplied data is not a valid Json Web Token, header end symbol could not be found");
-                }
-
-                //Shift buffer window
-                reader.Advance(jwt.PayloadStart);
-
-                //Search for next period to end the payload
-                jwt.PayloadEnd = jwt.PayloadStart + reader.Window.LastIndexOf(SAEF_PERIOD);
-
-                //Make sure a '.' was found
-                if (jwt.PayloadEnd < 0)
-                {
-                    throw new FormatException("The supplied data is not a valid Json Web Token, payload end symbol could not be found");
-                }
-                //signature is set automatically
-                //return the new token
-                return jwt;
-            }
-            catch
-            {
-                jwt.Dispose();
-                throw;
-            }
+            return jwt!;
         }
 
 
@@ -158,6 +194,9 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="initialData">The initial data of the jwt</param>
         protected JsonWebToken(IUnmangedHeap heap, VnMemoryStream initialData)
         {
+            ArgumentNullException.ThrowIfNull(initialData);
+            ArgumentNullException.ThrowIfNull(heap);
+
             Heap = heap;
             DataStream = initialData;
             

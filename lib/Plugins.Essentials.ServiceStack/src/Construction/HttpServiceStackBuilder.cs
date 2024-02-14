@@ -168,7 +168,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         private PluginStackInitializer GetPluginStack(ServiceDomain domain)
         {
             //Always init manual array
-            manualPlugins ??= Array.Empty<IManualPlugin>();
+            manualPlugins ??= [];
 
             //Only load plugins if the callback is configured
             IPluginStack? plugins = _getPlugins?.Invoke();

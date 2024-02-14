@@ -8,12 +8,11 @@ file(GLOB HEADERS *.h)
 #Add indepednent source files to the project
 set(VNLIB_RPMALLOC_SOURCES 
 	"vnlib_rpmalloc.c" 
-	"../rpmalloc/rpmalloc.c"
+	"vendor/rpmalloc.c"
 )
 
 #add rpmalloc includes, there will only be one library
-include_directories(../rpmalloc)
-include_directories(../NativeHeapApi/src)
+include_directories(vendor)
 
 #set options for greedy allocator defaults
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)

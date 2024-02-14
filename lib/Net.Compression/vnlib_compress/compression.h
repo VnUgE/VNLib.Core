@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -153,5 +153,72 @@ typedef struct CompressionOperationStruct {
 	uint32_t bytesWritten;
 
 } CompressionOperation;
+
+/*
+* Public API functions
+*/
+VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void);
+
+/*
+* Returns the suggested block size for the underlying compressor.
+* 
+* @param compressor A pointer to the desired compressor instance to query.
+* @return The suggested block size for the underlying compressor in bytes
+*/
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ const void* compressor);
+
+/*
+* Gets the compressor type of the specified compressor instance.
+* 
+* @param compressor A pointer to the desired compressor instance to query.
+* @return The type of the specified compressor instance.
+*/
+VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ const void* compressor);
+
+/*
+* Gets the compression level of the specified compressor instance.
+* 
+* @param compressor A pointer to the desired compressor instance to query.
+* @return The compression level of the specified compressor instance.
+*/
+VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ const void* compressor);
+
+/*
+* Allocates a new compressor instance on the native heap of the desired compressor type.
+* 
+* @param type The desired compressor type.
+* @param level The desired compression level.
+* @return A pointer to the newly allocated compressor instance. NULL if the compressor 
+could not be allocated.
+*/
+VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionLevel level);
+
+/*
+* Frees a previously allocated compressor instance.
+* 
+* @param compressor A pointer to the desired compressor instance to free.
+* @return The underlying compressor's native return code.
+*/
+VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor);
+
+/*
+* Computes the maximum compressed size of the specified input data. This is not supported
+ for all compression types.
+* 
+* @param compressor A pointer to the initialized compressor instance to use.
+* @param inputLength The length of the input data in bytes.
+* @return The maximum compressed size of the specified input data in bytes.
+*/
+VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ const void* compressor, uint64_t inputLength, int32_t flush);
+
+
+/*
+* Perform compression operation using the specified compressor instance.
+* 
+* @param compressor A pointer to the initialized compressor instance to use.
+* @param operation A pointer to the compression operation structure
+* @return The underlying compressor's native return code
+*/
+VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ const void* compressor, CompressionOperation* operation);
 
 #endif /* !VNLIB_COMPRESS_MAIN_H_ */

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -24,6 +24,7 @@
 
 using System;
 using System.Text;
+using System.Diagnostics;
 using System.Security.Cryptography;
 
 using VNLib.Utils;
@@ -49,7 +50,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ArgumentNullException"></exception>
         public static string ComputeBase64Hash(this HMAC hmac, ReadOnlySpan<char> data, Encoding? encoding = null)
         {
-            _ = hmac ?? throw new ArgumentNullException(nameof(hmac));
+            ArgumentNullException.ThrowIfNull(hmac);
             
             encoding ??= Encoding.UTF8;
             
@@ -64,10 +65,11 @@ namespace VNLib.Hashing.IdentityUtility
             
             Span<byte> encBuffer = buffer.Span[0..encBufSize];
             Span<byte> hashBuffer = buffer.Span[encBufSize..];
-            
+
             //Encode data
-            _ = encoding.GetBytes(data, encBuffer);
-            
+            int encoed = encoding.GetBytes(data, encBuffer);
+            Debug.Assert(encoed == encBufSize, "Encoder actual encoded bytes not equal to computed encoding size");
+
             //compute hash
             if (!hmac.TryComputeHash(encBuffer, hashBuffer, out int hashBytesWritten))
             {
@@ -77,7 +79,7 @@ namespace VNLib.Hashing.IdentityUtility
             //Convert to base64 string
             return Convert.ToBase64String(hashBuffer[..hashBytesWritten]);
         }
-        
+
         /// <summary>
         /// Computes the hash of the raw data and compares the computed hash against 
         /// the specified base64hash
@@ -87,22 +89,15 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="base64Hmac">The base64 hash to verify against</param>
         /// <param name="encoding">The encoding used to encode the raw data balue</param>
         /// <returns>A value indicating if the hash values match</returns>
-        /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static bool VerifyBase64Hash(this HMAC hmac, ReadOnlySpan<char> base64Hmac, ReadOnlySpan<char> raw, Encoding? encoding = null)
         {
-            _ = hmac ?? throw new ArgumentNullException(nameof(hmac));
-            
-            if (raw.IsEmpty)
-            {
-                throw new ArgumentException("Raw data buffer must not be empty", nameof(raw));
-            }
-            
-            if (base64Hmac.IsEmpty)
-            {
-                throw new ArgumentException("Hmac buffer must not be empty", nameof(base64Hmac));
-            }
+            ArgumentNullException.ThrowIfNull(hmac);
+
+            ArgumentOutOfRangeException.ThrowIfZero(raw.Length, nameof(raw));
+            ArgumentOutOfRangeException.ThrowIfZero(base64Hmac.Length, nameof(base64Hmac));
             
             encoding ??= Encoding.UTF8;
             
@@ -119,8 +114,9 @@ namespace VNLib.Hashing.IdentityUtility
             Span<byte> base64Buf = buffer.Span[rawDataBufSize..];
             
             //encode
-            _ = encoding.GetBytes(raw, rawDataBuf);
-            
+            int encoed = encoding.GetBytes(raw, rawDataBuf);
+            Debug.Assert(encoed == rawDataBufSize, "Encoder actual encoded bytes not equal to computed encoding size");
+
             //Convert to binary
             if(!Convert.TryFromBase64Chars(base64Hmac, base64Buf, out int base64Converted))
             {
@@ -130,7 +126,7 @@ namespace VNLib.Hashing.IdentityUtility
             //Compare hash buffers
             return hmac.VerifyHash(base64Buf[0..base64Converted], rawDataBuf);
         }
-        
+
         /// <summary>
         /// Computes the hash of the raw data and compares the computed hash against 
         /// the specified hash
@@ -139,23 +135,15 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="raw">The raw data to verify the hash of</param>
         /// <param name="hash">The hash to compare against the computed data</param>
         /// <returns>A value indicating if the hash values match</returns>
-        /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static bool VerifyHash(this HMAC hmac, ReadOnlySpan<byte> hash, ReadOnlySpan<byte> raw)
         {
-            _ = hmac ?? throw new ArgumentNullException(nameof(hmac));
-            
-            if (raw.IsEmpty)
-            {
-                throw new ArgumentException("Raw data buffer must not be empty", nameof(raw));
-            }
-            
-            if (hash.IsEmpty)
-            {
-                throw new ArgumentException("Hash buffer must not be empty", nameof(hash));
-            }
-            
+            ArgumentNullException.ThrowIfNull(hmac);
+            ArgumentOutOfRangeException.ThrowIfZero(raw.Length, nameof(raw));
+            ArgumentOutOfRangeException.ThrowIfZero(hash.Length, nameof(hash));
+
             //Calc hashsize to alloc buffer
             int hashBufSize = hmac.HashSize / 8;
             
@@ -187,7 +175,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="ObjectDisposedException"></exception>
         public static ERRNO TryEncrypt(this RSA alg, ReadOnlySpan<char> data, Span<byte> output, RSAEncryptionPadding padding, Encoding? enc = null)
         {
-            _ = alg ?? throw new ArgumentNullException(nameof(alg));
+            ArgumentNullException.ThrowIfNull(alg);
             
             //Default to UTF8 encoding
             enc ??= Encoding.UTF8;
@@ -215,6 +203,9 @@ namespace VNLib.Hashing.IdentityUtility
         {
             return alg switch
             {
+                HashAlg.SHA3_512 => HashAlgorithmName.SHA3_512,
+                HashAlg.SHA3_384 => HashAlgorithmName.SHA3_384,
+                HashAlg.SHA3_256 => HashAlgorithmName.SHA3_256,
                 HashAlg.SHA512 => HashAlgorithmName.SHA512,
                 HashAlg.SHA384 => HashAlgorithmName.SHA384,
                 HashAlg.SHA256 => HashAlgorithmName.SHA256,

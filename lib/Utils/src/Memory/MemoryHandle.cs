@@ -118,7 +118,7 @@ namespace VNLib.Utils.Memory
         /// <param name="initial">The initial block of allocated memory to wrap</param>
         internal MemoryHandle(IUnmangedHeap heap, IntPtr initial, nuint elements, bool zero) : base(true)
         {
-            //Set element size (always allocate at least 1 object)
+            //Set element size
             _length = elements;
             ZeroMemory = zero;
             //assign heap ref

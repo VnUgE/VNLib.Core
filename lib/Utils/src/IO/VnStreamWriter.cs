@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -130,11 +130,7 @@ namespace VNLib.Utils.IO
         }
 
         ///<inheritdoc/>
-        public override void Write(char value)
-        {
-            ReadOnlySpan<char> tbuf = MemoryMarshal.CreateSpan(ref value, 0x01);
-            Write(tbuf);
-        }
+        public override void Write(char value) => Write(new Span<char>(ref value));
 
         ///<inheritdoc/>
         public override void Write(object? value) => Write(value?.ToString());
@@ -310,15 +306,9 @@ namespace VNLib.Utils.IO
             Close();
             base.Dispose(disposing);
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Check()
-        {
-            if (closed)
-            {
-                throw new ObjectDisposedException("The stream is closed");
-            }
-        }
+        private void Check() => ObjectDisposedException.ThrowIf(closed, this);
 
         ///<inheritdoc/>
         public override async ValueTask DisposeAsync()

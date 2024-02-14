@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -33,20 +33,14 @@ namespace VNLib.Plugins.Essentials
     public interface IWebProcessor : IWebRoot
     {
         /// <summary>
-        /// The filesystem entrypoint path for the site
-        /// </summary>
-        string Directory { get; }
-
-        /// <summary>
         /// Gets the EP processing options
         /// </summary>
-        IEpProcessingOptions Options { get; }
+        EventProcessorConfig Options { get; }
 
         /// <summary>
-        /// The shared <see cref="IAccountSecurityProvider"/> that provides 
-        /// user account security operations
+        /// Gets the account security provider
         /// </summary>
-        IAccountSecurityProvider AccountSecurity { get; }
+        IAccountSecurityProvider? AccountSecurity { get; }
        
         /// <summary>
         /// <para>

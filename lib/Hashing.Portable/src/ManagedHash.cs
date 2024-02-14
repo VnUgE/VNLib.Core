@@ -90,21 +90,27 @@ namespace VNLib.Hashing
         /// Gets a value that indicates whether the current platform supports the SHA3 
         /// hashing algorithm.
         /// </summary>
-        public static bool SupportsSha3
-        {
-            get
-            {
-                if (Sha3_512.IsSupported)
-                {
-                    //Assume others are supported too
-                    Debug.Assert(Sha3_384.IsSupported);
-                    Debug.Assert(Sha3_256.IsSupported);
-                    return true;
-                }
+        public static bool SupportsSha3 { get; } = IsAlgSupported(HashAlg.SHA3_512) && IsAlgSupported(HashAlg.SHA3_384) && IsAlgSupported(HashAlg.SHA3_256);       
 
-                return false;
-            }
-        }
+        /// <summary>
+        /// Determines if the specified hash algorithm is supported by 
+        /// the current runtime.
+        /// </summary>
+        /// <param name="type">The algorithm to verify</param>
+        /// <returns>A value that indicates if the algorithm is supported</returns>
+        public static bool IsAlgSupported(HashAlg type) => type switch
+        {
+            HashAlg.SHA3_512 => Sha3_512.IsSupported,
+            HashAlg.SHA3_384 => Sha3_384.IsSupported,
+            HashAlg.SHA3_256 => Sha3_256.IsSupported,
+            HashAlg.BlAKE2B => SupportsBlake2b,
+            HashAlg.SHA512 => true,
+            HashAlg.SHA384 => true,
+            HashAlg.SHA256 => true,
+            HashAlg.SHA1 => true,
+            HashAlg.MD5 => true,
+            _ => false
+        };
 
         /// <summary>
         /// Uses the UTF8 character encoding to encode the string, then 
@@ -367,7 +373,7 @@ namespace VNLib.Hashing
                 _ => throw new ArgumentException("Invalid hash algorithm", nameof(alg))
             };
 
-            static ERRNO computeHashInternal<T>(in T algorithm, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key = default)
+            static ERRNO computeHashInternal<T>(ref readonly T algorithm, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key = default)
                where T : IHashAlgorithm
             {
                 //hash the buffer or hmac if key is not empty

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -29,28 +29,76 @@
 /*
 * Stub missing types and constants for GCC
 */
-#if defined(__GNUC__)
-#define inline __inline__
-#define VNLIB_EXPORT __attribute__((visibility("default")))
-#define VNLIB_CC 
-#elif defined(_MSC_VER)
-#define VNLIB_EXPORT __declspec(dllexport)
-#define VNLIB_CC __cdecl
-#endif /* WIN32 */
 
-#define ERR_INVALID_PTR -1
-#define ERR_OUT_OF_MEMORY -2
+#if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
+	#define IS_WINDOWS
+#endif
 
-#define TRUE 1
-#define FALSE 0
+//Set api export calling convention (allow used to override)
+#ifndef VNLIB_CC
+	#ifdef IS_WINDOWS
+		//STD for importing to other languages such as .NET
+		#define VNLIB_CC __stdcall
+	#else
+		#define VNLIB_CC 
+	#endif
+#endif // !VNLIB_CC
 
+#ifndef VNLIB_EXPORT	//Allow users to disable the export/impoty macro if using source code directly
+	#ifdef VNLIB_EXPORTING
+		#ifdef IS_WINDOWS
+			#define VNLIB_EXPORT __declspec(dllexport)
+		#else
+			#define VNLIB_EXPORT __attribute__((visibility("default")))
+		#endif // IS_WINDOWS
+	#else
+		#ifdef IS_WINDOWS
+			#define VNLIB_EXPORT __declspec(dllimport)
+		#else
+			#define VNLIB_EXPORT
+		#endif // IS_WINDOWS
+	#endif // !VNLIB_EXPORTING
+#endif // !VNLIB_EXPORT
+
+
+/* If not Windows, define inline */
+#ifndef IS_WINDOWS
+	#ifndef inline
+		#define inline __inline__
+	#endif // !inline
+#endif // !IS_WINDOWS
+
+//NULL
 #ifndef NULL
-#define NULL 0
-#endif /* !NULL */
+	#define NULL ((void*)0)
+#endif // !NULL
+
+#ifndef TRUE
+	#define TRUE 1
+#endif // !TRUE
+
+#ifndef FALSE
+	#define FALSE 0
+#endif // !FALSE
 
 #ifndef _In_
-#define _In_
+	#define _In_
 #endif
+
+/*
+* Add debug runtime assertions
+*/
+#ifdef DEBUG
+	#include <assert.h>
+#else
+	#define assert(x) {}
+#endif
+
+/*
+* ERRORS AND CONSTANTS
+*/
+#define ERR_INVALID_PTR -1
+#define ERR_OUT_OF_MEMORY -2
 
 #if defined(VNLIB_CUSTOM_MALLOC_ENABLE)
 
@@ -60,15 +108,6 @@
 
 #include <NativeHeapApi.h>
 
-/*
-* Add debug runtime assertions
-*/
-#ifdef DEBUG
-  #define NDEBUG
-  #include <assert.h>
-#else
-  #define assert(x)
-#endif
 
 /*
 * Add overrides for malloc, calloc, and free that use

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -44,10 +44,8 @@ namespace VNLib.Utils.Extensions
         /// <returns>The initialized structure, or default if the lookup returns null/empty string</returns>
         public static TValue GetValueType<TKey, TValue>(this IIndexable<TKey, string> lookup, TKey key) where TValue : unmanaged where TKey : notnull
         {
-            if (lookup is null)
-            {
-                throw new ArgumentNullException(nameof(lookup));
-            }
+            ArgumentNullException.ThrowIfNull(lookup);
+
             //Get value
             string value = lookup[key];
             //If the string is set, recover the value and return it
@@ -64,13 +62,12 @@ namespace VNLib.Utils.Extensions
         /// <param name="value">The value to serialze</param>
         public static void SetValueType<TKey, TValue>(this IIndexable<TKey, string> lookup, TKey key, TValue value) where TValue : unmanaged where TKey : notnull
         {
-            if (lookup is null)
-            {
-                throw new ArgumentNullException(nameof(lookup));
-            }
+            ArgumentNullException.ThrowIfNull(lookup);
+            
             //encode string from value type and store in lookup
             lookup[key] = VnEncoding.ToBase32String(value);
         }
+
         /// <summary>
         /// Executes a handler delegate on every element of the list within a try-catch block
         /// and rethrows exceptions as an <see cref="AggregateException"/>
@@ -81,15 +78,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="AggregateException"></exception>
         public static void TryForeach<T>(this IEnumerable<T> list, Action<T> handler)
         {
-            if (list is null)
-            {
-                throw new ArgumentNullException(nameof(list));
-            }
-
-            if (handler is null)
-            {
-                throw new ArgumentNullException(nameof(handler));
-            }
+            ArgumentNullException.ThrowIfNull(list);
+            ArgumentNullException.ThrowIfNull(handler);
 
             List<Exception>? exceptionList = null;
             foreach(T item in list)
@@ -101,14 +91,34 @@ namespace VNLib.Utils.Extensions
                 catch(Exception ex)
                 {
                     //Init new list and add the exception
-                    exceptionList ??= new();
+                    exceptionList ??= [];
                     exceptionList.Add(ex);
                 }
             }
+
             //Raise aggregate exception for all caught exceptions
             if(exceptionList?.Count > 0)
             {
                 throw new AggregateException(exceptionList);
+            }
+        }
+
+        /// <summary>
+        /// Eumerates the list and executes the handler delegate on each element
+        /// and fails at the first exception
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <param name="handler">The callback function to invoke on each element</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static void ForEach<T>(this IEnumerable<T> list, Action<T> handler)
+        {
+            ArgumentNullException.ThrowIfNull(list);
+            ArgumentNullException.ThrowIfNull(handler);
+
+            foreach(T item in list)
+            {
+                handler(item);
             }
         }
     }

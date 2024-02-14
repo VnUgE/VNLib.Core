@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -38,17 +38,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// </summary>
     public sealed class ServiceDomain
     {
-        private readonly LinkedList<ServiceGroup> _serviceGroups;
+        private readonly LinkedList<ServiceGroup> _serviceGroups = new();
       
         /// <summary>
         /// Gets all service groups loaded in the service manager
         /// </summary>
         public IReadOnlyCollection<ServiceGroup> ServiceGroups => _serviceGroups;
-
-        /// <summary>
-        /// Initializes a new empty <see cref="ServiceDomain"/>
-        /// </summary>
-        public ServiceDomain() => _serviceGroups = new();
 
         /// <summary>
         /// Uses the supplied callback to get a collection of virtual hosts

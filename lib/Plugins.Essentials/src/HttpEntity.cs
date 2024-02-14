@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -49,7 +49,7 @@ namespace VNLib.Plugins.Essentials
     /// A container for an <see cref="HttpEvent"/> with its attached session.
     /// This class cannot be inherited.
     /// </summary>
-    public sealed class HttpEntity : IHttpEvent
+    public sealed class HttpEntity : IHttpEvent, IDisposable
     {
 
         /// <summary>
@@ -59,7 +59,23 @@ namespace VNLib.Plugins.Essentials
 
         private readonly CancellationTokenSource EventCts;
 
-        public HttpEntity(IHttpEvent entity, IWebProcessor root)
+        /// <summary>
+        /// Creates a new <see cref="HttpEntity"/> instance with the optional 
+        /// session handle. If the session handle is set, the session will be
+        /// attached to the entity
+        /// </summary>
+        /// <param name="evnt">The event to parse and wrap</param>
+        /// <param name="root">The processor the connection has originated from</param>
+        /// <param name="session">An optional session handle to attach to the entity</param>
+        public HttpEntity(IHttpEvent evnt, IWebProcessor root, ref readonly SessionHandle session)
+            :this(evnt, root)
+        {
+            //Assign optional session and attempt to attach it
+            EventSessionHandle = session;
+            AttachSession();
+        }
+
+        internal HttpEntity(IHttpEvent entity, IWebProcessor root)
         {
             Entity = entity;
             RequestedRoot = root;
@@ -100,12 +116,9 @@ namespace VNLib.Plugins.Essentials
         }
 
         /// <summary>
-        /// Internal call to cleanup any internal resources
+        /// Cleans up internal resources
         /// </summary>
-        internal void Dispose()
-        {
-            EventCts.Dispose();
-        }
+        public void Dispose() => EventCts.Dispose();
 
         /// <summary>
         /// A token that has a scheduled timeout to signal the cancellation of the entity event
@@ -206,6 +219,20 @@ namespace VNLib.Plugins.Essentials
             }
 
             Entity.CloseResponse(code, type, entity);
+        }
+
+        ///<inheritdoc/>
+        ///<exception cref="ContentTypeUnacceptableException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CloseResponse(HttpStatusCode code, ContentType type, IHttpStreamResponse stream, long length)
+        {
+            //Verify content type matches
+            if (!Server.Accepts(type))
+            {
+                throw new ContentTypeUnacceptableException("The client does not accept the content type of the response");
+            }
+
+            Entity.CloseResponse(code, type, stream, length);
         }
 
         ///<inheritdoc/>

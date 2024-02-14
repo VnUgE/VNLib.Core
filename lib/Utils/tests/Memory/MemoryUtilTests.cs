@@ -498,6 +498,34 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(pageSize == Environment.SystemPageSize);
         }
 
+
+        [TestMethod()]
+        public void SimpleCopyTest()
+        {
+            const int blockSize = 10 * 1024;
+
+            using IMemoryHandle<byte> dest = MemoryUtil.SafeAlloc<byte>(blockSize, false);
+            using IMemoryHandle<byte> src = MemoryUtil.SafeAlloc<byte>(blockSize, false);
+
+            Assert.IsTrue(src.Length == dest.Length);
+
+            //Fill source with random data
+            RandomNumberGenerator.Fill(src.Span);
+
+            //Copy
+            MemoryUtil.Copy(src, 0, dest, 0, blockSize);
+
+            //Confirm data is the same
+            Assert.IsTrue(src.Span.SequenceEqual(dest.Span));
+
+            //try with array
+            byte[] destArray = new byte[blockSize];
+            MemoryUtil.CopyArray(src, 0, destArray, 0, blockSize);
+
+            //Confirm data is the same
+            Assert.IsTrue(src.Span.SequenceEqual(destArray));
+        }
+
         [TestMethod()]
         public void AllocNearestPage()
         {
@@ -663,7 +691,7 @@ namespace VNLib.Utils.Memory.Tests
         }
 
         [TestMethod]
-        public void CopyTest()
+        public void CopyArgsTest()
         {
             /*
              * Testing the MemoryUtil.Copy/CopyArray family of functions and their overloads
@@ -685,8 +713,11 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(ReadOnlyMemory<byte>.Empty, 0, null, 0, 1));
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(ReadOnlySpan<byte>.Empty, 0, null, 0, 1));
            
-            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(null, 0, testArray, 0, 1));
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray((IMemoryHandle<byte>)null, 0, testArray, 0, 1));
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(testHandle, 0, null, 0, 1));
+
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(null, 0, testHandle, 0, 1));
+            Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(testArray, 0, (byte[])null, 0, 1));
 
 
             /*
@@ -703,6 +734,9 @@ namespace VNLib.Utils.Memory.Tests
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(Array.Empty<byte>(), 0, testHandle, 0, 1));
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testHandle, 0, Array.Empty<byte>(), 0, 1));
+
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(Array.Empty<byte>(), 0, Array.Empty<byte>(), 0, 1));
+           
 
 
             /*
@@ -739,6 +773,11 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testArray, 0, testHandle, 1, 16));
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testArray, 1, testHandle, 0, 16));
 
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testArray, 0, new byte[16], 0, 17));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(new byte[16], 0, testArray, 1, 16));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(new byte[16], 1, testArray, 0, 16));
+
+
             /*
              * Test inbounds test values
              */
@@ -769,6 +808,7 @@ namespace VNLib.Utils.Memory.Tests
             MemoryUtil.CopyArray(testHandle, 0, testArray, 1, 15);
             MemoryUtil.CopyArray(testHandle, 1, testArray, 0, 15);
 
+
             MemoryUtil.CopyArray(testArray, 0, testHandle, 0, 16);
             MemoryUtil.CopyArray(testArray, 0, testHandle, 1, 15);
             MemoryUtil.CopyArray(testArray, 1, testHandle, 0, 15);
@@ -784,6 +824,7 @@ namespace VNLib.Utils.Memory.Tests
             MemoryUtil.Copy(testMem.Span, 0, testHandle, 0, 0);
             MemoryUtil.CopyArray(testHandle, 0, testArray, 0, 0);
             MemoryUtil.CopyArray(testArray, 0, testHandle, 0, 0);
+            MemoryUtil.CopyArray(testArray, 0, [], 0, 0);
 
              /*
               * Test negative values for span/memory overloads that 

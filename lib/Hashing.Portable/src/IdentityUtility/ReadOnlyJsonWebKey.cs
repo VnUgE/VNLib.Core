@@ -45,7 +45,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// This will call <see cref="JsonElement.Clone"/> on the element and store an internal copy
         /// </summary>
         /// <param name="keyElement">The <see cref="JsonElement"/> to create the <see cref="ReadOnlyJsonWebKey"/> from</param>
-        public ReadOnlyJsonWebKey(in JsonElement keyElement)
+        public ReadOnlyJsonWebKey(ref readonly JsonElement keyElement)
         {
             _jwk = keyElement.Clone();
             //Set initial values

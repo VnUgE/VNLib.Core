@@ -278,8 +278,6 @@ namespace VNLib.Net.Transport.Tcp
         /// <exception cref="InvalidOperationException"></exception>
         public ValueTask<ITcpConnectionDescriptor> AcceptConnectionAsync(CancellationToken cancellation)
         {
-            _ = WaitingSockets ?? throw new InvalidOperationException("Server is not listening");
-
             //Try get args from queue
             if (WaitingSockets.TryDequeue(out ITcpConnectionDescriptor? args))
             {
@@ -293,16 +291,18 @@ namespace VNLib.Net.Transport.Tcp
         /// Cleanly closes an existing TCP connection obtained from <see cref="AcceptConnectionAsync(CancellationToken)"/>
         /// and returns the instance to the pool for reuse. 
         /// <para>
-        /// You should destroy all references to the
-        /// connection descriptor and dispose the stream returned from <see cref="ITcpConnectionDescriptor.GetStream"/>
+        /// If you set <paramref name="reuse"/> to true, the server will attempt to reuse the descriptor instance, you 
+        /// must ensure that all previous references to the descriptor are destroyed. If the value is false, resources 
+        /// are freed and the instance is disposed.
         /// </para>
         /// </summary>
         /// <param name="descriptor">The existing descriptor to close</param>
+        /// <param name="reuse">A value that indicates if the server can safley reuse the descriptor instance</param>
         /// <returns>A task that represents the closing operations</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public async ValueTask CloseConnectionAsync(ITcpConnectionDescriptor descriptor)
+        public async ValueTask CloseConnectionAsync(ITcpConnectionDescriptor descriptor, bool reuse)
         {
-            ArgumentNullException.ThrowIfNull(descriptor, nameof(descriptor));
+            ArgumentNullException.ThrowIfNull(descriptor);
 
             //Recover args
             AwaitableAsyncServerSocket args = (AwaitableAsyncServerSocket)descriptor;
@@ -312,15 +312,21 @@ namespace VNLib.Net.Transport.Tcp
             //Close the socket and cleanup resources
             SocketError err = await args.CloseConnectionAsync();
 
-            if (err == SocketError.Success)
+            if (err != SocketError.Success)
+            {
+                _config.Log.Verbose("Socket disconnect failed with error code {ec}.", err);
+            }
+
+            //See if we can reuse the args
+            if (reuse)
             {
                 //Return to pool
                 SockAsyncArgPool.Return(args);
             }
             else
             {
+                //Dispose
                 args.Dispose();
-                _config.Log.Verbose("Socket disconnected failed with error code {ec}. Resources disposed", err);
             }
         }
 

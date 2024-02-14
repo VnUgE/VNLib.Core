@@ -25,4 +25,7 @@
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)vnlib_mimalloc.c" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NativeHeapApi.h" />
+  </ItemGroup>
 </Project>

@@ -44,6 +44,9 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 #enable position independent code (for shared libraries with exports)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+#since were buildiing in tree, set the export defintiions
+add_definitions(-DVNLIB_EXPORTING)
+
 message(STATUS "Build type is '${CMAKE_BUILD_TYPE}'")
 
 #include checks for zlib and brotli

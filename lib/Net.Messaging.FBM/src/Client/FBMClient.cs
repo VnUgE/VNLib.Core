@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -108,15 +108,15 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="websocket">The websocket instance used to comunicate with an FBMServer</param>
         public FBMClient(in FBMClientConfig config, IFbmClientWebsocket websocket)
             :this(in config, websocket, null)
-        {
-        }
+        { }
 
         internal FBMClient(in FBMClientConfig config, IFbmClientWebsocket websocket, IObjectRental<FBMRequest>? requestRental)
         {
+            ArgumentNullException.ThrowIfNull(websocket);
+            ArgumentNullException.ThrowIfNull(config.MemoryManager, nameof(config.MemoryManager));
+
             _config = config;
-            _socket = websocket ?? throw new ArgumentNullException(nameof(websocket));
-           
-            _ = config.MemoryManager ?? throw new ArgumentException("FBM memory manager is required", nameof(config));
+            _socket = websocket;
 
             //Create new request rental if none supplied
             if(requestRental is null)
@@ -218,7 +218,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="FBMInvalidRequestException"></exception>
-        public Task<FBMResponse> SendAsync(FBMRequest request, CancellationToken cancellationToken = default) => SendAsync(request, Config.RequestTimeout, cancellationToken);
+        public Task<FBMResponse> SendAsync(FBMRequest request, CancellationToken cancellationToken = default) 
+            => SendAsync(request, Config.RequestTimeout, cancellationToken);
 
         /// <summary>
         /// Sends a <see cref="FBMRequest"/> to the connected server
@@ -311,7 +312,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <exception cref="InvalidOperationException"></exception>
         public async Task<FBMResponse> StreamDataAsync(FBMRequest request, Stream payload, ContentType contentType, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            _ = payload ?? throw new ArgumentNullException(nameof(payload));
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(payload);
 
             Check();
 

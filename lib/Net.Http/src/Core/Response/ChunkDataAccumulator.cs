@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -38,28 +38,19 @@ namespace VNLib.Net.Http.Core.Response
     /// A specialized <see cref="IDataAccumulator{T}"/> for buffering data 
     /// in Http/1.1 chunks
     /// </summary>
-    internal readonly struct ChunkDataAccumulator
+    internal readonly struct ChunkDataAccumulator(IChunkAccumulatorBuffer Buffer, IHttpContextInformation Context)
     {
         /*
          * The number of bytes to reserve at the beginning of the buffer
          * for the chunk size segment. This is the maximum size of the
          */
         public const int ReservedSize = 16;
-
-        private readonly IHttpContextInformation Context;
-        private readonly IChunkAccumulatorBuffer Buffer;
-
+      
         /*
         * Must always leave enough room for trailing crlf at the end of 
         * the buffer
         */
         private readonly int TotalMaxBufferSize => Buffer.Size - (int)Context.CrlfSegment.Length;
-
-        public ChunkDataAccumulator(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
-        {
-            Context = context;
-            Buffer = buffer;
-        }
 
         /// <summary>
         /// Complets and returns the memory segment containing the chunk data to send 
@@ -128,10 +119,8 @@ namespace VNLib.Net.Http.Core.Response
          * and use the memory range operator to get the segment from the reserved 
          * segment, to the actual end of the data segment.
          */
-        private readonly Memory<byte> GetCompleteChunk(int reservedOffset, int accumulatedSize)
-        {
-            return Buffer.GetMemory()[reservedOffset..accumulatedSize];
-        }
+        private readonly Memory<byte> GetCompleteChunk(int reservedOffset, int accumulatedSize) 
+            => Buffer.GetMemory()[reservedOffset..accumulatedSize];
 
 
         private static int GetPointerToEndOfUsedBuffer(int accumulatedSize) => accumulatedSize + ReservedSize;
@@ -195,7 +184,14 @@ namespace VNLib.Net.Http.Core.Response
             ref byte reservedSegRef = ref buffer.DangerousGetBinRef(reservedOffset);
             ref byte chunkSizeBufRef = ref MemoryMarshal.GetReference(chunkSizeBinBuffer);
 
-            MemoryUtil.Memmove(ref chunkSizeBufRef, 0, ref reservedSegRef, 0, (uint)totalChunkBufferBytes);
+            //We know the block is super small
+            MemoryUtil.SmallMemmove(
+                ref chunkSizeBufRef, 
+                0, 
+                ref reservedSegRef, 
+                0, 
+                (ushort)totalChunkBufferBytes
+            );
 
             return reservedOffset;
         }

@@ -15,18 +15,13 @@ Projects contained in this repository are individually licensed, either GNU GPL 
 Docs and articles will be available from the docs link below . There are docs per project (as they are added) and docs tagged for the VNLib.Core module. I will also be adding "spec" or specification articles to explain the higher level concepts behind the design. 
 
 ### Contact info
-Again, go to my website below, my email address is available, go ahead and send me a message. Or use the email address from my profile to send me an email (via proton mail for now)
+Again, go to my website below, my email address is available, go ahead and send me a message. Or use the email address from my profile to send me an email
 
 ### Links
 [Home Page](https://www.vaughnnugent.com) - Website home page  
 [Documentation](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Core) - Docs and articles for this module  
 [Builds for VNLib.Core](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core) - Per-project build artifacts  
 [Links for Nuget Feeds](https://www.vaughnnugent.com/resources/software/modules) - Get my NuGet feed links  
-
-### .NET Version Notice
-I prefer sticking with lts .NET versions and 8 just released, so I will likely be upgrading once its "stable" and I have the time to port and test everything. Core libraries will be first then downstream packages.  
-
-**Update** Upgrades to .NET 8 have started and breaking changes/obsolete apis have been addressed. Futher updates and improvements will be made to make use of new features and apis.
 
 ## Index/NameSpaces
 **VNLib.**
@@ -40,10 +35,12 @@ I prefer sticking with lts .NET versions and 8 just released, so I will likely b
 - [Plugins.Essentials.ServiceStack](lib/Plugins.Essentials.ServiceStack/#) - A library for scaffolding structured web applications from the individual http and supporting libraries into a completely managed http service stack for an entire application. 
 - [Plugins.PluginBase](lib/Plugins.PluginBase/#) - Base library/api for plugin developers to build fully managed/supported runtime loaded plugins, without worrying about the plumbing, such as the IPlugin api, endpoint creation, and logging! This library is required if you wish to use most of the Plugin.Extensions libraries.
 - [Net.Messaging.FBM](lib/Net.Messaging.FBM/#) - Fixed Buffer Messaging protocol, high performance, request/response architecture, client & server library, built atop http and web-sockets. As implied, relies on fixed sized internal buffers that are negotiated to transfer data with minimal overhead for known messaging architectures.
-- [Utils.Memory](lib/Utils.Memory/#) - Utilty libraries for native memory management framework for VNLib, including an x64 CMake build of rpmalloc.
+- [Utils.Memory](lib/Utils.Memory/#) - Utilty libraries for native memory management framework for VNLib, includes mimalloc and rpmalloc forks.
 - [Net.Compression](lib/Net.Compression/#) - A cross platform native compression provider and IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
 - [Net.Rest.Client](lib/Net.Rest.Client/#) - A library for defining REST api clients via a fluent api by defining sites and endpoints, OAuth2 authenticator for RestSharp, and a simple RestSharp client pool.
 - [Utils.Cryptography](lib/Utils.Cryptography/#) - Contains vendored copies of recommended/referenced libraries and wrapper libraries such as Argon2 and Monocypher. 
+
+The **third-party** directory contains third-party librarires that are forked, modified, and vendored for use in VNLib projects that I will activley maintain.
 
 ## Builds & Source
 Builds contain the individual components listed below packaged per-project, available for download on my website. Build packages will be tgz archives (except for nuget packages). You can obtain debug and release builds, along with per-project source code 

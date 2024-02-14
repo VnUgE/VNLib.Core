@@ -83,7 +83,10 @@ namespace VNLib.Net.Transport.Tcp
             //Begin the accept
             SocketError error = await _allArgs.AcceptAsync(serverSocket);
 
-            if(error == SocketError.Success)
+            //Clear the buffer reference
+            _allArgs.SetBuffer(default);
+
+            if (error == SocketError.Success)
             {
                 //Store socket on success
                 _socket = _allArgs.AcceptSocket!;
@@ -97,9 +100,8 @@ namespace VNLib.Net.Transport.Tcp
                  */
                 _recvTask = SocketWorker.RecvDoWorkAsync(this, _allArgs.BytesTransferred, recvBuffSize);
             }
-    
-            //Clear the buffer reference
-            _allArgs.SetBuffer(default);
+
+            _allArgs.AcceptSocket = null;
 
             return error;
         }
@@ -125,6 +127,18 @@ namespace VNLib.Net.Transport.Tcp
 
             //Wait for recv to complete
             await _recvTask.ConfigureAwait(false);
+
+            /*
+             * Sockets are reused as much as possible on Windows. If the socket
+             * failes to disconnect cleanly, the release function won't clean it up
+             * so it needs to be cleaned up here so at least our args instance
+             * can be reused.
+             */
+            if(IsWindows && error != SocketError.Success)
+            {
+                _socket.Dispose();
+                _socket = null;
+            }
 
             return error;
         }
@@ -154,6 +168,8 @@ namespace VNLib.Net.Transport.Tcp
 
         void IReusable.Prepare()
         {
+            Debug.Assert(_socket == null || IsWindows, "Exepcted stale socket to be NULL on non-Windows platform");
+
             _allArgs.Prepare();
             _recvArgs.Prepare();
             SocketWorker.Prepare();
@@ -168,7 +184,7 @@ namespace VNLib.Net.Transport.Tcp
             _allArgs.Release();
             _recvArgs.Release();
 
-            //if the sockeet is connected (or not windows), dispose it and clear the accept socket
+            //if the socket is still 'connected' (or not windows), dispose it and clear the accept socket
             if (_socket?.Connected == true || !IsWindows)
             {
                 _socket?.Dispose();
@@ -304,7 +320,6 @@ namespace VNLib.Net.Transport.Tcp
                 {
                     //Async disconnect
                     return new ValueTask<SocketError>(this, AsyncTaskCore.Version);
-                   
                 }
 
                 return ValueTask.FromResult(SocketError);

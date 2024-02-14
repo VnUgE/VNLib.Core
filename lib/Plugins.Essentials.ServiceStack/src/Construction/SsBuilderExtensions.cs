@@ -26,14 +26,14 @@ using System;
 using System.IO;
 using System.Net;
 using System.Linq;
+using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 
 using VNLib.Utils.Logging;
+using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
-using VNLib.Plugins.Essentials.Accounts;
-using VNLib.Plugins.Essentials.Content;
-using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Middleware;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Construction
@@ -51,7 +51,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// </summary>
         /// <param name="stack"></param>
         /// <returns>The <see cref="IDomainBuilder"/> used to define your service domain</returns>
-        public static IDomainBuilder WithDomain(this HttpServiceStackBuilder stack) => stack.WithDomain(p => new BasicVirtualHost(p.Clone()));
+        public static IDomainBuilder WithDomain(this HttpServiceStackBuilder stack) => WithDomain(stack, vhc => FromVirtualHostConfig(vhc.Clone()));
 
         /// <summary>
         /// Creates a new <see cref="IDomainBuilder"/> instance to define your
@@ -74,7 +74,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <param name="stack"></param>
         /// <param name="callback">The custom event processor type</param>
         /// <returns></returns>
-        public static IDomainBuilder WithDomain<T>(this HttpServiceStackBuilder stack, Func<VirtualHostConfiguration, T> callback) where T : EventProcessor, IAccountSecUpdateable
+        public static IDomainBuilder WithDomain<T>(this HttpServiceStackBuilder stack, Func<VirtualHostConfiguration, T> callback) 
+            where T : EventProcessor, IRuntimeServiceInjection
         {
             List<VirtualHostConfiguration> configs = new();
             DomainBuilder domains = new(configs, stack);
@@ -174,14 +175,54 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             return vhBuilder;
         }
 
+        /// <summary>
+        /// Adds an array of IP addresses to the downstream server collection. This is a security 
+        /// features that allows event handles to trust connections/ipaddresses that originate from
+        /// trusted downstream servers
+        /// </summary>
+        /// <param name="vhBuilder"></param>
+        /// <param name="addresses">The collection of IP addresses to set as trusted servers</param>
+        /// <returns></returns>
         public static IVirtualHostBuilder WithDownstreamServers(this IVirtualHostBuilder vhBuilder, params IPAddress[] addresses)
         {
             vhBuilder.WithOption(c => c.DownStreamServers = new HashSet<IPAddress>(addresses));
             return vhBuilder;
         }
 
+        private static BasicVirtualHost FromVirtualHostConfig(VirtualHostConfiguration configuration)
+        {
+            /*
+             * Event processors configurations are considered immutable. That is, 
+             * top-level elements are not allowed to be changed after the processor
+             * has been created. Some properties/containers are allowed to be modified
+             * such as middleware chains, and the service pool.
+             */
 
-        private static void AddHosts(this HttpServiceStackBuilder stack, Func<IServiceHost[]> hosts) => stack.WithDomain(p => Array.ForEach(hosts(), h => p.Add(h)));
+            EventProcessorConfig conf = new(
+                configuration.RootDir.FullName, 
+                configuration.Hostname, 
+                configuration.LogProvider, 
+                configuration)
+            {
+                AllowedAttributes = configuration.AllowedAttributes,
+                DissallowedAttributes = configuration.DissallowedAttributes,
+                DefaultFiles = configuration.DefaultFiles,
+                ExecutionTimeout = configuration.ExecutionTimeout,
+
+                //Frozen sets are required for the event processor, for performance reasons
+                DownStreamServers = configuration.DownStreamServers.ToFrozenSet(),
+                ExcludedExtensions = configuration.ExcludedExtensions.ToFrozenSet(),
+            };
+
+            //Add all pre-configured middleware to the chain
+            configuration.CustomMiddleware.ForEach(conf.MiddlewareChain.Add);
+
+            return new(configuration.EventHooks, conf);
+        }
+
+
+        private static void AddHosts(this HttpServiceStackBuilder stack, Func<IServiceHost[]> hosts) 
+            => stack.WithDomain(p => Array.ForEach(hosts(), h => p.Add(h)));
 
         private static void OnPluginServiceEvent<T>(this IManagedPlugin plugin, Action<T> loader)
         {
@@ -193,7 +234,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
         private sealed record class DomainBuilder(List<VirtualHostConfiguration> Configs, HttpServiceStackBuilder Stack) : IDomainBuilder
         {
-
             ///<inheritdoc/>
             public IVirtualHostBuilder WithVirtualHost(DirectoryInfo rootDirectory, IVirtualHostHooks hooks, ILogProvider logger)
             {
@@ -217,6 +257,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
             private sealed record class VHostBuilder(VirtualHostConfiguration Config) : IVirtualHostBuilder
             {
+                ///<inheritdoc/>
                 public IVirtualHostBuilder WithOption(Action<VirtualHostConfiguration> configCallback)
                 {
                     configCallback(Config);
@@ -225,23 +266,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             }
         }
 
-        private sealed class CustomServiceHost<T> : IServiceHost where T : EventProcessor, IAccountSecUpdateable
+        private sealed class CustomServiceHost<T>(IHostTransportInfo Config, T Instance) : IServiceHost 
+            where T : EventProcessor, IRuntimeServiceInjection
         {
-            private readonly VirtualHostConfiguration Config;
-            private readonly T Instance;
-
-            public CustomServiceHost(VirtualHostConfiguration Config, T Instance)
-            {
-                this.Config = Config;
-                this.Instance = Instance;
-
-                //Add middleware to the chain
-                foreach (IHttpMiddleware mw in Config.CustomMiddleware)
-                {
-                    Instance.MiddlewareChain.Add(mw);
-                }
-            }
-
             ///<inheritdoc/>
             public IWebRoot Processor => Instance;
 
@@ -252,62 +279,38 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             void IServiceHost.OnRuntimeServiceAttach(IManagedPlugin plugin, IEndpoint[] endpoints)
             {
                 //Add endpoints to service
-                Instance.EndpointTable.AddEndpoint(endpoints);
+                Instance.Options.EndpointTable.AddEndpoint(endpoints);
+                
+                //Inject services into the event processor service pool
+                Instance.AddServices(plugin.Services);
 
-                //Add all services
-                plugin.OnPluginServiceEvent<ISessionProvider>(Instance.SetSessionProvider);
-                plugin.OnPluginServiceEvent<IPageRouter>(Instance.SetPageRouter);
-                plugin.OnPluginServiceEvent<IAccountSecurityProvider>(Instance.SetAccountSecProvider);
-
-                //Add all middleware to the chain
-                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => Array.ForEach(p, mw => Instance.MiddlewareChain.Add(mw)));
+                //Add all exposed middleware to the chain
+                plugin.OnPluginServiceEvent<ICollection<IHttpMiddleware>>(p => p.TryForeach(Instance.Options.MiddlewareChain.Add));
             }
 
             ///<inheritdoc/>
             void IServiceHost.OnRuntimeServiceDetach(IManagedPlugin plugin, IEndpoint[] endpoints)
             {
                 //Remove endpoints
-                Instance.EndpointTable.RemoveEndpoint(endpoints);
-
-                //Remove all services
-                plugin.OnPluginServiceEvent<ISessionProvider>(p => Instance.SetSessionProvider(null));
-                plugin.OnPluginServiceEvent<IPageRouter>(p => Instance.SetPageRouter(null));
-                plugin.OnPluginServiceEvent<IAccountSecurityProvider>(p => Instance.SetAccountSecProvider(null));
+                Instance.Options.EndpointTable.RemoveEndpoint(endpoints);
+                Instance.RemoveServices(plugin.Services);
 
                 //Remove all middleware from the chain
-                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => Array.ForEach(p, mw => Instance.MiddlewareChain.RemoveMiddleware(mw)));
+                plugin.OnPluginServiceEvent<ICollection<IHttpMiddleware>>(p => p.TryForeach(Instance.Options.MiddlewareChain.Remove));
             }
         }
 
 
-        private sealed class BasicVirtualHost : EventProcessor, IAccountSecUpdateable
+        private sealed class BasicVirtualHost(IVirtualHostHooks Hooks, EventProcessorConfig config) : EventProcessor(config), IRuntimeServiceInjection
         {
-            private readonly VirtualHostConfiguration Config;
-            private readonly IVirtualHostHooks Hooks;
-
-            internal IAccountSecurityProvider? SecProvider;
-
-            public BasicVirtualHost(VirtualHostConfiguration config)
-            {
-                Config = config;
-                Hooks = config.EventHooks;
-                Directory = config.RootDir.FullName;
-            }
-
-            ///<inheritdoc/>
-            public override string Directory { get; }
-
-            ///<inheritdoc/>
-            public override string Hostname => Config.Hostname;
-
-            ///<inheritdoc/>
-            public override IEpProcessingOptions Options => Config;
-
-            ///<inheritdoc/>
-            public override IAccountSecurityProvider? AccountSecurity => SecProvider;
-
-            ///<inheritdoc/>
-            protected override ILogProvider Log => Config.LogProvider;
+            /*
+             * Runtime service injection can be tricky, at least in my architecture. If all we have 
+             * is am IServiceProvider instance, we cannot trust that the services availabe are 
+             * exactly the same as the ones initially provided. So we can store the known types
+             * that a given service container DID export, and then use that to remove the services
+             * when the service provider is removed.
+             */
+            private readonly ConditionalWeakTable<IServiceProvider, Type[]> _exposedTypes = new();
 
             ///<inheritdoc/>
             public override bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity) => Hooks.ErrorHandler(errorCode, entity);
@@ -322,8 +325,44 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             public override string TranslateResourcePath(string requestPath) => Hooks.TranslateResourcePath(requestPath);
 
             ///<inheritdoc/>
-            public void SetAccountSecProvider(IAccountSecurityProvider? provider) => SecProvider = provider;
+            public void AddServices(IServiceProvider services)
+            {
+                Type[] exposedForHandler = [];
 
+                foreach (Type type in ServicePool.Types)
+                {
+                    //Get exported service by the desired type
+                    object? service = services.GetService(type);
+
+                    //If its not null, then add it to the service pool
+                    if (service is not null)
+                    {
+                        ServicePool.SetService(type, service);
+
+                        //Add to the exposed types list
+                        exposedForHandler = [.. exposedForHandler, type];
+                    }
+                }
+
+                //Add to the exposed types table
+                _exposedTypes.Add(services, exposedForHandler);
+            }
+
+            ///<inheritdoc/>
+            public void RemoveServices(IServiceProvider services)
+            {
+                //Get all exposed types for this service provider
+                if (_exposedTypes.TryGetValue(services, out Type[]? exposed))
+                {                    
+                    foreach (Type type in exposed)
+                    {
+                        ServicePool.SetService(type, null);
+                    }
+
+                    //Remove from the exposed types table
+                    _exposedTypes.Remove(services);
+                }
+            }
         }
     }
 }

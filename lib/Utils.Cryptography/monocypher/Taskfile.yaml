@@ -27,28 +27,8 @@ tasks:
     cmds:
      #init cmake build
      - cmake -B./build 
-
-     #build the monocypher library in debug mode first 
-     - task: build-monocypher-win
-     - task: build-monocypher-gnumake  
-
-  #build using msbuild for monocypher libraries for debug and release modes
-  build-monocypher-win:
-    platforms: ['windows']
-    internal: true
-    cmds:
-     #build solution in debug mode
-     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=debug {{.BUILD_FLAGS}} {{.MS_ARGS}} 
-     #build in release
-     - cd build && msbuild {{.PROJECT_NAME}}.sln /p:Configuration=release {{.BUILD_FLAGS}} {{.MS_ARGS}} 
-  
-  #build using gnu make
-  build-monocypher-gnumake:
-    platforms: ['linux']
-    internal: true
-    cmds:
-     #build project with make
-     - cd build && make
+     - cmake --build build/ --config Debug
+     - cmake --build build/ --config Release 
  
   postbuild_success:
     vars:
@@ -96,7 +76,7 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
      #pack monocypher source code and create the archive
-     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czvf 'bin/src.tgz' ."
+     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czf 'bin/src.tgz' ."
 
   clean:
     ignore_error: true

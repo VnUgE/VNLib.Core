@@ -1,26 +1,24 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_rpmalloc
-* File: vnlib_rpmalloc.c
+* File: vnlib_rpmalloc.h
 *
-* framework.h is part of vnlib_rpmalloc which is part of the larger
-* VNLib collection of libraries and utilities.
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public License
+* as published by the Free Software Foundation; either version 2.1
+* of the License, or  (at your option) any later version.
 *
-* vnlib_rpmalloc is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published
-* by the Free Software Foundation, either version 2 of the License,
-* or (at your option) any later version.
-*
-* vnlib_rpmalloc is distributed in the hope that it will be useful,
+* This library is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-* General Public License for more details.
+* Lesser General Public License for more details.
 *
-* You should have received a copy of the GNU General Public License
-* along with vnlib_rpmalloc. If not, see http://www.gnu.org/licenses/.
+* You should have received a copy of the GNU Lesser General Public License
+* along with NativeHeapApi. If not, see http://www.gnu.org/licenses/.
 */
+
 
 /*
 * Top level linux definitions
@@ -33,10 +31,12 @@
 
 #endif
 
-#include <NativeHeapApi.h>
+#define VNLIB_EXPORTING //Exporting when compiling the library
+
+#include "NativeHeapApi.h"
 #include <rpmalloc.h>
 
-#if defined(_WIN32)
+#if defined(_P_IS_WINDOWS)
 
 /*
 * setup windows api incudes
@@ -144,13 +144,13 @@ int pthread_create(pthread_t* thread,
 
 //Define the heap methods
 
-HEAP_METHOD_EXPORT HeapHandle HEAP_METHOD_CC heapGetSharedHeapHandle(void)
+VNLIB_HEAP_API HeapHandle VNLIB_CC heapGetSharedHeapHandle(void)
 {
     //Return the shared heap pointer
 	return SHARED_HEAP_HANDLE_VALUE;
 }
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flags)
+VNLIB_HEAP_API ERRNO VNLIB_CC heapCreate(UnmanagedHeapDescriptor* flags)
 {
     //All heaps support resizing
     flags->CreationFlags |= HEAP_CREATION_SUPPORTS_REALLOC;
@@ -178,7 +178,7 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flag
 }
 
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(HeapHandle heap)
+VNLIB_HEAP_API ERRNO VNLIB_CC heapDestroy(HeapHandle heap)
 {
     //Destroy non-shared heaps
     if (heap != SHARED_HEAP_HANDLE_VALUE)
@@ -194,7 +194,7 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(HeapHandle heap)
 }
 
 
-HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapAlloc(HeapHandle heap, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, size_t elements, size_t alignment, int zero)
 {
     //Multiply for element size
     size_t size = elements * alignment;
@@ -236,7 +236,7 @@ HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapAlloc(HeapHandle heap, size_t elemen
 }
 
 
-HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapRealloc(HeapHandle heap, void* block, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, size_t elements, size_t alignment, int zero)
 {
     //Multiply for element size
     size_t size = elements * alignment;
@@ -263,7 +263,7 @@ HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapRealloc(HeapHandle heap, void* block
 }
 
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(HeapHandle heap, void* block)
+VNLIB_HEAP_API ERRNO VNLIB_CC heapFree(HeapHandle heap, void* block)
 {
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)

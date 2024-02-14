@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -29,6 +29,8 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
 using VNLib.Utils.IO;
@@ -51,7 +53,7 @@ namespace VNLib.Plugins.Essentials
     /// that breaks down simple processing procedures, routing, and session 
     /// loading.
     /// </summary>
-    public abstract class EventProcessor : IWebRoot, IWebProcessor
+    public abstract class EventProcessor(EventProcessorConfig config) : IWebRoot, IWebProcessor
     {
         private static readonly AsyncLocal<EventProcessor?> _currentProcessor = new();
 
@@ -59,24 +61,6 @@ namespace VNLib.Plugins.Essentials
         /// Gets the current (ambient) async local event processor
         /// </summary>
         public static EventProcessor? Current => _currentProcessor.Value;
-
-        /// <summary>
-        /// The filesystem entrypoint path for the site
-        /// </summary>
-        public abstract string Directory { get; }
-
-        ///<inheritdoc/>
-        public abstract string Hostname { get; }
-
-        /// <summary>
-        /// Gets the EP processing options
-        /// </summary>
-        public abstract IEpProcessingOptions Options { get; }
-
-        /// <summary>
-        /// Event log provider
-        /// </summary>
-        protected abstract ILogProvider Log { get; }
 
         /// <summary>
         /// <para>
@@ -125,73 +109,81 @@ namespace VNLib.Plugins.Essentials
         public abstract void PostProcessEntity(HttpEntity entity, ref FileProcessArgs chosenRoutine);
 
         ///<inheritdoc/>
-        public abstract IAccountSecurityProvider AccountSecurity { get; }
+        public virtual EventProcessorConfig Options => config;
 
+        ///<inheritdoc/>
+        public string Hostname => config.Hostname;
+
+
+        /*
+         * Okay. So this is suposed to be a stupid fast lookup table for lock-free 
+         * service pool exchanges. The goal is for future runtime service expansion.
+         * 
+         * The reason lookups must be unnoticabyly fast is because the should be
+         * VERY rarley changed and will be read on every request.
+         * 
+         * The goal of this table specifially is to make sure requesting a desired 
+         * service is extremely fast and does not require any locks or synchronization.
+         */
+        const int SESS_INDEX = 0;
+        const int ROUTER_INDEX = 1;
+        const int SEC_INDEX = 2;
+        
         /// <summary>
-        /// The table of virtual endpoints that will be used to process requests
+        /// The internal service pool for the processor
         /// </summary>
-        /// <remarks>
-        /// May be overriden to provide a custom endpoint table
-        /// </remarks>
-        public virtual IVirtualEndpointTable EndpointTable { get; } = new SemiConsistentVeTable();
+        protected readonly HttpProcessorServicePool ServicePool = new([
+            typeof(ISessionProvider),           //Order must match the indexes above
+            typeof(IPageRouter), 
+            typeof(IAccountSecurityProvider)
+        ]);
+      
 
-        /// <summary>
-        /// The middleware chain that will be used to process requests
-        /// </summary>
-        /// <remarks>
-        /// If derrieved, may be overriden to provide a custom middleware chain
-        /// </remarks>
-        public virtual IHttpMiddlewareChain MiddlewareChain { get; } = new SemiConistentMiddlewareChain();
+        /*
+         * Fields are not marked as volatile because they should not 
+         * really be updated at all in production uses, and if hot-reload
+         * is used, I don't consider a dirty read to be a large enough 
+         * problem here.
+         */
 
-
-        /// <summary>
-        /// An <see cref="ISessionProvider"/> that connects stateful sessions to 
-        /// HTTP connections
-        /// </summary>
-        private ISessionProvider? Sessions;
-
-        /// <summary>
-        /// Sets or resets the current <see cref="ISessionProvider"/>
-        /// for all connections
-        /// </summary>
-        /// <param name="sp">The new <see cref="ISessionProvider"/></param>
-        public void SetSessionProvider(ISessionProvider? sp) => _ = Interlocked.Exchange(ref Sessions, sp);
-
-
-        /// <summary>
-        /// An <see cref="IPageRouter"/> to route files to be processed
-        /// </summary>
-        private IPageRouter? Router;
-
-        /// <summary>
-        /// Sets or resets the current <see cref="IPageRouter"/>
-        /// for all connections
-        /// </summary>
-        /// <param name="router"><see cref="IPageRouter"/> to route incomming connections</param>
-        public void SetPageRouter(IPageRouter? router) => _ = Interlocked.Exchange(ref Router, router);
+        private IAccountSecurityProvider? _accountSec;
+        private ISessionProvider? _sessions;
+        private IPageRouter? _router;
+      
+        ///<inheritdoc/>
+        public IAccountSecurityProvider? AccountSecurity
+        {
+            //Exchange the version of the account security provider
+            get => ServicePool.ExchangeVersion(ref _accountSec, SEC_INDEX);
+        }
 
         ///<inheritdoc/>
         public virtual async ValueTask ClientConnectedAsync(IHttpEvent httpEvent)
         {
-            //read local ref to session provider and page router
-            ISessionProvider? _sessions = Sessions;
-            IPageRouter? router = Router;
+            /*
+             * read any "volatile" properties into local copies for the duration
+             * of the request processing. This is to ensure that the properties
+             * are not changed during the processing of the request.
+             */
+
+            ISessionProvider? sessions = ServicePool.ExchangeVersion(ref _sessions, SESS_INDEX);
+            IPageRouter? router = ServicePool.ExchangeVersion(ref _router, ROUTER_INDEX);
+
+            LinkedListNode<IHttpMiddleware>? mwNode = config.MiddlewareChain.GetCurrentHead();
 
             //event cancellation token
             HttpEntity entity = new(httpEvent, this);
-            
-            LinkedListNode<IHttpMiddleware>? mwNode;
 
             //Set ambient processor context
-            _currentProcessor.Value = this;
+            _currentProcessor.Value = this;           
 
             try
             {
                 //If sessions are set, get a session for the current connection
-                if (_sessions != null)
+                if (sessions != null)
                 {
                     //Get the session
-                    entity.EventSessionHandle = await _sessions.GetSessionAsync(httpEvent, entity.EventCancellation);
+                    entity.EventSessionHandle = await sessions.GetSessionAsync(httpEvent, entity.EventCancellation);
 
                     //If the processor had an error recovering the session, return the result to the processor
                     if (entity.EventSessionHandle.EntityStatus != FileProcessArgs.Continue)
@@ -206,7 +198,6 @@ namespace VNLib.Plugins.Essentials
 
                 try
                 {
-                    //Pre-process entity
                     PreProcessEntity(entity, out entity.EventArgs);
 
                     //If preprocess returned a value, exit
@@ -214,9 +205,6 @@ namespace VNLib.Plugins.Essentials
                     {
                         goto RespondAndExit;
                     }
-
-                    //Handle middleware before file processing
-                    mwNode = MiddlewareChain.GetCurrentHead();
 
                     //Loop through nodes
                     while(mwNode != null)
@@ -236,12 +224,12 @@ namespace VNLib.Plugins.Essentials
                         }
 
                         mwNode = mwNode.Next;
-                    }             
+                    }
 
-                    if (!EndpointTable.IsEmpty)
+                    if (!config.EndpointTable.IsEmpty)
                     {
                         //See if the virtual file is servicable
-                        if (EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
+                        if (config.EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
                         {
                             //Invoke the page handler process method
                             VfReturnType rt = await vf.Process(entity);
@@ -283,7 +271,7 @@ namespace VNLib.Plugins.Essentials
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Exception raised while releasing the assocated session");
+                        config.Log.Error(ex, "Exception raised while releasing the assocated session");
                     }
                 }
 
@@ -305,17 +293,17 @@ namespace VNLib.Plugins.Essentials
             }
             catch (ResourceUpdateFailedException ruf)
             {
-                Log.Warn(ruf);
+                config.Log.Warn(ruf);
                 CloseWithError(HttpStatusCode.ServiceUnavailable, httpEvent);
             }
             catch (SessionException se)
             {
-                Log.Warn(se, "An exception was raised while attempting to get or save a session");
+                config.Log.Warn(se, "An exception was raised while attempting to get or save a session");
                 CloseWithError(HttpStatusCode.ServiceUnavailable, httpEvent);
             }
             catch (OperationCanceledException oce)
             {
-                Log.Warn(oce, "Request execution time exceeded, connection terminated");
+                config.Log.Warn(oce, "Request execution time exceeded, connection terminated");
                 CloseWithError(HttpStatusCode.ServiceUnavailable, httpEvent);
             }
             catch (IOException ioe) when (ioe.InnerException is SocketException)
@@ -324,7 +312,7 @@ namespace VNLib.Plugins.Essentials
             }
             catch (Exception ex)
             {
-                Log.Warn(ex, "Unhandled exception during application code execution.");
+                config.Log.Warn(ex, "Unhandled exception during application code execution.");
                 //Invoke the root error handler
                 CloseWithError(HttpStatusCode.InternalServerError, httpEvent);
             }
@@ -341,7 +329,7 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="entity">The entity to process the file for</param>
         /// <param name="args">The selected <see cref="FileProcessArgs"/> to determine what file to process</param>
-        protected virtual void ProcessFile(IHttpEvent entity, in FileProcessArgs args)
+        protected virtual void ProcessFile(IHttpEvent entity, ref readonly FileProcessArgs args)
         {
             try
             {
@@ -414,7 +402,7 @@ namespace VNLib.Plugins.Essentials
 
                 //See if the last modifed header was set
                 DateTimeOffset? ifModifedSince = entity.Server.LastModified();
-                
+
                 //If the header was set, check the date, if the file has been modified since, continue sending the file
                 if (ifModifedSince.HasValue && ifModifedSince.Value > fileLastModified)
                 {
@@ -425,109 +413,97 @@ namespace VNLib.Plugins.Essentials
 
                 //Get the content type of he file
                 ContentType fileType = HttpHelpers.GetContentTypeFromFile(filename);
-                
+
                 //Make sure the client accepts the content type
-                if (entity.Server.Accepts(fileType))
-                {
-                    //set last modified time as the files last write time
-                    entity.Server.LastModified(fileLastModified);
-
-                    //try to open the selected file for reading and allow sharing
-                    FileStream fs = new (filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                    long endOffset = checked((long)entity.Server.Range.End);
-                    long startOffset = checked((long)entity.Server.Range.Start);
-
-                    //Follows rfc7233 -> https://www.rfc-editor.org/rfc/rfc7233#section-1.2
-                    switch (entity.Server.Range.RangeType)
-                    {
-                        case HttpRangeType.FullRange:
-                            if (endOffset > fs.Length || endOffset - startOffset < 0)
-                            {
-                                //Set acceptable range size
-                                entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{fs.Length}";
-
-                                //The start offset is greater than the file length, return range not satisfiable
-                                entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
-                            }
-                            else
-                            {
-                                //Seek the stream to the specified start position
-                                fs.Seek(startOffset, SeekOrigin.Begin);
-
-                                //Set range header, by passing the actual full content size
-                                entity.SetContentRangeHeader(entity.Server.Range, fs.Length);
-
-                                //Send the response, with actual response length (diff between stream length and position)
-                                entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs, endOffset - startOffset + 1);
-                            }
-                            break;
-                        case HttpRangeType.FromStart:
-                            if (startOffset > fs.Length)
-                            {
-                                //Set acceptable range size
-                                entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{fs.Length}";
-
-                                //The start offset is greater than the file length, return range not satisfiable
-                                entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
-                            }
-                            else
-                            {
-                                //Seek the stream to the specified start position
-                                fs.Seek(startOffset, SeekOrigin.Begin);
-
-                                //Set range header, by passing the actual full content size
-                                entity.SetContentRangeHeader(entity.Server.Range, fs.Length);
-
-                                //Send the response, with actual response length (diff between stream length and position)
-                                entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs, fs.Length - fs.Position);
-                            }
-                            break;
-
-                        case HttpRangeType.FromEnd:
-                            if (endOffset > fs.Length)
-                            {
-                                //Set acceptable range size
-                                entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{fs.Length}";
-
-                                //The end offset is greater than the file length, return range not satisfiable
-                                entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
-                            }
-                            else
-                            {
-                                //Seek the stream to the specified end position, server auto range will handle the rest
-                                fs.Seek(-endOffset, SeekOrigin.End);
-
-                                //Set range header, by passing the actual full content size
-                                entity.SetContentRangeHeader(entity.Server.Range, fs.Length);
-
-                                //Send the response, with actual response length (diff between stream length and position)
-                                entity.CloseResponse(HttpStatusCode.PartialContent, fileType, fs, fs.Length - fs.Position);
-                            }
-                            break;
-                        //No range or invalid range (the server is supposed to ignore invalid ranges)
-                        default:
-                            //send the whole file
-                            entity.CloseResponse(HttpStatusCode.OK, fileType, fs, fs.Length);
-                            break;
-                    }
-                    
-                }
-                else
+                if (!entity.Server.Accepts(fileType))
                 {
                     //Unacceptable
                     CloseWithError(HttpStatusCode.NotAcceptable, entity);
+                    return;
+                }
+
+                //set last modified time as the files last write time
+                entity.Server.LastModified(fileLastModified);
+
+                //Open the file handle directly, reading will always be sequentially read and async
+                DirectFileStream dfs = DirectFileStream.Open(filename);
+
+                long endOffset = checked((long)entity.Server.Range.End);
+                long startOffset = checked((long)entity.Server.Range.Start);
+
+                //Follows rfc7233 -> https://www.rfc-editor.org/rfc/rfc7233#section-1.2
+                switch (entity.Server.Range.RangeType)
+                {
+                    case HttpRangeType.FullRange:
+                        if (endOffset > dfs.Length || endOffset - startOffset < 0)
+                        {
+                            //The start offset is greater than the file length, return range not satisfiable
+                            entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{dfs.Length}";
+                            entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
+                        }
+                        else
+                        {
+                            //Seek the stream to the specified start position
+                            dfs.Seek(startOffset, SeekOrigin.Begin);
+
+                            //Set range header, by passing the actual full content size
+                            entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
+
+                            //Send the response, with actual response length (diff between stream length and position)
+                            entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, endOffset - startOffset + 1);
+                        }
+                        break;
+                    case HttpRangeType.FromStart:
+                        if (startOffset > dfs.Length)
+                        {
+                            //The start offset is greater than the file length, return range not satisfiable
+                            entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{dfs.Length}";
+                            entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
+                        }
+                        else
+                        {
+                            //Seek the stream to the specified start position
+                            dfs.Seek(startOffset, SeekOrigin.Begin);
+                           
+                            entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
+                            
+                            entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, dfs.Length - dfs.Position);
+                        }
+                        break;
+
+                    case HttpRangeType.FromEnd:
+                        if (endOffset > dfs.Length)
+                        {
+                            //The end offset is greater than the file length, return range not satisfiable
+                            entity.Server.Headers[HttpResponseHeader.ContentRange] = $"bytes */{dfs.Length}";
+                            entity.CloseResponse(HttpStatusCode.RequestedRangeNotSatisfiable);
+                        }
+                        else
+                        {
+                            //Seek the stream to the specified end position, server auto range will handle the rest
+                            dfs.Seek(-endOffset, SeekOrigin.End);
+                            
+                            entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
+                            
+                            entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, dfs.Length - dfs.Position);
+                        }
+                        break;
+                    //No range or invalid range (the server is supposed to ignore invalid ranges)
+                    default:
+                        //send the whole file
+                        entity.CloseResponse(HttpStatusCode.OK, fileType, dfs, dfs.Length);
+                        break;
                 }
             }
             catch (IOException ioe)
             {
-                Log.Information(ioe, "Unhandled exception during file opening.");
+                config.Log.Information(ioe, "Unhandled exception during file opening.");
                 CloseWithError(HttpStatusCode.Locked, entity);
                 return;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Unhandled exception during file opening.");
+                config.Log.Error(ex, "Unhandled exception during file opening.");
                 //Invoke the root error handler
                 CloseWithError(HttpStatusCode.InternalServerError, entity);
                 return;
@@ -689,6 +665,84 @@ namespace VNLib.Plugins.Essentials
                 return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DissallowedAttributes) == 0);
             }
             return false;
+        }
+
+        /// <summary>
+        /// A pool of services that an <see cref="EventProcessor"/> will use can be exchanged at runtime
+        /// </summary>
+        /// <param name="expectedTypes">An ordered array of desired types</param>
+        protected sealed class HttpProcessorServicePool(Type[] expectedTypes)
+        {
+            private readonly uint[] _serviceTable = new uint[expectedTypes.Length];
+            private readonly WeakReference<object?>[] _objects = CreateServiceArray(expectedTypes.Length);
+            private readonly ImmutableArray<Type> _types = [.. expectedTypes];
+
+            /// <summary>
+            /// Gets all of the desired types for the servicec pool
+            /// </summary>
+            public ImmutableArray<Type> Types => _types;
+
+            /// <summary>
+            /// Sets a desired service instance in the pool, or clears it
+            /// from the pool.
+            /// </summary>
+            /// <param name="service">The service type to publish</param>
+            /// <param name="instance">The service instance to store</param>
+            public void SetService(Type service, object? instance)
+            {
+                ArgumentNullException.ThrowIfNull(service);
+
+                //Make sure the instance is of the correct type
+                if(instance is not null && !service.IsInstanceOfType(instance))
+                {
+                    throw new ArgumentException("The instance does not match the service type");
+                }
+
+                //If the service type is not desired, return
+                int index = Array.IndexOf(expectedTypes, service);
+                if (index != -1)
+                {
+                    //Set the service as a new weak reference atomically
+                    Volatile.Write(ref _objects[index], new(instance));
+
+                    //Notify that the service has been updated
+                    Interlocked.Exchange(ref _serviceTable[index], 1);
+                }
+            }
+
+            /// <summary>
+            /// Determines if a desired services has been modified within
+            /// the pool, if it has, the service will be exchanged for the
+            /// new service.
+            /// </summary>
+            /// <typeparam name="T"></typeparam>
+            /// <param name="instance">A reference to the internal instance to exhange</param>
+            /// <param name="tableIndex">The constant index for the service type</param>
+            /// <returns>The exchanged service instance</returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            internal T? ExchangeVersion<T>(ref T? instance, int tableIndex) where T : class?
+            {
+                //Clear modified flag
+                if (Interlocked.Exchange(ref _serviceTable[tableIndex], 0) == 1)
+                {
+                    //Atomic read on the reference instance
+                    WeakReference<object?> wr = Volatile.Read(ref _objects[tableIndex]);
+
+                    //Try to get the object instance
+                    wr.TryGetTarget(out object? value);
+
+                    instance = (T?)value;
+                }
+
+                return instance;
+            }
+
+            private static WeakReference<object?>[] CreateServiceArray(int size)
+            {
+                WeakReference<object?>[] arr = new WeakReference<object?>[size];
+                Array.Fill(arr, new (null));
+                return arr;
+            }
         }
     }
 }

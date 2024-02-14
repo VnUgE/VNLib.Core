@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -26,7 +26,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 using System.Runtime.CompilerServices;
 
 using VNLib.Hashing;
@@ -81,12 +80,6 @@ namespace VNLib.Plugins.Essentials.Accounts
 
         public const ulong MINIMUM_LEVEL =  0x0000000100000001L;
 
-        
-        /// <summary>
-        /// Speical character regual expresion for basic checks
-        /// </summary>
-        public static readonly Regex SpecialCharacters = new(@"[\r\n\t\a\b\e\f#?!@$%^&*\+\-\~`|<>\{}]", RegexOptions.Compiled);
-
         #region Password/User helper extensions
 
         /// <summary>
@@ -101,8 +94,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
         public static async Task<ERRNO> ValidatePasswordAsync(this IUserManager manager, IUser user, string password, PassValidateFlags flags, CancellationToken cancellation)
         {
-            _ = manager ?? throw new ArgumentNullException(nameof(manager));
-            using PrivateString ps = new(password, false);
+            ArgumentNullException.ThrowIfNull(user);
+            ArgumentNullException.ThrowIfNull(manager);
+
+            using PrivateString ps = PrivateString.ToPrivateString(password, false);
             return await manager.ValidatePasswordAsync(user, ps, flags, cancellation).ConfigureAwait(false);
         }
 
@@ -118,8 +113,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
         public static async Task<ERRNO> UpdatePasswordAsync(this IUserManager manager, IUser user, string password, CancellationToken cancellation = default)
         {
-            _ = manager ?? throw new ArgumentNullException(nameof(manager));
-            using PrivateString ps = new(password, false);
+            ArgumentNullException.ThrowIfNull(user);
+            ArgumentNullException.ThrowIfNull(manager);
+
+            using PrivateString ps = PrivateString.ToPrivateString(password, false);
             return await manager.UpdatePasswordAsync(user, ps, cancellation).ConfigureAwait(false);
         }
 
@@ -140,6 +137,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>The origin of the account</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetAccountOrigin(this IUser ud) => ud[ACC_ORIGIN_ENTRY];
+
         /// <summary>
         /// If this account was created by any means other than a local account creation. 
         /// Implementors can use this method to specify the origin of the account. This field is not required
@@ -158,7 +156,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>A <see cref="PrivateString"/> that contains the new password hash</returns>
         public static PrivateString GetRandomPassword(this IPasswordHashingProvider hashing, int size = RANDOM_PASS_SIZE)
         {
-            _ = hashing ?? throw new ArgumentNullException(nameof(hashing));
+            ArgumentNullException.ThrowIfNull(hashing);
 
             //Get random bytes
             using UnsafeMemoryHandle<byte> randBuffer = MemoryUtil.UnsafeAlloc(size);
@@ -175,7 +173,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             finally
             {
                 //Zero the block and return to pool
-                MemoryUtil.InitializeBlock(randBuffer.Span);
+                MemoryUtil.InitializeBlock(ref randBuffer.GetReference(), size);
             }
         }
 
@@ -190,10 +188,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Verify(this IPasswordHashingProvider provider, PrivateString passHash, PrivateString password)
         {
-            _ = provider ?? throw new ArgumentNullException(nameof(provider));
-            _ = password ?? throw new ArgumentNullException(nameof(password));
-            _ = passHash ?? throw new ArgumentNullException(nameof(passHash));
-
+            ArgumentNullException.ThrowIfNull(provider);
+            ArgumentNullException.ThrowIfNull(passHash);
+            ArgumentNullException.ThrowIfNull(password);
+            
             //Casting PrivateStrings to spans will reference the base string directly
             return provider.Verify(passHash.ToReadOnlySpan(), password.ToReadOnlySpan());
         }
@@ -208,8 +206,8 @@ namespace VNLib.Plugins.Essentials.Accounts
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PrivateString Hash(this IPasswordHashingProvider provider, PrivateString password)
         {
-            _ = provider ?? throw new ArgumentNullException(nameof(provider));
-            _ = password ?? throw new ArgumentNullException(nameof(password));
+            ArgumentNullException.ThrowIfNull(provider);
+            ArgumentNullException.ThrowIfNull(password);
 
             return provider.Hash(password.ToReadOnlySpan());
         }
@@ -255,7 +253,8 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <exception cref="InvalidOperationException"></exception>
         public static IClientAuthorization GenerateAuthorization(this HttpEntity entity, IClientSecInfo secInfo, IUser user)
         {
-            _ = secInfo ?? throw new ArgumentNullException(nameof(secInfo));
+            ArgumentNullException.ThrowIfNull(user);
+            ArgumentNullException.ThrowIfNull(secInfo);
 
             if (!entity.Session.IsSet || entity.Session.SessionType != SessionType.Web)
             {
@@ -383,7 +382,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <exception cref="NotSupportedException"></exception>
         public static ERRNO TryEncryptClientData(this HttpEntity entity, IClientSecInfo secInfo, ReadOnlySpan<byte> data, Span<byte> output)
         {
-            _ = secInfo ?? throw new ArgumentNullException(nameof(secInfo));
+            ArgumentNullException.ThrowIfNull(secInfo);
 
             //Use the default sec provider
             IAccountSecurityProvider prov = entity.GetSecProviderOrThrow();

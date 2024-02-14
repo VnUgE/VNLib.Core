@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -29,15 +29,13 @@ namespace VNLib.Utils.Memory
     /// <summary>
     /// When inherited by a class, provides a safe string storage that zeros a CLR string memory on disposal
     /// </summary>
-    public class PrivateStringManager : VnDisposeable
+    /// <remarks>
+    /// Create a new instance with fixed array size
+    /// </remarks>
+    /// <param name="elements">Number of elements to protect</param>
+    public class PrivateStringManager(int elements) : VnDisposeable
     {
-        private readonly StringRef[] ProtectedElements;
-
-        /// <summary>
-        /// Create a new instance with fixed array size
-        /// </summary>
-        /// <param name="elements">Number of elements to protect</param>
-        public PrivateStringManager(int elements) => ProtectedElements = new StringRef[elements];
+        private readonly StringRef[] ProtectedElements = new StringRef[elements];
 
         /// <summary>
         /// Gets or sets a string referrence into the protected elements store

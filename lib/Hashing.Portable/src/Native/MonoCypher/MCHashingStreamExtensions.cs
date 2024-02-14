@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -55,15 +55,12 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentNullException"></exception>
         public static void Update(this IHashStream hashStream, void* message, uint mSize) 
         {
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
-            _ = hashStream ?? throw new ArgumentNullException(nameof(hashStream));
+            ArgumentNullException.ThrowIfNull(message);
+            ArgumentNullException.ThrowIfNull(hashStream);
 
             //get ref from pointer
             ref byte mRef = ref Unsafe.AsRef<byte>(message);
-            hashStream.Update(ref mRef, mSize);
+            hashStream.Update(in mRef, mSize);
         }
 
         /// <summary>
@@ -75,16 +72,15 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentNullException"></exception>
         public static void Update(this IHashStream hashStream, ReadOnlySpan<byte> message)
         {
-            _ = hashStream ?? throw new ArgumentNullException(nameof(hashStream));
-
-            if(message.Length == 0)
+            ArgumentNullException.ThrowIfNull(hashStream);
+            if (message.Length == 0)
             {
                 return;
             }
 
             //Marshal reference to span
             ref byte mRef = ref MemoryMarshal.GetReference(message);
-            hashStream.Update(ref mRef, (uint)message.Length);
+            hashStream.Update(in mRef, (uint)message.Length);
         }
 
         /// <summary>
@@ -96,7 +92,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentNullException"></exception>
         public static void Update(this IHashStream hashStream, ReadOnlyMemory<byte> message)
         {
-            _ = hashStream ?? throw new ArgumentNullException(nameof(hashStream));
+            ArgumentNullException.ThrowIfNull(hashStream);
             if (message.Length == 0)
             {
                 return;
@@ -130,11 +126,8 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentNullException"></exception>
         public static void Flush(this IHashStream hashStream, void* hashOut, byte hashSize)
         {
-            if (hashOut == null)
-            {
-                throw new ArgumentNullException(nameof(hashOut));
-            }
-            _ = hashStream ?? throw new ArgumentNullException(nameof(hashStream));
+            ArgumentNullException.ThrowIfNull(hashOut);
+            ArgumentNullException.ThrowIfNull(hashStream);
 
             //get ref from pointer
             ref byte hashOutRef = ref Unsafe.AsRef<byte>(hashOut);
@@ -151,12 +144,8 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentNullException"></exception>
         public static void Flush(this IHashStream hashStream, Span<byte> hashOut)
         {
-            _ = hashStream ?? throw new ArgumentNullException(nameof(hashStream));
-
-            if (hashOut.Length != hashStream.HashSize)
-            {
-                throw new ArgumentException("The hash output must be the configured hash size", nameof(hashOut));
-            }
+            ArgumentNullException.ThrowIfNull(hashStream);
+            ArgumentOutOfRangeException.ThrowIfNotEqual(hashOut.Length, hashStream.HashSize, nameof(hashOut));
 
             //Marshal reference to span and flush
             ref byte hashOutRef = ref MemoryMarshal.GetReference(hashOut);
@@ -173,12 +162,8 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentNullException"></exception>
         public static void Flush(this IHashStream hashStream, Memory<byte> hashOut)
         {
-            _ = hashStream ?? throw new ArgumentNullException(nameof(hashStream));
-
-            if (hashOut.Length != hashStream.HashSize)
-            {
-                throw new ArgumentException("The hash output must be the configured hash size", nameof(hashOut));
-            }
+            ArgumentNullException.ThrowIfNull(hashStream);
+            ArgumentOutOfRangeException.ThrowIfNotEqual(hashOut.Length, hashStream.HashSize, nameof(hashOut));
 
             //Pin memory block instead of span marshalling
             using MemoryHandle hashOutHandle = hashOut.Pin();
@@ -217,16 +202,10 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void Initialize(this IHmacStream stream, byte* key, byte keySize)
         {
-            _ = stream ?? throw new ArgumentNullException(nameof(stream));
-
-            if (key == null)
-            {
-                throw new ArgumentNullException(nameof(key));
-            }
-            if (keySize == 0 || keySize > stream.MaxKeySize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(keySize), $"The key size must be between 1 and {stream.MaxKeySize} inclusive");
-            }
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentNullException.ThrowIfNull(key);
+            ArgumentOutOfRangeException.ThrowIfEqual(keySize, 0);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(keySize, stream.MaxKeySize);
 
             //Get reference to key
             ref byte asRef = ref Unsafe.AsRef<byte>(key);
@@ -248,12 +227,8 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void Initialize(this IHmacStream stream, ReadOnlySpan<byte> key)
         {
-            _ = stream ?? throw new ArgumentNullException(nameof(stream));
-
-            if (key.Length > stream.MaxKeySize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(key), $"The hash size must be less than or equal to {stream.MaxKeySize}");
-            }
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(key.Length, stream.MaxKeySize, nameof(key));
 
             //Get span ref and call interface method
             ref byte asRef = ref MemoryMarshal.GetReference(key);
@@ -275,12 +250,8 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void Initialize(this IHmacStream stream, ReadOnlyMemory<byte> key)
         {
-            _ = stream ?? throw new ArgumentNullException(nameof(stream));
-
-            if (key.Length > stream.MaxKeySize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(key), $"The hash size must be less than or equal to {stream.MaxKeySize}");
-            }
+            ArgumentNullException.ThrowIfNull(stream);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(key.Length, stream.MaxKeySize, nameof(key));
 
             //If key is default, then h.Pointer will be null, which is handled
             using MemoryHandle h = key.Pin();

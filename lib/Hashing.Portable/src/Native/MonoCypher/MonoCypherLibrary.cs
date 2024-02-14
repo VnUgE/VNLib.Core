@@ -131,15 +131,15 @@ namespace VNLib.Hashing.Native.MonoCypher
             functions = new FunctionTable
             {
                 //Argon2
-                Argon2Hash = library.DangerousGetMethod<MCPasswordModule.Argon2Hash>(),
-                Argon2CalcWorkArea = library.DangerousGetMethod<MCPasswordModule.Argon2CalcWorkArea>(),
+                Argon2Hash = library.DangerousGetFunction<MCPasswordModule.Argon2Hash>(),
+                Argon2CalcWorkArea = library.DangerousGetFunction<MCPasswordModule.Argon2CalcWorkArea>(),
 
                 //Blake2b
-                Blake2GetContextSize = library.DangerousGetMethod<MCBlake2Module.Blake2GetContextSize>(),
-                Blake2Init = library.DangerousGetMethod<MCBlake2Module.Blake2Init>(),
-                Blake2Update = library.DangerousGetMethod<MCBlake2Module.Blake2Update>(),
-                Blake2Final = library.DangerousGetMethod<MCBlake2Module.Blake2Final>(),
-                Blake2GethashSize = library.DangerousGetMethod<MCBlake2Module.Blake2GetHashSize>(),
+                Blake2GetContextSize = library.DangerousGetFunction<MCBlake2Module.Blake2GetContextSize>(),
+                Blake2Init = library.DangerousGetFunction<MCBlake2Module.Blake2Init>(),
+                Blake2Update = library.DangerousGetFunction<MCBlake2Module.Blake2Update>(),
+                Blake2Final = library.DangerousGetFunction<MCBlake2Module.Blake2Final>(),
+                Blake2GethashSize = library.DangerousGetFunction<MCBlake2Module.Blake2GetHashSize>(),
             };
         }
 

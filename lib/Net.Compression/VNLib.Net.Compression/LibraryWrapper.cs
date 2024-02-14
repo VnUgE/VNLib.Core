@@ -114,21 +114,21 @@ namespace VNLib.Net.Compression
                 //build the method table
                 MethodTable methods = new()
                 {
-                    GetMethods = lib.DangerousGetMethod<GetSupportedMethodsDelegate>(),
+                    GetMethods = lib.DangerousGetFunction<GetSupportedMethodsDelegate>(),
 
-                    GetBlockSize = lib.DangerousGetMethod<GetBlockSizeDelegate>(),
+                    GetBlockSize = lib.DangerousGetFunction<GetBlockSizeDelegate>(),
 
-                    GetCompType = lib.DangerousGetMethod<GetCompressorTypeDelegate>(),
+                    GetCompType = lib.DangerousGetFunction<GetCompressorTypeDelegate>(),
 
-                    GetCompLevel = lib.DangerousGetMethod<GetCompressorLevelDelegate>(),
+                    GetCompLevel = lib.DangerousGetFunction<GetCompressorLevelDelegate>(),
 
-                    Alloc = lib.DangerousGetMethod<AllocateCompressorDelegate>(),
+                    Alloc = lib.DangerousGetFunction<AllocateCompressorDelegate>(),
 
-                    Free = lib.DangerousGetMethod<FreeCompressorDelegate>(),
+                    Free = lib.DangerousGetFunction<FreeCompressorDelegate>(),
 
-                    GetOutputSize = lib.DangerousGetMethod<GetCompressedSizeDelegate>(),
+                    GetOutputSize = lib.DangerousGetFunction<GetCompressedSizeDelegate>(),
 
-                    Compress = lib.DangerousGetMethod<CompressBlockDelegate>()
+                    Compress = lib.DangerousGetFunction<CompressBlockDelegate>()
                 };
 
                 return new (lib, filePath, in methods);

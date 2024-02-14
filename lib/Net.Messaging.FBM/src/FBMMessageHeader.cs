@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -23,7 +23,6 @@
 */
 
 using System;
-
 
 namespace VNLib.Net.Messaging.FBM
 {
@@ -97,7 +96,15 @@ namespace VNLib.Net.Messaging.FBM
         /// </summary>
         /// <param name="other">The other header to compare</param>
         /// <returns>True if both headers have the same commad and value sequence</returns>
-        public bool Equals(FBMMessageHeader other) => Header == other.Header && Value.SequenceEqual(other.Value);
+        public readonly bool Equals(FBMMessageHeader other) => Header == other.Header && Value.SequenceEqual(other.Value);
+
+        /// <summary>
+        /// Determines if a string value is equal to the current header value
+        /// </summary>
+        /// <param name="other">Value to test</param>
+        /// <param name="comparison">The string comparison type</param>
+        /// <returns>True if the values are equal, false otherwise</returns>
+        public readonly bool ValueEquals(ReadOnlySpan<char> other, StringComparison comparison) => Value.Equals(other, comparison);
 
         /// <summary>
         /// Gets a concatinated string of the current instance for debugging purposes

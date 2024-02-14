@@ -8,9 +8,6 @@ file(GLOB HEADERS *.h)
 #Add indepednent source files to the project
 file(GLOB VNLIB_MIMALLOC_SOURCES *.c)
 
-#add heapapi includes
-include_directories(../NativeHeapApi/src)
-
 #set options for greedy allocator defaults
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)
 
@@ -104,19 +101,19 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 endif()
 
 #include mimalloc headers
-include_directories(../mimalloc/include)
+include_directories(vendor/include)
 
 if(MSVC)
 
 	#find the mimalloc static library for windows builds
 	find_library(VNLIB_MIMALLOC_DEBUG_LIB
 		NAMES mimalloc-static
-		PATHS ../mimalloc/build/Debug
+		PATHS vendor/build/Debug
 	)
 
 	find_library(VNLIB_MIMALLOC_RELEASE_LIB
 		NAMES mimalloc-static
-		PATHS ../mimalloc/build/Release
+		PATHS vendor/build/Release
 	)
 
 	#target static libraries for all configs
@@ -133,7 +130,7 @@ elseif(UNIX)
 	#find the mimalloc library for unix builds
 	find_library(VNLIB_MIMALLOC_LIB
 		NAMES mimalloc
-		PATHS ../mimalloc/build
+		PATHS vendor/build
 	)
 
 	#add the mimalloc library to the project

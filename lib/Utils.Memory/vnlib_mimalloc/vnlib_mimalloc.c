@@ -1,8 +1,30 @@
+/*
+* Copyright (c) 2024 Vaughn Nugent
+*
+* Library: VNLib
+* Package: vnlib_mimalloc
+* File: vnlib_mimalloc.h
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public License
+* as published by the Free Software Foundation; either version 2.1
+* of the License, or  (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with NativeHeapApi. If not, see http://www.gnu.org/licenses/.
+*/
 
-#include <NativeHeapApi.h>
+#define VNLIB_EXPORTING //Exporting when compiling the library
+
+#include "NativeHeapApi.h"
 #include <mimalloc.h>
 
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef _P_IS_WINDOWS
 
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files
@@ -19,13 +41,13 @@
 
 #define SHARED_HEAP_HANDLE_VALUE ((HeapHandle)1)
 
-HEAP_METHOD_EXPORT HeapHandle HEAP_METHOD_CC heapGetSharedHeapHandle(void)
+VNLIB_HEAP_API HeapHandle VNLIB_CC heapGetSharedHeapHandle(void)
 {
     //Return the shared heap pointer
     return SHARED_HEAP_HANDLE_VALUE;
 }
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flags)
+VNLIB_HEAP_API ERRNO VNLIB_CC heapCreate(UnmanagedHeapDescriptor* flags)
 {
 
     /*
@@ -53,7 +75,7 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapCreate(UnmanagedHeapDescriptor* flag
 }
 
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(HeapHandle heap)
+VNLIB_HEAP_API ERRNO VNLIB_CC heapDestroy(HeapHandle heap)
 {
     //Destroy the heap if not shared heap
     if (heap != SHARED_HEAP_HANDLE_VALUE)
@@ -65,7 +87,7 @@ HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapDestroy(HeapHandle heap)
 }
 
 
-HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapAlloc(HeapHandle heap, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, size_t elements, size_t alignment, int zero)
 {
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)
@@ -85,7 +107,7 @@ HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapAlloc(HeapHandle heap, size_t elemen
 }
 
 
-HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapRealloc(HeapHandle heap, void* block, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, size_t elements, size_t alignment, int zero)
 {
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)
@@ -105,7 +127,7 @@ HEAP_METHOD_EXPORT void* HEAP_METHOD_CC heapRealloc(HeapHandle heap, void* block
 }
 
 
-HEAP_METHOD_EXPORT ERRNO HEAP_METHOD_CC heapFree(HeapHandle heap, void* block)
+VNLIB_HEAP_API ERRNO VNLIB_CC heapFree(HeapHandle heap, void* block)
 {
     (void)heap;
     mi_free(block);

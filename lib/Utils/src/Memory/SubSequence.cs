@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -29,7 +29,7 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Represents a subset (or window) of data within a <see cref="MemoryHandle{T}"/>
+    /// Represents a subset (or window) of data within a <see cref="IMemoryHandle{T}"/>
     /// </summary>
     /// <typeparam name="T">The unmanaged type to wrap</typeparam>
     public readonly record struct SubSequence<T>
@@ -56,9 +56,11 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public SubSequence(IMemoryHandle<T> block, nuint offset, int size)
         {
-            Handle = block ?? throw new ArgumentNullException(nameof(block));
-            Size = size >= 0 ? size : throw new ArgumentOutOfRangeException(nameof(size));
-            _offset = offset;
+            ArgumentNullException.ThrowIfNull(block);
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+            Size = size;
+            Handle = block;
+            _offset = offset;           
 
             //Check handle bounds 
             MemoryUtil.CheckBounds(block, offset, (uint)size);
@@ -70,6 +72,12 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public readonly Span<T> Span => Size > 0 ? Handle.GetOffsetSpan(_offset, Size) : Span<T>.Empty;
+
+        /// <summary>
+        /// Gets a reference to the first element in the current sequence
+        /// </summary>
+        /// <returns>The element reference</returns>
+        public readonly ref T GetReference() => ref Handle.GetOffsetRef(_offset);
 
         /// <summary>
         /// Slices the current sequence into a smaller <see cref="SubSequence{T}"/>
@@ -87,15 +95,9 @@ namespace VNLib.Utils.Memory
             //Cal max size after the slice
             int newMaxSize = Size - (int)offset;
 
-            if(newMaxSize < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
-
-            if(size > newMaxSize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(size));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(offset);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(size, newMaxSize);
+            
             return new SubSequence<T>(Handle, newOffset, size > newMaxSize ? newMaxSize : size);
         }
 

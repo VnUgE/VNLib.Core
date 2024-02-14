@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -49,7 +49,7 @@ namespace VNLib.Plugins.Essentials.Middleware
         /// Removes a middleware handler from the chain
         /// </summary>
         /// <param name="middleware">The middleware instance to remove</param>
-        void RemoveMiddleware(IHttpMiddleware middleware);
+        void Remove(IHttpMiddleware middleware);
 
         /// <summary>
         /// Removes all middleware handlers from the chain

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -39,26 +39,6 @@
 #ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED 
 #include "feature_zlib.h"
 #endif /* VNLIB_COMPRESSOR_GZIP_ENABLED */
-
-
-/*
-* Public API functions
-*/
-VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void);
-
-VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ const void* compressor);
-
-VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ const void* compressor);
-
-VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ const void* compressor);
-
-VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionLevel level);
-
-VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor);
-
-VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ const void* compressor, uint64_t inputLength, int32_t flush);
-
-VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ const void* compressor, CompressionOperation* operation);
 
 /*
  Gets the supported compressors, this is defined at compile time and is a convenience method for
