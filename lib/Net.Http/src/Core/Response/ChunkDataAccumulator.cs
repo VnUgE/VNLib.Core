@@ -50,31 +50,14 @@ namespace VNLib.Net.Http.Core.Response
         * Must always leave enough room for trailing crlf at the end of 
         * the buffer
         */
-        private readonly int TotalMaxBufferSize => Buffer.Size - (int)Context.CrlfSegment.Length;
-
-        /// <summary>
-        /// Complets and returns the memory segment containing the chunk data to send 
-        /// to the client. This also resets the accumulator.
-        /// </summary>
-        /// <returns></returns>
-        public readonly Memory<byte> GetChunkData(int accumulatedSize)
-        {
-            //Update the chunk size
-            int reservedOffset = UpdateChunkSize(Buffer, Context, accumulatedSize);
-            int endPtr = GetPointerToEndOfUsedBuffer(accumulatedSize);
-
-            //Write trailing chunk delimiter
-            endPtr += Context.CrlfSegment.DangerousCopyTo(Buffer, endPtr);
-
-            return Buffer.GetMemory()[reservedOffset..endPtr];
-        }
+        private readonly int TotalMaxBufferSize => Buffer.Size - Context.CrlfSegment.Length;
 
         /// <summary>
         /// Complets and returns the memory segment containing the chunk data to send 
         /// to the client.
         /// </summary>
         /// <returns></returns>
-        public readonly Memory<byte> GetFinalChunkData(int accumulatedSize)
+        public readonly Memory<byte> GetChunkData(int accumulatedSize, bool isFinalChunk)
         {
             //Update the chunk size
             int reservedOffset = UpdateChunkSize(Buffer, Context, accumulatedSize);
@@ -83,8 +66,11 @@ namespace VNLib.Net.Http.Core.Response
             //Write trailing chunk delimiter
             endPtr += Context.CrlfSegment.DangerousCopyTo(Buffer, endPtr);
 
-            //Write final chunk to the end of the accumulator
-            endPtr += Context.FinalChunkSegment.DangerousCopyTo(Buffer, endPtr);
+            if (isFinalChunk)
+            {
+                //Write final chunk to the end of the accumulator
+                endPtr += Context.FinalChunkSegment.DangerousCopyTo(Buffer, endPtr);
+            }
 
             return Buffer.GetMemory()[reservedOffset..endPtr];
         }
@@ -105,22 +91,6 @@ namespace VNLib.Net.Http.Core.Response
         /// <returns>The number of bytes remaining in the buffer</returns>
         public readonly int GetRemainingSegmentSize(int accumulatedSize)
             => TotalMaxBufferSize - GetPointerToEndOfUsedBuffer(accumulatedSize);
-
-
-        /*
-         * Completed chunk is the segment of the buffer that contains the size segment
-         * followed by the accumulated chunk data, and the trailing crlf.
-         * 
-         * The accumulated data position is the number of chunk bytes accumulated
-         * in the data segment. This does not include the number of reserved bytes 
-         * are before it.
-         * 
-         * We can get the value that points to the end of the used buffer 
-         * and use the memory range operator to get the segment from the reserved 
-         * segment, to the actual end of the data segment.
-         */
-        private readonly Memory<byte> GetCompleteChunk(int reservedOffset, int accumulatedSize) 
-            => Buffer.GetMemory()[reservedOffset..accumulatedSize];
 
 
         private static int GetPointerToEndOfUsedBuffer(int accumulatedSize) => accumulatedSize + ReservedSize;
@@ -181,14 +151,10 @@ namespace VNLib.Net.Http.Core.Response
             int reservedOffset = ReservedSize - totalChunkBufferBytes;
 
             //Copy encoded chunk size to the reserved segment
-            ref byte reservedSegRef = ref buffer.DangerousGetBinRef(reservedOffset);
-            ref byte chunkSizeBufRef = ref MemoryMarshal.GetReference(chunkSizeBinBuffer);
-
-            //We know the block is super small
             MemoryUtil.SmallMemmove(
-                ref chunkSizeBufRef, 
+                in MemoryMarshal.GetReference(chunkSizeBinBuffer), 
                 0, 
-                ref reservedSegRef, 
+                ref buffer.DangerousGetBinRef(reservedOffset), 
                 0, 
                 (ushort)totalChunkBufferBytes
             );

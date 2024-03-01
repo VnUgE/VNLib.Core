@@ -354,6 +354,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="domain"></param>
         /// <param name="path"></param>
         /// <param name="sameSite"></param>
+        /// <param name="expires"></param>
         /// <param name="httpOnly"></param>
         /// <param name="secure"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

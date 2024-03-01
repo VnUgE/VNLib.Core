@@ -194,6 +194,13 @@ namespace VNLib.Hashing.IdentityUtility
         }
 
         /// <summary>
+        /// Gets the hash size in bytes for the current <see cref="HashAlg"/> value
+        /// </summary>
+        /// <param name="alg"></param>
+        /// <returns>The size (in bytes) of the algorithm's hash</returns>
+        public static int HashSize(this HashAlg alg) => ManagedHash.GetHashSize(alg);
+
+        /// <summary>
         /// Gets the <see cref="HashAlgorithmName"/> for the current <see cref="HashAlg"/>
         /// value.
         /// </summary>

@@ -54,10 +54,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Initalizes a new global (cross platform) process heap
         /// </summary>
-        public ProcessHeap()
-        {
-            Trace.WriteLine($"Default heap instnace created {GetHashCode():x}");
-        }
+        public ProcessHeap() => Trace.WriteLine($"Default heap instnace created {GetHashCode():x}");
 
         ///<inheritdoc/>
         ///<exception cref="OverflowException"></exception>
@@ -78,13 +75,10 @@ namespace VNLib.Utils.Memory
 
             return true;
         }
-        
+
         ///<inheritdoc/>
-        protected override void Free()
-        {
-            Trace.WriteLine($"Default heap instnace disposed {GetHashCode():x}");
-        }
-        
+        protected override void Free() => Trace.WriteLine($"Default heap instnace disposed {GetHashCode():x}");
+
         ///<inheritdoc/>
         ///<exception cref="OverflowException"></exception>
         ///<exception cref="OutOfMemoryException"></exception>

@@ -275,7 +275,7 @@ namespace VNLib.Hashing.IdentityUtility
         public static void Sign(this JsonWebToken jwt, ReadOnlySpan<byte> key, HashAlg alg)
         {
             //Stack hash output buffer, will be the size of the alg
-            Span<byte> sigOut = stackalloc byte[(int)alg];
+            Span<byte> sigOut = stackalloc byte[alg.HashSize()];
 
             //Compute
             ERRNO count = ManagedHash.ComputeHmac(key, jwt.HeaderAndPayload, sigOut, alg);
@@ -394,7 +394,7 @@ namespace VNLib.Hashing.IdentityUtility
             int sigBufSize = CalcPadding(signature.Length) + signature.Length;
 
             //Calc full buffer size
-            nint bufferSize = MemoryUtil.NearestPage(sigBufSize + (int)alg);
+            nint bufferSize = MemoryUtil.NearestPage(sigBufSize + alg.HashSize());
 
             //Alloc buffer to decode data, as a full page, all buffers will be used from the block for better cache
             using UnsafeMemoryHandle<byte> buffer = jwt.Heap.UnsafeAlloc<byte>((int)bufferSize);
@@ -442,10 +442,10 @@ namespace VNLib.Hashing.IdentityUtility
         /// <exception cref="InternalBufferTooSmallException"></exception>
         public static bool Verify(this JsonWebToken jwt, ReadOnlySpan<byte> key, HashAlg alg)
         {
-            _ = jwt ?? throw new ArgumentNullException(nameof(jwt));
+            ArgumentNullException.ThrowIfNull(jwt);
 
             //Get base64 buffer size for in-place conversion
-            int bufferSize = Base64.GetMaxEncodedToUtf8Length((int)alg);
+            int bufferSize = Base64.GetMaxEncodedToUtf8Length(alg.HashSize());
 
             //Alloc buffer for signature output
             Span<byte> signatureBuffer = stackalloc byte[bufferSize];
@@ -458,7 +458,7 @@ namespace VNLib.Hashing.IdentityUtility
             }
 
             //Do an in-place base64 conversion of the signature to base64url
-            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, (int)alg, false);
+            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, alg.HashSize(), false);
           
             if (!encoded)
             {

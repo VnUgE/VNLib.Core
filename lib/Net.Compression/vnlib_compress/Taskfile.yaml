@@ -21,7 +21,11 @@ tasks:
     
     #make third-party dir before cloning libs
      - cmd: powershell -Command "mkdir '{{.THIRD_PARTY_DIR}}' -Force"
+       platforms: [windows]
        ignore_error: true  
+     - cmd: mkdir -p '{{.THIRD_PARTY_DIR}}'
+       platforms: [linux, darwin]
+       ignore_error: true
 
      - task: zlib
      - task: brotli
@@ -51,7 +55,6 @@ tasks:
     internal: true
     status:
      - cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/cloudflare/zlib.git
-
     cmds:
      - cd {{.THIRD_PARTY_DIR}}/zlib && git pull
   

@@ -88,6 +88,7 @@ namespace VNLib.Utils.IO
         /// <returns>The readonly stream</returns>
         public static VnMemoryStream CreateReadonly(VnMemoryStream stream)
         {
+            ArgumentNullException.ThrowIfNull(stream);
             //Set the readonly flag
             stream._isReadonly = true;
             //Return the stream
@@ -528,10 +529,19 @@ namespace VNLib.Utils.IO
         /// <exception cref="OutOfMemoryException"></exception>
         public byte[] ToArray()
         {
-            //Alloc a new array of the size of the internal buffer, may be 64 bit large block
-            byte[] data = new byte[_length];
-            
-            //Copy the internal buffer to the new array
+            byte[] data;
+
+            if (_length < Int32.MaxValue)
+            {
+                //Alloc uninialized, since were going to overwite it anyway
+                data = GC.AllocateUninitializedArray<byte>((int)_length, false);
+            }
+            else
+            {
+                //Use new opperator if larger than 32bit
+                data = new byte[_length];
+            }
+           
             MemoryUtil.CopyArray(_buffer, 0, data, 0, (nuint)_length);
             
             return data;

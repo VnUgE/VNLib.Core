@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -111,7 +111,8 @@ namespace VNLib.Net.Compression
         ///<inheritdoc/>
         public int InitCompressor(object compressorState, CompressionMethod compMethod)
         {
-            Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
+            DebugThrowIfNull(compressorState, nameof(compressorState));
+            Compressor compressor = Unsafe.As<Compressor>(compressorState);
 
             //Instance should be null during initialization calls
             Debug.Assert(compressor.Instance == IntPtr.Zero, "Init was called but and old compressor instance was not properly freed");
@@ -126,7 +127,8 @@ namespace VNLib.Net.Compression
         ///<inheritdoc/>
         public void DeinitCompressor(object compressorState)
         {
-            Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
+            DebugThrowIfNull(compressorState, nameof(compressorState));
+            Compressor compressor = Unsafe.As<Compressor>(compressorState);
 
             if(compressor.Instance == IntPtr.Zero)
             {
@@ -143,7 +145,8 @@ namespace VNLib.Net.Compression
         ///<inheritdoc/>
         public int Flush(object compressorState, Memory<byte> output)
         {
-            Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
+            DebugThrowIfNull(compressorState, nameof(compressorState));
+            Compressor compressor = Unsafe.As<Compressor>(compressorState);
 
             if (compressor.Instance == IntPtr.Zero)
             {
@@ -151,14 +154,15 @@ namespace VNLib.Net.Compression
             }
 
             //Force a flush until no more data is available
-            CompressionResult result = _nativeLib.CompressBlock(compressor.Instance, output, default, true);
+            CompressionResult result = _nativeLib!.CompressBlock(compressor.Instance, output, default, true);
             return result.BytesWritten;
         }
 
         ///<inheritdoc/>
         public CompressionResult CompressBlock(object compressorState, ReadOnlyMemory<byte> input, Memory<byte> output)
         {
-            Compressor compressor = Unsafe.As<Compressor>(compressorState) ?? throw new ArgumentNullException(nameof(compressorState));
+            DebugThrowIfNull(compressorState, nameof(compressorState));
+            Compressor compressor = Unsafe.As<Compressor>(compressorState);
 
             if (compressor.Instance == IntPtr.Zero)
             {
@@ -166,9 +170,20 @@ namespace VNLib.Net.Compression
             }
 
             //Compress the block
-            return _nativeLib.CompressBlock(compressor.Instance, output, input, false);
-        } 
-     
+            return _nativeLib!.CompressBlock(compressor.Instance, output, input, false);
+        }
+
+        /*
+         * This compressor manager instance is designed to tbe used by a webserver instance,
+         * (or multiple) as internal calls. We can assume the library compression calls 
+         * are "correct" and should never pass null objects to these function calls.
+         * 
+         * Its also a managed type and if null will still raise a null ref exception
+         * if the instances are null. This is just cleaner for debugging purposes.
+         */
+
+        [Conditional("DEBUG")]
+        private static void DebugThrowIfNull<T>(T? obj, string name) => ArgumentNullException.ThrowIfNull(obj, name);
 
         /*
          * A class to contain the compressor state

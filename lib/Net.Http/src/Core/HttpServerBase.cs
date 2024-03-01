@@ -41,7 +41,6 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Security.Authentication;
 
 using VNLib.Utils.Logging;
 using VNLib.Utils.Memory.Caching;
@@ -141,15 +140,16 @@ namespace VNLib.Net.Http
             //Configure roots and their directories
             ServerRoots = sites.ToFrozenDictionary(static r => r.Hostname, static tv => tv, StringComparer.OrdinalIgnoreCase);
             //Compile and store the timeout keepalive header
-            KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
-            //Create a new context store
-            ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this));
+            KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";           
             //Setup config copy with the internal http pool
             Transport = transport;
             //Cache supported compression methods, or none if compressor is null
             SupportedCompressionMethods = config.CompressorManager == null ? 
                 CompressionMethod.None : 
                 config.CompressorManager.GetSupportedMethods();
+
+            //Create a new context store
+            ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this, SupportedCompressionMethods));
 
             //Cache wildcard root
             _wildcardRoot = ServerRoots.GetValueOrDefault(WILDCARD_KEY);
@@ -270,20 +270,6 @@ namespace VNLib.Net.Http
         }
 
         /*
-        * An SslStream may throw a win32 exception with HRESULT 0x80090327
-        * when processing a client certificate (I believe anyway) only 
-        * an issue on some clients (browsers)
-        */
-
-        private const int UKNOWN_CERT_AUTH_HRESULT = unchecked((int)0x80090327);
-
-        /// <summary>
-        /// An invlaid frame size may happen if data is recieved on an open socket
-        /// but does not contain valid SSL handshake data
-        /// </summary>
-        private const int INVALID_FRAME_HRESULT = unchecked((int)0x80131620);
-
-        /*
          * A worker task that listens for connections from the transport
          */
         private async Task ListenWorkerDoWork()
@@ -301,21 +287,13 @@ namespace VNLib.Net.Http
                     //Listen for new connection 
                     ITransportContext ctx = await Transport.AcceptAsync(StopToken!.Token);
 
-                    //Try to dispatch the recieved event
+                    //Try to dispatch the received event
                     _ = DataReceivedAsync(ctx).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                     //Closing, exit loop
                     break;
-                }
-                catch(AuthenticationException ae) when(ae.HResult == INVALID_FRAME_HRESULT)
-                {
-                    _config.ServerLog.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
-                }
-                catch (AuthenticationException ae)
-                {
-                    _config.ServerLog.Error(ae);
                 }
                 catch (Exception ex)
                 {

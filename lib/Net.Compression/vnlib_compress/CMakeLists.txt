@@ -218,10 +218,16 @@ if(ENABLE_ZLIB)
 		check_c_compiler_flag(/arch:AVX HAS_AVX)
 		if (HAS_AVX)
 			list(APPEND Z_C_FLAGS /arch:AVX)
+			list(APPEND ZLIB_DEFINITIONS -DHAS_AVX)
 		endif()
 
-	elseif(UNIX)
+		#All x64 machines have SSE2, so we can use it as 
+		#and the Windows compiler will automatically use it
+		#so we only need to set the definition
+		list(APPEND Z_C_FLAGS /arch:SSE2)
+		list(APPEND ZLIB_DEFINITIONS -DHAS_SSE2 -DHAS_SSE42)
 
+	elseif(UNIX)	
 		
 		#for cloudflare intrinsic detections
 		check_c_compiler_flag(-march=armv8-a+crc ARM_CRC)
@@ -229,9 +235,15 @@ if(ENABLE_ZLIB)
 		check_c_compiler_flag(-mssse3 HAS_SSSE3)
 		check_c_compiler_flag(-msse4.2 HAS_SSE42)
 		check_c_compiler_flag(-mpclmul HAS_PCLMUL)
-		
+
 		if(ARM_CRC)
 			list(APPEND Z_C_FLAGS -march=armv8-a+crc)
+
+			if(EXISTS "../third-party/zlib/adler32_simd.c")
+				list(APPEND ZLIB_DEFINITIONS -DADLER32_SIMD_NEON)
+				list(APPEND ZLIB_SOURCES ../third-party/zlib/adler32_simd.c)
+			endif()
+
 		else()
 			if(HAS_SSE2)
 				list(APPEND Z_C_FLAGS -msse2)
@@ -241,7 +253,7 @@ if(ENABLE_ZLIB)
 			if(HAS_SSSE3)
 				list(APPEND Z_C_FLAGS -mssse3)
 
-				#add cloudflare intrinsic optimizations
+				#add cloudflare intrinsic optimizations, may not be present if using non-cloudflare fork
 				if(EXISTS "../third-party/zlib/adler32_simd.c")
 					list(APPEND ZLIB_DEFINITIONS -DHAS_SSSE3 -DADLER32_SIMD_SSSE3)
 					list(APPEND ZLIB_SOURCES ../third-party/zlib/adler32_simd.c)
@@ -255,7 +267,7 @@ if(ENABLE_ZLIB)
 			if(HAS_PCLMUL)
 				list(APPEND Z_C_FLAGS -mpclmul)
 
-				#add cloudflare intrinsic optimizations for PCMLONGMUL
+				#add cloudflare intrinsic optimizations for PCMLONGMUL crc32, may not be present if using non-cloudflare fork
 				if(EXISTS "../third-party/zlib/crc32_simd.c")
 					list(APPEND ZLIB_DEFINITIONS -DHAS_PCLMUL)
 					list(APPEND ZLIB_SOURCES ../third-party/zlib/crc32_simd.c)
@@ -263,9 +275,9 @@ if(ENABLE_ZLIB)
 				
 			endif()
 		endif()
-
-		
 	endif()
+
+	
 	
 	#add zlib as a library to link later
 	add_library(lib_deflate STATIC ${ZLIB_SOURCES})
@@ -278,7 +290,7 @@ if(ENABLE_ZLIB)
 	#add the definitions to the zlib project only
 	target_compile_definitions(lib_deflate PRIVATE ${ZLIB_DEFINITIONS})
 
-	#only target zlib project
+	#only target zlib project with compiler flags
 	target_compile_options(lib_deflate PRIVATE ${Z_C_FLAGS})
 	
 	target_link_libraries(${CMAKE_PROJECT_NAME} lib_deflate)

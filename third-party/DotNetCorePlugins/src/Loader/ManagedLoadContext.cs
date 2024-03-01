@@ -71,9 +71,7 @@ namespace McMaster.NETCore.Plugins.Loader
             _preferDefaultLoadContext = preferDefaultLoadContext;
             _loadInMemory = loadInMemory;
 
-            _resourceRoots = new[] { _basePath }
-                .Concat(resourceProbingPaths)
-                .ToArray();
+            _resourceRoots = [_basePath, .. resourceProbingPaths];
 
             _shadowCopyNativeLibraries = shadowCopyNativeLibraries;
             _unmanagedDllShadowCopyDirectoryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());

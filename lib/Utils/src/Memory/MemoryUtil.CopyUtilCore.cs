@@ -74,7 +74,7 @@ namespace VNLib.Utils.Memory
             public static bool RequiresPinning(nuint byteSize, bool forceAcceleration)
             {
                 /*
-                 * Pinnin is required, if reflected memmove is not supported on the platform
+                 * Pinning is required, if reflected memmove is not supported on the platform
                  * AND the size of the data to copy is larger than 32 bit width.
                  * 
                  * Otherwise if accleration is forced, pinning will always be required.
@@ -94,9 +94,9 @@ namespace VNLib.Utils.Memory
             }
 
             /*
-             * Why does this function exist. For centralized memmove operations primarily.
+             * Why does this function exist? For centralized memmove operations primarily.
              * 
-             * When the block is known to be small, all of the brances in memmove can be
+             * When the block is known to be small, all of the branches in memmove can be
              * alot of overhead including the possability of Avx2 being used for really 
              * small blocks if they are aligned. If the block is known to be small, we
              * can just skip all of that and use the fastest method for small blocks,
@@ -118,7 +118,6 @@ namespace VNLib.Utils.Memory
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
                 _fallbackMemmove.Memmove(in srcByte, ref dstByte, byteCount);
-                return;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]

@@ -163,6 +163,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponseJson(this IHttpEvent ev, HttpStatusCode code, JsonDocument data)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             if(data == null)
             {
                 ev.CloseResponse(code);
@@ -195,7 +197,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponse<T>(this IHttpEvent ev, T webm) where T:WebMessage
         {
-            if (webm == null)
+            ArgumentNullException.ThrowIfNull(ev);
+
+            if (webm is null)
             {
                 ev.CloseResponse(HttpStatusCode.OK);
             }
@@ -220,6 +224,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponseAttachment(this IHttpEvent ev, HttpStatusCode code, FileInfo file)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(file);
+
             //Close with file
             ev.CloseResponse(code, file);
             //Set content dispostion as attachment (only if successfull)
@@ -236,6 +243,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponseAttachment(this IHttpEvent ev, HttpStatusCode code, FileStream file)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(file);
+
             //Close with file
             ev.CloseResponse(code, file);
             //Set content dispostion as attachment (only if successfull)
@@ -255,6 +265,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponseAttachment(this IHttpEvent ev, HttpStatusCode code, ContentType ct, Stream data, string fileName, long length)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(data);
+
             //Close with file
             ev.CloseResponse(code, ct, data, length);
             //Set content dispostion as attachment (only if successfull)
@@ -275,6 +288,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, FileInfo file)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(file);
+
             //Open filestream for file
             FileStream fs = file.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
             try
@@ -302,13 +318,16 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, FileStream file)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(file);
+
             //Get content type from filename
             ContentType ct = HttpHelpers.GetContentTypeFromFile(file.Name);            
             //Set the input as a stream
             ev.CloseResponse(code, ct, file, file.Length);
         }
 
-       
+
         /// <summary>
         /// Close a response to a connection with a character buffer using the server wide
         /// <see cref="ConnectionInfo.Encoding"/> encoding
@@ -321,12 +340,10 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, ReadOnlySpan<char> data)
-        {
+        public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, ReadOnlySpan<char> data) =>
             //Get a memory stream using server built-in encoding
             CloseResponse(ev, code, type, data, ev.Server.Encoding);
-        }
-        
+
         /// <summary>
         /// Close a response to a connection with a character buffer using the specified encoding type
         /// </summary>
@@ -339,6 +356,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, ReadOnlySpan<char> data, Encoding encoding)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             if (data.IsEmpty)
             {
                 ev.CloseResponse(code);
@@ -367,6 +386,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponse(this IHttpEvent ev, HttpStatusCode code, ContentType type, ReadOnlySpan<byte> data)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             if (data.IsEmpty)
             {
                 ev.CloseResponse(code);
@@ -391,6 +412,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool CloseWithRelativeFile(this HttpEntity entity, HttpStatusCode code, string filePath)
         {
+            ArgumentNullException.ThrowIfNull(entity);
+            ArgumentNullException.ThrowIfNull(filePath);
+
             //See if file exists and is within the root's directory
             if (entity.RequestedRoot.FindResourceInRoot(filePath, out string realPath))
             {
@@ -412,11 +436,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <remarks>Sets required headers for redirection, disables cache control, and returns the status code to the client</remarks>
         /// <exception cref="UriFormatException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Redirect(this IHttpEvent ev, RedirectType type, string location)
-        {
-            Redirect(ev, type, new Uri(location, UriKind.RelativeOrAbsolute));
-        }
-        
+        public static void Redirect(this IHttpEvent ev, RedirectType type, string location) 
+            => Redirect(ev, type, new Uri(location, UriKind.RelativeOrAbsolute));
+
         /// <summary>
         /// Redirects a client using the specified <see cref="RedirectType"/>
         /// </summary>
@@ -427,6 +449,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Redirect(this IHttpEvent ev, RedirectType type, Uri location)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(location);
             
             if(type == RedirectType.None)
             {
@@ -472,6 +496,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryGetJsonFromArg<T>(this IHttpEvent ev, string key, JsonSerializerOptions options, out T? obj)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             //Check for key in argument
             if (ev.RequestArgs.TryGetNonEmptyValue(key, out string? value))
             {
@@ -502,6 +528,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static JsonDocument? GetJsonFromArg(this IHttpEvent ev, string key, in JsonDocumentOptions options = default)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             try
             {
                 //Check for key in argument
@@ -528,6 +556,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T? GetJsonFromFile<T>(this IHttpEvent ev, JsonSerializerOptions? options = null, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return default;
@@ -563,6 +593,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static JsonDocument? GetJsonFromFile(this IHttpEvent ev, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return default;
@@ -599,6 +631,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ValueTask<T?> GetJsonFromFileAsync<T>(this HttpEntity ev, JsonSerializerOptions? options = null, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return ValueTask.FromResult<T?>(default);
@@ -640,6 +674,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Task<JsonDocument?> GetJsonFromFileAsync(this HttpEntity ev, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return DocTaskDefault;
@@ -677,6 +713,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static Task<T?> ParseFileAsAsync<T>(this IHttpEvent ev, Func<Stream, Task<T?>> parser, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(parser);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return Task.FromResult<T?>(default);
@@ -698,6 +737,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static Task<T?> ParseFileAsAsync<T>(this IHttpEvent ev, Func<Stream, string, Task<T?>> parser, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(parser);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return Task.FromResult<T?>(default);
@@ -720,6 +762,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static ValueTask<T?> ParseFileAsAsync<T>(this IHttpEvent ev, Func<Stream, ValueTask<T?>> parser, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(parser);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return ValueTask.FromResult<T?>(default);
@@ -741,6 +786,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static ValueTask<T?> ParseFileAsAsync<T>(this IHttpEvent ev, Func<Stream, string, ValueTask<T?>> parser, int uploadIndex = 0)
         {
+            ArgumentNullException.ThrowIfNull(ev);
+            ArgumentNullException.ThrowIfNull(parser);
+
             if (ev.Files.Count <= uploadIndex)
             {
                 return ValueTask.FromResult<T?>(default);
@@ -760,6 +808,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool HasAuthorization(this IConnectionInfo ci, [NotNullWhen(true)] out string? token)
         {
+            ArgumentNullException.ThrowIfNull(ci);
+
             //Get auth header value
             string? authorization = ci.Headers[HttpRequestHeader.Authorization];
             //Check if its set
@@ -767,7 +817,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 int bearerIndex = authorization.IndexOf(BEARER_STRING, StringComparison.OrdinalIgnoreCase);
                 //Calc token offset, get token, and trim any whitespace
-                token = authorization[(bearerIndex + BEARER_LEN)..].Trim();
+                token = authorization.AsSpan(bearerIndex + BEARER_LEN).Trim().ToString();
                 return true;
             }
             token = null;
@@ -819,11 +869,9 @@ namespace VNLib.Plugins.Essentials.Extensions
             )
         {
             //Must define an accept callback
-            _ = socketOpenedCallback ?? throw new ArgumentNullException(nameof(socketOpenedCallback));
-
-            bool success = PrepWebSocket(entity, subProtocol);
+            ArgumentNullException.ThrowIfNull(socketOpenedCallback);
             
-            if (success)
+            if (PrepWebSocket(entity, subProtocol))
             {
                 //Set a default keep alive if none was specified
                 if (keepAlive == default)
@@ -841,8 +889,11 @@ namespace VNLib.Plugins.Essentials.Extensions
 
                 //Setup a new websocket session with a new session id
                 entity.DangerousChangeProtocol(ws);
+
+                return true;
             }
-            return success;
+
+            return false;
         }
 
         /// <summary>
@@ -858,11 +909,10 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static bool AcceptWebSocket(this IHttpEvent entity, WebSocketAcceptedCallback socketOpenedCallback, string? subProtocol = null, TimeSpan keepAlive = default)
         {
             //Must define an accept callback
-            _ = socketOpenedCallback ?? throw new ArgumentNullException(nameof(socketOpenedCallback));
+            ArgumentNullException.ThrowIfNull(entity);
+            ArgumentNullException.ThrowIfNull(socketOpenedCallback);          
 
-            bool success = PrepWebSocket(entity, subProtocol);
-
-            if(success)
+            if(PrepWebSocket(entity, subProtocol))
             {
                 //Set a default keep alive if none was specified
                 if (keepAlive == default)
@@ -879,15 +929,19 @@ namespace VNLib.Plugins.Essentials.Extensions
 
                 //Setup a new websocket session with a new session id
                 entity.DangerousChangeProtocol(ws);
+
+                return true;
             }
 
-            return success;
+            return false;
         }
 
         private static string GetNewSocketId() => Guid.NewGuid().ToString("N");
 
         private static bool PrepWebSocket(this IHttpEvent entity, string? subProtocol = null)
         {
+            ArgumentNullException.ThrowIfNull(entity);
+
             //Make sure this is a websocket request
             if (!entity.Server.IsWebSocketRequest)
             {

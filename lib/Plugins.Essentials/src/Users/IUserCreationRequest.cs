@@ -44,9 +44,9 @@ namespace VNLib.Plugins.Essentials.Users
         ulong Privileges { get; }
 
         /// <summary>
-        /// The user's email address
+        /// The user's unique username (may also be an email address
         /// </summary>
-        string EmailAddress { get; }
+        string Username { get; }
 
         /// <summary>
         /// Should the password be stored as-is in the database?

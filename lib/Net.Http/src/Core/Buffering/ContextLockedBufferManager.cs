@@ -137,15 +137,13 @@ namespace VNLib.Net.Http.Core.Buffering
         }
 
         ///<inheritdoc/>
-        public void ZeroAll()
+        public void FreeAll(bool zero)
         {
-            //Zero the buffer completely
-            MemoryUtil.InitializeBlock(_handle!.Memory);
-        }
+            if (zero)
+            {
+                MemoryUtil.InitializeBlock(_handle!.Memory);
+            }
 
-        ///<inheritdoc/>
-        public void FreeAll()
-        {
             //Clear buffer memory structs to allow gc
             _requestHeaderBuffer.FreeBuffer();
             _responseHeaderBuffer.FreeBuffer();

@@ -188,8 +188,7 @@ namespace VNLib.Plugins.Essentials
                     //If the processor had an error recovering the session, return the result to the processor
                     if (entity.EventSessionHandle.EntityStatus != FileProcessArgs.Continue)
                     {
-                        ProcessFile(httpEvent, entity.EventSessionHandle.EntityStatus);
-                        return;
+                        goto ProcessRoutine;
                     }
 
                     //Attach the new session to the entity
@@ -209,7 +208,7 @@ namespace VNLib.Plugins.Essentials
                     //Loop through nodes
                     while(mwNode != null)
                     {
-                        //Process
+                        //Invoke mw handler on our event
                         entity.EventArgs = await mwNode.ValueRef.ProcessAsync(entity);
                         
                         switch (entity.EventArgs.Routine)
@@ -237,7 +236,7 @@ namespace VNLib.Plugins.Essentials
                             //Process a virtual file
                             GetArgsFromVirtualReturn(entity, rt, out entity.EventArgs);
 
-                            //If the entity was processed, exit
+                            //If the entity was processed by the handler, exit
                             if (entity.EventArgs != FileProcessArgs.Continue)
                             {
                                 goto RespondAndExit;
@@ -275,8 +274,10 @@ namespace VNLib.Plugins.Essentials
                     }
                 }
 
+            ProcessRoutine:
+
                 //Finally process the file
-                ProcessFile(httpEvent, in entity.EventArgs);
+                ProcessRoutine(httpEvent, in entity.EventArgs);
             }
             catch (ContentTypeUnacceptableException)
             {
@@ -329,7 +330,7 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="entity">The entity to process the file for</param>
         /// <param name="args">The selected <see cref="FileProcessArgs"/> to determine what file to process</param>
-        protected virtual void ProcessFile(IHttpEvent entity, ref readonly FileProcessArgs args)
+        protected virtual void ProcessRoutine(IHttpEvent entity, ref readonly FileProcessArgs args)
         {
             try
             {
@@ -413,8 +414,7 @@ namespace VNLib.Plugins.Essentials
 
                 //Get the content type of he file
                 ContentType fileType = HttpHelpers.GetContentTypeFromFile(filename);
-
-                //Make sure the client accepts the content type
+                
                 if (!entity.Server.Accepts(fileType))
                 {
                     //Unacceptable
@@ -729,7 +729,7 @@ namespace VNLib.Plugins.Essentials
                     WeakReference<object?> wr = Volatile.Read(ref _objects[tableIndex]);
 
                     //Try to get the object instance
-                    wr.TryGetTarget(out object? value);
+                    _ = wr.TryGetTarget(out object? value);
 
                     instance = (T?)value;
                 }

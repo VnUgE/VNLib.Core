@@ -45,22 +45,14 @@ namespace VNLib.Net.Http.Core
 
             ValueTask discardTask = Request.InputStream.DiscardRemainingAsync();
 
-            //See if response data needs to be written
+            //See if response data needs to be written, if so we can parallel discard and write
             if (ResponseBody.HasData)
             {
                 //Parallel the write and discard
                 Task response = WriteResponseInternalAsync();
 
-                if (discardTask.IsCompletedSuccessfully)
-                {
-                    //If discard is already complete, await the response
-                    await response;
-                }
-                else
-                {
-                    //If discard is not complete, await both, avoid wait-all method because it will allocate
-                    await Task.WhenAll(discardTask.AsTask(), response);
-                }
+                //in .NET 8.0 WhenAll is now allocation free, so no biggie 
+                await Task.WhenAll(discardTask.AsTask(), response);
             }
             else
             {

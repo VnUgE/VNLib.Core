@@ -29,7 +29,6 @@ using System.Security.Cryptography;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory;
-using VNLib.Hashing.Native.MonoCypher;
 
 namespace VNLib.Hashing
 {
@@ -84,7 +83,7 @@ namespace VNLib.Hashing
         /// Gets a value that indicates whether the current runtime has the required libraries 
         /// available to support the Blake2b hashing algorithm
         /// </summary>
-        public static bool SupportsBlake2b => MonoCypherLibrary.CanLoadDefaultLibrary();
+        public static bool SupportsBlake2b => IsAlgSupported(HashAlg.BlAKE2B);
 
         /// <summary>
         /// Gets a value that indicates whether the current platform supports the SHA3 
@@ -103,13 +102,33 @@ namespace VNLib.Hashing
             HashAlg.SHA3_512 => Sha3_512.IsSupported,
             HashAlg.SHA3_384 => Sha3_384.IsSupported,
             HashAlg.SHA3_256 => Sha3_256.IsSupported,
-            HashAlg.BlAKE2B => SupportsBlake2b,
-            HashAlg.SHA512 => true,
+            HashAlg.BlAKE2B => Blake2b.IsSupported,
+            HashAlg.SHA512 => true, //Built-in functions are always supported
             HashAlg.SHA384 => true,
             HashAlg.SHA256 => true,
             HashAlg.SHA1 => true,
             HashAlg.MD5 => true,
             _ => false
+        };
+
+        /// <summary>
+        /// Gets the size of the hash (in bytes) for the specified algorithm
+        /// </summary>
+        /// <param name="type">The hash algorithm to get the size of</param>
+        /// <returns>A positive 32-bit integer size (in bytes) of the algorithm hash size</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public static int GetHashSize(HashAlg type) => type switch
+        {
+            HashAlg.SHA3_512 => _3_sha512.HashSize,
+            HashAlg.SHA3_384 => _3_sha384.HashSize,
+            HashAlg.SHA3_256 => _3_sha256.HashSize,
+            HashAlg.BlAKE2B => _blake2bAlg.HashSize,
+            HashAlg.SHA512 => _sha512Alg.HashSize,
+            HashAlg.SHA384 => _sha384Alg.HashSize,
+            HashAlg.SHA256 => _sha256Alg.HashSize,
+            HashAlg.SHA1 => _sha1Alg.HashSize,
+            HashAlg.MD5 => _md5Alg.HashSize,
+            _ => throw new ArgumentException("Invalid hash algorithm", nameof(type))
         };
 
         /// <summary>
@@ -265,11 +284,11 @@ namespace VNLib.Hashing
         private static byte[] ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, ReadOnlySpan<byte> key = default)
         {
             //Alloc output buffer
-            byte[] output = new byte[HashSize(alg)];
+            byte[] output = new byte[GetHashSize(alg)];
 
             //Hash data
             ERRNO result = ComputeHashInternal(alg, data, output, key);
-            Debug.Assert(result == HashSize(alg), $"Failed to compute hash using {alg} of size {output.Length}");
+            Debug.Assert(result == GetHashSize(alg), $"Failed to compute hash using {alg} of size {output.Length}");
 
             return output;
         }
@@ -288,13 +307,13 @@ namespace VNLib.Hashing
         private static string ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, HashEncodingMode mode, ReadOnlySpan<byte> key = default)
         {
             //Alloc stack buffer to store hash output
-            Span<byte> hashBuffer = stackalloc byte[HashSize(alg)];
+            Span<byte> hashBuffer = stackalloc byte[GetHashSize(alg)];
 
             //hash the buffer
             ERRNO count = ComputeHashInternal(alg, data, hashBuffer, key);
 
             //Count should always be the same as the hash size, this should never fail
-            Debug.Assert(count == HashSize(alg), $"Failed to compute hash using {alg} of size {hashBuffer.Length}");
+            Debug.Assert(count == GetHashSize(alg), $"Failed to compute hash using {alg} of size {hashBuffer.Length}");
 
             //Convert to encoded string 
             return mode switch
@@ -310,13 +329,13 @@ namespace VNLib.Hashing
         private static string ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, HashEncodingMode mode, ReadOnlySpan<byte> key = default) 
         {
             //Alloc stack buffer to store hash output
-            Span<byte> hashBuffer = stackalloc byte[HashSize(alg)];
+            Span<byte> hashBuffer = stackalloc byte[GetHashSize(alg)];
 
             //hash the buffer
             ERRNO count = ComputeHashInternal(alg, data, hashBuffer, key);
 
             //Count should always be the same as the hash size, this should never fail
-            Debug.Assert(count == HashSize(alg), $"Failed to compute hash using {alg} of size {hashBuffer.Length}");
+            Debug.Assert(count == GetHashSize(alg), $"Failed to compute hash using {alg} of size {hashBuffer.Length}");
 
             //Convert to encoded string 
             return mode switch
@@ -333,28 +352,14 @@ namespace VNLib.Hashing
         private static byte[] ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key = default)
         {
             //Alloc output buffer
-            byte[] output = new byte[HashSize(alg)];
+            byte[] output = new byte[GetHashSize(alg)];
             
             //Hash data
             ERRNO result = ComputeHashInternal(alg, data, output, key);
-            Debug.Assert(result == HashSize(alg), $"Failed to compute hash using {alg} of size {output.Length}");
+            Debug.Assert(result == GetHashSize(alg), $"Failed to compute hash using {alg} of size {output.Length}");
 
             return output;
         }
-
-        private static int HashSize(HashAlg alg) => alg switch
-        {
-            HashAlg.SHA3_512 => _3_sha512.HashSize,
-            HashAlg.SHA3_384 => _3_sha384.HashSize,
-            HashAlg.SHA3_256 => _3_sha256.HashSize,
-            HashAlg.BlAKE2B => _blake2bAlg.HashSize,
-            HashAlg.SHA512 => _sha512Alg.HashSize,
-            HashAlg.SHA384 => _sha384Alg.HashSize,
-            HashAlg.SHA256 => _sha256Alg.HashSize,
-            HashAlg.SHA1 => _sha1Alg.HashSize,
-            HashAlg.MD5 => _md5Alg.HashSize,
-            _ => throw new ArgumentException("Invalid hash algorithm", nameof(alg))
-        };
 
 
         private static ERRNO ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key = default)

@@ -32,7 +32,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 
-using VNLib.Utils.Resources;
 using VNLib.Utils.Memory.Diagnostics;
 
 namespace VNLib.Utils.Memory
@@ -86,6 +85,11 @@ namespace VNLib.Utils.Memory
         /// that will use the array pool before falling back to the <see cref="Shared"/>.
         /// heap.
         /// </summary>
+        /// <remarks>
+        /// This value is chosen to be just under the size the CLR will promote an array to the 
+        /// LOH, we can assume any heap impl will have long-term performance than the LOH for
+        /// large allocations.
+        /// </remarks>
         public const int MAX_UNSAFE_POOL_SIZE = 80 * 1024;
 
         //Cache the system page size
@@ -314,7 +318,11 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void InitializeBlock<T>(T[] array) where T : struct => InitializeBlock(array, (uint)array.Length);
+        public static void InitializeBlock<T>(T[] array) where T : struct
+        {
+            ArgumentNullException.ThrowIfNull(array);
+            InitializeBlock(array, (uint)array.Length);
+        }
 
         /// <summary>
         /// Initializes the array with zeros up to the specified count
@@ -327,7 +335,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InitializeBlock<T>(T[] array, uint count) where T: struct
         {
-            ArgumentNullException.ThrowIfNull(array, nameof(array));
+            ArgumentNullException.ThrowIfNull(array);
 
             //Check bounds
             CheckBounds(array, 0, count);
@@ -348,7 +356,7 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void InitializeBlock<T>(ref T block, int itemCount) where T : struct
         {
-            ThrowIfNullRef(ref block, nameof(block));
+            ThrowIfNullRef(in block, nameof(block));
 
             if (itemCount <= 0)
             {
@@ -406,8 +414,7 @@ namespace VNLib.Utils.Memory
         public static void ZeroStruct<T>(T* structPtr) where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(structPtr);
-
-            ZeroStruct(ref *structPtr);
+            ZeroStruct(ref Unsafe.AsRef<T>(structPtr));
         }
 
         /// <summary>
@@ -431,14 +438,6 @@ namespace VNLib.Utils.Memory
 
         #region Copy
 
-        /*
-         * Dirty little trick to access internal Buffer.Memmove method for 
-         * large references. May not always be supported, so optional safe
-         * guards are in place.
-         */
-        private delegate void BigMemmove(ref byte dest, ref readonly byte src, nuint len);
-        private static readonly BigMemmove? _clrMemmove = ManagedLibrary.TryGetStaticMethod<BigMemmove>(typeof(Buffer), "Memmove", System.Reflection.BindingFlags.NonPublic);
-        
         /// <summary>
         /// Copies structure data from a source byte reference that points to a sequence of 
         /// of data to the target structure reference.
@@ -626,8 +625,11 @@ namespace VNLib.Utils.Memory
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentOutOfRangeException.ThrowIfLessThan(target.Length, sizeof(T), nameof(target));
-
-            CopyStruct(ref *source, target);
+            
+            CopyStruct(
+                ref Unsafe.AsRef<T>(source), 
+                target
+            );
         }
 
         /// <summary>
@@ -677,7 +679,7 @@ namespace VNLib.Utils.Memory
 
             Unsafe.CopyBlockUnaligned(
                 ref Refs.AsByte(ref target, 0), 
-                ref Refs.AsByteR(in source, 0), 
+                in Refs.AsByteR(in source, 0), 
                 (uint)sizeof(T)
             );
         }
@@ -1354,7 +1356,7 @@ namespace VNLib.Utils.Memory
         /// <param name="size">The size of the span (the size of the block)</param>
         /// <returns>A span over the block of memory pointed to by the handle of the specified size</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> GetSpan<T>(ref MemoryHandle handle, int size) => new(handle.Pointer, size);
+        public static Span<T> GetSpan<T>(ref readonly MemoryHandle handle, int size) => new(handle.Pointer, size);
         
         /// <summary>
         /// Gets a <see cref="Span{T}"/> over the block of memory pointed to by the supplied handle.

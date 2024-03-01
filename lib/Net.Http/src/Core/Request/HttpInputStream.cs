@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -38,18 +38,14 @@ namespace VNLib.Net.Http.Core
     /// <summary>
     /// Specialized stream to allow reading a request entity body with a fixed content length.
     /// </summary>
-    internal sealed class HttpInputStream : Stream
+    internal sealed class HttpInputStream(IHttpContextInformation ContextInfo) : Stream
     {
-
-        private readonly IHttpContextInformation ContextInfo;
 
         private long ContentLength;
         private Stream? InputStream;
         private long _position;
 
-        private InitDataBuffer? _initalData;     
-
-        public HttpInputStream(IHttpContextInformation contextInfo) => ContextInfo = contextInfo;
+        private InitDataBuffer? _initalData;
 
         private long Remaining => Math.Max(ContentLength - _position, 0);
 
@@ -170,17 +166,16 @@ namespace VNLib.Net.Http.Core
 
             //Return number of bytes written to the buffer
             return writer.Written;
-        }       
-
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-        }
+        }        
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            //Calculate the amount of data that can be read into the buffer
+            /*
+             * Iniitally I'm calculating the amount of data that can be read into 
+             * the buffer, up to the maxium input data size. This value will clamp
+             * the buffer in the writer below, so it cannot read more than is 
+             * available from the transport.
+             */
             int bytesToRead = (int)Math.Min(buffer.Length, Remaining);
 
             if (bytesToRead == 0)
@@ -256,7 +251,7 @@ namespace VNLib.Net.Http.Core
                 read = await ReadAsync(HttpServer.WriteOnlyScratchBuffer, CancellationToken.None)
                     .ConfigureAwait(true);
 
-            } while (read != 0);
+            } while (read > 0);
         }
 
         /// <summary>

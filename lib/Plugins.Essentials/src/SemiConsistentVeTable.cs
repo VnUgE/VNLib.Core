@@ -28,6 +28,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 using VNLib.Net.Http;
 using VNLib.Plugins.Essentials.Endpoints;
@@ -65,6 +66,7 @@ namespace VNLib.Plugins.Essentials
             new Dictionary<string, IVirtualEndpoint<HttpEntity>>(StringComparer.OrdinalIgnoreCase)
             .ToFrozenDictionary();
 
+        private bool _isEmpty = true;
 
         /*
          * A lock that is held by callers that intend to 
@@ -73,14 +75,14 @@ namespace VNLib.Plugins.Essentials
         private readonly object VeUpdateLock = new();
 
         ///<inheritdoc/>
-        public bool IsEmpty => VirtualEndpoints.Count == 0;
+        public bool IsEmpty => _isEmpty;
 
 
         ///<inheritdoc/>
         public void AddEndpoint(params IEndpoint[] endpoints)
         {
             //Check
-            _ = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
+            ArgumentNullException.ThrowIfNull(endpoints);
             //Make sure all endpoints specify a path
             if (endpoints.Any(static e => string.IsNullOrWhiteSpace(e?.Path)))
             {
@@ -105,6 +107,7 @@ namespace VNLib.Plugins.Essentials
             //Uinion endpoints by their paths to combine them
             IEnumerable<IVirtualEndpoint<HttpEntity>> allEndpoints = eps.UnionBy(evs, static s => s.Path);
 
+            //Only allow 1 thread at a time to mutate the table
             lock (VeUpdateLock)
             {
                 //Clone the current dictonary
@@ -115,10 +118,11 @@ namespace VNLib.Plugins.Essentials
                     newTable.Add(ep.Path, ep);
                 }
 
-                FrozenDictionary<string, IVirtualEndpoint<HttpEntity>> newTableFrozen = newTable.ToFrozenDictionary();
+                //Update is-empty flag
+                _isEmpty = newTable.Count == 0;
 
-                //Store the new table
-                _ = Interlocked.Exchange(ref VirtualEndpoints, newTableFrozen);
+                //Create the new table and store the entire table
+                _ = Interlocked.Exchange(ref VirtualEndpoints, newTable.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase));
             }
         }
 
@@ -157,24 +161,27 @@ namespace VNLib.Plugins.Essentials
                     _ = newTable.Remove(eps);
                 }
 
-                FrozenDictionary<string, IVirtualEndpoint<HttpEntity>> newTableFrozen = newTable.ToFrozenDictionary();
+                //Update is-empty flag
+                _isEmpty = newTable.Count == 0;
 
                 //Store the new table
-                _ = Interlocked.Exchange(ref VirtualEndpoints, newTableFrozen);
+                _ = Interlocked.Exchange(ref VirtualEndpoints, newTable.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase));
             }
         }
 
         ///<inheritdoc/>
-        public bool TryGetEndpoint(string path, out IVirtualEndpoint<HttpEntity>? endpoint) => VirtualEndpoints.TryGetValue(path, out endpoint);
+        public bool TryGetEndpoint(string path, [NotNullWhen(true)] out IVirtualEndpoint<HttpEntity>? endpoint) 
+            => VirtualEndpoints.TryGetValue(path, out endpoint);
 
 
         /* 
          * Wrapper class for converting IHttpEvent endpoints to 
          * httpEntityEndpoints
          */
-        private sealed record class EvEndpointWrapper(IVirtualEndpoint<IHttpEvent> Wrapped) : IVirtualEndpoint<HttpEntity>
+        private sealed class EvEndpointWrapper(IVirtualEndpoint<IHttpEvent> Wrapped) : IVirtualEndpoint<HttpEntity>
         {
             string IEndpoint.Path => Wrapped.Path;
+
             ValueTask<VfReturnType> IVirtualEndpoint<HttpEntity>.Process(HttpEntity entity) => Wrapped.Process(entity);
         }
     }

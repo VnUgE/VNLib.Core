@@ -30,6 +30,14 @@
 * Stub missing types and constants for GCC
 */
 
+/*
+* If a custom allocator is enabled, use the native heap api
+* header and assume linking is enabled
+*/
+#ifdef VNLIB_CUSTOM_MALLOC_ENABLE
+#include <NativeHeapApi.h>
+#endif
+
 #if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 	#define IS_WINDOWS
 #endif
@@ -100,56 +108,48 @@
 #define ERR_INVALID_PTR -1
 #define ERR_OUT_OF_MEMORY -2
 
-#if defined(VNLIB_CUSTOM_MALLOC_ENABLE)
+#ifdef NATIVE_HEAP_API	/* Defined in the NativeHeapApi */
+	/*
+	* Add overrides for malloc, calloc, and free that use
+	* the nativeheap api to allocate memory
+	*/
 
-/*
-* Add rpmalloc overrides
-*/
+	static inline void* vnmalloc(size_t num, size_t size)
+	{
+		return heapAlloc(heapGetSharedHeapHandle(), num, size, FALSE);
+	}
 
-#include <NativeHeapApi.h>
+	static inline void* vncalloc(size_t num, size_t size)
+	{
+		return heapAlloc(heapGetSharedHeapHandle(), num, size, TRUE);
+	}
 
+	static inline void vnfree(void* ptr)
+	{
+		ERRNO result;
+		result = heapFree(heapGetSharedHeapHandle(), ptr);
 
-/*
-* Add overrides for malloc, calloc, and free that use
-* the nativeheap api to allocate memory
-*/
-
-static inline void* vnmalloc(size_t num, size_t size)
-{
-	return heapAlloc(heapGetSharedHeapHandle(), num, size, FALSE);
-}
-
-static inline void* vncalloc(size_t num, size_t size)
-{
-	return heapAlloc(heapGetSharedHeapHandle(), num , size, TRUE);
-}
-
-static inline void vnfree(void* ptr)
-{
-	ERRNO result;
-	result = heapFree(heapGetSharedHeapHandle(), ptr);
-
-	//track failed free results
-	assert(result > 0);
-}
+		//track failed free results
+		assert(result > 0);
+	}
 
 #else
 
-/*
-* Stub method for malloc. All calls to vnmalloc should be freed with vnfree.
-*/
-#define vnmalloc(num, size) malloc(num * size)
+	/*
+	* Stub method for malloc. All calls to vnmalloc should be freed with vnfree.
+	*/
+	#define vnmalloc(num, size) malloc(num * size)
 
-/*
-* Stub method for free
-*/
-#define vnfree(ptr) free(ptr)
+	/*
+	* Stub method for free
+	*/
+	#define vnfree(ptr) free(ptr)
 
-/*
-* Stub method for calloc. All calls to vncalloc should be freed with vnfree.
-*/
-#define vncalloc(num, size) calloc(num, size)
+	/*
+	* Stub method for calloc. All calls to vncalloc should be freed with vnfree.
+	*/
+	#define vncalloc(num, size) calloc(num, size)
 
-#endif
+#endif // NATIVE_HEAP_API
 
 #endif /* !UTIL_H_ */

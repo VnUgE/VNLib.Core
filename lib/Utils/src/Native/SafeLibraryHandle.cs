@@ -150,11 +150,19 @@ namespace VNLib.Utils.Native
         
         private static string? GetLibraryFile(string dirPath, string libPath, SearchOption search)
         {
-            //slice the lib to its file name
-            libPath = Path.GetFileName(libPath);
-            libPath = Path.ChangeExtension(libPath, OperatingSystem.IsWindows() ? ".dll" : ".so");
-            //Select the first file that matches the name
-            return Directory.EnumerateFiles(dirPath, libPath, search).FirstOrDefault();
+            //If the library path already has an extension, just search for the file
+            if (Path.HasExtension(libPath))
+            {
+                return Directory.EnumerateFiles(dirPath, libPath, search).FirstOrDefault();
+            }
+            else
+            {
+                //slice the lib to its file name
+                libPath = Path.GetFileName(libPath);
+                libPath = Path.ChangeExtension(libPath, OperatingSystem.IsWindows() ? ".dll" : ".so");
+                //Select the first file that matches the name
+                return Directory.EnumerateFiles(dirPath, libPath, search).FirstOrDefault();
+            }
         }
 
         /// <summary>
@@ -173,7 +181,7 @@ namespace VNLib.Utils.Native
             bool success = false;
             DangerousAddRef(ref success);            
 
-            ObjectDisposedException.ThrowIf(success == false, "The libary has been released!");
+            ObjectDisposedException.ThrowIf(success == false, this);
 
             try
             {

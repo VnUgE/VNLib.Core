@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -39,16 +39,15 @@ using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core.Response
 {
-    internal sealed class HttpResponse : IHttpLifeCycle
+    internal sealed class HttpResponse(IHttpContextInformation ContextInfo, IHttpBufferManager manager) : IHttpLifeCycle
 #if DEBUG
         , IStringSerializeable
 #endif
     {
-        private readonly IHttpContextInformation ContextInfo;
-        private readonly HashSet<HttpCookie> Cookies;
-        private readonly DirectStream ReusableDirectStream;
-        private readonly ChunkedStream ReusableChunkedStream;
-        private readonly HeaderDataAccumulator Writer;
+        private readonly HashSet<HttpCookie> Cookies = [];
+        private readonly DirectStream ReusableDirectStream = new();
+        private readonly ChunkedStream ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ContextInfo);
+        private readonly HeaderDataAccumulator Writer = new(manager.ResponseHeaderBuffer, ContextInfo);
 
         private int _headerWriterPosition;
 
@@ -60,28 +59,12 @@ namespace VNLib.Net.Http.Core.Response
         /// <summary>
         /// Response header collection
         /// </summary>
-        public VnWebHeaderCollection Headers { get; }
+        public VnWebHeaderCollection Headers { get; } = [];
 
         /// <summary>
         /// The current http status code value
         /// </summary>
         internal HttpStatusCode StatusCode => _code;
-
-        public HttpResponse(IHttpContextInformation ctx, IHttpBufferManager manager)
-        {
-            ContextInfo = ctx;
-
-            //Initialize a new header collection and a cookie jar
-            Headers = new();
-            Cookies = new();
-
-            //Init header accumulator
-            Writer = new(manager.ResponseHeaderBuffer, ContextInfo);
-
-            //Create a new chunked stream
-            ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ContextInfo);
-            ReusableDirectStream = new();
-        }
 
         /// <summary>
         /// Sets the status code of the response
@@ -365,18 +348,15 @@ namespace VNLib.Net.Http.Core.Response
         /// <summary>
         /// Writes chunked HTTP message bodies to an underlying streamwriter 
         /// </summary>
-        private sealed class ChunkedStream : ReusableResponseStream, IResponseDataWriter
+        private sealed class ChunkedStream(IChunkAccumulatorBuffer buffer, IHttpContextInformation context) : ReusableResponseStream, IResponseDataWriter
         {
-            private readonly ChunkDataAccumulator _chunkAccumulator;
+            private readonly ChunkDataAccumulator _chunkAccumulator = new(buffer, context);
 
             /*
              * Tracks the number of bytes accumulated in the 
              * current chunk.
              */
             private int _accumulatedBytes;
-
-            public ChunkedStream(IChunkAccumulatorBuffer buffer, IHttpContextInformation context)
-                => _chunkAccumulator = new(buffer, context);
 
             #region Hooks
 
@@ -402,11 +382,9 @@ namespace VNLib.Net.Http.Core.Response
                  * write the final termination sequence to the transport.
                  */
 
-                Memory<byte> chunkData = isFinal ?
-                    _chunkAccumulator.GetFinalChunkData(_accumulatedBytes) :
-                    _chunkAccumulator.GetChunkData(_accumulatedBytes);
+                Memory<byte> chunkData = _chunkAccumulator.GetChunkData(_accumulatedBytes, isFinal);
 
-                //Reset accumulator
+                //Reset accumulator now that we captured the final chunk
                 _accumulatedBytes = 0;
 
                 //Write remaining data to stream

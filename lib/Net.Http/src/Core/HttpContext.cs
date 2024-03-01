@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -25,6 +25,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 using VNLib.Utils;
@@ -82,7 +83,7 @@ namespace VNLib.Net.Http.Core
         private readonly ManagedHttpCompressor? _compressor;
         private ITransportContext? _ctx;
         
-        public HttpContext(HttpServer server)
+        public HttpContext(HttpServer server, CompressionMethod supportedMethods)
         {
             ParentServer = server;
 
@@ -91,11 +92,17 @@ namespace VNLib.Net.Http.Core
             /*
              * We can alloc a new compressor if the server supports compression.
              * If no compression is supported, the compressor will never be accessed
+             * and never needs to be allocated
              */
-            _compressor = server.SupportedCompressionMethods == CompressionMethod.None ?
-                null :
-                new ManagedHttpCompressor(server.Config.CompressorManager!);
-
+            if (supportedMethods != CompressionMethod.None)
+            {
+                Debug.Assert(server.Config.CompressorManager != null, "Expected non-null provider");
+                _compressor = new ManagedHttpCompressor(server.Config.CompressorManager);
+            }
+            else
+            {
+                _compressor = null;
+            }
 
             //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
             Buffers = new(server.Config.BufferConfig, _compressor != null);
@@ -190,12 +197,9 @@ namespace VNLib.Net.Http.Core
 
             //Release response/requqests
             Response.OnRelease();
-
-            //Zero before returning to pool
-            Buffers.ZeroAll();
-
+           
             //Free buffers
-            Buffers.FreeAll();
+            Buffers.FreeAll(true);
 
             return true;
         }

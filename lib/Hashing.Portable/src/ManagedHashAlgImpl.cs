@@ -150,6 +150,8 @@ namespace VNLib.Hashing
             internal static int MaxHashSize => MCBlake2Module.MaxHashSize;
             internal static int MaxKeySize => MCBlake2Module.MaxKeySize;
 
+            public static bool IsSupported => MonoCypherLibrary.CanLoadDefaultLibrary();
+
             ///<inheritdoc/>
             public readonly int HashSize => DefaultBlake2HashSize;
 
@@ -180,9 +182,18 @@ namespace VNLib.Hashing
             {
                 count = 0;
 
-                if (output.Length > MCBlake2Module.MaxHashSize)
+                /*
+                 * For this specific implementation, the ManagedHash class assumes hashing implementations
+                 * have a fixed hash size. This is not the case for Blake2b, so we need to enforce one. 
+                 * 
+                 * Since the HasSize property is publicly accessible users can assume the hash size is 
+                 * the value returned by the property. So it should be safe to enforce the hash size here.
+                 * 
+                 * Any data outside the default hash size is not our problem.
+                 */
+                if (output.Length > HashSize)
                 {
-                    return false;
+                    output = output[..HashSize];
                 }
 
                 //Test key size
@@ -191,17 +202,11 @@ namespace VNLib.Hashing
                     return false;
                 }
 
-                //Compute one-shot hash
-                ERRNO result = MonoCypherLibrary.Shared.Blake2ComputeHmac(key, data, output);
+                //Compute one-shot hash, a variable length result may occur
+                count = MonoCypherLibrary.Shared.Blake2ComputeHmac(key, data, output);
 
-                if (result < output.Length)
-                {
-                    count = 0;
-                    return false;
-                }
-
-                count = output.Length;
-                return true;
+                //Output should always be the same size as the hash size
+                return count == output.Length;
             }
         }
     }

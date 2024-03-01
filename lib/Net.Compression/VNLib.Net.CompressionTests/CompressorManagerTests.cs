@@ -26,7 +26,7 @@ namespace VNLib.Net.Compression.Tests
         public void NativeLibApiTest()
         {
             //Load library
-            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories);
+            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, DllImportSearchPath.SafeDirectories);
 
             LibTestComp cp = new(lib, CompressionLevel.Fastest);
 
@@ -71,7 +71,7 @@ namespace VNLib.Net.Compression.Tests
             PrintSystemInformation();
 
             //Load native library
-            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories);
+            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, DllImportSearchPath.SafeDirectories);
 
             //Huge array of random data to compress
             byte[] testData = RandomNumberGenerator.GetBytes(10 * 1024 * 1024);
@@ -102,7 +102,7 @@ namespace VNLib.Net.Compression.Tests
         private static void TestSingleCompressor(LibTestComp comp, CompressionMethod method, CompressionLevel level, byte[] testData) 
         {
             byte[] outputBlock = new byte[8 * 1024];
-            long ms;
+            long nativeTicks;
 
             Stopwatch stopwatch = new ();
             {
@@ -132,11 +132,13 @@ namespace VNLib.Net.Compression.Tests
                 {
                     //Include deinit
                     comp.DeinitCompressor();
-                    stopwatch.Stop();
-                    ms = stopwatch.ElapsedTicks / (TimeSpan.TicksPerMillisecond / 1000);
+                    stopwatch.Stop();                    
                 }
             }
 
+            nativeTicks = stopwatch.ElapsedTicks;
+
+            //Switch to managed test
             using (Stream compStream = GetEncodeStream(Stream.Null, method, level))
             {
                 stopwatch.Restart();
@@ -151,12 +153,15 @@ namespace VNLib.Net.Compression.Tests
                 }
             }
 
-            long streamMicroseconds = stopwatch.ElapsedTicks / (TimeSpan.TicksPerMillisecond / 1000);
+            long streamMicroseconds = TicksToMicroseconds(stopwatch.ElapsedTicks);
+            long nativeMicroseconds = TicksToMicroseconds(nativeTicks);
 
-            string winner = ms < streamMicroseconds ? "native" : "stream";
+            string winner = nativeMicroseconds < streamMicroseconds ? "native" : "stream";
 
-            Debug.WriteLine($"{method}: {testData.Length} bytes, {ms}misec vs {streamMicroseconds}misec. Winner {winner}");
+            Debug.WriteLine($"{method}: {testData.Length} bytes, {nativeMicroseconds}misec vs {streamMicroseconds}misec. Winner {winner}");
         }
+
+        static long TicksToMicroseconds(long ticks) => ticks / (TimeSpan.TicksPerMillisecond / 1000);
 
         private static CompressorManager InitCompressorUnderTest()
         {
@@ -255,16 +260,17 @@ namespace VNLib.Net.Compression.Tests
             Debug.WriteLine($"Compressor library supports {supported}");
         }
 
+        /*
+         * This test method initalizes a new compressor instance of the desired type
+         * creates a test data buffer, compresses it using the compressor instance
+         * then decompresses the compressed data using a managed decompressor as 
+         * a reference and compares the results.
+         * 
+         * The decompression must be able to recover the original data.
+         */
+
         private static void TestCompressorMethod(ITestCompressor compressor, CompressionMethod method)
-        {
-            /*
-             * This test method initalizes a new compressor instance of the desired type
-             * creates a test data buffer, compresses it using the compressor instance
-             * then decompresses the compressed data using a managed decompressor as 
-             * a reference and compares the results.
-             * 
-             * The decompression must be able to recover the original data.
-             */
+        {           
 
             //Time to initialize the compressor
             int blockSize = compressor.InitCompressor(method);
@@ -311,7 +317,7 @@ namespace VNLib.Net.Compression.Tests
                     outputStream.Write(output.AsSpan()[0..flushed]);
                 }
 
-                //Verify the data
+                //Verify the original data matches the decompressed data
                 byte[] decompressed = DecompressData(outputStream, method);
 
                 Assert.IsTrue(buffer.SequenceEqual(decompressed));
@@ -393,7 +399,7 @@ Page Size: {Environment.SystemPageSize}
             CompressionMethod GetSupportedMethods();
         }
 
-        sealed record class ManagerTestComp(object Compressor, CompressorManager Manager) : ITestCompressor
+        sealed class ManagerTestComp(object Compressor, CompressorManager Manager) : ITestCompressor
         {
             public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) => Manager.CompressBlock(Compressor, input, output);
 
@@ -407,7 +413,7 @@ Page Size: {Environment.SystemPageSize}
 
         }
 
-        sealed record class LibTestComp(NativeCompressionLib Library, CompressionLevel Level) : ITestCompressor
+        sealed class LibTestComp(NativeCompressionLib Library, CompressionLevel Level) : ITestCompressor
         {
             private INativeCompressor? _comp;
 

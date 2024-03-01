@@ -41,6 +41,6 @@ void BrFreeCompressor(CompressorState* state);
 
 int BrCompressBlock(const CompressorState* state, CompressionOperation* operation);
 
-int64_t BrGetCompressedSize(const CompressorState* state, uint64_t length);
+int64_t BrGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush);
 
 #endif /* !BROTLI_STUB_H_ */

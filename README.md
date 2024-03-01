@@ -9,7 +9,7 @@ VNLib is a collection of cross platform .NET/C#/C libraries that I maintain for 
 Any libraries in this repository that contain external dependencies will be mentioned explicitly in the library's readme. I intend to limit this behavior, as it is the reason this repository exists.
 
 ### Licensing
-Projects contained in this repository are individually licensed, either GNU GPL V2+ or GNU GPL Affero V3+. Builds contain the required license txt files in the archive. Reasoning: some projects are expected for server use, that's really about it, I prefer the the GPL v2 license for other applications where usage will be more broad. For example, the [Utils](lib/Utils/#) library is used for all sorts of projects. 
+Projects contained in this repository are individually licensed, usually GNU copy-left but some are more open, or are modified and/or vendored projects. Builds will contain the required license txt files (along with third-party licenses) in the archive. 
 
 ### Documentation
 Docs and articles will be available from the docs link below . There are docs per project (as they are added) and docs tagged for the VNLib.Core module. I will also be adding "spec" or specification articles to explain the higher level concepts behind the design. 

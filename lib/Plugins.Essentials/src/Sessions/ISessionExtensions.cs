@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -49,7 +49,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetOrigin(this ISession session) => session[ORIGIN_ENTRY];
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Uri GetOriginUri(this ISession session) => Uri.TryCreate(session[ORIGIN_ENTRY], UriKind.Absolute, out Uri origin) ? origin : null;
+        public static Uri? GetOriginUri(this ISession session) => Uri.TryCreate(session[ORIGIN_ENTRY], UriKind.Absolute, out Uri? origin) ? origin : null;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void SetOrigin(this ISession session, string origin) => session[ORIGIN_ENTRY] = origin;
 

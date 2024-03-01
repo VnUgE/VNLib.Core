@@ -220,8 +220,9 @@ int BrCompressBlock(const CompressorState* state, CompressionOperation* operatio
 }
 
 
-int64_t BrGetCompressedSize(const CompressorState* state, uint64_t length)
+int64_t BrGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush)
 {
+	(void)flush;
 	/*
 	* When the flush flag is set, the caller is requesting the
 	* entire size of the compressed data, which can include metadata

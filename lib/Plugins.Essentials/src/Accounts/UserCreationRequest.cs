@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -22,6 +22,8 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
+
 using VNLib.Utils.Memory;
 using VNLib.Plugins.Essentials.Users;
 
@@ -40,7 +42,17 @@ namespace VNLib.Plugins.Essentials.Accounts
         public ulong Privileges { get; init; } = AccountUtil.MINIMUM_LEVEL;
 
         ///<inheritdoc/>
-        public string EmailAddress { get; init; } = string.Empty;
+        public string Username { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Obsolete: Use the Username property instead
+        /// </summary>
+        [Obsolete("Use the Username property instead")]
+        public string EmailAddress
+        {
+            get => Username;
+            init => Username = value;
+        }
 
         ///<inheritdoc/>
         public bool UseRawPassword { get; init; }

@@ -27,17 +27,8 @@ using System.Diagnostics;
 
 namespace VNLib.Net.Http.Core.Compression
 {
-    internal sealed class ManagedHttpCompressor : IResponseCompressor
+    internal sealed class ManagedHttpCompressor(IHttpCompressorManager manager) : IResponseCompressor
     {
-        //Store the compressor
-        private readonly IHttpCompressorManager _provider;
-
-        public ManagedHttpCompressor(IHttpCompressorManager provider)
-        {
-            Debug.Assert(provider != null, "Expected non-null provider");
-            _provider = provider;
-        }
-
         /*
          * The compressor alloc is deferd until the first call to Init()
          * This is because user-code should not be called during the constructor
@@ -59,7 +50,7 @@ namespace VNLib.Net.Http.Core.Compression
             Debug.Assert(!output.IsEmpty, "Expected non-zero output buffer");
 
             //Compress the block
-            return _provider.CompressBlock(_compressor!, input, output);
+            return manager.CompressBlock(_compressor!, input, output);
         }
 
         ///<inheritdoc/>
@@ -69,19 +60,19 @@ namespace VNLib.Net.Http.Core.Compression
             Debug.Assert(_compressor != null);
             Debug.Assert(!output.IsEmpty, "Expected non-zero output buffer");
 
-            return _provider.Flush(_compressor!, output);
+            return manager.Flush(_compressor!, output);
         }
 
         ///<inheritdoc/>
         public void Init(CompressionMethod compMethod)
         {
             //Defer alloc the compressor
-            _compressor ??= _provider.AllocCompressor();
+            _compressor ??= manager.AllocCompressor();
 
             Debug.Assert(_compressor != null);
 
             //Init the compressor and get the block size
-            BlockSize = _provider.InitCompressor(_compressor, compMethod);
+            BlockSize = manager.InitCompressor(_compressor, compMethod);
 
             initialized = true;
         }
@@ -94,7 +85,7 @@ namespace VNLib.Net.Http.Core.Compression
             {
                 Debug.Assert(_compressor != null, "Compressor was initialized, exepcted a non null instance");
 
-                _provider.DeinitCompressor(_compressor);
+                manager.DeinitCompressor(_compressor);
                 initialized = false;
             }
         }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -25,7 +25,7 @@
 namespace VNLib.Utils.Memory.Caching
 {
     /// <summary>
-    /// Allows for use within a <see cref="ObjectRental{T}"/>, this object is intended to be reused heavily
+    /// An interface that exposes event hooks for use within an <see cref="ObjectRental{T}"/>, managment.
     /// </summary>
     public interface IReusable
     {

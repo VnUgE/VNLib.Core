@@ -130,22 +130,21 @@ VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionL
 
 	switch (type)
 	{
+		case COMP_TYPE_BROTLI:
 
 #ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED
-
-		case COMP_TYPE_BROTLI:
 			result = BrAllocCompressor(state);
-			break;
-		
 #endif
 
-#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
+			break;
 
 		case COMP_TYPE_DEFLATE:
 		case COMP_TYPE_GZIP:
+
+#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
 			result = DeflateAllocCompressor(state);
-			break;
 #endif
+			break;
 
 		/*
 		* Unsupported compressor type allow error to propagate
@@ -207,30 +206,25 @@ VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor)
 
 	switch (comp->type)
 	{
-
+		case COMP_TYPE_BROTLI:
 #ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED
-
-		case COMP_TYPE_BROTLI:		
 			BrFreeCompressor(comp);
-			break;	
-
 #endif
-
-#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
+			break;
 
 		case COMP_TYPE_DEFLATE:		
-		case COMP_TYPE_GZIP:
-			
+		case COMP_TYPE_GZIP:		
 			/*
 			* Releasing a deflate compressor will cause a deflate 
 			* end call, which can fail, we should send the error 
 			* to the caller and clean up as best we can.
 			*/
-			
+#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
 			errorCode = DeflateFreeCompressor(comp);
+#endif
 			break;		
 
-#endif
+
 		/*
 		* If compression type is none, there is nothing to do
 		* since its not technically an error, so just return
@@ -239,8 +233,7 @@ VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor)
 		case COMP_TYPE_NONE:
 		case COMP_TYPE_LZ4:
 		default:			
-			break;
-		
+			break;		
 	}
 
 	/*
@@ -267,26 +260,25 @@ VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ const void* compressor, uin
 	}
 
 	comp = (CompressorState*)compressor;
+	result = ERR_COMP_TYPE_NOT_SUPPORTED;
 
 	switch (comp->type)
 	{
 
-#ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED
-
 	case COMP_TYPE_BROTLI:
-		result = BrGetCompressedSize(comp, inputLength);
-		break;
 
+#ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED
+		result = BrGetCompressedSize(comp, inputLength, flush);
 #endif
-
-#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
+		break;
 
 	case COMP_TYPE_DEFLATE:
 	case COMP_TYPE_GZIP:
-		result = DeflateGetCompressedSize(comp, inputLength, flush);
-		break;
 
+#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
+		result = DeflateGetCompressedSize(comp, inputLength, flush);
 #endif
+		break;
 
 	/*
 	* Set the result as an error code, since the compressor
@@ -294,8 +286,6 @@ VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ const void* compressor, uin
 	*/
 	case COMP_TYPE_NONE:
 	case COMP_TYPE_LZ4:
-	default:
-		result = ERR_COMP_TYPE_NOT_SUPPORTED;
 		break;
 	}
 
@@ -350,31 +340,30 @@ VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ const void* compressor, Compression
 	* compression function
 	*/
 
+	result = ERR_COMP_TYPE_NOT_SUPPORTED;
+
 	switch (comp->type)
 	{
-
-		/* Brolti support */
-#ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED
-		
+		/* Brolti support */		
 	case COMP_TYPE_BROTLI:
+
+#ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED
 		result = BrCompressBlock(comp, operation);
-		break;
 #endif
+		break;
+
 
 		/* Deflate support */
-#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
-
 	case COMP_TYPE_DEFLATE:
 	case COMP_TYPE_GZIP:
-		result = DeflateCompressBlock(comp, operation);
-		break;
 
+#ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
+		result = DeflateCompressBlock(comp, operation);
 #endif
+		break;
 
 	case COMP_TYPE_NONE:
 	case COMP_TYPE_LZ4:
-	default:
-		result = ERR_COMP_TYPE_NOT_SUPPORTED;
 		break;
 	}
 	
