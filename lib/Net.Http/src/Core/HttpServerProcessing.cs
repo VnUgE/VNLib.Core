@@ -101,8 +101,18 @@ namespace VNLib.Net.Http
                     stream.ReadTimeout = Timeout.Infinite;
                     stream.WriteTimeout = Timeout.Infinite;
 
+                    /*
+                     * Create a transport wrapper so callers cannot take control of the transport
+                     * hooks such as disposing. Timeouts are allowed to be changed, not exactly 
+                     * our problem.
+                     */
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
+                    AlternateProtocolTransportStreamWrapper apWrapper = new(transport:stream);
+#pragma warning restore CA2000 // Dispose objects before losing scope
+
                     //Listen on the alternate protocol
-                    await ap.RunAsync(stream, StopToken!.Token).ConfigureAwait(false);
+                    await ap.RunAsync(apWrapper, StopToken!.Token).ConfigureAwait(false);
                 }
             }
             //Catch wrapped socket exceptions
@@ -131,7 +141,7 @@ namespace VNLib.Net.Http
             //Dec open connection count
             Interlocked.Decrement(ref OpenConnectionCount);
             
-            //Return the context for normal operation
+            //Return the context for normal operation (alternate protocol will return before now so it will be null)
             if(context != null)
             {
                 //Return context to store

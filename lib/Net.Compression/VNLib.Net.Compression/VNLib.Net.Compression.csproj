@@ -10,11 +10,8 @@
     <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     
-    <!--Enable dynamic loading for debugging-->
+    <!--Enable dynamic loading because it's dynamically loaded by servers-->
     <EnableDynamicLoading>true</EnableDynamicLoading>
-    <PackageReadmeFile>readme.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -26,6 +23,9 @@
     <Description>.NET/8.0 dynamically loadable managed wrapper library for loading vnlib_compress native library. It provides an implementation of the IHttpCompressorManager interface for use with the VNLib.Net.Http library and servers wishing to support dynamic response compression.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Compression</RepositoryUrl>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>

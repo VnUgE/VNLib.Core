@@ -50,7 +50,7 @@ namespace VNLib.Net.Http
         IConnectionInfo IHttpEvent.Server => _ci;
         
         ///<inheritdoc/>
-        HttpServer IHttpEvent.OriginServer => Context.ParentServer;       
+        IHttpServer IHttpEvent.OriginServer => Context.ParentServer;       
 
         ///<inheritdoc/>
         IReadOnlyDictionary<string, string> IHttpEvent.QueryArgs => Context.Request.QueryArgs;

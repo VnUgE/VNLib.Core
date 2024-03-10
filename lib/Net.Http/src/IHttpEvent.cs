@@ -42,7 +42,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// The <see cref="HttpServer"/> that this connection originated from
         /// </summary>
-        HttpServer OriginServer { get; }
+        IHttpServer OriginServer { get; }
 
         /// <summary>
         /// If the request has query arguments they are stored in key value format

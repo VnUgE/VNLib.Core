@@ -183,7 +183,7 @@ namespace VNLib.Plugins.Essentials
         public IReadOnlyList<FileUpload> Files => Entity.Files;
 
         ///<inheritdoc/>
-        HttpServer IHttpEvent.OriginServer => Entity.OriginServer;
+        IHttpServer IHttpEvent.OriginServer => Entity.OriginServer;
 
         /// <summary>
         /// Complete the session and respond to user

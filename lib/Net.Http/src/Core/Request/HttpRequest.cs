@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -32,24 +32,23 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Http.Core
 {
-
-    internal sealed class HttpRequest : IHttpLifeCycle
+    internal sealed class HttpRequest(IHttpContextInformation contextInfo, ushort maxUploads) : IHttpLifeCycle
 #if DEBUG
         ,IStringSerializeable
 #endif
     {
-        public readonly VnWebHeaderCollection Headers;
-        public readonly List<string> Accept;
-        public readonly List<string> AcceptLanguage;
-        public readonly Dictionary<string, string> Cookies;
-        public readonly Dictionary<string, string> RequestArgs;
-        public readonly Dictionary<string, string> QueryArgs;
+        public readonly VnWebHeaderCollection Headers = new();
+        public readonly List<string> Accept = new(8);
+        public readonly List<string> AcceptLanguage = new(8);
+        public readonly Dictionary<string, string> Cookies = new(5, StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, string> RequestArgs = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, string> QueryArgs = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// A transport stream wrapper that is positioned for reading
         /// the entity body from the input stream
         /// </summary>
-        public readonly HttpInputStream InputStream;
+        public readonly HttpInputStream InputStream = new(contextInfo);
 
         /*
          * Evil mutable structure that stores the http request state. 
@@ -63,7 +62,7 @@ namespace VNLib.Net.Http.Core
          * null/default values and easy reset.
          */
         private HttpRequestState _state;
-        private readonly FileUpload[] _uploads;
+        private readonly FileUpload[] _uploads = new FileUpload[maxUploads];
 
         /// <summary>
         /// Gets a mutable structure ref only used to initalize the request 
@@ -76,20 +75,6 @@ namespace VNLib.Net.Http.Core
         /// A readonly reference to the internal request state once initialized
         /// </summary>
         internal ref readonly HttpRequestState State => ref _state;
-
-        public HttpRequest(IHttpContextInformation contextInfo, ushort maxUploads)
-        {
-            //Create new collection for headers
-            _uploads = new FileUpload[maxUploads];
-            Headers = new();
-            Cookies = new(5, StringComparer.OrdinalIgnoreCase);
-            RequestArgs = new(StringComparer.OrdinalIgnoreCase);
-            QueryArgs = new(StringComparer.OrdinalIgnoreCase);
-            Accept = new(8);
-            AcceptLanguage = new(8);
-            //New reusable input stream
-            InputStream = new(contextInfo);
-        }       
 
         void IHttpLifeCycle.OnPrepare()
         { }
@@ -147,21 +132,27 @@ namespace VNLib.Net.Http.Core
             }
         }
 
-        public void AddFileUpload(in FileUpload upload)
-        {
-            //See if there is room for another upload
-            if (_state.UploadCount < _uploads.Length)
-            {
-                //Add file to upload array and increment upload count
-                _uploads[_state.UploadCount++] = upload;
-            }
-        }
-
         /// <summary>
         /// Checks if another upload can be added to the request
         /// </summary>
         /// <returns>A value indicating if another file upload can be added to the array</returns>
         public bool CanAddUpload() => _state.UploadCount < _uploads.Length;
+
+        /// <summary>
+        /// Attempts to add a file upload to the request if there 
+        /// is room for it. If there is no room, it will be ignored.
+        /// See <see cref="CanAddUpload"/> to check if another upload can be added.
+        /// </summary>
+        /// <param name="upload">The file upload structure to add to the list</param>
+        public void AddFileUpload(in FileUpload upload)
+        {
+            //See if there is room for another upload
+            if (CanAddUpload())
+            {
+                //Add file to upload array and increment upload count
+                _uploads[_state.UploadCount++] = upload;
+            }
+        }
 
         /// <summary>
         /// Creates a new array and copies the uploads to it.

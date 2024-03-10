@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -68,7 +68,7 @@ namespace VNLib.Plugins.Essentials.Oauth
         /// <summary>
         /// The request could not be processed at this time
         /// </summary>
-        TemporarilyUnabavailable
+        TemporarilyUnavailable
     }
 
     public static class OauthHttpExtensions
@@ -114,7 +114,7 @@ namespace VNLib.Plugins.Essentials.Oauth
                     case ErrorType.ServerError:
                         writer.Append("server_error");
                         break;
-                    case ErrorType.TemporarilyUnabavailable:
+                    case ErrorType.TemporarilyUnavailable:
                         writer.Append("temporarily_unavailable");
                         break;
                     default:
@@ -139,7 +139,7 @@ namespace VNLib.Plugins.Essentials.Oauth
                     ErrorType.UnsupportedResponseType => "Bearer error=\"unsupported_response_type\"",
                     ErrorType.InvalidScope => "Bearer error=\"invalid_scope\"",
                     ErrorType.ServerError => "Bearer error=\"server_error\"",
-                    ErrorType.TemporarilyUnabavailable => "Bearer error=\"temporarily_unavailable\"",
+                    ErrorType.TemporarilyUnavailable => "Bearer error=\"temporarily_unavailable\"",
                     ErrorType.InvalidClient => "Bearer error=\"invalid_client\"",
                     ErrorType.InvalidToken => "Bearer error=\"invalid_token\"",
                     _ => "Bearer error=\"error\"",

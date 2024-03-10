@@ -1,12 +1,12 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
-* File: FallbackFBMMemoryManager.cs 
+* File: SharedHeapFBMMemoryManager.cs 
 *
-* FallbackFBMMemoryManager.cs is part of VNLib.Net.Messaging.FBM which is part of the larger 
-* VNLib collection of libraries and utilities.
+* SharedHeapFBMMemoryManager.cs is part of VNLib.Net.Messaging.FBM which 
+* is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Messaging.FBM is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -35,29 +35,27 @@ namespace VNLib.Net.Messaging.FBM
     /// A default/fallback implementation of a <see cref="IFBMMemoryManager"/> that 
     /// uses an <see cref="IUnmangedHeap"/> to allocate buffers from
     /// </summary>
-    public sealed class FallbackFBMMemoryManager : IFBMMemoryManager
+    /// <remarks>
+    /// Initializes a new instance of <see cref="SharedHeapFBMMemoryManager"/> allocating
+    /// memory from the specified <see cref="IUnmangedHeap"/>
+    /// </remarks>
+    /// <param name="heap">The heap to allocate memory from</param>
+    /// <exception cref="ArgumentNullException"></exception>
+    public sealed class SharedHeapFBMMemoryManager(IUnmangedHeap heap) : IFBMMemoryManager
     {
-        private readonly IUnmangedHeap _heap;
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="FallbackFBMMemoryManager"/> allocationg
-        /// memory from the specified <see cref="IUnmangedHeap"/>
-        /// </summary>
-        /// <param name="heap">The heap to allocate memory from</param>
-        /// <exception cref="ArgumentNullException"></exception>
-        public FallbackFBMMemoryManager(IUnmangedHeap heap) => _heap = heap ?? throw new ArgumentNullException(nameof(heap));
+        private readonly IUnmangedHeap _heap = heap ?? throw new ArgumentNullException(nameof(heap));
 
         ///<inheritdoc/>
         public void AllocBuffer(IFBMSpanOnlyMemoryHandle state, int size)
         {
-            _ = state ?? throw new ArgumentNullException(nameof(state));
+            ArgumentNullException.ThrowIfNull(state);
             (state as IFBMBufferHolder)!.AllocBuffer(size);
         }
 
         ///<inheritdoc/>
         public void FreeBuffer(IFBMSpanOnlyMemoryHandle state)
         {
-            _ = state ?? throw new ArgumentNullException(nameof(state));
+            ArgumentNullException.ThrowIfNull(state);
             (state as IFBMBufferHolder)!.FreeBuffer();
         }
 
@@ -84,7 +82,7 @@ namespace VNLib.Net.Messaging.FBM
         private sealed record class FBMMemHandle(IUnmangedHeap Heap) : IFBMMemoryHandle, IFBMBufferHolder
         {
             private MemoryHandle<byte>? _handle;
-            private IMemoryOwner<byte>? _memHandle;
+            private MemoryManager<byte>? _memHandle;
 
             ///<inheritdoc/>
             public Memory<byte> GetMemory()
@@ -112,7 +110,6 @@ namespace VNLib.Net.Messaging.FBM
             public void FreeBuffer()
             {
                 _handle?.Dispose();
-                _memHandle?.Dispose();
 
                 _handle = null;
                 _memHandle = null;

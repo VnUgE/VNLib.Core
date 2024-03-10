@@ -58,7 +58,7 @@ namespace VNLib.Net.Http
             try
             {
                 //Call child initialize method
-                await RunAsync(new AlternateProtocolTransportStreamWrapper(transport));
+                await RunAsync(transport);
                 CancelSource.Cancel();
             }
             finally

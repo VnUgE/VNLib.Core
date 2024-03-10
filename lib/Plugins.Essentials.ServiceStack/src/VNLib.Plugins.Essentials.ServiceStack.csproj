@@ -16,22 +16,11 @@
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins.Essentials.ServiceStack</PackageId>
     <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
-    <Description>
-      Provides data structures for building a dynamic HTTP servicing stack with runtime plugin loading,
-      dynamic endpoint routing, middleware* configuration, and multi-server managment.
-    </Description>
+    <Description>Provides data structures for building a dynamic HTTP servicing stack with runtime plugin loading, dynamic endpoint routing, middleware* configuration, and multi-server managment.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.Essentials.ServiceStack</RepositoryUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <Deterministic>False</Deterministic>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <Deterministic>False</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>

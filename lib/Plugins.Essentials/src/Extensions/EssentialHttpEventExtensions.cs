@@ -29,7 +29,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
@@ -46,8 +45,7 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// </summary>
     public static class EssentialHttpEventExtensions
     {      
-        public const string BEARER_STRING = "Bearer";
-        private static readonly int BEARER_LEN = BEARER_STRING.Length;
+        
 
         /*
          * Pooled/tlocal serializers
@@ -797,31 +795,6 @@ namespace VNLib.Plugins.Essentials.Extensions
             FileUpload file = ev.Files[uploadIndex];
             //Parse the file using the specified parser
             return parser(file.FileData, file.ContentTypeString());
-        }
-
-        /// <summary>
-        /// Gets the bearer token from an authorization header
-        /// </summary>
-        /// <param name="ci"></param>
-        /// <param name="token">The token stored in the user's authorization header</param>
-        /// <returns>True if the authorization header was set, has a Bearer token value</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasAuthorization(this IConnectionInfo ci, [NotNullWhen(true)] out string? token)
-        {
-            ArgumentNullException.ThrowIfNull(ci);
-
-            //Get auth header value
-            string? authorization = ci.Headers[HttpRequestHeader.Authorization];
-            //Check if its set
-            if (!string.IsNullOrWhiteSpace(authorization))
-            {
-                int bearerIndex = authorization.IndexOf(BEARER_STRING, StringComparison.OrdinalIgnoreCase);
-                //Calc token offset, get token, and trim any whitespace
-                token = authorization.AsSpan(bearerIndex + BEARER_LEN).Trim().ToString();
-                return true;
-            }
-            token = null;
-            return false;
         }
         
         /// <summary>

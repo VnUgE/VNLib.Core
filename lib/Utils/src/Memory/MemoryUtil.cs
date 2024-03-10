@@ -356,14 +356,31 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void InitializeBlock<T>(ref T block, int itemCount) where T : struct
         {
-            ThrowIfNullRef(in block, nameof(block));
-
             if (itemCount <= 0)
             {
                 return;
             }
 
-            ZeroByRef(ref block, (uint)itemCount);
+            InitializeBlock(ref block, (uint)itemCount);
+        }
+
+        /// <summary>
+        /// Zeroes a block of memory of the given unmanaged type
+        /// </summary>
+        /// <typeparam name="T">The unmanaged type to zero</typeparam>
+        /// <param name="block">A pointer to the block of memory to zero</param>
+        /// <param name="itemCount">The number of elements in the block to zero</param>
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        public static void InitializeBlock<T>(ref T block, uint itemCount) where T : struct
+        {
+            ThrowIfNullRef(in block, nameof(block));
+
+            if (itemCount == 0)
+            {
+                return;
+            }
+
+            ZeroByRef(ref block, itemCount);
         }
 
         /// <summary>

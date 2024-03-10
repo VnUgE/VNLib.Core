@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -42,6 +42,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
     /// </summary>
     public abstract class ResourceEndpointBase : VirtualEndpoint<HttpEntity>
     {
+
         /// <summary>
         /// Default protection settings. Protection settings are the most 
         /// secure by default, should be loosened an necessary
@@ -288,6 +289,11 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <returns>The results of the processing</returns>
         protected virtual VfReturnType AlternateMethod(HttpEntity entity, HttpMethod method) => VirtualClose(entity, HttpStatusCode.MethodNotAllowed);
 
+        /// <summary>
+        /// This method gets invoked when an incoming OPTIONS request to the endpoint has been requested.
+        /// </summary>
+        /// <param name="entity">The entity to be processed</param>
+        /// <returns>The result of the operation to return to the file processor</returns>
         protected virtual VfReturnType Options(HttpEntity entity) => VfReturnType.Forbidden;
 
         /// <summary>
@@ -328,7 +334,8 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <param name="entity">The entity to close the connection for</param>
         /// <param name="jsonValue">A object that will be serialized and returned to the client as JSON</param>
         /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
-        public static VfReturnType VirtualOkJson<T>(HttpEntity entity, T jsonValue) => VirtualCloseJson(entity, jsonValue, HttpStatusCode.OK);
+        public static VfReturnType VirtualOkJson<T>(HttpEntity entity, T jsonValue) 
+            => VirtualCloseJson(entity, jsonValue, HttpStatusCode.OK);
 
         /// <summary>
         /// Shortcut helper methods to a virtual skip response with a 200 OK status code
@@ -338,7 +345,8 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <param name="webm">The <see cref="WebMessage"/> json response</param>
         /// <param name="code">The status code to return to the client</param>
         /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
-        public static VfReturnType VirtualClose<T>(HttpEntity entity, T webm, HttpStatusCode code) where T: WebMessage => VirtualCloseJson(entity, webm, code);
+        public static VfReturnType VirtualClose<T>(HttpEntity entity, T webm, HttpStatusCode code) where T: WebMessage 
+            => VirtualCloseJson(entity, webm, code);
 
         /// <summary>
         /// Shortcut helper methods to a virtual skip response with a given status code
@@ -391,16 +399,32 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <param name="code">The status code to return to the client</param>
         /// <param name="ct">The response content type</param>
         /// <param name="response">The stream response to return to the user</param>
-        /// <param name="length">The explicit length of the stream</param>
         /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
         public static VfReturnType VirtualClose(HttpEntity entity, HttpStatusCode code, ContentType ct, Stream response)
         {
-            ArgumentNullException.ThrowIfNull(response, nameof(response));
+            ArgumentNullException.ThrowIfNull(response);
             if (!response.CanSeek)
             {
                 throw new IOException("The stream must be seekable when using implicit length");
             }
             entity.CloseResponse(code, ct, response, response.Length);
+            return VfReturnType.VirtualSkip;
+        }
+
+        /// <summary>
+        /// Shortcut helper methods to a virtual skip response with a given status code,
+        /// and memory content to return to the client
+        /// </summary>
+        /// <param name="entity">The entity to close the connection for</param>
+        /// <param name="code">The status code to return to the client</param>
+        /// <param name="ct">The response content type</param>
+        /// <param name="response">The stream response to return to the user</param>
+        /// <param name="length">The length of the response data to send to the clien</param>
+        /// <returns>The <see cref="VfReturnType.VirtualSkip"/> operation result</returns>
+        public static VfReturnType VirtualClose(HttpEntity entity, HttpStatusCode code, ContentType ct, IHttpStreamResponse response, long length)
+        {
+            ArgumentNullException.ThrowIfNull(response);            
+            entity.CloseResponse(code, ct, response, length);
             return VfReturnType.VirtualSkip;
         }
 

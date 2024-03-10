@@ -65,9 +65,7 @@ namespace VNLib.Utils.Memory
             strRef.Erase();
 
             //Set the new value and determine if it is interned
-            ProtectedElements[index] = value is null ? 
-                new StringRef(null, false) 
-                : new StringRef(value, string.IsInterned(value) != null);
+            ProtectedElements[index] = StringRef.Create(value);
         }
 
         /// <summary>
@@ -105,6 +103,14 @@ namespace VNLib.Utils.Memory
         ///<inheritdoc/>
         protected override void Free() => Array.ForEach(ProtectedElements, static p => p.Erase());
 
+        /// <summary>
+        /// Erases the contents of the supplied string if it
+        /// is safe to do so. If the string is interned, it will
+        /// not be erased, nor will a null string
+        /// </summary>
+        /// <param name="str">The reference to the string to zero</param>
+        public static void EraseString(string? str) => StringRef.Create(str).Erase();
+
         private readonly record struct StringRef(string? Value, bool IsInterned)
         {
             public readonly void Erase()
@@ -118,6 +124,10 @@ namespace VNLib.Utils.Memory
                     MemoryUtil.UnsafeZeroMemory<char>(Value);
                 }
             }
+
+            internal static StringRef Create(string? str) => str is null ? 
+                new(null, false)
+                : new(str, string.IsInterned(str) != null);
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -36,17 +36,12 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// Creates a new <see cref="IFbmWebsocketFactory"/> that builds new client websockets 
     /// on demand using the <see cref="ClientWebSocket"/> .NET default implementation
     /// </summary>
-    public class FBMFallbackClientWsFactory : IFbmWebsocketFactory
+    /// <remarks>
+    /// Initalizes a new <see cref="FBMFallbackClientWsFactory"/> instance
+    /// </remarks>
+    /// <param name="onConfigureSocket">A callback function that allows users to configure sockets when created</param>
+    public class FBMFallbackClientWsFactory(Action<ClientWebSocketOptions>? onConfigureSocket = null) : IFbmWebsocketFactory
     {
-        private readonly Action<ClientWebSocketOptions>? _onConfigure;
-
-        /// <summary>
-        /// Initalizes a new <see cref="FBMFallbackClientWsFactory"/> instance
-        /// </summary>
-        /// <param name="onConfigureSocket">A callback function that allows users to configure sockets when created</param>
-        public FBMFallbackClientWsFactory(Action<ClientWebSocketOptions>? onConfigureSocket = null) 
-            => _onConfigure = onConfigureSocket;
-
         ///<inheritdoc/>
         public IFbmClientWebsocket CreateWebsocket(in FBMClientConfig clientConfig)
         {            
@@ -65,7 +60,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             }
 
             //invoke client configuration user callback
-            _onConfigure?.Invoke(socket.Options);
+            onConfigureSocket?.Invoke(socket.Options);
 
             return new FBMWebsocket(socket, poolBuffer);
         }

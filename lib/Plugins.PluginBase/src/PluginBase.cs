@@ -188,9 +188,20 @@ namespace VNLib.Plugins
             int fileSizeLimit = 500 * 1000 * 1024;
             RollingInterval interval = RollingInterval.Infinite;
 
-            //try to get the host's app_log config object, if it does not exist, do not write logs to file
-            if (HostConfig.TryGetProperty("app_log", out JsonElement logEl))
+            /*
+             * Try to get login configuration from the plugin configuration, otherwise fall
+             * back to the application logger
+             */
+            if (PluginConfig.TryGetProperty("log", out JsonElement logEl) ||
+                HostConfig.TryGetProperty("app_log", out logEl)
+            )
             {
+                //User may want to disable plugin logging
+                if (logEl.TryGetProperty("disabled", out JsonElement disEl) && disEl.GetBoolean())
+                {
+                    return;
+                }
+
                 IReadOnlyDictionary<string, JsonElement> conf = logEl.EnumerateObject().ToDictionary(static s => s.Name, static s => s.Value);
 
                 filePath = conf.GetPropString("path");
@@ -216,12 +227,14 @@ namespace VNLib.Plugins
                     interval = Enum.Parse<RollingInterval>(intervalEl.GetString()!, true);
                 }
 
+                /*
+                 * If the user specified a log file path, replace the name of the log file with the 
+                 * plugin name, leave the directory and file extension the same
+                 */
                 if(filePath != null)
-                {
-                    //Get the file name to replace with the plugin name
+                {                   
                     string appLogName = Path.GetFileNameWithoutExtension(filePath);
-                    
-                    //Replace the file name
+
                     filePath = filePath.Replace(appLogName, PluginName, StringComparison.Ordinal);
                 }
 
@@ -237,7 +250,8 @@ namespace VNLib.Plugins
                     fileSizeLimitBytes: fileSizeLimit,
                     rollingInterval: interval,
                     outputTemplate: template,
-                    flushToDiskInterval: flushInterval);
+                    flushToDiskInterval: flushInterval
+                );
             }
         }
 

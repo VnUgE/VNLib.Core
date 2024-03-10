@@ -40,6 +40,7 @@ using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Messaging.FBM.Client
 {
+
     /// <summary>
     /// <para>
     /// A reusable Fixed Buffer Message request container. This class is not thread-safe
@@ -50,6 +51,28 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// </summary>
     public sealed class FBMRequest : VnDisposeable, IReusable, IFBMMessage, IStringSerializeable
     {
+        /*
+         * Important impl notes.
+         * 
+         * In order to conserve memory and types, the FBMRequest stores all state information
+         * and memory required for an FBM transaction. That is, the request headers, the 
+         * message waiting state (the wait handles for async/await), and the response message
+         * headers and body.
+         * 
+         * Okay, the buffer is used for 3 purposes. 
+         *      - Store request headers
+         *      - Store request body if not streaming
+         *      - Store response headers once message has been sent
+         * 
+         * Since a request is no longer needed when a response is received, it's buffer is used 
+         * to store response header data. (it becomes tri-use).
+         * 
+         * During response header parsing, FBMMessageHeader structures are stored in the 
+         * ResponseHeaderList field that are simply pointers to consecutive memory locations
+         * in the buffer. This is done to avoid allocating multiple memory segments for each 
+         * header key-value pair, and internal copy overhead. 
+         */
+
 #pragma warning disable CA2213 // Disposable fields should be disposed
         private readonly FBMBuffer Buffer;
 #pragma warning restore CA2213 // Disposable fields should be disposed
@@ -62,7 +85,7 @@ namespace VNLib.Net.Messaging.FBM.Client
          * in the reused buffer (in response "mode") cast to a 
          * character buffer.
          */
-        private readonly List<FBMMessageHeader> ResponseHeaderList = new();
+        private readonly List<FBMMessageHeader> ResponseHeaderList = [];
 
 
         /// <summary>
@@ -88,7 +111,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// and a random messageid
         /// </summary>
         /// <param name="config">The fbm client config storing required config variables</param>
-        public FBMRequest(in FBMClientConfig config) : this(Helpers.RandomMessageId, in config)
+        public FBMRequest(ref readonly FBMClientConfig config) : this(Helpers.RandomMessageId, in config)
         { }
 
         /// <summary>
@@ -96,7 +119,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <param name="messageId">The custom message id</param>
         /// <param name="config">The fbm client config storing required config variables</param>
-        public FBMRequest(int messageId, in FBMClientConfig config)
+        public FBMRequest(int messageId, ref readonly FBMClientConfig config)
             :this(messageId, config.MemoryManager, config.MessageBufferSize, config.HeaderEncoding)
         { }
 
@@ -358,7 +381,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                     if (cancellation.CanBeCanceled)
                     {
                         //Register cancellation
-                        _token = cancellation.Register(OnCancelled, this, false);
+                        _token = cancellation.Register(OnCancelled, null, false);
                     }
                 }
 
@@ -366,7 +389,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             }
 
             ///<inheritdoc/>
-            public void ManualCancellation() => OnCancelled(this);
+            public void ManualCancellation() => OnCancelled(null);
 
             //Set cancelled state if exists, the task may have already completed
             private void OnCancelled(object? state) => _tcs?.TrySetCanceled();

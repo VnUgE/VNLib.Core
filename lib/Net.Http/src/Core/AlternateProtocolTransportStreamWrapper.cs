@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -34,19 +34,15 @@ namespace VNLib.Net.Http.Core
 {
     internal sealed class AlternateProtocolTransportStreamWrapper : BackingStream<Stream>
     {
-        public AlternateProtocolTransportStreamWrapper(Stream transport)
-        {
-            this.BaseStream = transport;
-        }
+        public AlternateProtocolTransportStreamWrapper(Stream transport) => BaseStream = transport;
 
         //Do not allow the caller to dispose the transport stream
 
         protected override void Dispose(bool disposing)
         { }
-        public override ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+
+        public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        
         public override void Close()
         {}
     }

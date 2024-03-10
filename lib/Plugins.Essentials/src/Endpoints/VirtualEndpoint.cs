@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -47,19 +47,21 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <summary>
         /// Sets the log and path and checks the values
         /// </summary>
-        /// <param name="Path">The path this instance represents</param>
+        /// <param name="path">The path this instance represents</param>
         /// <param name="log">The log provider that will be used</param>
         /// <exception cref="ArgumentException"></exception>
-        protected void InitPathAndLog(string Path, ILogProvider log)
+        protected void InitPathAndLog(string path, ILogProvider log)
         {
-            if (string.IsNullOrWhiteSpace(Path) || Path[0] != '/')
+            ArgumentException.ThrowIfNullOrWhiteSpace(path);
+            ArgumentNullException.ThrowIfNull(log);
+
+            if (path[0] != '/')
             {
-                throw new ArgumentException("Path must begin with a '/' character", nameof(Path));
+                throw new ArgumentException("Path must begin with a '/' character", nameof(path));
             }
-            //Store path
-            this.Path = Path;
-            //Store log
-            Log = log ?? throw new ArgumentNullException(nameof(log));
+
+            Path = path;
+            Log = log;
         }
 
         ///<inheritdoc/>

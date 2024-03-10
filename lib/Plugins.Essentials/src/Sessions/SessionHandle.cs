@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -22,7 +22,9 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
 using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 
 using VNLib.Net.Http;
 
@@ -35,59 +37,63 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// <param name="event">The connection the session is attached to</param>
     /// <returns>A value task that resolves when the session has been released from the connection</returns>
     public delegate ValueTask SessionReleaseCallback(ISession session, IHttpEvent @event);
-    
+
     /// <summary>
     /// A handle that holds exclusive access to a <see cref="ISession"/>
     /// session object
     /// </summary>
-    public readonly record struct SessionHandle
+    /// <param name="sessionData">The session data instance</param>
+    /// <param name="callback">A callback that is invoked when the handle is released</param>
+    /// <param name="entityStatus"></param>
+    public readonly struct SessionHandle(ISession? sessionData, FileProcessArgs entityStatus, SessionReleaseCallback? callback) : IEquatable<SessionHandle>
     {
         /// <summary>
         /// An empty <see cref="SessionHandle"/> instance. (A handle without a session object)
         /// </summary>
         public static readonly SessionHandle Empty = new(null, FileProcessArgs.Continue, null);
 
-        private readonly SessionReleaseCallback? ReleaseCb;
-
         /// <summary>
         /// True when a valid session is held by the current handle
         /// </summary>
-        internal readonly bool IsSet => SessionData != null;
+        internal readonly bool IsSet { get; } = sessionData != null;
 
         /// <summary>
         /// The session data object associated with the current session
         /// </summary>
-        public readonly ISession? SessionData { get; }
+        public readonly ISession? SessionData => sessionData;
 
         /// <summary>
         /// A value indicating if the connection is valid and should continue to be processed
         /// </summary>
-        public readonly FileProcessArgs EntityStatus { get; }
+        public readonly FileProcessArgs EntityStatus => entityStatus;
 
         /// <summary>
         /// Initializes a new <see cref="SessionHandle"/>
         /// </summary>
         /// <param name="sessionData">The session data instance</param>
         /// <param name="callback">A callback that is invoked when the handle is released</param>
-        /// <param name="entityStatus"></param>
-        public SessionHandle(ISession? sessionData, FileProcessArgs entityStatus, SessionReleaseCallback? callback)
-        {
-            SessionData = sessionData;
-            ReleaseCb = callback;
-            EntityStatus = entityStatus;
-        }
-        /// <summary>
-        /// Initializes a new <see cref="SessionHandle"/>
-        /// </summary>
-        /// <param name="sessionData">The session data instance</param>
-        /// <param name="callback">A callback that is invoked when the handle is released</param>
-        public SessionHandle(ISession sessionData, SessionReleaseCallback callback):this(sessionData, FileProcessArgs.Continue, callback)
+        public SessionHandle(ISession sessionData, SessionReleaseCallback callback) : this(sessionData, FileProcessArgs.Continue, callback)
         {}
 
         /// <summary>
         /// Releases the session from use
         /// </summary>
         /// <param name="event">The current connection event object</param>
-        public readonly ValueTask ReleaseAsync(IHttpEvent @event) => ReleaseCb?.Invoke(SessionData!, @event) ?? ValueTask.CompletedTask;
+        public readonly ValueTask ReleaseAsync(IHttpEvent @event) => callback?.Invoke(SessionData!, @event) ?? ValueTask.CompletedTask;
+
+        ///<inheritdoc/>
+        public override bool Equals([NotNullWhen(true)] object? obj) => obj is SessionHandle handle && Equals(handle);
+
+        ///<inheritdoc/>
+        public bool Equals(SessionHandle other) => GetHashCode() == other.GetHashCode();
+
+        ///<inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(SessionData, EntityStatus, callback);
+
+        ///<inheritdoc/>
+        public static bool operator ==(SessionHandle left, SessionHandle right) => left.Equals(right);
+
+        ///<inheritdoc/>
+        public static bool operator !=(SessionHandle left, SessionHandle right) => !(left == right);
     }
 }

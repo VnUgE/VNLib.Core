@@ -106,11 +106,11 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <param name="config">The client config</param>
         /// <param name="websocket">The websocket instance used to comunicate with an FBMServer</param>
-        public FBMClient(in FBMClientConfig config, IFbmClientWebsocket websocket)
+        public FBMClient(ref readonly FBMClientConfig config, IFbmClientWebsocket websocket)
             :this(in config, websocket, null)
         { }
 
-        internal FBMClient(in FBMClientConfig config, IFbmClientWebsocket websocket, IObjectRental<FBMRequest>? requestRental)
+        internal FBMClient(ref readonly FBMClientConfig config, IFbmClientWebsocket websocket, IObjectRental<FBMRequest>? requestRental)
         {
             ArgumentNullException.ThrowIfNull(websocket);
             ArgumentNullException.ThrowIfNull(config.MemoryManager, nameof(config.MemoryManager));
@@ -118,7 +118,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             _config = config;
             _socket = websocket;
 
-            //Create new request rental if none supplied
+            //Create new request rental if none supplied, it will have to be disposed when the client exits
             if(requestRental is null)
             {
                 _ownsObjectRenal = true;
@@ -129,7 +129,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 _requestRental = requestRental;
             }
 
-            Headers = new();
+            Headers = [];
             SendLock = new(1);
             ConnectionStatusHandle = new(true);
             ActiveRequests = new(Environment.ProcessorCount, 100);
@@ -232,6 +232,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </param>
         /// <returns>When awaited, yields the server response</returns>
         /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="TimeoutException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="FBMInvalidRequestException"></exception>

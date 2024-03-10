@@ -58,7 +58,8 @@ namespace VNLib.Utils.IO
         /// <param name="readOnly">Should the stream be readonly?</param>
         /// <exception cref="ArgumentException"></exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
-        public static VnMemoryStream ConsumeHandle(IResizeableMemoryHandle<byte> handle, nint length, bool readOnly) => FromHandle(handle, true, length, readOnly);
+        public static VnMemoryStream ConsumeHandle(IResizeableMemoryHandle<byte> handle, nint length, bool readOnly) 
+            => FromHandle(handle, true, length, readOnly);
 
         /// <summary>
         /// Creates a new <see cref="VnMemoryStream"/> from the supplied memory handle 

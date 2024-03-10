@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -43,13 +43,16 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <param name="config">The configuration state</param>
         /// <param name="webSocketManager">The client websocket factory</param>
+        /// <param name="maxClients">The maximum number of clients expected to be connected concurrently</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public FBMClientFactory(in FBMClientConfig config, IFbmWebsocketFactory webSocketManager)
+        public FBMClientFactory(ref readonly FBMClientConfig config, IFbmWebsocketFactory webSocketManager, int maxClients)
         {
+            ArgumentNullException.ThrowIfNull(config.MemoryManager, nameof(config.MemoryManager));
+            ArgumentNullException.ThrowIfNull(webSocketManager);
+
             _config = config;
-            _ = config.MemoryManager ?? throw new ArgumentException("The client memory manager must not be null", nameof(config));
-            _socketMan = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
-            _internalRequestPool = ObjectRental.CreateReusable(ReuseableRequestConstructor, 1000);
+            _socketMan = webSocketManager;
+            _internalRequestPool = ObjectRental.CreateReusable(ReuseableRequestConstructor, maxClients);
         }
 
         /// <summary>
