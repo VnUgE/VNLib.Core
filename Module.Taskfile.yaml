@@ -20,8 +20,8 @@ tasks:
 #called by build pipeline to sync repo
   update:
     cmds:
-     - git remote update
-     - git reset --hard  
+     - git reset --hard  #clean up any local changes
+     - git remote update     
      - git pull origin {{.BRANCH_NAME}} --verify-signatures 
      #re-write semver after hard reset
      - dotnet-gitversion.exe /updateprojectfiles
@@ -35,24 +35,21 @@ tasks:
      - task: build_debug
      - task: build_release
 
-  postbuild_success:
+  publish:
     cmds:
+     #git archive in the module directory
+     - git archive --format {{.ARCHIVE_FILE_FORMAT}} --output {{.ARCHIVE_FILE_NAME}} HEAD
      #push packages to the sleet feed (feed path is vnbuild global)
      - sleet push "{{.PACK_OUT}}/debug/" --source debug --config "{{.SLEET_CONFIG_PATH}}" --force
      - sleet push "{{.PACK_OUT}}/release/" --source release --config "{{.SLEET_CONFIG_PATH}}" --force
 
-     #git archive in the module directory
-     - git archive --format {{.ARCHIVE_FILE_FORMAT}} --output {{.ARCHIVE_FILE_NAME}} HEAD
-
-  postbuild_failed:
-    cmds:
-     - echo "postbuild failed {{.MODULE_NAME}}"
-
 #called by build pipeline to clean module
   clean:
     cmds:
-     #clean solution
-     - dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
+    #clean solution
+    - dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
+    - cmd: powershell -Command "rm {{ .ARCHIVE_FILE_NAME }} --Force" 
+      ignore_error: true
 
 
 #Internal tasks
