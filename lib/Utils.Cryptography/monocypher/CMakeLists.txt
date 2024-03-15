@@ -39,6 +39,7 @@ message(STATUS "Build type is '${CMAKE_BUILD_TYPE}'")
 
 #if debug
 add_compile_definitions($<$<CONFIG:Debug>:DEBUG>)
+add_compile_definitions(VNLIB_EXPORTING)
 
 
 #setup flags for windows compilation

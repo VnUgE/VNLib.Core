@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * vnlib_monocypher is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published
@@ -16,47 +16,38 @@
 */
 
 #pragma once
-#ifndef  VN_MONOCYPHER_UTIL_H
+#ifndef VN_MONOCYPHER_UTIL_H
+#define VN_MONOCYPHER_UTIL_H
 
-#if defined(__GNUC__)
-	#define inline __inline__
-	#define VNLIB_EXPORT __attribute__((visibility("default")))
-	#define VNLIB_CC 
-#elif defined(_MSC_VER)
-	#define VNLIB_EXPORT __declspec(dllexport)
-	#define VNLIB_CC __cdecl
-#endif /* WIN32 */
+#if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
+    #define _P_IS_WINDOWS
+#endif
 
-#ifdef USE_MEM_UTIL
+//Set api export calling convention (allow used to override)
+#ifndef VNLIB_CC
+    #ifdef _P_IS_WINDOWS
+        //STD for importing to other languages such as .NET
+        #define VNLIB_CC __stdcall
+    #else
+        #define VNLIB_CC 
+    #endif
+#endif // !NC_CC
 
-	/* Include stdlib for malloc */
-	#include <stdlib.h>
-
-	/* If a custom allocator is not defined, set macros for built-in function */
-	#ifndef CUSTOM_ALLOCATOR
-
-		/* malloc and friends fallback if not defined */
-		#define vnmalloc(size) malloc(size)
-		#define vncalloc(count, size) calloc(count, size)
-		#define vnrealloc(ptr, size) realloc(ptr, size)
-		#define vnfree(ptr) free(ptr)
-
-	#endif /* !CUSTOM_ALLOCATOR */
-
-	#ifdef WIN32
-
-		/* required for memove on windows */
-		#include <memory.h>
-
-		#define _memmove(dst, src, size) memmove_s(dst, size, src, size)
-	#else
-		/* use string.h posix on non-win platforms */
-		#include <string.h>
-
-		#define _memmove memmove
-	#endif /* WIN32 */
-
-#endif //  USE_MEM_UTIL
+#ifndef VNLIB_EXPORT	//Allow users to disable the export/impoty macro if using source code directly
+    #ifdef VNLIB_EXPORTING
+        #ifdef _P_IS_WINDOWS
+            #define VNLIB_EXPORT __declspec(dllexport)
+        #else
+            #define VNLIB_EXPORT __attribute__((visibility("default")))
+        #endif // _NC_IS_WINDOWS
+    #else
+        #ifdef _P_IS_WINDOWS
+            #define VNLIB_EXPORT __declspec(dllimport)
+        #else
+            #define VNLIB_EXPORT
+        #endif // _P_IS_WINDOWS
+    #endif // !VNLIB_EXPORTING
+#endif // !VNLIB_EXPORT
 
 #ifndef _In_
 #define _In_

@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * vnlib_monocypher is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published
@@ -17,6 +17,7 @@
 
 #pragma once
 #ifndef VN_MONOCYPHER_BLAKE2_H
+#define VN_MONOCYPHER_BLAKE2_H
 
 #include <stdint.h>
 #include "util.h"

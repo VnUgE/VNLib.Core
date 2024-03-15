@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * vnlib_monocypher is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published
@@ -18,9 +18,11 @@
 #include "argon2.h"
 #include <monocypher.h>
 
+#define ARGON2_WORK_AREA_MULTIPLIER 1024
+
 VNLIB_EXPORT uint32_t VNLIB_CC Argon2CalcWorkAreaSize(const argon2Ctx* context)
 {
-	return context->m_cost * 1024;
+	return context->m_cost * ARGON2_WORK_AREA_MULTIPLIER;
 }
 
 /*
