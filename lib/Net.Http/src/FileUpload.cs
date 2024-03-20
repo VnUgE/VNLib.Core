@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -44,6 +44,11 @@ namespace VNLib.Net.Http
     /// </param>
     public readonly record struct FileUpload(Stream FileData, bool DisposeStream, ContentType ContentType, string? FileName)
     {
+        /// <summary>
+        /// Gets the length of the <see cref="FileData"/> stream
+        /// </summary>
+        public long Length => FileData.Length;
+
         /// <summary>
         /// Disposes the stream if the handle is owned
         /// </summary>

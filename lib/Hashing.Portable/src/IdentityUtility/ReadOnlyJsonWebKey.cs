@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -23,11 +23,12 @@
 */
 
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Collections.Generic;
+using System.Collections.Frozen;
 
-using VNLib.Utils;
-using VNLib.Utils.Extensions;
+using VNLib.Utils.Memory;
 
 namespace VNLib.Hashing.IdentityUtility
 {
@@ -35,24 +36,19 @@ namespace VNLib.Hashing.IdentityUtility
     /// A readonly Json Web Key (JWK) data structure that may be used for signing 
     /// or verifying messages.
     /// </summary>
-    public sealed class ReadOnlyJsonWebKey : VnDisposeable, IJsonWebKey
+    public sealed class ReadOnlyJsonWebKey : IJsonWebKey
     {
-        private readonly JsonElement _jwk;
-        private readonly JsonDocument? _doc;
+        private readonly FrozenDictionary<string, string?> _properties;
 
         /// <summary>
-        /// Creates a new instance of <see cref="ReadOnlyJsonWebKey"/> from a <see cref="JsonElement"/>.
-        /// This will call <see cref="JsonElement.Clone"/> on the element and store an internal copy
+        /// Creates a new instance of <see cref="ReadOnlyJsonWebKey"/> from a dictionary of 
+        /// JWK string properties
         /// </summary>
-        /// <param name="keyElement">The <see cref="JsonElement"/> to create the <see cref="ReadOnlyJsonWebKey"/> from</param>
-        public ReadOnlyJsonWebKey(ref readonly JsonElement keyElement)
+        /// <param name="properties">The frozen dictionary instance of parsed JWK properties</param>
+        public ReadOnlyJsonWebKey(FrozenDictionary<string, string?> properties)
         {
-            _jwk = keyElement.Clone();
-            //Set initial values
-            KeyId = _jwk.GetPropString("kid");
-            KeyType = _jwk.GetPropString("kty");
-            Algorithm = _jwk.GetPropString("alg");
-            Use = _jwk.GetPropString("use");
+            ArgumentNullException.ThrowIfNull(properties);
+            _properties = properties;
 
             //Create a JWT header from the values
             JwtHeader = new Dictionary<string, string?>()
@@ -69,6 +65,21 @@ namespace VNLib.Hashing.IdentityUtility
                 _ => JwkKeyUsage.None,
             };
         }
+
+        /// <summary>
+        /// Creates a new instance of <see cref="ReadOnlyJsonWebKey"/> from a <see cref="JsonElement"/>.
+        /// This will call <see cref="JsonElement.Clone"/> on the element and store an internal copy
+        /// </summary>
+        /// <param name="keyElement">The <see cref="JsonElement"/> to create the <see cref="ReadOnlyJsonWebKey"/> from</param>
+        public ReadOnlyJsonWebKey(ref readonly JsonElement keyElement)
+            :this(
+                 //Get only top-level string properties and store them in a dictionary
+                 keyElement.EnumerateObject()
+                    .Where(static k => k.Value.ValueKind == JsonValueKind.String)
+                    .ToDictionary(static k => k.Name, v => v.Value.GetString(), StringComparer.OrdinalIgnoreCase)
+                    .ToFrozenDictionary()
+            )
+        { }
 
         /// <summary>
         /// Creates a new instance of <see cref="ReadOnlyJsonWebKey"/> from a raw utf8 encoded json 
@@ -77,52 +88,60 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="rawValue">The utf8 encoded json binary sequence</param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="JsonException"></exception>
-        public ReadOnlyJsonWebKey(ReadOnlySpan<byte> rawValue)
+        public static ReadOnlyJsonWebKey FromUtf8Bytes(ReadOnlySpan<byte> rawValue)
         {
-            //Pare the raw value
             Utf8JsonReader reader = new (rawValue);
-            _doc = JsonDocument.ParseValue(ref reader);
-            //store element
-            _jwk = _doc.RootElement;
+            using JsonDocument doc = JsonDocument.ParseValue(ref reader);
+            JsonElement root = doc.RootElement;
+            return new ReadOnlyJsonWebKey(ref root);
+        }
 
-            //Set initial values
-            KeyId = _jwk.GetPropString("kid");
-            KeyType = _jwk.GetPropString("kty");
-            Algorithm = _jwk.GetPropString("alg");
-            Use = _jwk.GetPropString("use");
+        /// <summary>
+        /// Creates a new instance of <see cref="ReadOnlyJsonWebKey"/> from a raw utf8 encoded json
+        /// memory segment
+        /// </summary>
+        /// <param name="rawValue">The utf8 encoded json binary sequence</param>
+        /// <returns>The readonly JWK object</returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="JsonException"></exception>
+        public static ReadOnlyJsonWebKey FromUtf8Bytes(ReadOnlyMemory<byte> rawValue)
+        {
+            using JsonDocument doc = JsonDocument.Parse(rawValue);
+            JsonElement root = doc.RootElement;
+            return new ReadOnlyJsonWebKey(ref root);
+        }
 
-            //Create a JWT header from the values
-            JwtHeader = new Dictionary<string, string?>()
-            {
-                { "alg" , Algorithm },
-                { "typ" , "JWT" },
-            };
-
-            //Configure key usage
-            KeyUse = (Use?.ToLower(null)) switch
-            {
-                "sig" => JwkKeyUsage.Signature,
-                "enc" => JwkKeyUsage.Encryption,
-                _ => JwkKeyUsage.None,
-            };
+        /// <summary>
+        /// Creates a new instance of <see cref="ReadOnlyJsonWebKey"/> from a json string
+        /// </summary>
+        /// <param name="jsonString">The json encoded string to recover the JWK from</param>
+        /// <returns></returns>
+        public static ReadOnlyJsonWebKey FromJsonString(string jsonString)
+        {
+            using JsonDocument doc = JsonDocument.Parse(jsonString);
+            JsonElement root = doc.RootElement;
+            return new ReadOnlyJsonWebKey(ref root);
         }
 
         /// <summary>
         /// The key identifier
         /// </summary>
-        public string? KeyId { get; }
+        public string? KeyId => _properties.GetValueOrDefault("kid");
+
         /// <summary>
         /// The key type
         /// </summary>
-        public string? KeyType { get; }
+        public string? KeyType => _properties.GetValueOrDefault("kty");
+
         /// <summary>
         /// The key algorithm
         /// </summary>
-        public string? Algorithm { get; }
+        public string? Algorithm => _properties.GetValueOrDefault("alg");
+
         /// <summary>
         /// The key "use" value
         /// </summary>
-        public string? Use { get; }
+        public string? Use => _properties.GetValueOrDefault("use");
 
         /// <summary>
         /// Returns the JWT header that matches this key
@@ -133,12 +152,17 @@ namespace VNLib.Hashing.IdentityUtility
         public JwkKeyUsage KeyUse { get; }
 
         ///<inheritdoc/>
-        public string? GetKeyProperty(string propertyName) => _jwk.GetPropString(propertyName);
+        public string? GetKeyProperty(string propertyName) => _properties.GetValueOrDefault(propertyName);
 
-        ///<inheritdoc/>
-        protected override void Free()
+        /// <summary>
+        /// Attemts to erase all property values from memory by securely writing over them with zeros
+        /// </summary>
+        public void EraseValues()
         {
-            _doc?.Dispose();
+            foreach(string? value in _properties.Values)
+            {
+                PrivateStringManager.EraseString(value);
+            }
         }
 
     }

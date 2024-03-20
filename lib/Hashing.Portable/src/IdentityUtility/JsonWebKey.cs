@@ -292,7 +292,7 @@ namespace VNLib.Hashing.IdentityUtility
         }
 
         /// <summary>
-        /// Gets the RSA private key algorithm from the supplied Json Web Key <see cref="JsonElement"/>
+        /// Gets the RSA private key algorithm from the supplied Json Web Key
         /// </summary>
         /// <param name="jwk"></param>
         /// <returns>The <see cref="RSA"/> algorithm if found, or null if the element does not contain private key</returns>
@@ -303,7 +303,23 @@ namespace VNLib.Hashing.IdentityUtility
             return rSAParameters.HasValue ? RSA.Create(rSAParameters.Value) : null;
         }
 
-        private static RSAParameters? GetRsaParameters<TKey>(in TKey jwk, bool includePrivateKey) where TKey : IJsonWebKey
+        /// <summary>
+        /// Gets the RSA key parameters from the current Json Web Key 
+        /// </summary>>
+        /// <param name="jwk"></param>
+        /// <param name="includePrivateKey">A value that indicates that a private key should be parsed and included in the parameters</param>
+        /// <returns>A nullable structure that contains the parsed keys, or null if required properties were empty</returns>
+        public static RSAParameters? GetRsaParameters(this ReadOnlyJsonWebKey jwk, bool includePrivateKey)
+            => GetRsaParameters(in jwk, includePrivateKey);
+
+        /// <summary>
+        /// Gets the RSA key parameters from the current Json Web Key 
+        /// </summary>
+        /// <typeparam name="TKey"></typeparam>
+        /// <param name="jwk"></param>
+        /// <param name="includePrivateKey">A value that indicates that a private key should be parsed and included in the parameters</param>
+        /// <returns>A nullable structure that contains the parsed keys, or null if required properties were empty</returns>
+        public static RSAParameters? GetRsaParameters<TKey>(in TKey jwk, bool includePrivateKey) where TKey : IJsonWebKey
         {
             //Get the RSA public key credentials
             ReadOnlySpan<char> e = jwk.GetKeyProperty("e");
@@ -372,9 +388,23 @@ namespace VNLib.Hashing.IdentityUtility
             //Return new alg
             return ecParams.HasValue ? ECDsa.Create(ecParams.Value) : null;
         }
-        
 
-        private static ECParameters? GetECParameters<TKey>(in TKey jwk, bool includePrivate) where TKey : IJsonWebKey
+        /// <summary>
+        /// Gets the EC key parameters from the current Json Web Key 
+        /// </summary>
+        /// <param name="jwk"></param>
+        /// <param name="includePrivate">A value that inidcates if private key parameters should be parsed and included </param>
+        /// <returns>The parsed key parameter structure, or null if the key parameters were empty or could not be parsed</returns>
+        public static ECParameters? GetECParameters(this ReadOnlyJsonWebKey jwk, bool includePrivate) => GetECParameters(in jwk, includePrivate);
+
+        /// <summary>
+        /// Gets the EC key parameters from the current Json Web Key 
+        /// </summary>
+        /// <typeparam name="TKey"></typeparam>
+        /// <param name="jwk"></param>
+        /// <param name="includePrivate">A value that inidcates if private key parameters should be parsed and included </param>
+        /// <returns>The parsed key parameter structure, or null if the key parameters were empty or could not be parsed</returns>
+        public static ECParameters? GetECParameters<TKey>(in TKey jwk, bool includePrivate) where TKey : IJsonWebKey
         {
             //Get the RSA public key credentials
             ReadOnlySpan<char> x = jwk.GetKeyProperty("x");
