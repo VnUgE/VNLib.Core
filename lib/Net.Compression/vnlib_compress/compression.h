@@ -38,8 +38,43 @@
 #ifndef COMPRESSION_H_
 #define COMPRESSION_H_
 
-#include "util.h"
 #include <stdint.h>
+
+#if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
+	#define _IS_WINDOWS
+#endif
+
+//Set api export calling convention (allow used to override)
+#ifndef VNLIB_COMPRESS_CC
+	#ifdef _IS_WINDOWS
+		//STD for importing to other languages such as .NET
+		#define VNLIB_COMPRESS_CC __stdcall
+	#else
+		#define VNLIB_COMPRESS_CC 
+	#endif
+#endif // !VNLIB_CC
+
+#ifndef VNLIB_COMPRESS_EXPORT	//Allow users to disable the export/impoty macro if using source code directly
+	#ifdef VNLIB_COMPRESS_EXPORTING
+		#ifdef _IS_WINDOWS
+			#define VNLIB_COMPRESS_EXPORT __declspec(dllexport)
+		#else
+			#define VNLIB_COMPRESS_EXPORT __attribute__((visibility("default")))
+		#endif // IS_WINDOWS
+	#else
+		#ifdef _IS_WINDOWS
+			#define VNLIB_COMPRESS_EXPORT __declspec(dllimport)
+		#else
+			#define VNLIB_COMPRESS_EXPORT
+		#endif // IS_WINDOWS
+	#endif // !VNLIB_EXPORTING
+#endif // !VNLIB_EXPORT
+
+/*
+* ERRORS AND CONSTANTS
+*/
+#define ERR_INVALID_PTR -1
+#define ERR_OUT_OF_MEMORY -2
 
 #define ERR_COMP_TYPE_NOT_SUPPORTED -9
 #define ERR_COMP_LEVEL_NOT_SUPPORTED -10
@@ -157,7 +192,7 @@ typedef struct CompressionOperationStruct {
 /*
 * Public API functions
 */
-VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void);
+VNLIB_COMPRESS_EXPORT CompressorType VNLIB_COMPRESS_CC GetSupportedCompressors(void);
 
 /*
 * Returns the suggested block size for the underlying compressor.
@@ -165,7 +200,7 @@ VNLIB_EXPORT CompressorType VNLIB_CC GetSupportedCompressors(void);
 * @param compressor A pointer to the desired compressor instance to query.
 * @return The suggested block size for the underlying compressor in bytes
 */
-VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ const void* compressor);
+VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressorBlockSize(_In_ const void* compressor);
 
 /*
 * Gets the compressor type of the specified compressor instance.
@@ -173,7 +208,7 @@ VNLIB_EXPORT int64_t VNLIB_CC GetCompressorBlockSize(_In_ const void* compressor
 * @param compressor A pointer to the desired compressor instance to query.
 * @return The type of the specified compressor instance.
 */
-VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ const void* compressor);
+VNLIB_COMPRESS_EXPORT CompressorType VNLIB_COMPRESS_CC GetCompressorType(_In_ const void* compressor);
 
 /*
 * Gets the compression level of the specified compressor instance.
@@ -181,7 +216,7 @@ VNLIB_EXPORT CompressorType VNLIB_CC GetCompressorType(_In_ const void* compress
 * @param compressor A pointer to the desired compressor instance to query.
 * @return The compression level of the specified compressor instance.
 */
-VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ const void* compressor);
+VNLIB_COMPRESS_EXPORT CompressionLevel VNLIB_COMPRESS_CC GetCompressorLevel(_In_ const void* compressor);
 
 /*
 * Allocates a new compressor instance on the native heap of the desired compressor type.
@@ -191,7 +226,7 @@ VNLIB_EXPORT CompressionLevel VNLIB_CC GetCompressorLevel(_In_ const void* compr
 * @return A pointer to the newly allocated compressor instance. NULL if the compressor 
 could not be allocated.
 */
-VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionLevel level);
+VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType type, CompressionLevel level);
 
 /*
 * Frees a previously allocated compressor instance.
@@ -199,7 +234,7 @@ VNLIB_EXPORT void* VNLIB_CC AllocateCompressor(CompressorType type, CompressionL
 * @param compressor A pointer to the desired compressor instance to free.
 * @return The underlying compressor's native return code.
 */
-VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor);
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(_In_ void* compressor);
 
 /*
 * Computes the maximum compressed size of the specified input data. This is not supported
@@ -209,7 +244,7 @@ VNLIB_EXPORT int VNLIB_CC FreeCompressor(_In_ void* compressor);
 * @param inputLength The length of the input data in bytes.
 * @return The maximum compressed size of the specified input data in bytes.
 */
-VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ const void* compressor, uint64_t inputLength, int32_t flush);
+VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressedSize(_In_ const void* compressor, uint64_t inputLength, int32_t flush);
 
 
 /*
@@ -219,6 +254,6 @@ VNLIB_EXPORT int64_t VNLIB_CC GetCompressedSize(_In_ const void* compressor, uin
 * @param operation A pointer to the compression operation structure
 * @return The underlying compressor's native return code
 */
-VNLIB_EXPORT int VNLIB_CC CompressBlock(_In_ const void* compressor, CompressionOperation* operation);
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressBlock(_In_ const void* compressor, CompressionOperation* operation);
 
 #endif /* !VNLIB_COMPRESS_MAIN_H_ */

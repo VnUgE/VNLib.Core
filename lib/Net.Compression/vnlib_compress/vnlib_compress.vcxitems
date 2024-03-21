@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)feature_brotli.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)compression.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)memory.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)util.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)feature_zlib.h" />
   </ItemGroup>
