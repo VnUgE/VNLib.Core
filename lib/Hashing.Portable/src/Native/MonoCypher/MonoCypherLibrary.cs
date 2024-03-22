@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -25,10 +25,10 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Threading;
 
 using VNLib.Utils;
 using VNLib.Utils.Native;
+using VNLib.Utils.Resources;
 using VNLib.Utils.Extensions;
 
 namespace VNLib.Hashing.Native.MonoCypher
@@ -50,7 +50,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <returns>true if the user enabled the default library, false otherwise</returns>
         public static bool CanLoadDefaultLibrary() => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(MONOCYPHER_LIB_ENVIRONMENT_VAR_NAME)) == false;
 
-        private static readonly Lazy<MonoCypherLibrary> _defaultLib = new (LoadDefaultLibraryInternal, LazyThreadSafetyMode.PublicationOnly);
+        private static readonly LazyInitializer<MonoCypherLibrary> _defaultLib = new (LoadDefaultLibraryInternal);
 
         /// <summary>
         /// Gets the default MonoCypher library for the current process
@@ -59,7 +59,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// this property to ensure that the default library can be loaded
         /// </para>
         /// </summary>
-        public static MonoCypherLibrary Shared => _defaultLib.Value;
+        public static MonoCypherLibrary Shared => _defaultLib.Instance;
 
         /// <summary>
         /// Loads a new instance of the MonoCypher library with environment defaults

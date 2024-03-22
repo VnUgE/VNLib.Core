@@ -95,8 +95,8 @@ namespace VNLib.Hashing.Checksums
         public static ulong Compute64(ref byte data, nuint length) => Update64(FNV_OFFSET_BASIS, ref data, length);
 
         /// <summary>
-        /// Provides a managed software implementation of the FNV-1a 64-bit 
-        /// non cryptographic hash algorithm
+        /// Computes the next 64-bit FNV-1a hash value using the current hash 
+        /// value and the next byte of data. 
         /// </summary>
         /// <param name="data">A span structure pointing to the memory block to compute the digest of</param>
         /// <returns>The 64bit unsigned integer representng the message sum or digest</returns>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -24,7 +24,6 @@
 
 using System;
 using System.Text;
-using System.Threading;
 using System.Diagnostics;
 using System.Buffers.Text;
 using System.Security.Cryptography;
@@ -33,6 +32,7 @@ using System.Runtime.InteropServices;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Native;
 using VNLib.Utils.Extensions;
+using VNLib.Utils.Resources;
 using VNLib.Hashing.Native.MonoCypher;
 
 namespace VNLib.Hashing
@@ -52,12 +52,12 @@ namespace VNLib.Hashing
         public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "VNLIB_ARGON2_DLL_PATH";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;
-        private static readonly Lazy<IUnmangedHeap> _heap = new (static () => MemoryUtil.InitializeNewHeapForProcess(true), LazyThreadSafetyMode.PublicationOnly);
-        private static readonly Lazy<IArgon2Library> _nativeLibrary = new(LoadSharedLibInternal, LazyThreadSafetyMode.PublicationOnly);
+        private static readonly LazyInitializer<IUnmangedHeap> _heap = new (static () => MemoryUtil.InitializeNewHeapForProcess(true));
+        private static readonly LazyInitializer<IArgon2Library> _nativeLibrary = new(LoadSharedLibInternal);
 
 
         //Private heap initialized to 10k size, and all allocated buffers will be zeroed when allocated
-        private static IUnmangedHeap PwHeap => _heap.Value;      
+        private static IUnmangedHeap PwHeap => _heap.Instance;
 
         private static IArgon2Library LoadSharedLibInternal()
         {
@@ -70,7 +70,7 @@ namespace VNLib.Hashing
                 Trace.WriteLine("Using the native MonoCypher library for Argon2 password hashing", "VnArgon2");
 
                 //Load shared monocyphter argon2 library
-                return MonoCypherLibrary.Shared.Argon2CreateLibrary(_heap.Value);
+                return MonoCypherLibrary.Shared.Argon2CreateLibrary(_heap.Instance);
             }
             else
             {
@@ -90,7 +90,7 @@ namespace VNLib.Hashing
         /// </summary>
         /// <returns>The shared library instance</returns>
         /// <exception cref="DllNotFoundException"></exception>
-        public static IArgon2Library GetOrLoadSharedLib() => _nativeLibrary.Value;
+        public static IArgon2Library GetOrLoadSharedLib() => _nativeLibrary.Instance;
 
         /// <summary>
         /// Loads a native Argon2 shared library from the specified path 

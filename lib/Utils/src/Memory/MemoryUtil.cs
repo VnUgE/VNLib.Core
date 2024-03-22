@@ -25,7 +25,6 @@
 using System;
 using System.Buffers;
 using System.Security;
-using System.Threading;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -33,6 +32,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 
 using VNLib.Utils.Memory.Diagnostics;
+using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.Memory
 {
@@ -102,13 +102,13 @@ namespace VNLib.Utils.Memory
         /// The backing heap
         /// is determined by the OS type and process environment varibles.
         /// </remarks>
-        public static IUnmangedHeap Shared => _sharedHeap.Value;
+        public static IUnmangedHeap Shared => _lazyHeap.Instance;       
 
-        
-        private static readonly Lazy<IUnmangedHeap> _sharedHeap = InitHeapInternal();
+
+        private static readonly LazyInitializer<IUnmangedHeap> _lazyHeap = InitHeapInternal();
 
         //Avoiding static initializer
-        private static Lazy<IUnmangedHeap> InitHeapInternal()
+        private static LazyInitializer<IUnmangedHeap> InitHeapInternal()
         {
             //Get env for heap diag
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
@@ -116,22 +116,17 @@ namespace VNLib.Utils.Memory
            
             Trace.WriteLineIf(diagEnable, "Shared heap diagnostics enabled");
             Trace.WriteLineIf(globalZero, "Shared heap global zero enabled");
-            
-            Lazy<IUnmangedHeap> heap = new (() => InitHeapInternal(true, diagEnable, globalZero), LazyThreadSafetyMode.PublicationOnly);
 
-            //Cleanup the heap on process exit
-            AppDomain.CurrentDomain.DomainUnload += DomainUnloaded;
-            
-            return heap;
-        }
-
-        private static void DomainUnloaded(object? sender, EventArgs e)
-        {
-            //Dispose the heap if allocated
-            if (_sharedHeap.IsValueCreated)
+            return new(() =>
             {
-                _sharedHeap.Value.Dispose();
-            }
+                //Init shared heap instance
+                IUnmangedHeap heap = InitHeapInternal(true, diagEnable, globalZero);
+
+                //Register domain unload event
+                AppDomain.CurrentDomain.DomainUnload += (_, _) => heap.Dispose();
+
+                return heap;
+            });            
         }
 
         /// <summary>
@@ -147,7 +142,7 @@ namespace VNLib.Utils.Memory
              * If heap is allocated and the heap type is a tracked heap, 
              * get the heap's stats, otherwise return an empty handle
              */
-            return _sharedHeap.IsValueCreated && _sharedHeap.Value is TrackedHeapWrapper h
+            return _lazyHeap.IsLoaded && _lazyHeap.Instance is TrackedHeapWrapper h
                 ? h.GetCurrentStats() : default;
         }
 
