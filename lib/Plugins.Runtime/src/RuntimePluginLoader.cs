@@ -38,10 +38,9 @@ namespace VNLib.Plugins.Runtime
     /// </summary>
     public sealed class RuntimePluginLoader : VnDisposeable, IPluginReloadEventHandler
     {
-        private static readonly IPluginAssemblyWatcher Watcher = new AssemblyWatcher();
-       
-        private readonly IPluginAssemblyLoader Loader;      
+        private readonly IPluginAssemblyLoader Loader;
         private readonly ILogProvider? Log;
+        private readonly IDisposable? Watcher;
 
         /// <summary>
         /// Gets the plugin assembly loader configuration information
@@ -61,13 +60,15 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public RuntimePluginLoader(IPluginAssemblyLoader loader, ILogProvider? log)
         {
-            Log = log;
-            Loader = loader ?? throw new ArgumentNullException(nameof(loader));
+            ArgumentNullException.ThrowIfNull(loader);
+            
+            Log = log;           
+            Loader = loader;
 
             //Configure watcher if requested
             if (loader.Config.WatchForReload)
             {
-                Watcher.WatchAssembly(this, loader);
+                Watcher = AssemblyWatcher.WatchAssembly(this, loader);
             }
 
             //Init container
@@ -200,10 +201,8 @@ namespace VNLib.Plugins.Runtime
         ///<inheritdoc/>
         protected override void Free()
         {
-            //Stop watching for events
-            Watcher.StopWatching(this);
-
             //Cleanup
+            Watcher?.Dispose();
             Controller.Dispose();
             Loader.Dispose();
         }

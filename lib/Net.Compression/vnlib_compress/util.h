@@ -24,50 +24,25 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#include <stdlib.h>
-
-/*
-* Stub missing types and constants for GCC
-*/
-
 /*
 * If a custom allocator is enabled, use the native heap api
-* header and assume linking is enabled
+* header and assume linking is enabled. Heap functions below
+* will be enabled when heapapi.h is included.
 */
 #ifdef VNLIB_CUSTOM_MALLOC_ENABLE
-#include <NativeHeapApi.h>
+	#include <NativeHeapApi.h>
 #endif
 
 #if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 	#define IS_WINDOWS
 #endif
 
-//Set api export calling convention (allow used to override)
-#ifndef VNLIB_CC
-	#ifdef IS_WINDOWS
-		//STD for importing to other languages such as .NET
-		#define VNLIB_CC __stdcall
-	#else
-		#define VNLIB_CC 
-	#endif
-#endif // !VNLIB_CC
-
-#ifndef VNLIB_EXPORT	//Allow users to disable the export/impoty macro if using source code directly
-	#ifdef VNLIB_EXPORTING
-		#ifdef IS_WINDOWS
-			#define VNLIB_EXPORT __declspec(dllexport)
-		#else
-			#define VNLIB_EXPORT __attribute__((visibility("default")))
-		#endif // IS_WINDOWS
-	#else
-		#ifdef IS_WINDOWS
-			#define VNLIB_EXPORT __declspec(dllimport)
-		#else
-			#define VNLIB_EXPORT
-		#endif // IS_WINDOWS
-	#endif // !VNLIB_EXPORTING
-#endif // !VNLIB_EXPORT
-
+/* If not Windows, define inline */
+#ifndef IS_WINDOWS
+	#ifndef inline
+		#define inline __inline__
+	#endif // !inline
+#endif // !IS_WINDOWS
 
 /* If not Windows, define inline */
 #ifndef IS_WINDOWS
@@ -102,16 +77,14 @@
 	#define assert(x) {}
 #endif
 
-/*
-* ERRORS AND CONSTANTS
-*/
-#define ERR_INVALID_PTR -1
-#define ERR_OUT_OF_MEMORY -2
 
 #ifdef NATIVE_HEAP_API	/* Defined in the NativeHeapApi */
 	/*
 	* Add overrides for malloc, calloc, and free that use
 	* the nativeheap api to allocate memory
+	* 
+	* Inline fuctions are used to enforce type safety and 
+	* api consistency.
 	*/
 
 	static inline void* vnmalloc(size_t num, size_t size)
@@ -134,6 +107,11 @@
 	}
 
 #else
+
+	/*
+	* Required for built-in memory api
+	*/
+	#include <stdlib.h>
 
 	/*
 	* Stub method for malloc. All calls to vnmalloc should be freed with vnfree.

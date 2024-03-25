@@ -9,8 +9,10 @@
 version: '3'
 
 vars:
-  THIRD_PARTY_DIR: '../third-party'
+  THIRD_PARTY_DIR: './third-party'
   PROJECT_NAME: 'vnlib_compress'
+  ZLIB_GIT_REPO: 'https://github.com/cloudflare/zlib.git'
+  BROTLI_GIT_REPO: 'https://github.com/google/brotli.git'
 
 tasks:
 
@@ -35,26 +37,59 @@ tasks:
  
      #build for platform
      - cmake --build build/ --config Release
-          
+    
+
+  #called by ci pipline to build the winx64 project
+  build:
+   cmds:
+    #make third-party dir before cloning libs
+     - cmd: powershell -Command "mkdir '{{.THIRD_PARTY_DIR}}' -Force"
+       platforms: [windows]
+       ignore_error: true  
+     - cmd: mkdir -p '{{.THIRD_PARTY_DIR}}'
+       platforms: [linux, darwin]
+       ignore_error: true
+
+     - task: zlib
+     - task: brotli
+ 
+     #invoke cmake for build (notify that we are precompiling for ci pipeline and rpmalloc lib should be local)
+     - cmake -B./build -DCI_PRECOMPILE=ON -DENABLE_RPMALLOC=ON
+ 
+     #build for platform
+     - cmake --build build/ --config Debug
+     - cmake --build build/ --config Release
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
+    vars:
+      #required files to include in tar
+      TAR_FILES: "{{.PROJECT_NAME}}.dll {{.PROJECT_NAME}}.pdb {{.PROJECT_NAME}}.lib license.txt"
     cmds:
      - cmd: powershell mkdir -Force './bin'
      #copy source code to target
-     - powershell -Command "tar --exclude build/* --exclude .vs/* --exclude bin/* -czf bin/src.tgz ."
+     - cmd: powershell -Command "tar --exclude build/* --exclude .vs/* --exclude bin/* --exclude third-party/* -czf bin/src.tgz ."
+    
+     #copy license file to debug and release output
+     - cmd: powershell -Command "cp ../LICENSE build/Debug/license.txt"
+     - cmd: powershell -Command "cp ../LICENSE build/Release/license.txt"
+
+     #create static-build archives
+     - cd build/Debug && tar -czf ../../bin/win-x64-debug.tgz {{.TAR_FILES}}
+     - cd build/Release && tar -czf ../../bin/win-x64-release.tgz {{.TAR_FILES}}  
 
 #Remove the output dirs on clean
   clean:
     ignore_error: true
     cmds:
-     - cmd: powershell Remove-Item -Recurse './bin'
+     - for: [ bin/, build/, third-party/ ]
+       cmd: powershell Remove-Item -Recurse '{{.ITEM}}' -Force
 
   #update or install the cloudflare fork of zlib library 
   zlib:
     internal: true
     status:
-     - cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/cloudflare/zlib.git
+     - cd {{.THIRD_PARTY_DIR}} && git clone {{.ZLIB_GIT_REPO}}
     cmds:
      - cd {{.THIRD_PARTY_DIR}}/zlib && git pull
   
@@ -62,7 +97,7 @@ tasks:
   brotli:
     internal: true
     status:
-     - cd {{.THIRD_PARTY_DIR}} && git clone https://github.com/google/brotli.git  
+     - cd {{.THIRD_PARTY_DIR}} && git clone {{.BROTLI_GIT_REPO}}  
     cmds:
      - cd {{.THIRD_PARTY_DIR}}/brotli && git pull
     

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -22,95 +22,52 @@
 * along with VNLib.Plugins.Runtime. If not, see http://www.gnu.org/licenses/.
 */
 
+using System;
 using System.IO;
 using System.Threading;
-using System.Collections.Generic;
 
 using VNLib.Utils;
+using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
 
+
 namespace VNLib.Plugins.Runtime
-{
-    internal sealed class AssemblyWatcher : IPluginAssemblyWatcher
+{    
+
+    internal static class AssemblyWatcher
     {
-        private readonly object _lock = new ();
-        private readonly Dictionary<IPluginReloadEventHandler, AsmFileWatcher> _watchers;
 
-        public AssemblyWatcher()
+        internal static IDisposable WatchAssembly(IPluginReloadEventHandler handler, IPluginAssemblyLoader loader)
         {
-            _watchers = new();
+            ArgumentNullException.ThrowIfNull(handler);
+            ArgumentNullException.ThrowIfNull(loader);
+
+            DebouncedFSEventHandler dbh = new(loader, handler);
+            FileWatcher.Subscribe(loader.Config.AssemblyFile, dbh);
+
+            return dbh;
         }
 
-        ///<inheritdoc/>
-        public void StopWatching(IPluginReloadEventHandler handler)
+        internal sealed class DebouncedFSEventHandler : VnDisposeable, IFSChangeHandler
         {
-            lock (_lock)
-            {
-                //Find old watcher by its handler, then dispose it
-                if (_watchers.Remove(handler, out AsmFileWatcher? watcher))
-                {
-                    //dispose the watcher
-                    watcher.Dispose();
-                }
-            }
-        }
 
-        ///<inheritdoc/>
-        public void WatchAssembly(IPluginReloadEventHandler handler, IPluginAssemblyLoader loader)
-        {
-            lock(_lock)
-            {
-                if(_watchers.Remove(handler, out AsmFileWatcher? watcher))
-                {
-                    //dispose the watcher
-                    watcher.Dispose();
-                }
-
-                //Queue up a new watcher
-                watcher = new(loader, handler);
-
-                //Store watcher
-                _watchers.Add(handler, watcher);
-            }
-        }
-
-        private sealed class AsmFileWatcher : VnDisposeable
-        {
-            public IPluginReloadEventHandler Handler { get; }
-
+            private readonly IPluginReloadEventHandler _handler;
             private readonly IPluginAssemblyLoader _loaderSource;
             private readonly Timer _delayTimer;
-            private readonly FileSystemWatcher _watcher;
 
             private bool _pause;
 
-            public AsmFileWatcher(IPluginAssemblyLoader LoaderSource, IPluginReloadEventHandler handler)
+            public DebouncedFSEventHandler(IPluginAssemblyLoader loader, IPluginReloadEventHandler handler)
             {
-                Handler = handler;
-                _loaderSource = LoaderSource;
-
-                string dir = Path.GetDirectoryName(LoaderSource.Config.AssemblyFile)!;
-
-                //Configure watcher to notify only when the assembly file changes
-                _watcher = new FileSystemWatcher(dir)
-                {
-                    Filter = "*.dll",
-                    EnableRaisingEvents = false,
-                    IncludeSubdirectories = true,
-                    NotifyFilter = NotifyFilters.LastWrite,
-                };
-
-                //Configure listener
-                _watcher.Changed += OnFileChanged;
-                _watcher.Created += OnFileChanged;
-
-                _watcher.EnableRaisingEvents = true;
+                _handler = handler;
+                _loaderSource = loader;
 
                 //setup delay timer to wait on the config
-                _delayTimer = new(OnTimeout, this, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                _delayTimer = new(OnTimeout, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             }
 
-            void OnFileChanged(object sender, FileSystemEventArgs e)
+            ///<inheritdoc/>
+            void IFSChangeHandler.OnFileChanged(FileSystemEventArgs e)
             {
                 //if were already waiting to process an event, we dont need to stage another
                 if (_pause)
@@ -130,7 +87,7 @@ namespace VNLib.Plugins.Runtime
                 _delayTimer.Stop();
 
                 //Fire event, let exception crash app
-                Handler.OnPluginUnloaded(_loaderSource);
+                _handler.OnPluginUnloaded(_loaderSource);
 
                 //Clear pause flag
                 _pause = false;
@@ -140,9 +97,7 @@ namespace VNLib.Plugins.Runtime
             {
                 _delayTimer.Dispose();
 
-                //Detach event handler and dispose watcher
-                _watcher.Changed -= OnFileChanged;
-                _watcher.Dispose();
+                FileWatcher.Unsubscribe(_loaderSource.Config.AssemblyFile, this);
             }
         }
     }

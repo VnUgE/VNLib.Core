@@ -22,9 +22,11 @@
 /*
 * Include the stub header and also the zlib header
 */
-#include "feature_zlib.h"
-#include <zlib.h>
 
+
+#include <zlib.h>
+#include "feature_zlib.h"
+#include "util.h"
 
 #define validateCompState(state) \
 	if (!state) return ERR_INVALID_PTR; \

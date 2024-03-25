@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -83,8 +83,10 @@ namespace VNLib.Plugins.Runtime
         /// <returns>The current builder instance for chaining</returns>
         public PluginStackBuilder WithConfigurationReader(IPluginConfigReader pluginConfig)
         {
+            ArgumentNullException.ThrowIfNull(pluginConfig);
+
             //Store binary copy
-            PluginConfig = pluginConfig ?? throw new ArgumentNullException(nameof(pluginConfig));
+            PluginConfig = pluginConfig;
             return this;
         }
 

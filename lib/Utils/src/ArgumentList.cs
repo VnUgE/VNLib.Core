@@ -24,6 +24,7 @@
 
 using System;
 using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace VNLib.Utils
@@ -31,7 +32,7 @@ namespace VNLib.Utils
     /// <summary>
     /// Provides methods for parsing an argument list
     /// </summary>
-    public class ArgumentList : IIndexable<int, string>
+    public class ArgumentList : IIndexable<int, string>, IEnumerable<string>
     {
         private readonly List<string> _args;
 
@@ -96,6 +97,10 @@ namespace VNLib.Utils
             return index == -1 || index + 1 >= _args.Count ? null : this[index + 1];
         }
 
-     
+        ///<inheritdoc/>
+        public IEnumerator<string> GetEnumerator() => _args.GetEnumerator();
+
+        ///<inheritdoc/>
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

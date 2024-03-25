@@ -13,6 +13,8 @@ option(ENABLE_BROTLI "Enable brotli compression" ON)
 option(ENABLE_ZLIB "Enable zlib compression" ON)
 option(ENABLE_RPMALLOC "Enable local source code vnlib_rpmalloc memory allocator" OFF)
 
+set(THIRD_PARTY_DIR ./third-party)
+
 #add feature specific source files to the project
 if(ENABLE_BROTLI)
 	list(APPEND VNLIB_COMPRESS_SOURCES feature_brotli.c)
@@ -157,13 +159,13 @@ if(ENABLE_BROTLI)
 	endif()
 
 	#add the include directory for brotli so we can include the header files
-	include_directories(../third-party/brotli/c/include)
+	include_directories(${THIRD_PARTY_DIR}/brotli/c/include)
 
 	#get common sources
-	file(GLOB BROTLI_SOURCES ../third-party/brotli/c/common/*.c)
+	file(GLOB BROTLI_SOURCES ${THIRD_PARTY_DIR}/brotli/c/common/*.c)
 
 	#we need to add the brotli encoder source files to the project
-	file(GLOB BROTLI_ENC_SOURCES ../third-party/brotli/c/enc/*.c)
+	file(GLOB BROTLI_ENC_SOURCES ${THIRD_PARTY_DIR}/brotli/c/enc/*.c)
 
 	#add brotli as a static library to link later
 	add_library(lib_brotli STATIC ${BROTLI_SOURCES} ${BROTLI_ENC_SOURCES})
@@ -179,18 +181,18 @@ endif()
 if(ENABLE_ZLIB)	
 
 	#add the include directory for zlib so we can include the header files
-	include_directories(../third-party/zlib)
+	include_directories(${THIRD_PARTY_DIR}/zlib)
 
 	set(ZLIB_DEFINITIONS)
 	set(Z_C_FLAGS)
 
 	#we only need to add the zlib deflate source files to the project
 	set(ZLIB_SOURCES 
-		../third-party/zlib/deflate.c
-		../third-party/zlib/adler32.c
-		../third-party/zlib/crc32.c
-		../third-party/zlib/zutil.c
-		../third-party/zlib/trees.c
+		${THIRD_PARTY_DIR}/zlib/deflate.c
+		${THIRD_PARTY_DIR}/zlib/adler32.c
+		${THIRD_PARTY_DIR}/zlib/crc32.c
+		${THIRD_PARTY_DIR}/zlib/zutil.c
+		${THIRD_PARTY_DIR}/zlib/trees.c
 	)
 	
 	check_type_size(off64_t OFF64_T)
@@ -214,11 +216,21 @@ if(ENABLE_ZLIB)
 			-D_CRT_NONSTDC_NO_DEPRECATE
 		)
 
-		#setup avx compiler support on Windows
-		check_c_compiler_flag(/arch:AVX HAS_AVX)
-		if (HAS_AVX)
-			list(APPEND Z_C_FLAGS /arch:AVX)
-			list(APPEND ZLIB_DEFINITIONS -DHAS_AVX)
+		
+		#NOTE
+		#During CI a pre-compiled library will be built. 
+		#We cannot depend on users having the the same instructions as the build machine
+		#So some optimizations are disabled for the pre-compiled library
+
+		if(NOT CI_PRECOMPILE)
+
+			#setup avx compiler support on Windows
+			check_c_compiler_flag(/arch:AVX HAS_AVX)
+			if (HAS_AVX)
+				list(APPEND Z_C_FLAGS /arch:AVX)
+				list(APPEND ZLIB_DEFINITIONS -DHAS_AVX)
+			endif()
+
 		endif()
 
 		#All x64 machines have SSE2, so we can use it as 
@@ -239,9 +251,9 @@ if(ENABLE_ZLIB)
 		if(ARM_CRC)
 			list(APPEND Z_C_FLAGS -march=armv8-a+crc)
 
-			if(EXISTS "../third-party/zlib/adler32_simd.c")
+			if(EXISTS "{THIRD_PARTY_DIR}/zlib/adler32_simd.c")
 				list(APPEND ZLIB_DEFINITIONS -DADLER32_SIMD_NEON)
-				list(APPEND ZLIB_SOURCES ../third-party/zlib/adler32_simd.c)
+				list(APPEND ZLIB_SOURCES ${THIRD_PARTY_DIR}/zlib/adler32_simd.c)
 			endif()
 
 		else()
@@ -254,9 +266,9 @@ if(ENABLE_ZLIB)
 				list(APPEND Z_C_FLAGS -mssse3)
 
 				#add cloudflare intrinsic optimizations, may not be present if using non-cloudflare fork
-				if(EXISTS "../third-party/zlib/adler32_simd.c")
+				if(EXISTS "${THIRD_PARTY_DIR}/zlib/adler32_simd.c")
 					list(APPEND ZLIB_DEFINITIONS -DHAS_SSSE3 -DADLER32_SIMD_SSSE3)
-					list(APPEND ZLIB_SOURCES ../third-party/zlib/adler32_simd.c)
+					list(APPEND ZLIB_SOURCES ${THIRD_PARTY_DIR}/zlib/adler32_simd.c)
 				endif()
 
 			endif()
@@ -268,9 +280,9 @@ if(ENABLE_ZLIB)
 				list(APPEND Z_C_FLAGS -mpclmul)
 
 				#add cloudflare intrinsic optimizations for PCMLONGMUL crc32, may not be present if using non-cloudflare fork
-				if(EXISTS "../third-party/zlib/crc32_simd.c")
+				if(EXISTS "${THIRD_PARTY_DIR}/zlib/crc32_simd.c")
 					list(APPEND ZLIB_DEFINITIONS -DHAS_PCLMUL)
-					list(APPEND ZLIB_SOURCES ../third-party/zlib/crc32_simd.c)
+					list(APPEND ZLIB_SOURCES ${THIRD_PARTY_DIR}/zlib/crc32_simd.c)
 				endif()				
 				
 			endif()
@@ -344,7 +356,7 @@ if(ENABLE_RPMALLOC)
 
 		#find the rpmalloc library for unix builds
 		find_library(VNLIB_RPMALLOC_LIB
-			NAMES _vnrpmalloc
+			NAMES libvn_rpmalloc
 			PATHS ../../Utils.Memory/vnlib_rpmalloc/build
 		)
 

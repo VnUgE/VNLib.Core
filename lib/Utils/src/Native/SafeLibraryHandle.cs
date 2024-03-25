@@ -23,10 +23,7 @@
 */
 
 using System;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Diagnostics.CodeAnalysis;
 
@@ -42,128 +39,7 @@ namespace VNLib.Utils.Native
         ///<inheritdoc/>
         public override bool IsInvalid => handle == IntPtr.Zero;
 
-        private SafeLibraryHandle(IntPtr libHandle) : base(IntPtr.Zero, true)
-        {
-            //Init handle
-            SetHandle(libHandle);
-        }
-
-        /// <summary>
-        /// Finds and loads the specified native libary into the current process by its name at runtime 
-        /// </summary>
-        /// <param name="libPath">The path (or name of libary) to search for</param>
-        /// <param name="searchPath">
-        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
-        /// within the current filesystem
-        /// </param>
-        /// <returns>The loaded <see cref="SafeLibraryHandle"/></returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="DllNotFoundException"></exception>
-        public static SafeLibraryHandle LoadLibrary(string libPath, DllImportSearchPath searchPath = DllImportSearchPath.ApplicationDirectory)
-        {
-            ArgumentNullException.ThrowIfNull(libPath);
-            //See if the path includes a file extension
-            return TryLoadLibrary(libPath, searchPath, out SafeLibraryHandle? lib)
-                ? lib
-                : throw new DllNotFoundException($"The library {libPath} or one of its dependencies could not be found");
-        }
-
-        /// <summary>
-        /// Attempts to load the specified native libary into the current process by its name at runtime 
-        /// </summary>
-        ///<param name="libPath">The path (or name of libary) to search for</param>
-        /// <param name="searchPath">
-        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
-        /// within the current filesystem
-        /// </param>
-        /// <param name="lib">The handle to the libary if successfully loaded</param>
-        /// <returns>True if the libary was found and loaded into the current process</returns>
-        public static bool TryLoadLibrary(string libPath, DllImportSearchPath searchPath, [NotNullWhen(true)] out SafeLibraryHandle? lib)
-        {
-            lib = null;
-            //Allow full rooted paths
-            if (Path.IsPathRooted(libPath))
-            {
-                //Attempt a native load
-                if (NativeLibrary.TryLoad(libPath, out IntPtr libHandle))
-                {
-                    lib = new(libHandle);
-                    return true;
-                }
-                return false;
-            }
-            //Check application directory first (including subdirectories)
-            if ((searchPath & DllImportSearchPath.ApplicationDirectory) > 0)
-            {
-                //get the current directory
-                string libDir = Directory.GetCurrentDirectory();
-                if (TryLoadLibraryInternal(libDir, libPath, SearchOption.TopDirectoryOnly, out lib))
-                {
-                    return true;
-                }
-            }
-            //See if search in the calling assembly directory
-            if ((searchPath & DllImportSearchPath.AssemblyDirectory) > 0)
-            {
-                //Get the calling assmblies directory
-                string libDir = Assembly.GetCallingAssembly().Location;
-                Debug.WriteLine("Native library searching for calling assembly location:{0} ", libDir);
-                if (TryLoadLibraryInternal(libDir, libPath, SearchOption.TopDirectoryOnly, out lib))
-                {
-                    return true;
-                }
-            }
-            //Search system32 dir
-            if ((searchPath & DllImportSearchPath.System32) > 0)
-            {
-                //Get the system directory
-                string libDir = Environment.GetFolderPath(Environment.SpecialFolder.SystemX86);
-                if (TryLoadLibraryInternal(libDir, libPath, SearchOption.TopDirectoryOnly, out lib))
-                {
-                    return true;
-                }
-            }
-            //Attempt a native load
-            {
-                if (NativeLibrary.TryLoad(libPath, out IntPtr libHandle))
-                {
-                    lib = new(libHandle);
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        private static bool TryLoadLibraryInternal(string libDir, string libPath, SearchOption dirSearchOptions, [NotNullWhen(true)] out SafeLibraryHandle? libary)
-        {
-            //Try to find the libary file
-            string? libFile = GetLibraryFile(libDir, libPath, dirSearchOptions);
-            //Load libary
-            if (libFile != null && NativeLibrary.TryLoad(libFile, out IntPtr libHandle))
-            {
-                libary = new SafeLibraryHandle(libHandle);
-                return true;
-            }
-            libary = null;
-            return false;
-        }
-        
-        private static string? GetLibraryFile(string dirPath, string libPath, SearchOption search)
-        {
-            //If the library path already has an extension, just search for the file
-            if (Path.HasExtension(libPath))
-            {
-                return Directory.EnumerateFiles(dirPath, libPath, search).FirstOrDefault();
-            }
-            else
-            {
-                //slice the lib to its file name
-                libPath = Path.GetFileName(libPath);
-                libPath = Path.ChangeExtension(libPath, OperatingSystem.IsWindows() ? ".dll" : ".so");
-                //Select the first file that matches the name
-                return Directory.EnumerateFiles(dirPath, libPath, search).FirstOrDefault();
-            }
-        }
+        private SafeLibraryHandle(IntPtr libHandle, bool ownsHandle) : base(IntPtr.Zero, ownsHandle) => SetHandle(libHandle);
 
         /// <summary>
         /// Loads a native function pointer from the library of the specified name and 
@@ -179,7 +55,7 @@ namespace VNLib.Utils.Native
         {
             //Increment handle count before obtaining a method
             bool success = false;
-            DangerousAddRef(ref success);            
+            DangerousAddRef(ref success);
 
             ObjectDisposedException.ThrowIf(success == false, this);
 
@@ -218,33 +94,6 @@ namespace VNLib.Utils.Native
             return Marshal.GetDelegateForFunctionPointer<T>(nativeMethod);
         }
 
-        /// <summary>
-        /// Loads a native method from the library of the specified name and managed delegate
-        /// </summary>
-        /// <typeparam name="T">The native method delegate type</typeparam>
-        /// <param name="methodName">The name of the native method</param>
-        /// <returns>A wapper handle around the native method delegate</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
-        /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
-        [Obsolete("Updated naming, use GetFunction<T>() instead")]
-        public SafeMethodHandle<T> GetMethod<T>(string methodName) where T : Delegate => GetFunction<T>(methodName);
-
-        /// <summary>
-        /// Gets an delegate wrapper for the specified method without tracking its referrence.
-        /// The caller must manage the <see cref="SafeLibraryHandle"/> referrence count in order
-        /// to not leak resources or cause process corruption
-        /// </summary>
-        /// <typeparam name="T">The native method delegate type</typeparam>
-        /// <param name="methodName">The name of the native method</param>
-        /// <returns>A the delegate wrapper on the native method</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
-        /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
-        [Obsolete("Updated naming, use DangerousGetFunction<T>() instead")]
-        public T DangerousGetMethod<T>(string methodName) where T : Delegate => DangerousGetFunction<T>(methodName);
-
-
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
         {
@@ -252,6 +101,117 @@ namespace VNLib.Utils.Native
             NativeLibrary.Free(handle);
             SetHandleAsInvalid();
             return true;
+        }
+
+        /// <summary>
+        /// Finds and loads the specified native libary into the current process by its name at runtime.
+        /// This function defaults to the executing assembly
+        /// </summary>
+        /// <param name="libPath">The path (or name of libary) to search for</param>
+        /// <param name="searchPath">
+        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// within the current filesystem
+        /// </param>
+        /// <returns>The loaded <see cref="SafeLibraryHandle"/></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="DllNotFoundException"></exception>
+        public static SafeLibraryHandle LoadLibrary(string libPath, DllImportSearchPath searchPath = DllImportSearchPath.ApplicationDirectory)
+        {
+            //See if the path includes a file extension
+            return TryLoadLibrary(libPath, searchPath, out SafeLibraryHandle? lib)
+                ? lib
+                : throw new DllNotFoundException($"The library '{libPath}' or one of its dependencies could not be found");
+        }
+
+        /// <summary>
+        /// Finds and loads the specified native libary into the current process by its name at runtime 
+        /// </summary>
+        /// <param name="libPath">The path (or name of libary) to search for</param>
+        /// <param name="searchPath">
+        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// within the current filesystem
+        /// </param>
+        /// <param name="assembly">The assembly loading the native library</param>
+        /// <returns>The loaded <see cref="SafeLibraryHandle"/></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="DllNotFoundException"></exception>
+        public static SafeLibraryHandle LoadLibrary(
+            string libPath, 
+            Assembly assembly, 
+            DllImportSearchPath searchPath = DllImportSearchPath.ApplicationDirectory
+        )
+        {
+            //See if the path includes a file extension
+            return TryLoadLibrary(libPath, assembly, searchPath, out SafeLibraryHandle? lib)
+                ? lib
+                : throw new DllNotFoundException($"The library '{libPath}' or one of its dependencies could not be found");
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SafeLibraryHandle"/> from an existing library pointer. 
+        /// </summary>
+        /// <param name="libHandle">A pointer to the existing (and loaded) library</param>
+        /// <param name="ownsHandle">A value that specifies whether the wrapper owns the library handle now</param>
+        /// <returns>A safe library wrapper around the existing library pointer</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public unsafe static SafeLibraryHandle FromExisting(nint libHandle, bool ownsHandle)
+        {
+            ArgumentNullException.ThrowIfNull(libHandle.ToPointer(), nameof(libHandle));
+            return new(libHandle, ownsHandle);
+        }
+
+        /// <summary>
+        /// Attempts to load the specified native libary into the current process by its name at runtime.
+        /// This function defaults to the executing assembly
+        /// </summary>
+        ///<param name="libPath">The path (or name of libary) to search for</param>
+        /// <param name="searchPath">
+        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// within the current filesystem
+        /// </param>
+        /// <param name="library">The handle to the libary if successfully loaded</param>
+        /// <returns>True if the libary was found and loaded into the current process</returns>
+        public static bool TryLoadLibrary(
+            string libPath,
+            DllImportSearchPath searchPath,
+            [NotNullWhen(true)] out SafeLibraryHandle? library
+        )
+        {
+            return TryLoadLibrary(
+                libPath,
+                Assembly.GetExecutingAssembly(),        //Use the executing assembly as the default loading assembly
+                searchPath,
+                out library
+            );
+        }
+
+      
+
+        /// <summary>
+        /// Attempts to load the specified native libary into the current process by its name at runtime 
+        /// </summary>
+        ///<param name="libPath">The path (or name of libary) to search for</param>
+        /// <param name="searchPath">
+        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// within the current filesystem
+        /// </param>
+        /// <param name="library">The handle to the libary if successfully loaded</param>
+        /// <param name="assembly">The assembly loading the native library</param>
+        /// <returns>True if the libary was found and loaded into the current process</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static bool TryLoadLibrary(
+            string libPath, 
+            Assembly assembly, 
+            DllImportSearchPath searchPath, 
+            [NotNullWhen(true)] out SafeLibraryHandle? library
+        )
+        {
+            ArgumentNullException.ThrowIfNull(libPath);
+            ArgumentNullException.ThrowIfNull(assembly);
+
+            NatveLibraryResolver resolver = new(libPath, assembly, searchPath);
+
+            return resolver.ResolveAndLoadLibrary(out library);
         }
     }
 }

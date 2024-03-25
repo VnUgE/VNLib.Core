@@ -19,8 +19,9 @@
 * along with vnlib_compress. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "feature_brotli.h"
 #include <brotli/encode.h>
+#include "feature_brotli.h"
+#include "util.h"
 
 #define validateCompState(state) \
 	if (!state) return ERR_INVALID_PTR; \
