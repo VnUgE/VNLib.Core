@@ -52,6 +52,9 @@ tasks:
 
      - task: zlib
      - task: brotli
+  
+      #the CI pipline may have issues reading modules if the third-party dir is not cleaned every time a build runs, only an issue after build
+     - defer: { task: clean-third-party }
  
      #invoke cmake for build (notify that we are precompiling for ci pipeline and rpmalloc lib should be local)
      - cmake -B./build -DCI_PRECOMPILE=ON -DENABLE_RPMALLOC=ON
@@ -101,3 +104,12 @@ tasks:
     cmds:
      - cd {{.THIRD_PARTY_DIR}}/brotli && git pull
     
+  clean-third-party:
+    internal: false
+    ignore_error: true
+    cmds:
+    - cmd: powershell rm -Recurse -Force '{{.THIRD_PARTY_DIR}}'
+      platforms: [windows]
+    - cmd: rm -rf {{.THIRD_PARTY_DIR}}
+      platforms: [linux, darwin]
+       

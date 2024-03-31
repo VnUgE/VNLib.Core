@@ -40,14 +40,18 @@ namespace VNLib.Net.Http.Core
     /// </summary>
     internal sealed class HttpInputStream(IHttpContextInformation ContextInfo) : Stream
     {
-
-        private long ContentLength;
-        private Stream? InputStream;
-        private long _position;
-
+        private StreamState _state;
         private InitDataBuffer? _initalData;
 
-        private long Remaining => Math.Max(ContentLength - _position, 0);
+        private long Remaining
+        {
+            get
+            {
+                long remaining = _state.ContentLength - _state.Position;
+                Debug.Assert(remaining >= 0, "Input stream overrun. Read more data than was available for the connection");
+                return remaining;
+            }
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void OnComplete()
@@ -59,12 +63,7 @@ namespace VNLib.Net.Http.Core
                 _initalData = null;
             }
 
-            //Remove stream cache copy
-            InputStream = null;
-            //Reset position
-            _position = 0;
-            //reset content length
-            ContentLength = 0;
+            _state = default;
         }
 
         /// <summary>
@@ -74,9 +73,8 @@ namespace VNLib.Net.Http.Core
         /// <param name="contentLength">The number of bytes to allow being read from the transport or initial buffer</param>
         internal ref InitDataBuffer? Prepare(long contentLength)
         {
-            ContentLength = contentLength;            
-            //Cache transport stream
-            InputStream = ContextInfo.GetTransport();
+            _state.ContentLength = contentLength;
+            _state.InputStream = ContextInfo.GetTransport();
             return ref _initalData;
         }
 
@@ -105,13 +103,13 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Gets the total size of the entity body (aka Content-Length)
         /// </summary>
-        public override long Length => ContentLength;
+        public override long Length => _state.ContentLength;
         
         /// <summary>
         /// Gets the number of bytes currently read from the entity body, setting the 
         /// position is a NOOP
         /// </summary>
-        public override long Position { get => _position; set { } }
+        public override long Position { get => _state.Position; set { } }
 
         /// <summary>
         /// NOOP
@@ -149,19 +147,19 @@ namespace VNLib.Net.Http.Core
                 writer.Advance(read);
 
                 //Update position
-                _position += read;
+                _state.Position += read;
             }
 
             //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
             {
                 //Read from transport
-                ERRNO read = InputStream!.Read(writer.Remaining);
+                ERRNO read = _state.InputStream!.Read(writer.Remaining);
 
                 //Update writer position
                 writer.Advance(read);
 
-                _position += read;
+                _state.Position += read;
             }
 
             //Return number of bytes written to the buffer
@@ -196,19 +194,19 @@ namespace VNLib.Net.Http.Core
                 writer.Advance(read);
 
                 //Update position
-                _position += read;
+                _state.Position += read;
             }
 
             //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
             {
                 //Read from transport
-                int read = await InputStream!.ReadAsync(writer.Remaining, cancellationToken).ConfigureAwait(true);
+                int read = await _state.InputStream!.ReadAsync(writer.Remaining, cancellationToken).ConfigureAwait(true);
 
                 //Update writer position
                 writer.Advance(read);
 
-                _position += read;
+                _state.Position += read;
             }
 
             //Return number of bytes written to the buffer
@@ -232,7 +230,7 @@ namespace VNLib.Net.Http.Core
             if(_initalData.HasValue && remaining <= _initalData.Value.Remaining)
             {
                 //All data has been buffred, so just clear the buffer
-                _position = Length;
+                _state.Position = Length;
                 return ValueTask.CompletedTask;
             }
             //We must actaully disacrd data from the stream
@@ -244,14 +242,31 @@ namespace VNLib.Net.Http.Core
 
         private async ValueTask DiscardStreamDataAsync()
         {
-            int read;
-            do
+            DiscardInternalBuffer();
+
+            int read, bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
+
+            while (bytesToRead > 0)
             {
                 //Read data to the discard buffer until reading is completed (read == 0)
-                read = await ReadAsync(HttpServer.WriteOnlyScratchBuffer, CancellationToken.None)
+                read = await _state.InputStream!.ReadAsync(HttpServer.WriteOnlyScratchBuffer.Slice(0, bytesToRead), CancellationToken.None)
                     .ConfigureAwait(true);
 
-            } while (read > 0);
+                //Update position
+                _state.Position += read;
+
+                //Recalculate the number of bytes to read
+                bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
+            }
+        }
+
+        private void DiscardInternalBuffer()
+        {
+            if (_initalData.HasValue)
+            {
+                //Update the stream position with remaining data
+                _state.Position += _initalData.Value.DiscardRemaining();
+            }
         }
 
         /// <summary>
@@ -260,12 +275,20 @@ namespace VNLib.Net.Http.Core
         /// <param name="offset"></param>
         /// <param name="origin"></param>
         /// <returns></returns>
-        public override long Seek(long offset, SeekOrigin origin) => _position;
+        public override long Seek(long offset, SeekOrigin origin) => _state.Position;
 
         ///<inheritdoc/>
         public override void SetLength(long value) => throw new NotSupportedException();
 
         ///<inheritdoc/>
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+
+        private struct StreamState
+        {
+            public Stream? InputStream;
+            public long Position;
+            public long ContentLength;
+        }
     }
 }

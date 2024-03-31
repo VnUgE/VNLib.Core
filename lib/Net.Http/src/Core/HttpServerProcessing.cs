@@ -181,8 +181,16 @@ namespace VNLib.Net.Http
                     return false;
                 }
 
+                bool keepalive = true;
+
+                //Handle an error parsing the request
+                if(!PreProcessRequest(context, (HttpStatusCode)status, ref keepalive))
+                {
+                    return false;
+                }
+
                 //process the request
-                bool keepalive = await ProcessRequestAsync(context, (HttpStatusCode)status);
+                bool processSuccess = await ProcessRequestAsync(context);
 
 #if DEBUG
                 static void WriteConnectionDebugLog(HttpServer server, HttpContext context)
@@ -210,18 +218,17 @@ namespace VNLib.Net.Http
                     WriteConnectionDebugLog(this, context);
                 }
 #endif
-
-                //Close the response
+               
                 await context.WriteResponseAsync();
-
-                //Flush the stream before returning
+               
                 await context.FlushTransportAsync();
                 
                 /*
                  * If an alternate protocol was specified, we need to break the keepalive loop
+                 * the handler will manage the alternate protocol
                  */
 
-                return keepalive & context.AlternateProtocol == null;
+                return processSuccess & keepalive & context.AlternateProtocol == null;
             }
             finally
             {
@@ -259,8 +266,7 @@ namespace VNLib.Net.Http
 
             //Get the parse buffer
             IHttpHeaderParseBuffer parseBuffer = ctx.Buffers.RequestHeaderParseBuffer;
-
-            //Init parser
+            
             TransportReader reader = new (ctx.GetTransport(), parseBuffer, _config.HttpEncoding, HeaderLineTermination);
 
             HttpStatusCode code;
@@ -278,13 +284,13 @@ namespace VNLib.Net.Http
                 }
 
                 //Parse the headers
-                if ((code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, Config, lineBuf)) > 0)
+                if ((code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, in _config, lineBuf)) > 0)
                 {
                     return code;
                 }
 
                 //Prepare entity body for request
-                if ((code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, Config)) > 0)
+                if ((code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, in _config)) > 0)
                 {
                     return code;
                 }
@@ -303,8 +309,7 @@ namespace VNLib.Net.Http
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<bool> ProcessRequestAsync(HttpContext context, HttpStatusCode status)
+        private bool PreProcessRequest(HttpContext context, HttpStatusCode status, ref bool keepalive)
         {
             //Check status
             if (status != 0)
@@ -340,12 +345,12 @@ namespace VNLib.Net.Http
                 context.Respond(HttpStatusCode.ServiceUnavailable);
                 return false;
             }
-            
+
             //Store keepalive value from request, and check if keepalives are enabled by the configuration
-            bool keepalive = context.Request.State.KeepAlive & _config.ConnectionKeepAlive > TimeSpan.Zero;
-            
+            keepalive = context.Request.State.KeepAlive & _config.ConnectionKeepAlive > TimeSpan.Zero;
+
             //Set connection header (only for http1.1)
-          
+
             if (keepalive)
             {
                 /*
@@ -363,6 +368,12 @@ namespace VNLib.Net.Http
                 context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
             }
 
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        private async Task<bool> ProcessRequestAsync(HttpContext context)
+        {
             //Get the server root for the specified location or fallback to a wildcard host if one is selected
             IWebRoot? root = ServerRoots!.GetValueOrDefault(context.Request.State.Location.DnsSafeHost, _wildcardRoot);
             
@@ -370,7 +381,7 @@ namespace VNLib.Net.Http
             {
                 context.Respond(HttpStatusCode.NotFound);
                 //make sure control leaves
-                return keepalive;
+                return true;
             }
 
             //Check the expect header and return an early status code
@@ -449,7 +460,7 @@ namespace VNLib.Net.Http
              * 
              * For now I will allow it.
              */
-            return keepalive;
+            return true;
         }
  
     }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -74,5 +74,11 @@ namespace VNLib.Net.Http
         /// May be set to 0 when <see cref="HttpConfig.CompressorManager"/> is set to null (compression is disabled).
         /// </summary>
         public readonly int ChunkedResponseAccumulatorSize { get; init; } = 64 * 1024;
+
+        /// <summary>
+        /// When a transport connection is closed, dedicated buffers are released back to the 
+        /// heap. This setting controls whether the buffers are all zeroed before being released.
+        /// </summary>
+        public readonly bool ZeroBuffersOnDisconnect { get; init; } = true;
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -46,7 +46,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Gets a reference to the first element in the block
         /// </summary>
-        /// <returns>The reference</returns>
+        /// <returns>The reference to the first element in the block</returns>
         ref T GetReference();
     }
 

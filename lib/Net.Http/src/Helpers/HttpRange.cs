@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -40,5 +40,12 @@ namespace VNLib.Net.Http
         /// <param name="end">The ending range value</param>
         /// <returns>True if the range values are valid, false otherwise</returns>
         public static bool IsValidRangeValue(ulong start, ulong end) => start <= end;
+
+
+        internal static HttpRange FromStart(ulong start) => new(start, 0, HttpRangeType.FromStart);
+
+        internal static HttpRange FromEnd(ulong end) => new(0, end, HttpRangeType.FromEnd);
+
+        internal static HttpRange FullRange(ulong start, ulong end) => new(start, end, HttpRangeType.FullRange);
     }
 }

@@ -63,9 +63,8 @@ namespace VNLib.Utils.Native
             {
                 //Get the method pointer
                 IntPtr nativeMethod = NativeLibrary.GetExport(handle, functionName);
-                //Get the delegate for the function pointer
-                T method = Marshal.GetDelegateForFunctionPointer<T>(nativeMethod);
-                return new(this, method);
+                AdvancedTrace.WriteLine($"Loaded function '{functionName}' with address: 0x'{nativeMethod:x}'");
+                return new(this, Marshal.GetDelegateForFunctionPointer<T>(nativeMethod));
             }
             catch
             {
@@ -90,6 +89,7 @@ namespace VNLib.Utils.Native
             this.ThrowIfClosed();
             //Get the method pointer
             IntPtr nativeMethod = NativeLibrary.GetExport(handle, functionName);
+            AdvancedTrace.WriteLine($"Loaded function '{functionName}' with address: 0x'{nativeMethod:x}'");
             //Get the delegate for the function pointer
             return Marshal.GetDelegateForFunctionPointer<T>(nativeMethod);
         }
@@ -97,6 +97,7 @@ namespace VNLib.Utils.Native
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
         {
+            AdvancedTrace.WriteLine($"Releasing library handle: 0x'{handle:x}'");
             //Free the library and set the handle as invalid
             NativeLibrary.Free(handle);
             SetHandleAsInvalid();
@@ -211,7 +212,9 @@ namespace VNLib.Utils.Native
 
             NatveLibraryResolver resolver = new(libPath, assembly, searchPath);
 
-            return resolver.ResolveAndLoadLibrary(out library);
+            bool success = resolver.ResolveAndLoadLibrary(out library);
+            AdvancedTrace.WriteLineIf(success, $"Loaded library '{libPath}' with address: 0x'{library?.DangerousGetHandle():x}'");
+            return success;
         }
     }
 }

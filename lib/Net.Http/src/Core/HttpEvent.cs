@@ -33,18 +33,11 @@ using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http
 {
-    internal sealed class HttpEvent : MarshalByRefObject, IHttpEvent
+    internal sealed class HttpEvent(HttpContext ctx) : MarshalByRefObject, IHttpEvent
     {
-        private HttpContext Context;
-        private ConnectionInfo _ci;
-        private FileUpload[] _uploads;
-
-        internal HttpEvent(HttpContext ctx)
-        {
-            Context = ctx;
-            _ci = new ConnectionInfo(ctx);
-            _uploads = ctx.Request.CopyUploads();
-        }      
+        private HttpContext Context = ctx;
+        private ConnectionInfo _ci = new(ctx);
+        private FileUpload[] _uploads = ctx.Request.CopyUploads();
 
         ///<inheritdoc/>
         IConnectionInfo IHttpEvent.Server => _ci;

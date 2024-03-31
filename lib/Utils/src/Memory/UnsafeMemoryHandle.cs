@@ -49,8 +49,9 @@ namespace VNLib.Utils.Memory
             PrivateHeap
         }
 
-        private readonly IntPtr _memoryPtr;
         private readonly int _length;
+
+        private readonly IntPtr _memoryPtr;        
         private readonly HandleType _handleType;
 
         private readonly T[]? _poolArr;
@@ -115,6 +116,11 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal UnsafeMemoryHandle(IUnmangedHeap heap, IntPtr initial, int elements)
         {
+            //Never allow non-empty handles
+            Debug.Assert(heap != null);
+            Debug.Assert(initial != IntPtr.Zero);
+            Debug.Assert(elements > 0);
+
             _pool = null;
             _poolArr = null;
             _heap = heap;
@@ -195,6 +201,32 @@ namespace VNLib.Utils.Memory
                     throw new InvalidOperationException("The handle is empty, and cannot capture a reference");
             }
         }
+
+        /// <summary>
+        /// Returns a <see cref="Span{T}"/> that represents the memory block pointed to by this handle
+        /// </summary>
+        /// <returns>The memory block that is held by the internl handle</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly Span<T> AsSpan() => Span;
+
+        /// <summary>
+        /// Returns a <see cref="Span{T}"/> that represents the memory block pointed to by this handle
+        /// </summary>
+        /// <param name="start">A starting element offset to return the span at</param>
+        /// <returns>The desired memory block at the desired element offset</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly Span<T> AsSpan(int start) => Span[start..];
+
+        /// <summary>
+        /// Returns a <see cref="Span{T}"/> that represents the memory block pointed to by this handle
+        /// </summary>
+        /// <param name="start">The starting element offset</param>
+        /// <param name="length">The number of elements included in the returned span</param>
+        /// <returns>The desired memory block at the desired element offset and length</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>"
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly Span<T> AsSpan(int start, int length) => Span.Slice(start, length);
 
         ///<inheritdoc/>
         public readonly override int GetHashCode()
