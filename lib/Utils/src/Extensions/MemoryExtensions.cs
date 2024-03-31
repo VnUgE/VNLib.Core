@@ -270,7 +270,7 @@ namespace VNLib.Utils.Extensions
 
         /// <summary>
         /// Gets a reference to the element at the specified offset from the base 
-        /// address of the <see cref="MemoryHandle{T}"/>
+        /// address of the <see cref="IMemoryHandle{T}"/>
         /// </summary>
         /// <param name="block"></param>
         /// <param name="offset">The element offset from the base address to add to the returned reference</param>
@@ -833,6 +833,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The sub-sequence of the current handle</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Obsolete("Functions are included directly on the type now")]
         public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start) where T: unmanaged => handle.Span[start..];
 
         /// <summary>
@@ -845,6 +846,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>The sub-sequence of the current handle</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Obsolete("Functions are included directly on the type now")]
         public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start, int count) where T : unmanaged => handle.Span.Slice(start, count);
 
         /// <summary>

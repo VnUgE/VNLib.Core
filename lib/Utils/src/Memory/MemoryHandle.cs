@@ -188,8 +188,7 @@ namespace VNLib.Utils.Memory
             this.ThrowIfClosed();
 
             //Get ptr and offset it
-            T* bs = ((T*)handle) + elements;
-            return bs;
+            return ((T*)handle) + elements;
         }
 
         ///<inheritdoc/>
@@ -198,6 +197,16 @@ namespace VNLib.Utils.Memory
             this.ThrowIfClosed();
             return ref MemoryUtil.GetRef<T>(handle);
         }
+
+        /// <summary>
+        /// Gets a reference to the element at the specified offset from the base 
+        /// address of the <see cref="MemoryHandle{T}"/>
+        /// </summary>
+        /// <param name="offset">The element offset from the base address to add to the returned reference</param>
+        /// <returns>The reference to the item at the desired offset</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe ref T GetOffsetRef(nuint offset) => ref Unsafe.AsRef<T>(GetOffset(offset));
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
@@ -248,6 +257,6 @@ namespace VNLib.Utils.Memory
         public override bool Equals(object? obj) => obj is MemoryHandle<T> oHandle && Equals(oHandle);
 
         ///<inheritdoc/>
-        public override int GetHashCode() => base.GetHashCode();
+        public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), handle.GetHashCode(), _length);
     }
 }
