@@ -117,7 +117,6 @@ namespace VNLib.Net.Http.Core
             //Try to parse the requested http version, only supported versions
             if ((reqState.HttpVersion = HttpHelpers.ParseHttpVersion(requestLine[endloc..])) == HttpVersion.None)
             {
-                //Return not supported
                 return HttpStatusCode.HttpVersionNotSupported;
             }
 
@@ -450,18 +449,18 @@ namespace VNLib.Net.Http.Core
                                         }
 
                                         //Set full http range
-                                        reqState.Range = new(startRangeValue, endRangeValue, HttpRangeType.FullRange);
+                                        reqState.Range = HttpRange.FullRange(startRangeValue, endRangeValue);
                                     }
                                     else
                                     {
                                         //From-end range
-                                        reqState.Range = new(0, endRangeValue, HttpRangeType.FromEnd);
+                                        reqState.Range = HttpRange.FromEnd(endRangeValue);
                                     }
                                 }
                                 else if(hasStartRange)
                                 {
                                     //Valid start range only, so from start range
-                                    reqState.Range = new(startRangeValue, 0, HttpRangeType.FromStart);
+                                    reqState.Range = HttpRange.FromStart(startRangeValue);
                                 }
                                 //No valid range values
                             }
@@ -554,7 +553,10 @@ namespace VNLib.Net.Http.Core
                 //Bad format to include a message body with a GET, HEAD, or TRACE request
                 if (parseState.ContentLength > 0)
                 {
-                    Config.ServerLog.Debug("Message body received from {ip} with GET, HEAD, or TRACE request, was considered an error and the request was dropped", reqState.RemoteEndPoint);
+                    Config.ServerLog.Debug(
+                        "Message body received from {ip} with GET, HEAD, or TRACE request, was considered an error and the request was dropped",
+                        reqState.RemoteEndPoint
+                    );
                     return HttpStatusCode.BadRequest;
                 }
                 else

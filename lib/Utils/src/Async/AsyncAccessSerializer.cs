@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -37,42 +37,35 @@ namespace VNLib.Utils.Async
     /// Creates a base concrete implementation of an <see cref="IAsyncAccessSerializer{TMoniker}"/>
     /// </summary>
     /// <typeparam name="TMoniker">The moniker (key) type</typeparam>
-    public class AsyncAccessSerializer<TMoniker> : IAsyncAccessSerializer<TMoniker>, ICacheHolder where TMoniker : notnull
+    /// <remarks>
+    /// Initializes a new <see cref="AsyncAccessSerializer{TMoniker}"/> with the desired 
+    /// caching pool size and initial capacity
+    /// </remarks>
+    /// <param name="maxPoolSize">The maxium number of cached wait entry objects</param>
+    /// <param name="initialCapacity">The initial capacity of the wait table</param>
+    /// <param name="keyComparer">The moniker key comparer</param>
+    public class AsyncAccessSerializer<TMoniker>(int maxPoolSize, int initialCapacity, IEqualityComparer<TMoniker>? keyComparer) 
+        : IAsyncAccessSerializer<TMoniker>, ICacheHolder where TMoniker : notnull
     {
         /// <summary>
         /// The mutual exclusion monitor locking object
         /// </summary>
-        protected object StoreLock { get; }
+        protected object StoreLock { get; } = new();
 
         /// <summary>
         /// A cache pool for <see cref="WaitEntry"/>
         /// </summary>
-        protected Stack<WaitEntry> EntryPool { get; }
+        protected Stack<WaitEntry> EntryPool { get; } = new(maxPoolSize);
 
         /// <summary>
         /// The table containing all active waiters
         /// </summary>
-        protected Dictionary<TMoniker, WaitEntry> WaitTable { get; }
+        protected Dictionary<TMoniker, WaitEntry> WaitTable { get; } = new(initialCapacity, keyComparer);
 
         /// <summary>
         /// The maxium number of elements allowed in the internal entry cache pool
         /// </summary>
-        protected int MaxPoolSize { get; }
-
-        /// <summary>
-        /// Initializes a new <see cref="AsyncAccessSerializer{TMoniker}"/> with the desired 
-        /// caching pool size and initial capacity
-        /// </summary>
-        /// <param name="maxPoolSize">The maxium number of cached wait entry objects</param>
-        /// <param name="initialCapacity">The initial capacity of the wait table</param>
-        /// <param name="keyComparer">The moniker key comparer</param>
-        public AsyncAccessSerializer(int maxPoolSize, int initialCapacity, IEqualityComparer<TMoniker>? keyComparer)
-        {
-            MaxPoolSize = maxPoolSize;
-            StoreLock = new();
-            EntryPool = new(maxPoolSize);
-            WaitTable = new(initialCapacity, keyComparer);
-        }
+        protected int MaxPoolSize { get; } = maxPoolSize;
 
         ///<inheritdoc/>
         public virtual Task WaitAsync(TMoniker moniker, CancellationToken cancellation = default)
@@ -464,11 +457,9 @@ namespace VNLib.Utils.Async
             * next task in the queue and be awaitable as a task
             */
 
-            private sealed class TaskNode : Task
+            private sealed class TaskNode(Action<object?> callback, object item, CancellationToken cancellation) 
+                : Task(callback, item, cancellation)
             {
-                public TaskNode(Action<object?> callback, object item, CancellationToken cancellation) : base(callback, item, cancellation)
-                { }
-
                 public TaskNode? Next { get; set; }
             
             }
@@ -500,7 +491,7 @@ namespace VNLib.Utils.Async
             /// another waiter is not selected.
             /// </para>
             /// </summary>
-            /// <returns>A value that indicates if the task was transition successfully</returns>
+            /// <returns>A value that indicates if the task was transitioned successfully</returns>
             public readonly bool Release()
             {
                 //return success if no next waiter

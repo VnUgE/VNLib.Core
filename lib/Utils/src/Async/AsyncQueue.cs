@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -93,19 +93,13 @@ namespace VNLib.Utils.Async
         /// Initalizes a new unbound channel based queue
         /// </summary>
         /// <param name="ubOptions">Channel options</param>
-        public AsyncQueue(UnboundedChannelOptions ubOptions)
-        {
-            _channel = Channel.CreateUnbounded<T>(ubOptions);
-        }
+        public AsyncQueue(UnboundedChannelOptions ubOptions) => _channel = Channel.CreateUnbounded<T>(ubOptions);
 
         /// <summary>
         /// Initalizes a new bound channel based queue
         /// </summary>
         /// <param name="options">Channel options</param>
-        public AsyncQueue(BoundedChannelOptions options)
-        {
-            _channel = Channel.CreateBounded<T>(options);
-        }
+        public AsyncQueue(BoundedChannelOptions options) => _channel = Channel.CreateBounded<T>(options);
 
         /// <inheritdoc/>
         public bool TryEnque(T item) => _channel.Writer.TryWrite(item);

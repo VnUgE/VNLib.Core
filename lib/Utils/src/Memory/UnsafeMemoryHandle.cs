@@ -49,8 +49,9 @@ namespace VNLib.Utils.Memory
             PrivateHeap
         }
 
-        private readonly IntPtr _memoryPtr;
         private readonly int _length;
+
+        private readonly IntPtr _memoryPtr;        
         private readonly HandleType _handleType;
 
         private readonly T[]? _poolArr;
@@ -115,6 +116,11 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal UnsafeMemoryHandle(IUnmangedHeap heap, IntPtr initial, int elements)
         {
+            //Never allow non-empty handles
+            Debug.Assert(heap != null);
+            Debug.Assert(initial != IntPtr.Zero);
+            Debug.Assert(elements > 0);
+
             _pool = null;
             _poolArr = null;
             _heap = heap;

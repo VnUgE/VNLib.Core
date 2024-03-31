@@ -50,6 +50,8 @@ namespace VNLib.Utils.Extensions
         /// <returns>A new <see cref="OpenResourceHandle{T}"/> encapsulating the rented array</returns>
         public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(this ArrayPool<T> pool, int size, bool zero = false) where T : unmanaged
         {
+            ArgumentNullException.ThrowIfNull(pool);
+
             T[] array = pool.Rent(size);
 
             if (zero)
@@ -764,52 +766,6 @@ namespace VNLib.Utils.Extensions
 
 
         #endregion
-
-        /// <summary>
-        /// Slices the current array by the specified starting offset to the end 
-        /// of the array
-        /// </summary>
-        /// <typeparam name="T">The array type</typeparam>
-        /// <param name="arr"></param>
-        /// <param name="start">The start offset of the new array slice</param>
-        /// <returns>The sliced array</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static T[] Slice<T>(this T[] arr, int start)
-        {
-            ArgumentNullException.ThrowIfNull(arr);
-            ArgumentOutOfRangeException.ThrowIfNegative(start);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start, arr.Length);
-           
-            Range sliceRange = new(start, arr.Length - start);
-            return RuntimeHelpers.GetSubArray(arr, sliceRange);
-        }
-
-        /// <summary>
-        /// Slices the current array by the specified starting offset to including the 
-        /// speciifed number of items
-        /// </summary>
-        /// <typeparam name="T">The array type</typeparam>
-        /// <param name="arr"></param>
-        /// <param name="start">The start offset of the new array slice</param>
-        /// <param name="count">The size of the new array</param>
-        /// <returns>The sliced array</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static T[] Slice<T>(this T[] arr, int start, int count)
-        {
-            ArgumentNullException.ThrowIfNull(arr);
-            ArgumentOutOfRangeException.ThrowIfNegative(start);
-            ArgumentOutOfRangeException.ThrowIfNegative(count);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start + count, arr.Length);
-            
-            if(count == 0)
-            {
-                return [];
-            }
-
-            //Calc the slice range
-            Range sliceRange = new(start, start + count);
-            return RuntimeHelpers.GetSubArray(arr, sliceRange);
-        }
 
         /// <summary>
         /// Creates a new sub-sequence over the target handle. (allows for convient sub span)

@@ -119,10 +119,11 @@ namespace VNLib.Net.Http.Core.Response
             //Write headers
             for (int i = 0; i < Headers.Count; i++)
             {
-                writer.Append(Headers.Keys[i]);     //Write header key
-                writer.Append(": ");           //Write separator
-                writer.Append(Headers[i]);          //Write the header value
-                writer.Append(HttpHelpers.CRLF);    //Crlf
+                //<name>: <value>\r\n
+                writer.Append(Headers.Keys[i]);     
+                writer.Append(": ");           
+                writer.Append(Headers[i]);          
+                writer.Append(HttpHelpers.CRLF);
             }
 
             //Remove writen headers
@@ -131,7 +132,6 @@ namespace VNLib.Net.Http.Core.Response
             //Write cookies if any are set
             if (Cookies.Count > 0)
             {
-                //Enumerate and write
                 foreach (HttpCookie cookie in Cookies)
                 {
                     writer.Append("Set-Cookie: ");
@@ -141,8 +141,7 @@ namespace VNLib.Net.Http.Core.Response
 
                     writer.Append(HttpHelpers.CRLF);
                 }
-
-                //Clear all current cookies
+                
                 Cookies.Clear();
             }
 
@@ -302,10 +301,9 @@ namespace VNLib.Net.Http.Core.Response
         }
 
         ///<inheritdoc/>
-        public void OnNewConnection()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OnNewConnection(Stream transport)
         {
-            //Get the transport stream and init streams
-            Stream transport = ContextInfo.GetTransport();
             ReusableChunkedStream.OnNewConnection(transport);
             ReusableDirectStream.OnNewConnection(transport);
         }

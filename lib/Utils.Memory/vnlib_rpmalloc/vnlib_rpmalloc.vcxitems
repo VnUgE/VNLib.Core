@@ -19,10 +19,14 @@
     <Text Include="$(MSBuildThisFileDirectory)license" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\rpmalloc.c" />
     <ClCompile Include="$(MSBuildThisFileDirectory)vnlib_rpmalloc.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)package.json" />
     <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\rpmalloc.h" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -91,9 +91,17 @@ namespace VNLib.Net.Http.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCrossOrigin(this HttpRequest Request)
         {
-            return Request.State.Origin != null
-                && (!Request.State.Origin.Authority.Equals(Request.State.Location.Authority, StringComparison.Ordinal) 
-                || !Request.State.Origin.Scheme.Equals(Request.State.Location.Scheme, StringComparison.Ordinal));
+            if(Request.State.Origin is null)
+            {
+                return false;
+            }
+
+            //Get the origin string components for comparison (allocs new strings :( )
+            string locOrigin = Request.State.Location.GetComponents(UriComponents.SchemeAndServer, UriFormat.SafeUnescaped);
+            string reqOrigin = Request.State.Origin.GetComponents(UriComponents.SchemeAndServer, UriFormat.SafeUnescaped);
+
+            //If origin components are not equal, this is a cross origin request
+            return !string.Equals(locOrigin, reqOrigin, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -136,18 +144,6 @@ namespace VNLib.Net.Http.Core
         {
             HttpRequest request = context.Request;
             IHttpContextInformation info = context;
-            IHttpMemoryPool pool = context.ParentServer.Config.MemoryPool;
-
-            //Gets the max form data buffer size to help calculate the initial char buffer size
-            int maxBufferSize = context.ParentServer.Config.BufferConfig.FormDataBufferSize;
-
-            //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
-            int bufferSize = (int)Math.Min(request.InputStream.Length, maxBufferSize);
-
-            //Get the form data buffer (should be cost free)
-            Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
-
-            Debug.Assert(!formBuffer.IsEmpty, "GetFormDataBuffer() returned an empty memory buffer");
 
             switch (request.State.ContentType)
             {
@@ -157,10 +153,9 @@ namespace VNLib.Net.Http.Core
                 case ContentType.UrlEncoded:
                     {
                         //Alloc the form data character buffer, this will need to grow if the form data is larger than the buffer
-                        using IResizeableMemoryHandle<char> urlbody = pool.AllocFormDataBuffer<char>(bufferSize);
-
-                        //Load char buffer from stream
-                        int chars = await BufferInputStream(request.InputStream, urlbody, formBuffer, info.Encoding);
+                        using IResizeableMemoryHandle<char> urlbody = AllocFdBuffer(context);
+                      
+                        int chars = await BufferInputStreamAsChars(request.InputStream, urlbody, GetFdBuffer(context), info.Encoding);
 
                         //Get the body as a span, and split the 'string' at the & character
                         ((ReadOnlySpan<char>)urlbody.AsSpan(0, chars))
@@ -175,12 +170,10 @@ namespace VNLib.Net.Http.Core
                         {
                             break;
                         }
-
-                        //Alloc the form data buffer
-                        using IResizeableMemoryHandle<char> formBody = pool.AllocFormDataBuffer<char>(bufferSize);
-
-                        //Load char buffer from stream
-                        int chars = await BufferInputStream(request.InputStream, formBody, formBuffer, info.Encoding);
+                     
+                        using IResizeableMemoryHandle<char> formBody = AllocFdBuffer(context);
+                     
+                        int chars = await BufferInputStreamAsChars(request.InputStream, formBody, GetFdBuffer(context), info.Encoding);
 
                         //Split the body as a span at the boundries
                         ((ReadOnlySpan<char>)formBody.AsSpan(0, chars))
@@ -194,6 +187,25 @@ namespace VNLib.Net.Http.Core
                     request.AddFileUpload(new(request.InputStream, false, request.State.ContentType, null));
                     break;
             }
+           
+
+            static IResizeableMemoryHandle<char> AllocFdBuffer(HttpContext context)
+            {
+                //Gets the max form data buffer size to help calculate the initial char buffer size
+                int maxBufferSize = context.ParentServer.Config.BufferConfig.FormDataBufferSize;
+
+                //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
+                int buffersize = (int)Math.Min(context.Request.InputStream.Length, maxBufferSize);
+            
+                return context.ParentServer.Config.MemoryPool.AllocFormDataBuffer<char>(buffersize);
+            }
+
+            static Memory<byte> GetFdBuffer(HttpContext context)
+            {
+                Memory<byte> formBuffer = context.Buffers.GetFormDataBuffer();
+                Debug.Assert(!formBuffer.IsEmpty, "GetFormDataBuffer() returned an empty memory buffer");
+                return formBuffer;
+            }
         }
 
         /*
@@ -203,7 +215,12 @@ namespace VNLib.Net.Http.Core
          * We assume the parsing method checked the size of the input stream so we can assume its safe to read
          * all of it into memory.
          */
-        private static async ValueTask<int> BufferInputStream(Stream stream, IResizeableMemoryHandle<char> charBuffer, Memory<byte> binBuffer, Encoding encoding)
+        private static async ValueTask<int> BufferInputStreamAsChars(
+            Stream stream, 
+            IResizeableMemoryHandle<char> charBuffer, 
+            Memory<byte> binBuffer, 
+            Encoding encoding
+        )
         {
             int length = 0;
             do

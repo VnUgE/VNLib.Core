@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -25,7 +25,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Collections.Generic;
@@ -43,7 +42,7 @@ namespace VNLib.Utils.Resources
     {
         private readonly AssemblyLoadContext _loadContext;
         private readonly AssemblyDependencyResolver _resolver;
-        private readonly Lazy<Assembly> _lazyAssembly;
+        private readonly LazyInitializer<Assembly> _lazyAssembly;
 
         /// <summary>
         /// The absolute path to the assembly file
@@ -53,7 +52,7 @@ namespace VNLib.Utils.Resources
         /// <summary>
         /// The assembly that is maintained by this loader
         /// </summary>
-        public Assembly Assembly => _lazyAssembly.Value;
+        public Assembly Assembly => _lazyAssembly.Instance;
 
         /// <summary>
         /// Initializes a new <see cref="ManagedLibrary"/> and skips 
@@ -74,11 +73,15 @@ namespace VNLib.Utils.Resources
             context.ResolvingUnmanagedDll += OnNativeLibraryResolving;            
 
             //Lazy load the assembly
-            _lazyAssembly = new(LoadAssembly, LazyThreadSafetyMode.PublicationOnly);
+            _lazyAssembly = new(LoadAssembly);
         }
 
         //Load the assembly into the parent context
-        private Assembly LoadAssembly() => _loadContext.LoadFromAssemblyPath(AssemblyPath);
+        private Assembly LoadAssembly()
+        {
+            AdvancedTrace.WriteLine($"Loading managed library {AssemblyPath} into context {_loadContext.Name}");
+            return _loadContext.LoadFromAssemblyPath(AssemblyPath);
+        }
 
         /// <summary>
         /// Raised when the load context that owns this assembly 
@@ -91,6 +94,7 @@ namespace VNLib.Utils.Resources
         /// </remarks>
         protected virtual void OnUnload(AssemblyLoadContext? ctx = null)
         {
+            AdvancedTrace.WriteLine($"Unloading managed library {AssemblyPath}");
             //Remove resolving event handlers
             _loadContext.Unloading -= OnUnload;
             _loadContext.Resolving -= OnDependencyResolving;
@@ -111,6 +115,8 @@ namespace VNLib.Utils.Resources
             //Resolve the desired asm dependency for the current context
             string? requestedDll = _resolver.ResolveUnmanagedDllToPath(libname);
 
+            AdvancedTrace.WriteLineIf(requestedDll != null,$"Resolving native library {libname} to path {requestedDll} for library {AssemblyPath}");
+
             //if the dep is resolved, seach in the assembly directory for the manageed dll only
             return requestedDll == null ? 
                 IntPtr.Zero : 
@@ -121,6 +127,8 @@ namespace VNLib.Utils.Resources
         {
             //Resolve the desired asm dependency for the current context
             string? desiredAsm = _resolver.ResolveAssemblyToPath(asmName);
+
+            AdvancedTrace.WriteLineIf(desiredAsm != null, $"Resolving managed assembly {asmName.Name} to path {desiredAsm} for library {AssemblyPath}");
 
             //If the asm exists in the dir, load it
             return desiredAsm == null ? null : _loadContext.LoadFromAssemblyPath(desiredAsm);
@@ -136,6 +144,8 @@ namespace VNLib.Utils.Resources
         {
             //See if the type is exported
             Type exp = TryGetExportedType<T>() ?? throw new EntryPointNotFoundException($"Imported assembly does not export desired type {typeof(T).FullName}");
+
+            AdvancedTrace.WriteLine($"Creating instance of type {exp.FullName} from assembly {AssemblyPath}");
 
             //Create instance
             return (T)Activator.CreateInstance(exp)!;

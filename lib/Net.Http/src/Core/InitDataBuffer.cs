@@ -24,11 +24,13 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using VNLib.Utils;
 using VNLib.Utils.Extensions;
+using VNLib.Utils.Memory;
 
 namespace VNLib.Net.Http.Core
 {
@@ -84,6 +86,14 @@ namespace VNLib.Net.Http.Core
             set => MemoryMarshal.Write(_positionSegment, in value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly int GetDataPosition()
+        {
+            Debug.Assert(Position >= 0 && Position <= _dataSize, "Invalid position value");
+            //Points to the first byte of the data segment to read from
+            return POSITION_SEG_SIZE + Position;
+        }
+
         /// <summary>
         /// Get the amount of data remaining in the data buffer
         /// </summary>
@@ -91,6 +101,19 @@ namespace VNLib.Net.Http.Core
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _dataSize - Position;
+        }
+
+        /// <summary>
+        /// Performs a discard in a single operation by setting the 
+        /// position to the end of the data buffer
+        /// </summary>
+        /// <returns>The number of bytes that were remaining in the buffer before the discard</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal readonly int DiscardRemaining()
+        {
+            int remaining = Remaining;
+            Position = _dataSize;
+            return remaining;
         }
 
         /// <summary>
@@ -103,11 +126,14 @@ namespace VNLib.Net.Http.Core
         {
             //Calc how many bytes can be read into the output buffer
             int bytesToRead = Math.Min(Remaining, buffer.Length);
-
-            Span<byte> btr = DataSegment.Slice(Position, bytesToRead);
-
-            //Write data to output buffer
-            btr.CopyTo(buffer);
+           
+            MemoryUtil.Memmove(
+                ref MemoryMarshal.GetArrayDataReference(_buffer),
+                (nuint)GetDataPosition(),
+                ref MemoryMarshal.GetReference(buffer),
+                0, 
+                (nuint)bytesToRead
+            );
 
             //Update position pointer
             Position += bytesToRead;

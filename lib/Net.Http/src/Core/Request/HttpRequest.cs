@@ -81,9 +81,6 @@ namespace VNLib.Net.Http.Core
 
         void IHttpLifeCycle.OnRelease()
         { }
-
-        void IHttpLifeCycle.OnNewConnection()
-        { }
         
         void IHttpLifeCycle.OnNewRequest()
         { }

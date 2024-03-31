@@ -96,7 +96,7 @@ namespace VNLib.Net.Http.Core
              */
             if (supportedMethods != CompressionMethod.None)
             {
-                Debug.Assert(server.Config.CompressorManager != null, "Expected non-null provider");
+                Debug.Assert(server.Config.CompressorManager != null, "Expected non-null compressor manager");
                 _compressor = new ManagedHttpCompressor(server.Config.CompressorManager);
             }
             else
@@ -153,7 +153,7 @@ namespace VNLib.Net.Http.Core
             Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
 
             //Init new connection
-            Response.OnNewConnection();
+            Response.OnNewConnection(ctx.ConnectionStream);
         } 
 
         ///<inheritdoc/>
@@ -199,7 +199,7 @@ namespace VNLib.Net.Http.Core
             Response.OnRelease();
            
             //Free buffers
-            Buffers.FreeAll(true);
+            Buffers.FreeAll(ParentServer.Config.BufferConfig.ZeroBuffersOnDisconnect);
 
             return true;
         }

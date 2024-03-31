@@ -22,13 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-/*
- * This file handles response entity processing. It handles in-memory response
- * processing, as well as stream response processing. It handles constraints
- * such as content-range limits. I tried to eliminate or reduce the amount of
- * memory copying required to process the response entity.
- */
-
 using System;
 using System.IO;
 using System.Threading;

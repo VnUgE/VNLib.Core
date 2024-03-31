@@ -1349,6 +1349,51 @@ namespace VNLib.Utils.Memory
         public static MemoryHandle GetMemoryHandleFromPointer(IntPtr value, GCHandle handle = default, IPinnable? pinnable = null) 
             => new (value.ToPointer(), handle, pinnable);
 
+
+        /// <summary>
+        /// Slices the current array by the specified starting offset to the end 
+        /// of the array
+        /// </summary>
+        /// <typeparam name="T">The array type</typeparam>
+        /// <param name="arr"></param>
+        /// <param name="start">The start offset of the new array slice</param>
+        /// <returns>The sliced array</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static T[] SliceArray<T>(T[] arr, int start)
+        {
+            ArgumentNullException.ThrowIfNull(arr);
+            return SliceArray(arr, start, arr.Length - start);
+        }
+
+        /// <summary>
+        /// Slices the current array by the specified starting offset to including the 
+        /// speciifed number of items
+        /// </summary>
+        /// <typeparam name="T">The array type</typeparam>
+        /// <param name="arr"></param>
+        /// <param name="start">The start offset of the new array slice</param>
+        /// <param name="count">The size of the new array</param>
+        /// <returns>The sliced array</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static T[] SliceArray<T>(T[] arr, int start, int count)
+        {
+            ArgumentNullException.ThrowIfNull(arr);
+            ArgumentOutOfRangeException.ThrowIfNegative(start);
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start + count, arr.Length);
+
+            if (count == 0)
+            {
+                return [];
+            }
+
+            //Calc the slice range
+            Range sliceRange = new(start, start + count);
+            return RuntimeHelpers.GetSubArray(arr, sliceRange);
+        }
+
         /// <summary>
         /// Gets a <see cref="Span{T}"/> from the supplied address
         /// </summary>
