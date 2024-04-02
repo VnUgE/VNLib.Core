@@ -54,10 +54,10 @@ tasks:
         TARGET: './build/Release'
    
     #dynamic debug lib
-    - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
+    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
 
     #release dll
-    - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
 
     #source code
     - task: pack_source

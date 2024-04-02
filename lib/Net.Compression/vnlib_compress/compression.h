@@ -70,6 +70,10 @@
 	#endif // !VNLIB_EXPORTING
 #endif // !VNLIB_EXPORT
 
+#ifndef _In_
+	#define _In_
+#endif
+
 /*
 * ERRORS AND CONSTANTS
 */
@@ -234,7 +238,7 @@ VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType 
 * @param compressor A pointer to the desired compressor instance to free.
 * @return The underlying compressor's native return code.
 */
-VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(_In_ void* compressor);
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(void* compressor);
 
 /*
 * Computes the maximum compressed size of the specified input data. This is not supported
