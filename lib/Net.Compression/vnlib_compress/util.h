@@ -73,7 +73,7 @@
 	#define assert(x) {}
 #endif
 
-#define CHECK_NULL_PTR(ptr) if(ptr) return ERR_INVALID_PTR;
+#define CHECK_NULL_PTR(ptr) if(!ptr) return ERR_INVALID_PTR;
 
 #ifdef NATIVE_HEAP_API	/* Defined in the NativeHeapApi */
 	/*
