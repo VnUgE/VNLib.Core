@@ -52,14 +52,14 @@ tasks:
    
 
     #static debug lib
-    - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
+    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
     #dynamic debug lib
-    - cd build/Debug && tar -czf '../../bin/win-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
+    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
     
     #release static lib
-    - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
+    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
     #release dll
-    - cd build/Release && tar -czf '../../bin/win-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
 
     #source code
     - task: pack_source

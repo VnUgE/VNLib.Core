@@ -74,31 +74,19 @@ VNLIB_COMPRESS_EXPORT CompressorType VNLIB_COMPRESS_CC GetSupportedCompressors(v
 
 VNLIB_COMPRESS_EXPORT CompressorType VNLIB_COMPRESS_CC GetCompressorType(_In_ const void* compressor)
 {
-	if (!compressor)
-	{
-		return ERR_INVALID_PTR;
-	}
-	
+	CHECK_NULL_PTR(compressor)
 	return ((CompressorState*)compressor)->type;
 }
 
 VNLIB_COMPRESS_EXPORT CompressionLevel VNLIB_COMPRESS_CC GetCompressorLevel(_In_ const void* compressor)
 {
-	if (!compressor)
-	{
-		return ERR_INVALID_PTR;
-	}
-
+	CHECK_NULL_PTR(compressor)
 	return ((CompressorState*)compressor)->level;
 }
 
 VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressorBlockSize(_In_ const void* compressor)
 {
-	if (!compressor)
-	{
-		return ERR_INVALID_PTR;
-	}
-	
+	CHECK_NULL_PTR(compressor)
 	return (int64_t)((CompressorState*)compressor)->blockSize;
 }
 
@@ -194,15 +182,12 @@ VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType 
 	}
 }
 
-VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(_In_ void* compressor)
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(void* compressor)
 {	
 	CompressorState* comp;
 	int errorCode;
 
-	if (!compressor) 
-	{
-		return ERR_INVALID_PTR;
-	}
+	CHECK_NULL_PTR(compressor)
 	
 	comp = (CompressorState*)compressor;
 	errorCode = TRUE;
@@ -252,10 +237,7 @@ VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressedSize(_In_ const voi
 	CompressorState* comp;
 	int64_t result;
 
-	if (!compressor)
-	{
-		return ERR_INVALID_PTR;
-	}
+	CHECK_NULL_PTR(compressor)
 
 	if (inputLength > INT64_MAX)
 	{
@@ -313,15 +295,8 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressBlock(_In_ const void* compr
 	* Validate input arguments
 	*/
 
-	if (!comp)
-	{
-		return ERR_INVALID_PTR;
-	}
-
-	if (!operation) 
-	{
-		return ERR_INVALID_PTR;
-	}
+	CHECK_NULL_PTR(comp)
+	CHECK_NULL_PTR(operation)
 
 	/*
 	* Validate buffers, if the buffer length is greate than 0

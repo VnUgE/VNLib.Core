@@ -78,8 +78,8 @@ tasks:
      - cmd: powershell -Command "cp ../LICENSE build/Release/license.txt"
 
      #create static-build archives
-     - cd build/Debug && tar -czf ../../bin/win-x64-debug.tgz {{.TAR_FILES}}
-     - cd build/Release && tar -czf ../../bin/win-x64-release.tgz {{.TAR_FILES}}  
+     - cd build/Debug && tar -czf ../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz {{.TAR_FILES}}
+     - cd build/Release && tar -czf ../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz {{.TAR_FILES}}  
 
 #Remove the output dirs on clean
   clean:

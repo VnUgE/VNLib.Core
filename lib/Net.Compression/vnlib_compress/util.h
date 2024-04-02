@@ -64,10 +64,6 @@
 	#define FALSE 0
 #endif // !FALSE
 
-#ifndef _In_
-	#define _In_
-#endif
-
 /*
 * Add debug runtime assertions
 */
@@ -77,6 +73,7 @@
 	#define assert(x) {}
 #endif
 
+#define CHECK_NULL_PTR(ptr) if(ptr) return ERR_INVALID_PTR;
 
 #ifdef NATIVE_HEAP_API	/* Defined in the NativeHeapApi */
 	/*
