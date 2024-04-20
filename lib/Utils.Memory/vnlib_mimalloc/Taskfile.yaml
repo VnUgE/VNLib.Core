@@ -17,20 +17,16 @@ tasks:
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
-      #build with defaults
-      - task: build
-      - cmd: echo "Your vnlib_mimalloc dll file can be found in '{{.USER_WORKING_DIR}}/build'"
+        #init cmake build with greedy enabled
+      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release -DENABLE_GREEDY=1 {{.CMAKE_ARGS}}
+      - cmake --build build/ --config Release
+      - cmd: echo "Your vnlib_mimalloc library file can be found in '{{.USER_WORKING_DIR}}/build'"
         silent: true
   
   build:
-    cmds:
-     #build the mimalloc library first
-     - cd vendor/ && cmake -B./build -DMI_BUILD_STATIC=1 {{.MIMALLOC_CMAKE_ARGS}} -DMI_BUILD_TESTS=0 -DMI_OVERRIDE=0 -DMI_WIN_REDIRECT=0
-     - cd vendor/ && cmake --build build/ --config Debug 
-     - cd vendor/ && cmake --build build/ --config Release 
- 
+    cmds:  
      #build our library
-     - cmake -B./build -DENABLE_GREEDY=1 {{.CMAKE_ARGS}}
+     - cmake -B./build -DENABLE_GREEDY=1 {{.CMAKE_ARGS}} 
      - cmake --build build/ --config Debug 
      - cmake --build build/ --config Release 
 
@@ -80,9 +76,8 @@ tasks:
 
   clean:
     ignore_error: true
-    cmds: 
-     - cmd: powershell -Command "Remove-Item -Recurse './bin'"
-     - cmd: powershell -Command "Remove-Item -Recurse './build'"
-     - cmd: powershell -Command "Remove-Item -Recurse '../mimalloc/build'"
+    cmds:
+     - for: [ bin/, build/ ]
+       cmd: powershell Remove-Item -Recurse '{{.ITEM}}' -Force
   
      

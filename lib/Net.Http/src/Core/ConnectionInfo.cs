@@ -110,8 +110,9 @@ namespace VNLib.Net.Http
                 Secure = secure | CrossOrigin,
                 HttpOnly = httpOnly
             };
+
             //Set the cookie
-            Context.Response.AddCookie(cookie);
+            Context.Response.AddCookie(in cookie);
         }
        
         internal ConnectionInfo(HttpContext ctx)

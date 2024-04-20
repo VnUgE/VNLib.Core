@@ -134,7 +134,10 @@ int pthread_create(pthread_t* thread,
     thread_starter_arg* starter_arg = rpmalloc(sizeof(thread_starter_arg));
     starter_arg->real_start = start_routine;
     starter_arg->real_arg = arg;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
     return (*(int (*)(pthread_t*, const pthread_attr_t*, void* (*)(void*), void*))real_pthread_create)(thread, attr, thread_starter, starter_arg);
+#pragma GCC diagnostic pop
 }
 
 #endif

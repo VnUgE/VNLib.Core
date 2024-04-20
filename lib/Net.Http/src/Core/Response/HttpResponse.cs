@@ -44,7 +44,9 @@ namespace VNLib.Net.Http.Core.Response
         , IStringSerializeable
 #endif
     {
-        private readonly HashSet<HttpCookie> Cookies = [];
+        const int DefaultCookieCapacity = 2;
+
+        private readonly Dictionary<string, HttpCookie> Cookies = new(DefaultCookieCapacity, StringComparer.OrdinalIgnoreCase);
         private readonly DirectStream ReusableDirectStream = new();
         private readonly ChunkedStream ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ContextInfo);
         private readonly HeaderDataAccumulator Writer = new(manager.ResponseHeaderBuffer, ContextInfo);
@@ -86,7 +88,7 @@ namespace VNLib.Net.Http.Core.Response
         /// </summary>
         /// <param name="cookie">Cookie to add</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void AddCookie(HttpCookie cookie) => Cookies.Add(cookie);
+        internal void AddCookie(in HttpCookie cookie) => Cookies[cookie.Name] = cookie;
 
         /// <summary>
         /// Compiles and flushes all headers to the header accumulator ready for sending
@@ -132,7 +134,7 @@ namespace VNLib.Net.Http.Core.Response
             //Write cookies if any are set
             if (Cookies.Count > 0)
             {
-                foreach (HttpCookie cookie in Cookies)
+                foreach (HttpCookie cookie in Cookies.Values)
                 {
                     writer.Append("Set-Cookie: ");
 
@@ -298,6 +300,7 @@ namespace VNLib.Net.Http.Core.Response
         {
             ReusableChunkedStream.OnRelease();
             ReusableDirectStream.OnRelease();
+            Cookies.TrimExcess(DefaultCookieCapacity);
         }
 
         ///<inheritdoc/>
@@ -428,7 +431,7 @@ namespace VNLib.Net.Http.Core.Response
             }
 
             //Enumerate and write
-            foreach (HttpCookie cookie in Cookies)
+            foreach (HttpCookie cookie in Cookies.Values)
             {
                 writer.Append("Set-Cookie: ");
 
