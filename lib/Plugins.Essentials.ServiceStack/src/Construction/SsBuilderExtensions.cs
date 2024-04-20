@@ -285,7 +285,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 Instance.AddServices(plugin.Services);
 
                 //Add all exposed middleware to the chain
-                plugin.OnPluginServiceEvent<ICollection<IHttpMiddleware>>(p => p.TryForeach(Instance.Options.MiddlewareChain.Add));
+                plugin.OnPluginServiceEvent<IEnumerable<IHttpMiddleware>>(p => p.ForEach(Instance.Options.MiddlewareChain.Add));
+                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => p.ForEach(Instance.Options.MiddlewareChain.Add));
             }
 
             ///<inheritdoc/>
@@ -296,7 +297,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 Instance.RemoveServices(plugin.Services);
 
                 //Remove all middleware from the chain
-                plugin.OnPluginServiceEvent<ICollection<IHttpMiddleware>>(p => p.TryForeach(Instance.Options.MiddlewareChain.Remove));
+                plugin.OnPluginServiceEvent<IEnumerable<IHttpMiddleware>>(p => p.ForEach(Instance.Options.MiddlewareChain.Remove));
+                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => p.ForEach(Instance.Options.MiddlewareChain.Remove));
             }
         }
 

@@ -273,7 +273,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             public void Load()
             {
                 Plugin.Load();
-                Plugin.GetAllExportedServices(Services);
+                Plugin.GetAllExportedServices(_container);
 
                 //Finally notify of load
                 Listener.OnPluginLoaded(this);

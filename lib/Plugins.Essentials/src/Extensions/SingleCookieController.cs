@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -92,7 +92,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         private void SetCookieInternal(IHttpEvent entity, string value, bool force)
         {
             //Only set cooke if already exists or force is true
-            if (entity.Server.RequestCookies.ContainsKey(value) || force)
+            if (entity.Server.RequestCookies.ContainsKey(Name) || force)
             {
                 //Build and set cookie
                 HttpCookie cookie = new(Name, value)

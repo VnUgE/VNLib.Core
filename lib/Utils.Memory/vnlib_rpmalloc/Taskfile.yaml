@@ -10,7 +10,6 @@ version: '3'
 
 vars:
   PROJECT_NAME: 'vnlib_rpmalloc'
-  MODULE_NAME: 'vnlib.core'
 
 tasks:
 
@@ -18,8 +17,10 @@ tasks:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
       #build with defaults
-      - task: build
-      - cmd: echo "Your vnlib_rpmalloc dll file can be found in '{{.USER_WORKING_DIR}}/build'"
+        #init cmake build with greedy enabled
+      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release -DENABLE_GREEDY=1
+      - cmake --build build/ --config Release
+      - cmd: echo "Your vnlib_rpmalloc library file can be found in '{{.USER_WORKING_DIR}}/build'"
         silent: true
   
   build:

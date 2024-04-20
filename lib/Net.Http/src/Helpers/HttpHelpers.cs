@@ -172,7 +172,7 @@ namespace VNLib.Net.Http
             return ComputeCodeHashLookup(
                 Enum.GetValues<HttpMethod>()
                 //Exclude the not supported method
-                .Except(new HttpMethod[] { HttpMethod.None })
+                .Except([ HttpMethod.None ])
                 .Select(m => KeyValuePair.Create(m.ToString(), m))
             ).ToFrozenDictionary();
         }
@@ -284,6 +284,9 @@ namespace VNLib.Net.Http
         /// <returns>True if first 2 bytes of each address match (Big Endian)</returns>
         public static bool IsLocalSubnet(this IPAddress first, IPAddress other)
         {
+            ArgumentNullException.ThrowIfNull(first);
+            ArgumentNullException.ThrowIfNull(other);
+
             if(first.AddressFamily != other.AddressFamily)
             {
                 return false;

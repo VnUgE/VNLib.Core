@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -30,44 +30,43 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Http.Core
 {
-    internal sealed class HttpCookie : IStringSerializeable, IEquatable<HttpCookie>
+    internal readonly struct HttpCookie(string name) : IStringSerializeable, IEquatable<HttpCookie>
     {
-        public string Name { get; }
-        public string? Value { get; init; }
-        public string? Domain { get; init; }
-        public string? Path { get; init; }
-        public TimeSpan MaxAge { get; init; }
-        public CookieSameSite SameSite { get; init; }
-        public bool Secure { get; init; }
-        public bool HttpOnly { get; init; }
-        public bool IsSession { get; init; }
+        public readonly string Name { get; } = name;
+        public readonly string? Value { get; init; }
+        public readonly string? Domain { get; init; }
+        public readonly string? Path { get; init; }
+        public readonly TimeSpan MaxAge { get; init; }
+        public readonly CookieSameSite SameSite { get; init; }
+        public readonly bool Secure { get; init; }
+        public readonly bool HttpOnly { get; init; }
+        public readonly bool IsSession { get; init; }
 
-        public HttpCookie(string name) => Name = name;
+        public readonly string Compile() => throw new NotImplementedException();
 
-        public string Compile()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Compile(ref ForwardOnlyWriter<char> writer)
+        public readonly void Compile(ref ForwardOnlyWriter<char> writer)
         {
             //set the name of the cookie
             writer.Append(Name);
             writer.Append('=');
+
             //set name
             writer.Append(Value);
+
             //Only set the max age parameter if the cookie is not a session cookie
             if (!IsSession)
             {
                 writer.Append("; Max-Age=");
                 writer.Append((int)MaxAge.TotalSeconds);
             }
+
             //Make sure domain is set
             if (!string.IsNullOrWhiteSpace(Domain))
             {
                 writer.Append("; Domain=");
                 writer.Append(Domain);
             }
+
             //Check and set path
             if (!string.IsNullOrWhiteSpace(Path))
             {
@@ -75,7 +74,9 @@ namespace VNLib.Net.Http.Core
                 writer.Append("; Path=");
                 writer.Append(Path);
             }
+
             writer.Append("; SameSite=");
+
             //Set the samesite flag based on the enum value
             switch (SameSite)
             {
@@ -90,28 +91,31 @@ namespace VNLib.Net.Http.Core
                     writer.Append("Lax");
                     break;
             }
+
             //Set httponly flag
             if (HttpOnly)
             {
                 writer.Append("; HttpOnly");
             }
+
             //Set secure flag
             if (Secure)
             {
                 writer.Append("; Secure");
             }
         }
-        public ERRNO Compile(Span<char> buffer)
+
+        public readonly ERRNO Compile(Span<char> buffer)
         {
             ForwardOnlyWriter<char> writer = new(buffer);
             Compile(ref writer);
             return writer.Written;
         }
 
-        public override int GetHashCode() => Name.GetHashCode();
+        public readonly override int GetHashCode() => string.GetHashCode(Name, StringComparison.OrdinalIgnoreCase);
 
-        public override bool Equals(object? obj) => obj is HttpCookie other && Equals(other);
+        public readonly override bool Equals(object? obj) => obj is HttpCookie other && Equals(other);
 
-        public bool Equals(HttpCookie? other) => other != null && Name.Equals(other.Name, StringComparison.OrdinalIgnoreCase);
+        public readonly bool Equals(HttpCookie other) => Name.Equals(other.Name, StringComparison.OrdinalIgnoreCase);
     }
 }

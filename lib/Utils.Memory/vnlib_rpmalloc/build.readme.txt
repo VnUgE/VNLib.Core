@@ -1,4 +1,4 @@
-vnlib_rpmalloc Copyright (C) 2023 Vaughn Nugent
+vnlib_rpmalloc Copyright (C) 2024 Vaughn Nugent
 
 vnlib_rpmalloc is a wrapper library for rpmalloc by Mattias Jansson that implements the NativeHeapApi 
 functions, and exports them by default for use as a library. The CMake configuration is setup to produce both
