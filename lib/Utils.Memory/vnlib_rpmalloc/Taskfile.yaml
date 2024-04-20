@@ -16,9 +16,9 @@ tasks:
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
-      #build with defaults
+        #build with defaults
         #init cmake build with greedy enabled
-      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release -DENABLE_GREEDY=1
+      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release -DENABLE_GREEDY=1 {{.CMAKE_ARGS}}
       - cmake --build build/ --config Release
       - cmd: echo "Your vnlib_rpmalloc library file can be found in '{{.USER_WORKING_DIR}}/build'"
         silent: true
@@ -77,9 +77,8 @@ tasks:
     cmds:
      - powershell -Command "tar --exclude build/* --exclude bin/* --exclude vendor/build/* -czf 'bin/src.tgz' ."
 
-
   clean:
     ignore_error: true
-    cmds: 
-     - cmd: powershell -Command "Remove-Item -Recurse 'bin/'"
-     - cmd: powershell -Command "Remove-Item -Recurse 'build/'"
+    cmds:
+     - for: [ bin/, build/ ]
+       cmd: powershell Remove-Item -Recurse '{{.ITEM}}' -Force

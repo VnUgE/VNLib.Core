@@ -44,31 +44,31 @@
 	#define _IS_WINDOWS
 #endif
 
-//Set api export calling convention (allow used to override)
+/*Set api export calling convention(allow used to override)*/
 #ifndef VNLIB_COMPRESS_CC
 	#ifdef _IS_WINDOWS
-		//STD for importing to other languages such as .NET
+		/*STD for importing to other languages such as.NET*/
 		#define VNLIB_COMPRESS_CC __stdcall
 	#else
 		#define VNLIB_COMPRESS_CC 
 	#endif
-#endif // !VNLIB_CC
+#endif /* !VNLIB_CC */
 
-#ifndef VNLIB_COMPRESS_EXPORT	//Allow users to disable the export/impoty macro if using source code directly
+#ifndef VNLIB_COMPRESS_EXPORT	/*Allow users to disable the export/impoty macro if using source code directly*/
 	#ifdef VNLIB_COMPRESS_EXPORTING
 		#ifdef _IS_WINDOWS
 			#define VNLIB_COMPRESS_EXPORT __declspec(dllexport)
 		#else
 			#define VNLIB_COMPRESS_EXPORT __attribute__((visibility("default")))
-		#endif // IS_WINDOWS
+		#endif /* IS_WINDOWS */
 	#else
 		#ifdef _IS_WINDOWS
 			#define VNLIB_COMPRESS_EXPORT __declspec(dllimport)
 		#else
 			#define VNLIB_COMPRESS_EXPORT
-		#endif // IS_WINDOWS
-	#endif // !VNLIB_EXPORTING
-#endif // !VNLIB_EXPORT
+		#endif /* IS_WINDOWS */
+	#endif /* !VNLIB_EXPORTING */
+#endif /* !VNLIB_EXPORT */
 
 #ifndef _In_
 	#define _In_

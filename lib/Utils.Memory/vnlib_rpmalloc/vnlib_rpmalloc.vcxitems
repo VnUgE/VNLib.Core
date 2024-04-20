@@ -27,6 +27,7 @@
     <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NativeHeapApi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)vendor\rpmalloc.h" />
   </ItemGroup>
 </Project>

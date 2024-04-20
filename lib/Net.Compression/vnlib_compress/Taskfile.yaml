@@ -9,50 +9,21 @@
 version: '3'
 
 vars:
-  THIRD_PARTY_DIR: './third-party'
   PROJECT_NAME: 'vnlib_compress'
-  ZLIB_GIT_REPO: 'https://github.com/cloudflare/zlib.git'
-  BROTLI_GIT_REPO: 'https://github.com/google/brotli.git'
 
 tasks:
 
   default:
     cmds:
-     - cmd: echo "Building vnlib_compress"
+     - cmd: echo "Building {{.PROJECT_NAME}}"
        silent: true
-    
-    #make third-party dir before cloning libs
-     - cmd: powershell -Command "mkdir '{{.THIRD_PARTY_DIR}}' -Force"
-       platforms: [windows]
-       ignore_error: true  
-     - cmd: mkdir -p '{{.THIRD_PARTY_DIR}}'
-       platforms: [linux, darwin]
-       ignore_error: true
-
-     - task: zlib
-     - task: brotli
- 
-     #invoke cmake for build
-     - cmake -B./build {{.CMAKE_ARGS}}
- 
-     #build for platform
-     - cmake --build build/ --config Release
-    
+     - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release {{.CMAKE_ARGS}}
+     - cmake --build build/ --config Release    
 
   #called by ci pipline to build the winx64 project
   build:
    cmds:
-    #make third-party dir before cloning libs
-     - cmd: powershell -Command "mkdir '{{.THIRD_PARTY_DIR}}' -Force"
-       platforms: [windows]
-       ignore_error: true  
-     - cmd: mkdir -p '{{.THIRD_PARTY_DIR}}'
-       platforms: [linux, darwin]
-       ignore_error: true
 
-     - task: zlib
-     - task: brotli
-  
       #the CI pipline may have issues reading modules if the third-party dir is not cleaned every time a build runs, only an issue after build
      - defer: { task: clean-third-party }
  
@@ -85,31 +56,15 @@ tasks:
   clean:
     ignore_error: true
     cmds:
-     - for: [ bin/, build/, third-party/ ]
+     - for: [ bin/, build/ ]
        cmd: powershell Remove-Item -Recurse '{{.ITEM}}' -Force
-
-  #update or install the cloudflare fork of zlib library 
-  zlib:
-    internal: true
-    status:
-     - cd {{.THIRD_PARTY_DIR}} && git clone {{.ZLIB_GIT_REPO}}
-    cmds:
-     - cd {{.THIRD_PARTY_DIR}}/zlib && git pull
-  
-  #update or install the google brotli library
-  brotli:
-    internal: true
-    status:
-     - cd {{.THIRD_PARTY_DIR}} && git clone {{.BROTLI_GIT_REPO}}  
-    cmds:
-     - cd {{.THIRD_PARTY_DIR}}/brotli && git pull
     
   clean-third-party:
     internal: false
     ignore_error: true
     cmds:
-    - cmd: powershell rm -Recurse -Force '{{.THIRD_PARTY_DIR}}'
+    - cmd: powershell rm -Recurse -Force 'build/_deps/'
       platforms: [windows]
-    - cmd: rm -rf {{.THIRD_PARTY_DIR}}
+    - cmd: rm -rf 'build/_deps/'
       platforms: [linux, darwin]
        

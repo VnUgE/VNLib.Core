@@ -30,6 +30,8 @@
 * will be enabled when heapapi.h is included.
 */
 #ifdef VNLIB_CUSTOM_MALLOC_ENABLE
+	/* Since static linking ie snabled, heapapi must have extern symbol not dllimport */
+	#define VNLIB_HEAP_API extern	
 	#include <NativeHeapApi.h>
 #endif
 
@@ -37,32 +39,28 @@
 	#define IS_WINDOWS
 #endif
 
-/* If not Windows, define inline */
-#ifndef IS_WINDOWS
-	#ifndef inline
-		#define inline __inline__
-	#endif // !inline
-#endif // !IS_WINDOWS
+#if defined(IS_WINDOWS) || defined(inline) || defined(__clang__)
+	#define _cp_fn_inline inline
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L /* C99 allows usage of inline keyword */
+	#define _cp_fn_inline inline
+#elif defined(__GNUC__) || defined(__GNUG__)
+	#define _cp_fn_inline __inline__
+#else
+	#define _cp_fn_inline
+	#pragma message("Warning: No inline keyword defined for this compiler")
+#endif
 
-/* If not Windows, define inline */
-#ifndef IS_WINDOWS
-	#ifndef inline
-		#define inline __inline__
-	#endif // !inline
-#endif // !IS_WINDOWS
-
-//NULL
 #ifndef NULL
 	#define NULL ((void*)0)
-#endif // !NULL
+#endif /* !NULL */
 
 #ifndef TRUE
 	#define TRUE 1
-#endif // !TRUE
+#endif /* !TRUE */
 
 #ifndef FALSE
 	#define FALSE 0
-#endif // !FALSE
+#endif /* !FALSE */
 
 /*
 * Add debug runtime assertions
@@ -76,6 +74,9 @@
 #define CHECK_NULL_PTR(ptr) if(!ptr) return ERR_INVALID_PTR;
 
 #ifdef NATIVE_HEAP_API	/* Defined in the NativeHeapApi */
+
+	#include <stddef.h>
+
 	/*
 	* Add overrides for malloc, calloc, and free that use
 	* the nativeheap api to allocate memory
@@ -84,23 +85,32 @@
 	* api consistency.
 	*/
 
-	static inline void* vnmalloc(size_t num, size_t size)
+	static _cp_fn_inline void* vnmalloc(size_t num, size_t size)
 	{
 		return heapAlloc(heapGetSharedHeapHandle(), num, size, FALSE);
 	}
 
-	static inline void* vncalloc(size_t num, size_t size)
+	static _cp_fn_inline void* vncalloc(size_t num, size_t size)
 	{
 		return heapAlloc(heapGetSharedHeapHandle(), num, size, TRUE);
 	}
 
-	static inline void vnfree(void* ptr)
+	static _cp_fn_inline void vnfree(void* ptr)
 	{
+	#ifdef DEBUG
+
 		ERRNO result;
 		result = heapFree(heapGetSharedHeapHandle(), ptr);
 
-		//track failed free results
+		/* track failed free results */
 		assert(result > 0);
+
+	#else
+	
+		heapFree(heapGetSharedHeapHandle(), ptr);
+	
+	#endif
+		
 	}
 
 #else
@@ -125,6 +135,6 @@
 	*/
 	#define vncalloc(num, size) calloc(num, size)
 
-#endif // NATIVE_HEAP_API
+#endif /* NATIVE_HEAP_API */
 
 #endif /* !UTIL_H_ */
