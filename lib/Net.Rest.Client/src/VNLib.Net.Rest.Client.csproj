@@ -6,10 +6,13 @@
     <AssemblyName>VNLib.Net.Rest.Client</AssemblyName>
     <RootNamespace>VNLib.Net.Rest.Client</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
+  </PropertyGroup>
+  
   <PropertyGroup>
     <PackageId>VNLib.Net.Rest.Client</PackageId>
     <Company>Vaughn Nugent</Company>

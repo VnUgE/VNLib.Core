@@ -31,11 +31,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 using VNLib.Net.Http;
-using VNLib.Plugins.Essentials.Endpoints;
 
-namespace VNLib.Plugins.Essentials
+namespace VNLib.Plugins.Essentials.Endpoints
 {
-    internal class SemiConsistentVeTable : IVirtualEndpointTable
+    internal sealed class SemiConsistentVeTable : IVirtualEndpointTable
     {
 
         /*
@@ -170,7 +169,7 @@ namespace VNLib.Plugins.Essentials
         }
 
         ///<inheritdoc/>
-        public bool TryGetEndpoint(string path, [NotNullWhen(true)] out IVirtualEndpoint<HttpEntity>? endpoint) 
+        public bool TryGetEndpoint(string path, [NotNullWhen(true)] out IVirtualEndpoint<HttpEntity>? endpoint)
             => VirtualEndpoints.TryGetValue(path, out endpoint);
 
 

@@ -2,13 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
     <RootNamespace>VNLib.Plugins.Essentials</RootNamespace>
     <AssemblyName>VNLib.Plugins.Essentials</AssemblyName>
-    <AnalysisLevel>latest-all</AnalysisLevel>
-    <EnableNETAnalyzers>True</EnableNETAnalyzers>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
-    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
   </PropertyGroup>
   
   <PropertyGroup>

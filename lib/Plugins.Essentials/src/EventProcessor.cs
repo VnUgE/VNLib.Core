@@ -28,7 +28,6 @@ using System.Net;
 using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 
@@ -40,8 +39,8 @@ using VNLib.Plugins.Essentials.Accounts;
 using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
-using VNLib.Plugins.Essentials.Middleware;
 using VNLib.Plugins.Essentials.Endpoints;
+using VNLib.Plugins.Essentials.Middleware;
 
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
@@ -133,7 +132,8 @@ namespace VNLib.Plugins.Essentials
         /// The internal service pool for the processor
         /// </summary>
         protected readonly HttpProcessorServicePool ServicePool = new([
-            typeof(ISessionProvider),           //Order must match the indexes above
+            //Order must match the indexes above
+            typeof(ISessionProvider),           
             typeof(IPageRouter), 
             typeof(IAccountSecurityProvider)
         ]);
@@ -157,6 +157,8 @@ namespace VNLib.Plugins.Essentials
             get => ServicePool.ExchangeVersion(ref _accountSec, SEC_INDEX);
         }
 
+        private readonly MiddlewareController _middleware = new(config);
+
         ///<inheritdoc/>
         public virtual async ValueTask ClientConnectedAsync(IHttpEvent httpEvent)
         {
@@ -168,8 +170,6 @@ namespace VNLib.Plugins.Essentials
 
             ISessionProvider? sessions = ServicePool.ExchangeVersion(ref _sessions, SESS_INDEX);
             IPageRouter? router = ServicePool.ExchangeVersion(ref _router, ROUTER_INDEX);
-
-            LinkedListNode<IHttpMiddleware>? mwNode = config.MiddlewareChain.GetCurrentHead();
 
             //event cancellation token
             HttpEntity entity = new(httpEvent, this);
@@ -205,24 +205,10 @@ namespace VNLib.Plugins.Essentials
                         goto RespondAndExit;
                     }
 
-                    //Loop through nodes
-                    while(mwNode != null)
+                    //Exec middleware
+                    if(!await _middleware.ProcessAsync(entity))
                     {
-                        //Invoke mw handler on our event
-                        entity.EventArgs = await mwNode.ValueRef.ProcessAsync(entity);
-                        
-                        switch (entity.EventArgs.Routine)
-                        {
-                            //move next if continue is returned
-                            case FpRoutine.Continue:
-                                break;
-
-                            //Middleware completed the connection, time to exit
-                            default:
-                                goto RespondAndExit;
-                        }
-
-                        mwNode = mwNode.Next;
+                        goto RespondAndExit;
                     }
 
                     if (!config.EndpointTable.IsEmpty)
@@ -256,6 +242,9 @@ namespace VNLib.Plugins.Essentials
                     }
 
                 RespondAndExit:
+
+                    //Normal post-process
+                    _middleware.PostProcess(entity);
 
                     //Call post processor method
                     PostProcessEntity(entity, ref entity.EventArgs);
@@ -744,5 +733,5 @@ namespace VNLib.Plugins.Essentials
                 return arr;
             }
         }
-    }
+    }    
 }

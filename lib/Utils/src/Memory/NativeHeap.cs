@@ -106,7 +106,7 @@ namespace VNLib.Utils.Memory
        
         private HeapMethods MethodTable;
 
-        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) :base(flags->CreationFlags, true)
+        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) : base(flags->CreationFlags, true)
         {
             //Store heap pointer
             SetHandle(flags->HeapPointer);
@@ -164,7 +164,7 @@ namespace VNLib.Utils.Memory
         delegate ERRNO DestroyHeapDelegate(IntPtr heap);
 
         [StructLayout(LayoutKind.Sequential)]
-        record struct UnmanagedHeapDescriptor
+        struct UnmanagedHeapDescriptor
         {
             public IntPtr HeapPointer;
 
