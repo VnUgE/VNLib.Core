@@ -133,14 +133,7 @@ namespace VNLib.Net.Http
         /// Adds a new cookie to the response. If a cookie with the same name and value
         /// has been set, the old cookie is replaced with the new one.
         /// </summary>
-        /// <param name="name">Cookie name/id</param>
-        /// <param name="value">Value to be stored in cookie</param>
-        /// <param name="domain">Domain for cookie to operate</param>
-        /// <param name="path">Path to store cookie</param>
-        /// <param name="Expires">Timespan representing how long the cookie should exist</param>
-        /// <param name="sameSite">Samesite attribute, Default = Lax</param>
-        /// <param name="httpOnly">Specify the HttpOnly flag</param>
-        /// <param name="secure">Specify the Secure flag</param>
-        void SetCookie(string name, string value, string? domain, string? path, TimeSpan Expires, CookieSameSite sameSite, bool httpOnly, bool secure);
+        /// <param name="cookie">A reference to the cookie to set on the current response</param>
+        void SetCookie(in HttpResponseCookie cookie);
     }
 }

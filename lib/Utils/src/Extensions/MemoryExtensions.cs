@@ -578,6 +578,27 @@ namespace VNLib.Utils.Extensions
         #region VnBufferWriter
 
         /// <summary>
+        /// Appends the string value by copying it to the internal buffer
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="value">The string value to append to the buffer</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Append(this ref ForwardOnlyWriter<char> buffer, string? value) 
+            => buffer.Append(value.AsSpan());
+
+        /// <summary>
+        /// Appends the string value by copying it to the internal buffer
+        /// when the string is known to be very short. 
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="value">The string value to append to the buffer</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void AppendSmall(this ref ForwardOnlyWriter<char> buffer, string? value)
+            => buffer.AppendSmall(value.AsSpan());
+
+        /// <summary>
         /// Formats and appends a value type to the writer with proper endianess
         /// </summary>
         /// <param name="buffer"></param>
@@ -636,12 +657,20 @@ namespace VNLib.Utils.Extensions
         /// <param name="formatProvider"></param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Append<T>(this ref ForwardOnlyWriter<char> buffer, T value, ReadOnlySpan<char> format = default, IFormatProvider? formatProvider = default) where T : ISpanFormattable
+        public static void Append<T>(
+            this ref ForwardOnlyWriter<char> buffer, 
+            T value, 
+            ReadOnlySpan<char> format = default, 
+            IFormatProvider? formatProvider = default
+        ) where T : ISpanFormattable
         {
             //Format value and write to buffer
             if (!value.TryFormat(buffer.Remaining, out int charsWritten, format, formatProvider))
             {
-                throw new ArgumentOutOfRangeException(nameof(buffer), "The value could not be formatted and appended to the buffer, because there is not enough available space");
+                throw new ArgumentOutOfRangeException(
+                    nameof(buffer), 
+                    "The value could not be formatted and appended to the buffer, because there is not enough available space"
+                );
             }
             //Update written posiion
             buffer.Advance(charsWritten);
@@ -657,12 +686,20 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Append<T>(this ref ForwardOnlyMemoryWriter<char> buffer, T value, ReadOnlySpan<char> format = default, IFormatProvider? formatProvider = default) where T : ISpanFormattable
+        public static void Append<T>(
+            this ref ForwardOnlyMemoryWriter<char> buffer, 
+            T value, 
+            ReadOnlySpan<char> format = default, 
+            IFormatProvider? formatProvider = default
+        ) where T : ISpanFormattable
         {
             //Format value and write to buffer
             if (!value.TryFormat(buffer.Remaining.Span, out int charsWritten, format, formatProvider))
             {
-                throw new ArgumentOutOfRangeException(nameof(buffer), "The value could not be formatted and appended to the buffer, because there is not enough available space");
+                throw new ArgumentOutOfRangeException(
+                    nameof(buffer), 
+                    "The value could not be formatted and appended to the buffer, because there is not enough available space"
+                );
             }
             //Update written posiion
             buffer.Advance(charsWritten);

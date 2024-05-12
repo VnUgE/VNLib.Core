@@ -34,9 +34,11 @@ using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
+using VNLib.Utils.Extensions;
 using VNLib.Net.Http.Core;
 using VNLib.Net.Http.Core.Buffering;
 using VNLib.Net.Http.Core.Response;
+using VNLib.Net.Http.Core.PerfCounter;
 
 namespace VNLib.Net.Http
 {
@@ -167,13 +169,19 @@ namespace VNLib.Net.Http
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private async Task<bool> ProcessHttpEventAsync(HttpContext context)
         {
+            HttpPerfCounterState counter = default;
+
             //Prepare http context to process a new message
             context.BeginRequest();
             
             try
             {
+                HttpPerfCounter.StartCounter(ref counter);
+
                 //Try to parse the http request (may throw exceptions, let them propagate to the transport layer)
                 int status = (int)ParseRequest(context);
+
+                HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Parse");
 
                 //Check status code for socket error, if so, return false to close the connection
                 if (status >= 1000)
@@ -204,7 +212,7 @@ namespace VNLib.Net.Http
                     context.Request.Compile(ref writer);
 
                     //newline
-                    writer.Append("\r\n");
+                    writer.AppendSmall("\r\n");
 
                     //Response
                     context.Response.Compile(ref writer);
@@ -218,11 +226,15 @@ namespace VNLib.Net.Http
                     WriteConnectionDebugLog(this, context);
                 }
 #endif
+
+                HttpPerfCounter.StartCounter(ref counter);
                
                 await context.WriteResponseAsync();
-               
+
                 await context.FlushTransportAsync();
-                
+
+                HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
+
                 /*
                  * If an alternate protocol was specified, we need to break the keepalive loop
                  * the handler will manage the alternate protocol

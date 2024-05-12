@@ -816,12 +816,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static string ContentTypeString(this in FileUpload upload) => HttpHelpers.GetContentTypeString(upload.ContentType);
 
         /// <summary>
-        /// Sets the <see cref="HttpControlMask.CompressionDisabed"/> flag on the current 
+        /// Sets the <see cref="HttpControlMask.CompressionDisabled"/> flag on the current 
         /// <see cref="IHttpEvent"/> instance to disable dynamic compression on the response.
         /// </summary>
         /// <param name="entity"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void DisableCompression(this IHttpEvent entity) => entity.SetControlFlag(HttpControlMask.CompressionDisabed);
+        public static void DisableCompression(this IHttpEvent entity) => entity.SetControlFlag(HttpControlMask.CompressionDisabled);
 
         /// <summary>
         /// Attempts to upgrade the connection to a websocket, if the setup fails, it sets up the response to the client accordingly.

@@ -126,7 +126,7 @@ namespace VNLib.Utils.Memory
                 Debug.Assert(!Unsafe.IsNullRef(in srcByte), "Null source reference passed to MemmoveByRef");
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
-                //Check for 64bit copy
+                //Check for 64bit copy (should get optimized away when sizeof(nuint == uint) aka 32bit platforms)
                 if(byteCount > uint.MaxValue)
                 {
                     //We need a 64bit copy strategy
@@ -135,7 +135,6 @@ namespace VNLib.Utils.Memory
                         //Must be supported
                         if(_avxCopy.Features != CopyFeatures.NotSupported)
                         {
-                            //Copy
                             _avxCopy.Memmove(in srcByte, ref dstByte, byteCount);
                             return;
                         }
@@ -144,7 +143,6 @@ namespace VNLib.Utils.Memory
                     //try reflected memove incase it supports 64bit blocks
                     if(_reflectedMemmove.Features != CopyFeatures.NotSupported)
                     {
-                        //Copy
                         _reflectedMemmove.Memmove(in srcByte, ref dstByte, byteCount);
                         return;
                     }
@@ -223,6 +221,7 @@ namespace VNLib.Utils.Memory
                 public CopyFeatures Features => CopyFeatures.None;
 
                 ///<inheritdoc/>
+                [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
                 public void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
                 {
                     Debug.Assert(byteCount < uint.MaxValue, "Byte count must be less than uint.MaxValue and flags assumed 64bit blocks were supported");

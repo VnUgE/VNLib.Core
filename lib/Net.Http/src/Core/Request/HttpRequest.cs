@@ -161,11 +161,12 @@ namespace VNLib.Net.Http.Core
             {
                 return Array.Empty<FileUpload>();
             }
+
             //Create new array to hold uploads
-            FileUpload[] uploads = new FileUpload[_state.UploadCount];
-            //Copy uploads to new array
+            FileUpload[] uploads = GC.AllocateUninitializedArray<FileUpload>(_state.UploadCount, false);
+           
             Array.Copy(_uploads, uploads, _state.UploadCount);
-            //Return new array
+
             return uploads;
         }
 

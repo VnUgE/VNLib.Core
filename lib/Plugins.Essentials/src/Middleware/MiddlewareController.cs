@@ -33,12 +33,20 @@ namespace VNLib.Plugins.Essentials.Middleware
 
         public async ValueTask<bool> ProcessAsync(HttpEntity entity)
         {
+            /*
+             * Loops through the current linkedlist of the current middleware chain. The 
+             * chain should remain unmodified after GetCurrentHead() is called.
+             * 
+             * Middleware will return a Continue routine to move to the next middleware
+             * node. All other routines mean the processor has responded to the client 
+             * itself and must exit control and move to response.
+             */
+
             LinkedListNode<IHttpMiddleware>? mwNode = _chain.GetCurrentHead();
 
             //Loop through nodes
             while (mwNode != null)
             {
-                //Invoke mw handler on our event
                 entity.EventArgs = await mwNode.ValueRef.ProcessAsync(entity);
 
                 switch (entity.EventArgs.Routine)
@@ -60,9 +68,14 @@ namespace VNLib.Plugins.Essentials.Middleware
 
         public void PostProcess(HttpEntity entity)
         {
-            LinkedListNode<IHttpMiddleware>? mwNode = _chain.GetCurrentHead();
+            /*
+             * Middleware nodes may be allowed to inspect, or modify the return 
+             * event arguments as the server may not have responded to the client
+             * yet. 
+             */
 
-            //Loop through nodes
+            LinkedListNode<IHttpMiddleware>? mwNode = _chain.GetCurrentHead();
+           
             while (mwNode != null)
             {
                 //Invoke mw handler on our event
@@ -72,6 +85,4 @@ namespace VNLib.Plugins.Essentials.Middleware
             }
         }
     }
-
-
 }

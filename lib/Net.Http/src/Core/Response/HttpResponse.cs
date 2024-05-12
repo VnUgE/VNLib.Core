@@ -46,7 +46,7 @@ namespace VNLib.Net.Http.Core.Response
     {
         const int DefaultCookieCapacity = 2;
 
-        private readonly Dictionary<string, HttpCookie> Cookies = new(DefaultCookieCapacity, StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, HttpResponseCookie> Cookies = new(DefaultCookieCapacity, StringComparer.OrdinalIgnoreCase);
         private readonly DirectStream ReusableDirectStream = new();
         private readonly ChunkedStream ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ContextInfo);
         private readonly HeaderDataAccumulator Writer = new(manager.ResponseHeaderBuffer, ContextInfo);
@@ -61,7 +61,7 @@ namespace VNLib.Net.Http.Core.Response
         /// <summary>
         /// Response header collection
         /// </summary>
-        public VnWebHeaderCollection Headers { get; } = [];
+        public readonly VnWebHeaderCollection Headers = [];
 
         /// <summary>
         /// The current http status code value
@@ -88,7 +88,7 @@ namespace VNLib.Net.Http.Core.Response
         /// </summary>
         /// <param name="cookie">Cookie to add</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void AddCookie(in HttpCookie cookie) => Cookies[cookie.Name] = cookie;
+        internal void AddCookie(ref readonly HttpResponseCookie cookie) => Cookies[cookie.Name] = cookie;
 
         /// <summary>
         /// Compiles and flushes all headers to the header accumulator ready for sending
@@ -106,13 +106,13 @@ namespace VNLib.Net.Http.Core.Response
             if (!HeadersBegun)
             {
                 //write status code first
-                writer.Append(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, _code));
-                writer.Append(HttpHelpers.CRLF);
+                writer.AppendSmall(HttpHelpers.GetResponseString(ContextInfo.CurrentVersion, _code));
+                writer.AppendSmall(HttpHelpers.CRLF);
 
                 //Write the date to header buffer
-                writer.Append("Date: ");
+                writer.AppendSmall("Date: ");
                 writer.Append(DateTimeOffset.UtcNow, "R");
-                writer.Append(HttpHelpers.CRLF);
+                writer.AppendSmall(HttpHelpers.CRLF);
 
                 //Set begun flag
                 HeadersBegun = true;
@@ -122,10 +122,10 @@ namespace VNLib.Net.Http.Core.Response
             for (int i = 0; i < Headers.Count; i++)
             {
                 //<name>: <value>\r\n
-                writer.Append(Headers.Keys[i]);     
-                writer.Append(": ");           
-                writer.Append(Headers[i]);          
-                writer.Append(HttpHelpers.CRLF);
+                writer.Append(Headers.Keys[i]);
+                writer.AppendSmall(": ");
+                writer.Append(Headers[i]);
+                writer.AppendSmall(HttpHelpers.CRLF);
             }
 
             //Remove writen headers
@@ -134,14 +134,14 @@ namespace VNLib.Net.Http.Core.Response
             //Write cookies if any are set
             if (Cookies.Count > 0)
             {
-                foreach (HttpCookie cookie in Cookies.Values)
+                foreach (HttpResponseCookie cookie in Cookies.Values)
                 {
-                    writer.Append("Set-Cookie: ");
+                    writer.AppendSmall("Set-Cookie: ");
 
                     //Write the cookie to the header buffer
                     cookie.Compile(ref writer);
 
-                    writer.Append(HttpHelpers.CRLF);
+                    writer.AppendSmall(HttpHelpers.CRLF);
                 }
                 
                 Cookies.Clear();
@@ -431,7 +431,7 @@ namespace VNLib.Net.Http.Core.Response
             }
 
             //Enumerate and write
-            foreach (HttpCookie cookie in Cookies.Values)
+            foreach (HttpResponseCookie cookie in Cookies.Values)
             {
                 writer.Append("Set-Cookie: ");
 

@@ -182,30 +182,33 @@ namespace VNLib.Net.Http.Core.Response
             {
                 if (blockSize > 0)
                 {
+                    /*
+                     * Write data directly from memory response but fix the block size to the size
+                     * of the compressor if it has one, to optimize compression 
+                     */
                     while (_userState.MemResponse.Remaining > 0)
                     {
-                        //Get next segment clamped to the block size
                         _readSegment = _userState.MemResponse.GetRemainingConstrained(blockSize);
-
-                        //Commit output bytes
+                        
                         await dest.WriteAsync(_readSegment);
-
-                        //Advance by the written amount
+                        
                         _userState.MemResponse.Advance(_readSegment.Length);
                     }
                 }
                 else
-                {
-                    //Write response body from memory
+                {                    
+                    /*
+                     * Compressor block size is unkown so we can assume it does not matter
+                     * and write full blocks as they are read. This will usually be a on-shot 
+                     * operation, since the writer handles chunk buffering
+                     */
+
                     while (_userState.MemResponse.Remaining > 0)
                     {
-                        //Get remaining segment
                         _readSegment = _userState.MemResponse.GetMemory();
-
-                        //Write segment to output stream
+                        
                         await dest.WriteAsync(_readSegment);
-
-                        //Advance by the written amount
+                      
                         _userState.MemResponse.Advance(_readSegment.Length);
                     }
                 }

@@ -14,6 +14,17 @@ vars:
   RELEASE_DIR: "./bin/release/{{.TARGET_FRAMEWORK}}/publish"
 
 tasks:
+
+  dev-setup:
+    desc: 'Sets up all native libraries for local development'
+    cmds:
+      #build native libs for development
+      - cd lib/Utils.Memory/vnlib_rpmalloc && task build
+      - cd lib/Utils.Memory/vnlib_mimalloc && task build
+      - cd lib/Utils.Cryptography/monocypher && task build
+      - cd lib/Utils.Cryptography/argon2 && task build
+      - cd lib/Net.Compression/vnlib_compress && task build
+      - echo "dev setup complete" 
   
   #when build succeeds, archive the output into a tgz 
   postbuild_success:

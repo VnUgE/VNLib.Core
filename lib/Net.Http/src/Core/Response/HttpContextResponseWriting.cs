@@ -93,7 +93,7 @@ namespace VNLib.Net.Http.Core
                 //Determine if compression should be used
                 bool compressionDisabled = 
                         //disabled because app code disabled it
-                        ContextFlags.IsSet(HttpControlMask.CompressionDisabed)
+                        ContextFlags.IsSet(HttpControlMask.CompressionDisabled)
                         //Disabled because too large or too small
                         || length >= ParentServer.Config.CompressionLimit
                         || length < ParentServer.Config.CompressionMinimum

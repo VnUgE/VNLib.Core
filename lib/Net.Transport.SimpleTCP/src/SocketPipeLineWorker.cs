@@ -562,16 +562,10 @@ namespace VNLib.Net.Transport.Tcp
             void Stop();
         }
 
-        private readonly struct TpTimerWrapper : INetTimer
+        private readonly struct TpTimerWrapper(Timer timer, int timeout) : INetTimer
         {
-            private readonly Timer _timer;
-            private readonly int _timeout;
-
-            public TpTimerWrapper(Timer timer, int timeout)
-            {
-                _timer = timer;
-                _timeout = timeout;
-            }
+            private readonly Timer _timer = timer;
+            private readonly int _timeout = timeout;
 
             public readonly void Start() => _timer.Restart(_timeout);
 

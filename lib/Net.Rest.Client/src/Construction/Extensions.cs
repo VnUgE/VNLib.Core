@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Rest.Client
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,8 +47,11 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="entity">The request entity model to send to the server</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>A task that resolves the response message</returns>
+        /// <exception cref="ArgumentNullException"></exception>
         public static async Task<RestResponse> ExecuteAsync<TModel>(this IRestSiteAdapter site, TModel entity, CancellationToken cancellation = default)
         {
+            ArgumentNullException.ThrowIfNull(site);
+
             //Get the adapter for the model
             IRestEndpointAdapter<TModel> adapter = site.GetAdapter<TModel>();
 
@@ -76,6 +80,44 @@ namespace VNLib.Net.Rest.Client.Construction
         }
 
         /// <summary>
+        /// Begins a stream download of the desired resource by sending the request model parameter. 
+        /// An <see cref="IRestEndpointAdapter{TModel}"/> must be defined to handle requests of the given model type.
+        /// <para>
+        /// WARNING: This function will not invoke the OnResponse handler functions after the stream 
+        /// has been returned, there is no way to inspect the response when excuting a stream download
+        /// </para>
+        /// </summary>
+        /// <typeparam name="TModel"></typeparam>
+        /// <param name="site"></param>
+        /// <param name="entity">The request entity model to send to the server</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>A task that resolves the response data stream</returns>
+        public static async Task<Stream?> DownloadStreamAsync<TModel>(this IRestSiteAdapter site, TModel entity, CancellationToken cancellation = default)
+        {
+            ArgumentNullException.ThrowIfNull(site);
+
+            //Get the adapter for the model
+            IRestEndpointAdapter<TModel> adapter = site.GetAdapter<TModel>();
+
+            //Get new request on adapter
+            RestRequest request = adapter.GetRequest(entity);
+
+            //Wait to exec operations if needed
+            await site.WaitAsync(cancellation);
+
+            Stream? response;
+
+            //Get rest client
+            using (ClientContract contract = site.GetClient())
+            {
+                //Exec response
+                response = await contract.Resource.DownloadStreamAsync(request, cancellation);
+            }
+
+            return response;
+        }
+
+        /// <summary>
         /// Executes a request against the site by sending the request model parameter. An <see cref="IRestEndpointAdapter{TModel}"/> must be 
         /// defined to handle requests of the given model type.
         /// </summary>
@@ -87,6 +129,8 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <returns>A task that resolves the response message with json resonse support</returns>
         public static async Task<RestResponse<TJson>> ExecuteAsync<TModel, TJson>(this IRestSiteAdapter site, TModel entity, CancellationToken cancellation = default)
         {
+            ArgumentNullException.ThrowIfNull(site);
+
             //Get the adapter for the model
             IRestEndpointAdapter<TModel> adapter = site.GetAdapter<TModel>();
 
@@ -124,6 +168,8 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <returns>When completed, gets the <see cref="RestResponse"/></returns>
         public static async Task<RestResponse> ExecuteSingleAsync<TModel>(this IRestSiteAdapter site, TModel model, CancellationToken cancellation = default) where TModel : IRestSingleEndpoint
         {
+            ArgumentNullException.ThrowIfNull(site);
+
             //Init new request
             RestRequest request = new(model.Url, model.Method);
             model.OnRequest(request);
@@ -148,6 +194,7 @@ namespace VNLib.Net.Rest.Client.Construction
 
             return response;
         }
+
 
         /// <summary>
         /// Sets the request method of a new request
@@ -358,11 +405,8 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <typeparam name="TResult">The json response entity type</typeparam>
         /// <param name="response">The response task</param>
         /// <returns>A task that resolves the deserialized entity type</returns>
-        public static async Task<TResult?> AsJson<TResult>(this Task<RestResponse> response)
-        {
-            RestResponse r = await response.ConfigureAwait(false);
-            return JsonSerializer.Deserialize<TResult>(r.RawBytes);
-        }
+        public static Task<TResult?> AsJson<TResult>(this Task<RestResponse> response) 
+            => As(response, static r => JsonSerializer.Deserialize<TResult>(r.RawBytes));
 
         /// <summary>
         /// Converts a task that resolves a <see cref="RestResponse"/> to a task that deserializes 
@@ -370,10 +414,38 @@ namespace VNLib.Net.Rest.Client.Construction
         /// </summary>
         /// <param name="response">The response task</param>
         /// <returns>A task that resolves the deserialized entity type</returns>
-        public static async Task<byte[]?> AsBytes(this Task<RestResponse> response)
+        public static Task<byte[]?> AsBytes(this Task<RestResponse> response) => As(response, static p => p.RawBytes);
+
+        /// <summary>
+        /// Converts a task that resolves a <see cref="RestResponse"/> to a task that uses your
+        /// transformation function to create the result
+        /// </summary>
+        /// <param name="response">The response task</param>
+        /// <param name="callback">Your custom callback function used to transform the data</param>
+        /// <returns>A task that resolves the deserialized entity type</returns>
+        public static async Task<T> As<T>(this Task<RestResponse> response, Func<RestResponse, Task<T>> callback)
         {
+            ArgumentNullException.ThrowIfNull(response);
+            ArgumentNullException.ThrowIfNull(callback);
+
             RestResponse r = await response.ConfigureAwait(false);
-            return r.RawBytes;
+            return await callback(r).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Converts a task that resolves a <see cref="RestResponse"/> to a task that uses your
+        /// transformation function to create the result
+        /// </summary>
+        /// <param name="response">The response task</param>
+        /// <param name="callback">Your custom callback function used to transform the data</param>
+        /// <returns>A task that resolves the deserialized entity type</returns>
+        public static async Task<T> As<T>(this Task<RestResponse> response, Func<RestResponse, T> callback)
+        {
+            ArgumentNullException.ThrowIfNull(response);
+            ArgumentNullException.ThrowIfNull(callback);
+
+            RestResponse r = await response.ConfigureAwait(false);
+            return callback(r);
         }
 
         private record class EndpointAdapterBuilder(IRestSiteEndpointStore Site) : IRestEndpointBuilder
@@ -396,8 +468,8 @@ namespace VNLib.Net.Rest.Client.Construction
                 ///<inheritdoc/>
                 public IRestRequestBuilder<TModel> WithModifier(Action<TModel, RestRequest> requestBuilder)
                 {
-                    _ = requestBuilder ?? throw new ArgumentNullException(nameof(requestBuilder));
-                    //Add handler to handler chain
+                    ArgumentNullException.ThrowIfNull(requestBuilder);
+                   
                     Adapter.RequestChain.AddLast(requestBuilder);
                     return this;
                 }
@@ -405,8 +477,8 @@ namespace VNLib.Net.Rest.Client.Construction
                 ///<inheritdoc/>
                 public IRestRequestBuilder<TModel> WithUrl(Func<TModel, string> uriBuilder)
                 {
-                    _ = uriBuilder ?? throw new ArgumentNullException(nameof(uriBuilder));
-                    //Add get url handler
+                    ArgumentNullException.ThrowIfNull(uriBuilder);
+
                     Adapter.GetUrl = uriBuilder;
                     return this;
                 }
@@ -414,8 +486,8 @@ namespace VNLib.Net.Rest.Client.Construction
                 ///<inheritdoc/>
                 public IRestRequestBuilder<TModel> OnResponse(Action<TModel, RestResponse> onResponseBuilder)
                 {
-                    _ = onResponseBuilder ?? throw new ArgumentNullException(nameof(onResponseBuilder));
-                    //Add a response handler
+                    ArgumentNullException.ThrowIfNull(onResponseBuilder);
+
                     Adapter.ResponseChain.AddLast(onResponseBuilder);
                     return this;
                 }

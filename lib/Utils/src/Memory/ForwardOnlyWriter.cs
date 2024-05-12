@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 namespace VNLib.Utils.Memory
@@ -30,12 +31,22 @@ namespace VNLib.Utils.Memory
     /// <summary>
     /// Provides a stack based buffer writer
     /// </summary>
-    public ref struct ForwardOnlyWriter<T>
+    /// <remarks>
+    /// Creates a new <see cref="ForwardOnlyWriter{T}"/> assigning the specified buffer
+    /// at the specified offset
+    /// </remarks>
+    /// <param name="buffer">The buffer to write data to</param>
+    /// <param name="offset">The offset to begin the writer at</param>
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]   
+    public ref struct ForwardOnlyWriter<T>(Span<T> buffer, int offset)
     {
+        //Cache reference to the first value
+        private readonly ref T _basePtr = ref MemoryMarshal.GetReference(buffer);
+
         /// <summary>
         /// The buffer for writing output data to
         /// </summary>
-        public readonly Span<T> Buffer { get; }
+        public readonly Span<T> Buffer { get; } = buffer[offset..];
 
         /// <summary>
         /// The number of characters written to the buffer
@@ -57,24 +68,8 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="buffer">The buffer to write data to</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ForwardOnlyWriter(Span<T> buffer)
-        {
-            Buffer = buffer;
-            Written = 0;
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="ForwardOnlyWriter{T}"/> assigning the specified buffer
-        /// at the specified offset
-        /// </summary>
-        /// <param name="buffer">The buffer to write data to</param>
-        /// <param name="offset">The offset to begin the writer at</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ForwardOnlyWriter(Span<T> buffer, int offset)
-        {
-            Buffer = buffer[offset..];
-            Written = 0;
-        }
+        public ForwardOnlyWriter(Span<T> buffer): this(buffer, 0)
+        { }
 
         /// <summary>
         /// Returns a compiled string from the characters written to the buffer
@@ -85,15 +80,67 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Appends a sequence to the buffer
         /// </summary>
-        /// <param name="data">The data to append to the buffer</param>
+        /// <param name="data">The data sequence to append to the buffer</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public void Append(ReadOnlySpan<T> data)
+        public void Append<TClass>(ReadOnlySpan<T> data) where TClass : class, T
         {
             //Make sure the current window is large enough to buffer the new string
             ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(Remaining));
-            Span<T> window = Buffer[Written..];
+         
             //write data to window
-            data.CopyTo(window);
+            data.CopyTo(Remaining);
+
+            //update char position
+            Written += data.Length;
+        }
+
+        /// <summary>
+        /// Appends a sequence to the buffer of a value type by copying source 
+        /// memory to internal buffer memory
+        /// </summary>
+        /// <typeparam name="TStruct"></typeparam>
+        /// <param name="data">The data sequence to append to the buffer</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public void Append<TStruct>(ReadOnlySpan<TStruct> data) where TStruct : struct, T
+        {
+            //Make sure the current window is large enough to buffer the new string
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(Remaining));
+
+            //write data to window
+            MemoryUtil.Memmove(
+                in MemoryMarshal.GetReference(data),
+                0, 
+                ref Unsafe.As<T, TStruct>(ref _basePtr),   //Reinterpret the ref to the local scope type, 
+                (nuint)Written,
+                (nuint)data.Length    
+            );
+
+            //update char position
+            Written += data.Length;
+        }
+
+        /// <summary>
+        /// Appends a sequence to the buffer of a value type by copying source 
+        /// memory to internal buffer memory, when the buffer size is known to be 
+        /// smaller than <see cref="ushort.MaxValue"/>.
+        /// </summary>
+        /// <typeparam name="TStruct"></typeparam>
+        /// <param name="data">The data sequence to append to the buffer</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public void AppendSmall<TStruct>(ReadOnlySpan<TStruct> data) where TStruct : struct, T
+        {
+            //Make sure the current window is large enough to buffer the new string
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(Remaining));
+
+            //write data to window
+            MemoryUtil.SmallMemmove(
+                in MemoryMarshal.GetReference(data),
+                0,
+                ref Unsafe.As<T, TStruct>(ref _basePtr),   //Reinterpret the ref to the local scope type, 
+                (nuint)Written,
+                (ushort)data.Length
+            );
+
             //update char position
             Written += data.Length;
         }
@@ -103,12 +150,21 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="c">The item to append to the buffer</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Append(T c)
         {
             //Make sure the current window is large enough to buffer the new string
             ArgumentOutOfRangeException.ThrowIfZero(RemainingSize);
-            //Write data to buffer and increment the buffer position
-            Buffer[Written++] = c;
+            
+            /*
+             * Calc pointer to last written position.
+             * Written points to the address directly after the last written element
+             */
+
+            ref T offset = ref Unsafe.Add(ref _basePtr, Written);
+            offset = c;
+
+            Written++;
         }
 
         /// <summary>
@@ -116,6 +172,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="count">The number of elements to advance the writer by</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Advance(int count)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan(count, RemainingSize, nameof(Remaining));
@@ -126,6 +183,7 @@ namespace VNLib.Utils.Memory
         /// Resets the writer by setting the <see cref="Written"/> 
         /// property to 0.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Reset() => Written = 0;
     }
 }

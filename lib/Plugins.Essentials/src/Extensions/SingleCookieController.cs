@@ -94,15 +94,16 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Only set cooke if already exists or force is true
             if (entity.Server.RequestCookies.ContainsKey(Name) || force)
             {
-                //Build and set cookie
-                HttpCookie cookie = new(Name, value)
+                HttpResponseCookie cookie = new(Name)
                 {
-                    Secure = Secure,
-                    HttpOnly = HttpOnly,
-                    ValidFor = ValidFor,
-                    SameSite = SameSite,
+                    Value = value,
+                    Domain = Domain,
                     Path = Path,
-                    Domain = Domain
+                    MaxAge = ValidFor,
+                    IsSession = ValidFor == TimeSpan.MaxValue,
+                    SameSite = SameSite,
+                    HttpOnly = HttpOnly,
+                    Secure = Secure | entity.Server.CrossOrigin,
                 };
 
                 entity.Server.SetCookie(in cookie);
