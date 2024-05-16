@@ -8,6 +8,7 @@ using VNLib.Utils.Memory;
 
 namespace VNLib.Hashing.Tests
 {
+
     [TestClass()]
     public class ManagedHashTests
     {
@@ -30,27 +31,27 @@ namespace VNLib.Hashing.Tests
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHash(testData, heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == Math.Abs(hashSize));
+                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
 
                 //With input string and heap buffer
                 hashSize = ManagedHash.ComputeHash("test", heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == Math.Abs(hashSize));
+                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
 
                 //Compute string and byte array
                 byte[] testdata = ManagedHash.ComputeHash(testData, alg);
-                Assert.IsTrue(testdata.Length == Math.Abs(hashSize));
+                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
 
                 //With input string
                 testdata = ManagedHash.ComputeHash("test", alg);
-                Assert.IsTrue(testdata.Length == Math.Abs(hashSize));
+                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
 
-                //Compute hash as string
+                //Compute hash as a hex string. Output should be 2x because hex is 2 chars per byte
                 string testEnc = ManagedHash.ComputeHash(testdata, alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == Math.Abs(hashSize) * 2);
+                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
 
                 //With input string
                 testEnc = ManagedHash.ComputeHash("test", alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == Math.Abs(hashSize) * 2);
+                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
             }
         }
 
@@ -74,27 +75,27 @@ namespace VNLib.Hashing.Tests
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHmac(testKey, testData, heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == Math.Abs(hashSize));
+                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
 
                 //With input string and heap buffer
                 hashSize = ManagedHash.ComputeHmac(testKey, "test", heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == Math.Abs(hashSize));
+                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
 
                 //Compute string and byte array
                 byte[] testdata = ManagedHash.ComputeHmac(testKey, testData, alg);
-                Assert.IsTrue(testdata.Length == Math.Abs(hashSize));
+                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
 
                 //With input string
                 testdata = ManagedHash.ComputeHmac(testKey, "test", alg);
-                Assert.IsTrue(testdata.Length == Math.Abs(hashSize));
+                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
 
                 //Compute hash as string
                 string testEnc = ManagedHash.ComputeHmac(testKey, testdata, alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == Math.Abs(hashSize) * 2);
+                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
 
                 //With input string
                 testEnc = ManagedHash.ComputeHmac(testKey, "test", alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == Math.Abs(hashSize) * 2);
+                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
             }
         }
 

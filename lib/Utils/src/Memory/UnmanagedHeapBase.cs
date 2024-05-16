@@ -67,7 +67,7 @@ namespace VNLib.Utils.Memory
             DangerousAddRef(ref handleCountIncremented);
 
             //Failed to increment ref count, class has been disposed
-            ObjectDisposedException.ThrowIf(handleCountIncremented == false, "The handle has been released");
+            ObjectDisposedException.ThrowIf(handleCountIncremented == false, this);
 
             try
             {
