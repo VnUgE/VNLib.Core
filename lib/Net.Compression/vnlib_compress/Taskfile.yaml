@@ -17,7 +17,7 @@ tasks:
     cmds:
      - cmd: echo "Building {{.PROJECT_NAME}}"
        silent: true
-     - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release {{.CMAKE_ARGS}}
+     - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release {{.CLI_ARGS}}
      - cmake --build build/ --config Release    
 
   #called by ci pipline to build the winx64 project

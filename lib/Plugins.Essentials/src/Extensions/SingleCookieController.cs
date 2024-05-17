@@ -99,10 +99,13 @@ namespace VNLib.Plugins.Essentials.Extensions
                     Value = value,
                     Domain = Domain,
                     Path = Path,
-                    MaxAge = ValidFor,
+                    //Only set max-age if cookie has a value, otherwise set to zero to expire
+                    MaxAge = string.IsNullOrWhiteSpace(value) ? TimeSpan.Zero : ValidFor,
                     IsSession = ValidFor == TimeSpan.MaxValue,
                     SameSite = SameSite,
                     HttpOnly = HttpOnly,
+
+                    //Secure is required on cross origin requests
                     Secure = Secure | entity.Server.CrossOrigin,
                 };
 

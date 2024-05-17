@@ -1,18 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(vnlib_rpmalloc C)
-set(CMAKE_PROJECT_NAME "vnlib_rpmalloc")
+set(_RP_PROJ_NAME "vnlib_rpmalloc")
 
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
 
+string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
+message(STATUS "Build type is '${build_type}'")
+
 #Setup the compiler options 
 set(CMAKE_C_STANDARD 11)					#c11 is required for rpmalloc static assertions
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)		#enable position independent code (for shared libraries with exports)
-
-string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
-message(STATUS "Build type is '${build_type}'")
 
 #export header files to the main project
 file(GLOB HEADERS *.h)
@@ -27,19 +26,29 @@ set(VNLIB_RPMALLOC_SOURCES
 include_directories(vendor)
 
 #create shared/static libs
-add_library(${CMAKE_PROJECT_NAME} SHARED ${VNLIB_RPMALLOC_SOURCES} ${HEADERS})
-add_library(${CMAKE_PROJECT_NAME}_static STATIC ${VNLIB_RPMALLOC_SOURCES} ${HEADERS})
+add_library(${_RP_PROJ_NAME} SHARED ${VNLIB_RPMALLOC_SOURCES} ${HEADERS})
+add_library(${_RP_PROJ_NAME}_static STATIC ${VNLIB_RPMALLOC_SOURCES} ${HEADERS})
+#enable fPIC for shared library
+set_target_properties(${_RP_PROJ_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
-	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME vn_rpmalloc)
+	set_target_properties(
+		${_RP_PROJ_NAME} ${_RP_PROJ_NAME}_static 
+		
+		PROPERTIES 
+		OUTPUT_NAME 
+		vn_rpmalloc
+	)
 endif()
 
+set(_RP_COMP_ARGS)
+set(_RP_COMP_DEFS)
 
 #setup flags for windows compilation
 if(MSVC)
 
-	add_compile_options(
+	list(APPEND _RP_COMP_ARGS
 		/Qspectre 
 		/sdl
 		/TC
@@ -61,7 +70,7 @@ if(MSVC)
 		$<$<CONFIG:Debug>:/showIncludes>
 	)
 
-	add_compile_definitions(
+	list(APPEND _RP_COMP_DEFS
 		$<$<CONFIG:DEBUG>:DEBUG>
 		$<$<CONFIG:RELEASE>:RELEASE>
 	)
@@ -69,14 +78,14 @@ if(MSVC)
 #configure gcc flags
 elseif(CMAKE_COMPILER_IS_GNUCC)
 
-	add_compile_options(
+	list(APPEND _RP_COMP_ARGS
 		-Wextra
 		-fstack-protector
 	)
 
 	#enable debug compiler options
 	if(build_type STREQUAL "debug")
-		add_compile_options(
+		list(APPEND _RP_COMP_ARGS
 			-g				#enable debugger info
 			-Og				#disable optimizations
 			-Wall			#enable all warnings
@@ -90,9 +99,11 @@ else()
 endif()
 
 #enable required features
-add_compile_definitions(
+list(APPEND _RP_COMP_DEFS
 	RPMALLOC_FIRST_CLASS_HEAPS=1
 	ENABLE_ADAPTIVE_THREAD_CACHE=1
+	ENABLE_THREAD_CACHE=1		#always enable per-thred cache
+	ENABLE_OVERRIDE=0			#disable malloc override, not needed for our uses
 
 	#add some debugging/tracing for debug mode
 	$<$<CONFIG:Debug>:ENABLE_TRACE=1>
@@ -101,28 +112,28 @@ add_compile_definitions(
 
 if(ENABLE_GREEDY)
 
-	add_compile_definitions(
+	list(APPEND _RP_COMP_DEFS
 		#if greedy is enabled, add greedy options
 		ENABLE_UNLIMITED_CACHE=1
-		ENABLE_UNLIMITED_GLOBAL_CACHE=1
-		ENABLE_UNLIMITED_THREAD_CACHE=1
-
 		#On by default but we otherwise disable global cache to really reduce commited size
 		ENABLE_GLOBAL_CACHE=1
-		ENABLE_UNLIMITED_GLOBAL_CACHE=1
 	)
 
 else()
 
-	add_compile_definitions(	
+	list(APPEND _RP_COMP_DEFS
 		#disable greedy definitions
 		ENABLE_UNLIMITED_CACHE=0
-		ENABLE_UNLIMITED_GLOBAL_CACHE=0
-		ENABLE_UNLIMITED_THREAD_CACHE=0
 		ENABLE_GLOBAL_CACHE=0
-
-		#also disable unlimited global cache to release spans to OS
-		ENABLE_UNLIMITED_GLOBAL_CACHE=0
+		DISABLE_UNMAP=0					#allow unmapping of pages during free instead of global cache
 	)
 
 endif()
+
+#add the definitions to the project
+target_compile_definitions(${_RP_PROJ_NAME} PRIVATE ${_RP_COMP_DEFS})
+target_compile_definitions(${_RP_PROJ_NAME}_static PRIVATE ${_RP_COMP_DEFS})
+
+#add the compiler flags to the project
+target_compile_options(${_RP_PROJ_NAME} PRIVATE ${_RP_COMP_ARGS})
+target_compile_options(${_RP_PROJ_NAME}_static PRIVATE ${_RP_COMP_ARGS})
