@@ -146,8 +146,13 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryManager<T> DirectAlloc<T>(this IUnmangedHeap heap, nuint size, bool zero = false) where T : unmanaged
+        public static MemoryManager<T> DirectAlloc<T>(this IUnmangedHeap heap, int size, bool zero = false) where T : unmanaged
         {
+            /*
+             * Size it limited to int32 because the memory manager uses int32 for length
+             * and the constructor will attempt to cast the size to int32 or cause an
+             * overflow exception
+             */
             MemoryHandle<T> handle = heap.Alloc<T>(size, zero);
             return new SysBufferMemoryManager<T>(handle, true);
         }
@@ -177,24 +182,6 @@ namespace VNLib.Utils.Extensions
         //Method only exists for consistancy since unsafe handles are always 32bit
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetIntLength<T>(this in UnsafeMemoryHandle<T> handle) where T : unmanaged => handle.IntLength;
-
-        /// <summary>
-        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="IUnmangedHeap"/> instance
-        /// of the specified number of elements
-        /// </summary>
-        /// <typeparam name="T">The unmanaged data type</typeparam>
-        /// <param name="heap"></param>
-        /// <param name="size">The number of elements to allocate on the heap</param>
-        /// <param name="zero">Optionally zeros conents of the block when allocated</param>
-        /// <returns>The <see cref="MemoryManager{T}"/> wrapper around the block of memory</returns>
-        /// <exception cref="OverflowException"></exception>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryManager<T> DirectAlloc<T>(this IUnmangedHeap heap, nint size, bool zero = false) where T : unmanaged
-        {
-            ArgumentOutOfRangeException.ThrowIfNegative(size);
-            return DirectAlloc<T>(heap, (nuint)size, zero);
-        }
         
         /// <summary>
         /// Gets an offset pointer from the base postion to the number of bytes specified. Performs bounds checks

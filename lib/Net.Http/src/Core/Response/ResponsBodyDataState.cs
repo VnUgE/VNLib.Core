@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: ResponseWriter.cs 
+* File: ResponsBodyDataState.cs 
 *
-* ResponseWriter.cs is part of VNLib.Net.Http which is part of the larger 
-* VNLib collection of libraries and utilities.
+* ResponsBodyDataState.cs is part of VNLib.Net.Http which is part of 
+* the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 

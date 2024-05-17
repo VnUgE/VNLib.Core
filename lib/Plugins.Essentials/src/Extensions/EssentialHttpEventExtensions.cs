@@ -796,6 +796,66 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Parse the file using the specified parser
             return parser(file.FileData, file.ContentTypeString());
         }
+
+        /// <summary>
+        /// Reads the contents of an uploaded file at the desired intex into memory
+        /// and returns a managed byte array containing the file data
+        /// </summary>
+        /// <param name="ev"></param>
+        /// <param name="uploadIndex">The index of the uploaded file to buffer</param>
+        /// <returns>A value task that resolves the uploaded data</returns>
+        /// <exception cref="IOException"></exception>
+        public static ValueTask<byte[]> ReadFileDataAsync(this HttpEntity ev, int uploadIndex = 0)
+        {
+            ArgumentNullException.ThrowIfNull(ev);
+
+            /*
+             * File should exist at the desired index and have a length greater than 0
+             * otherwise return an empty buffer
+             */
+            if (ev.Files.Count <= uploadIndex || ev.Files[uploadIndex].Length == 0)
+            {
+                return ValueTask.FromResult(Array.Empty<byte>());
+            }
+            
+            return ReadFileDataAsync(ev, uploadIndex);
+
+            static async ValueTask<byte[]> ReadFileDataAsync(HttpEntity entity, int fileIndex)
+            {
+                FileUpload upload = entity.Files[fileIndex];
+
+                /*
+                 * Alloc an uninitialized buffer to read the file data into, it should ALL
+                 * be overwritten during read operation
+                 */
+                byte[] buffer = GC.AllocateUninitializedArray<byte>((int)upload.Length);
+
+                int read = 0;
+
+                do
+                {
+                    Memory<byte> mem = buffer.AsMemory(read, buffer.Length - read);
+
+                    int r = await upload.FileData.ReadAsync(mem, entity.EventCancellation);
+
+                    //If no data was read force break and deal with read data
+                    if (r == 0)
+                    {
+                        break;
+                    }
+
+                    read += r;
+                } while (read < buffer.Length);
+
+                //Buffer is exact length, so read should be equal to length
+                if (read != buffer.Length)
+                {
+                    throw new IOException("Failed to read entire file data, this may be an internal error");
+                }
+
+                return buffer;
+            }
+        }
         
         /// <summary>
         /// Get a <see cref="DirectoryInfo"/> instance that points to the current sites filesystem root.
