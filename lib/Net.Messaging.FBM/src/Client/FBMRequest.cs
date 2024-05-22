@@ -277,9 +277,9 @@ namespace VNLib.Net.Messaging.FBM.Client
         public void Compile(ref ForwardOnlyWriter<char> writer)
         {
             ReadOnlyMemory<byte> requestData = GetRequestData();
-            writer.Append("Message ID:");
+            writer.AppendSmall("Message ID:");
             writer.Append(MessageId);
-            writer.Append(Environment.NewLine);
+            writer.AppendSmall(Environment.NewLine);
             Helpers.DefaultEncoding.GetChars(requestData.Span, ref writer);
         }
         ///<inheritdoc/>

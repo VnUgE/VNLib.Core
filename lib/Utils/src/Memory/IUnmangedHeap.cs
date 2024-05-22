@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -42,7 +42,10 @@ namespace VNLib.Utils.Memory
         /// <param name="size">The size (in bytes) of the element</param>
         /// <param name="elements">The number of elements to allocate</param>
         /// <param name="zero">An optional parameter to zero the block of memory</param>
-        /// <returns></returns>
+        /// <returns>A memory address to a valid block on the heap</returns>
+        /// <remarks>
+        /// If the heap is unable to allocate the requested memory, an OutOfMemoryException will be thrown
+        /// </remarks>
         /// <exception cref="OutOfMemoryException"></exception>
         IntPtr Alloc(nuint elements, nuint size, bool zero);
 

@@ -43,6 +43,10 @@ tasks:
      - sleet push "{{.PACK_OUT}}/debug/" --source debug --config "{{.SLEET_CONFIG_PATH}}" --force
      - sleet push "{{.PACK_OUT}}/release/" --source release --config "{{.SLEET_CONFIG_PATH}}" --force
 
+  test:
+    cmds:
+     - cmd: dotnet test --verbosity normal
+
 #called by build pipeline to clean module
   clean:
     cmds:
@@ -57,11 +61,11 @@ tasks:
     internal: true
     cmds:
      - dotnet publish -c debug {{.MS_ARGS}}
-     - dotnet pack -c debug {{.MS_ARGS}} -o "{{.PACK_OUT}}/debug/"
+     - dotnet pack -c debug {{.MS_ARGS}} -o "{{.PACK_OUT}}/debug/" -p:PackageVersion={{.BUILD_VERSION}}
      
   build_release:
     internal: true
     cmds:
      - dotnet publish -c release {{.MS_ARGS}}
-     - dotnet pack -c release {{.MS_ARGS}} -o "{{.PACK_OUT}}/release/" 
+     - dotnet pack -c release {{.MS_ARGS}} -o "{{.PACK_OUT}}/release/" -p:PackageVersion={{.BUILD_VERSION}}
     

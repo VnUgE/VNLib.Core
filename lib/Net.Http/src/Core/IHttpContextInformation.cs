@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -22,7 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
 using System.IO;
 using System.Text;
 

@@ -460,7 +460,7 @@ namespace VNLib.Utils.Extensions
         public static int Replace(this Span<char> buffer, ReadOnlySpan<char> search, ReadOnlySpan<char> replace)
         {
             ForwardOnlyWriter<char> writer = new (buffer);
-            writer.Replace(search, replace);
+            Replace(ref writer, search, replace);
             return writer.Written;
         }
 
@@ -496,9 +496,9 @@ namespace VNLib.Utils.Extensions
             do
             {
                 //Append the data before the search chars
-                writer2.Append(buffer[..start]);
+                writer2.Append<char>(buffer[..start]);
                 //Append the replacment
-                writer2.Append(replace);
+                writer2.Append<char>(replace);
                 //Shift buffer to the end of the 
                 buffer = buffer[(start + searchLen)..];
                 //search for next index beyond current index

@@ -114,6 +114,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <returns>true if the connection accepts any content typ, false otherwise</returns>
         private static bool AcceptsAny(IConnectionInfo server)
         {
+            // If no accept header is sent by clients, it is assumed it accepts all content types
             if(server.Accept.Count == 0)
             {
                 return true;
@@ -196,14 +197,15 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Alloc enough space to hold the string
             Span<char> buffer = stackalloc char[64];
             ForwardOnlyWriter<char> rangeBuilder = new(buffer);
+
             //Build the range header in this format "bytes <begin>-<end>/<total>"
-            rangeBuilder.Append("bytes ");
+            rangeBuilder.AppendSmall("bytes ");
             rangeBuilder.Append(start);
             rangeBuilder.Append('-');
             rangeBuilder.Append(end);
             rangeBuilder.Append('/');
             rangeBuilder.Append(length);
-            //Print to a string and set the content range header
+           
             entity.Server.Headers[HttpResponseHeader.ContentRange] = rangeBuilder.ToString();
         }
 
@@ -212,7 +214,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <returns>true if the user-agent specified the cors security header</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsCors(this IConnectionInfo server) => "cors".Equals(server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
+        public static bool IsCors(this IConnectionInfo server) 
+            => string.Equals("cors", server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Determines if the User-Agent specified "cross-site" in the Sec-Site header, OR 
@@ -223,8 +226,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCrossSite(this IConnectionInfo server)
         {
-            return "cross-site".Equals(server.Headers[SEC_HEADER_SITE], StringComparison.OrdinalIgnoreCase) 
-                || (server.Origin != null && !server.RequestUri.DnsSafeHost.Equals(server.Origin.DnsSafeHost, StringComparison.Ordinal));
+            return string.Equals("cross-site", server.Headers[SEC_HEADER_SITE], StringComparison.OrdinalIgnoreCase) 
+                || (server.Origin != null && ! string.Equals(server.RequestUri.DnsSafeHost, server.Origin.DnsSafeHost, StringComparison.Ordinal));
         }
 
         /// <summary>
@@ -233,14 +236,16 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="server"></param>
         /// <returns>true if sec-user header was set to "?1"</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsUserInvoked(this IConnectionInfo server) => "?1".Equals(server.Headers[SEC_HEADER_USER], StringComparison.OrdinalIgnoreCase);
+        public static bool IsUserInvoked(this IConnectionInfo server) 
+            => string.Equals("?1", server.Headers[SEC_HEADER_USER], StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Was this request created from normal user navigation
         /// </summary>
         /// <returns>true if sec-mode set to "navigate"</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNavigation(this IConnectionInfo server) => "navigate".Equals(server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
+        public static bool IsNavigation(this IConnectionInfo server) 
+            => string.Equals("navigate", server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Determines if the client specified "no-cache" for the cache control header, signalling they do not wish to cache the entity
@@ -302,7 +307,11 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool RefererMatch(this IConnectionInfo server)
         {
-            return server.RequestUri.DnsSafeHost.Equals(server.Referer?.DnsSafeHost, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(
+                server.RequestUri.DnsSafeHost, 
+                server.Referer?.DnsSafeHost, 
+                StringComparison.OrdinalIgnoreCase
+            );
         }
 
         /// <summary>
@@ -315,9 +324,25 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="sameSite"></param>
         /// <param name="secure"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ExpireCookie(this IConnectionInfo server, string name, string domain = "", string path = "/", CookieSameSite sameSite = CookieSameSite.None, bool secure = false)
+        public static void ExpireCookie(
+            this IConnectionInfo server, 
+            string name, 
+            string domain = "", 
+            string path = "/", 
+            CookieSameSite sameSite = CookieSameSite.None, 
+            bool secure = false
+        )
         {
-            server.SetCookie(name, string.Empty, domain, path, TimeSpan.Zero, sameSite, false, secure);
+            SetCookie(
+               server: server,
+               name: name,
+               value: string.Empty,
+               domain: domain,
+               path: path,
+               expires: TimeSpan.Zero,
+               sameSite: sameSite,
+               secure: secure
+           );
         }
 
         /// <summary>
@@ -340,9 +365,20 @@ namespace VNLib.Plugins.Essentials.Extensions
             string path = "/",
             CookieSameSite sameSite = CookieSameSite.None,
             bool httpOnly = false,
-            bool secure = false)
+            bool secure = false
+        )
         {
-            server.SetCookie(name, value, domain, path, TimeSpan.MaxValue, sameSite, httpOnly, secure);
+            SetCookie(
+                server: server,
+                name: name,
+                value: value,
+                domain: domain,
+                path: path,
+                expires: TimeSpan.Zero,
+                sameSite: sameSite,
+                httpOnly: httpOnly,
+                secure: secure
+            );
         }
 
         /// <summary>
@@ -367,9 +403,24 @@ namespace VNLib.Plugins.Essentials.Extensions
             string path = "/",
             CookieSameSite sameSite = CookieSameSite.None,
             bool httpOnly = false,
-            bool secure = false)
+            bool secure = false
+        )
         {
-            server.SetCookie(name, value, domain, path, expires, sameSite, httpOnly, secure);
+
+            HttpResponseCookie cookie = new(name)
+            {
+                Value = value,
+                Domain = domain,
+                Path = path,
+                MaxAge = expires,
+                IsSession = expires == TimeSpan.MaxValue,
+                //If the connection is cross origin, then we need to modify the secure and samsite values
+                SameSite = sameSite,
+                HttpOnly = httpOnly,
+                Secure = secure | server.CrossOrigin,
+            };
+
+            server.SetCookie(in cookie);
         }
 
 
@@ -380,35 +431,24 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="cookie">The cookie to set for the server</param>
         /// <exception cref="ArgumentException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Obsolete("HttpCookie type is obsolete in favor of HttpResponseCookie")]
         public static void SetCookie(this IConnectionInfo server, in HttpCookie cookie)
         {
-            //Cookie name is required
-            if(string.IsNullOrWhiteSpace(cookie.Name))
-            {
-                throw new ArgumentException("A nonn-null cookie name is required");
-            }
-
             //Set the cookie
-            server.SetCookie(cookie.Name,
-                             cookie.Value,
-                             cookie.Domain,
-                             cookie.Path,
-                             cookie.ValidFor,
-                             cookie.SameSite,
-                             cookie.HttpOnly,
-                             cookie.Secure);
-        }
+            HttpResponseCookie rCookie = new(cookie.Name)
+            {
+                Value = cookie.Value,
+                Domain = cookie.Domain,
+                Path = cookie.Path,
+                MaxAge = cookie.ValidFor,
+                IsSession = cookie.ValidFor == TimeSpan.MaxValue,
+                //If the connection is cross origin, then we need to modify the secure and samsite values
+                SameSite = cookie.SameSite,
+                HttpOnly = cookie.HttpOnly,
+                Secure = cookie.Secure | server.CrossOrigin,
+            };
 
-        /// <summary>
-        /// Is the current connection a "browser" ?
-        /// </summary>
-        /// <param name="server"></param>
-        /// <returns>true if the user agent string contains "Mozilla" and does not contain "bot", false otherwise</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsBrowser(this IConnectionInfo server)
-        {
-            //Get user-agent and determine if its a browser
-            return server.UserAgent != null && !server.UserAgent.Contains("bot", StringComparison.OrdinalIgnoreCase) && server.UserAgent.Contains("Mozilla", StringComparison.OrdinalIgnoreCase);
+            server.SetCookie(in rCookie);
         }
 
         /// <summary>
@@ -417,12 +457,9 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="server"></param>
         /// <returns>True of the connection was made from the local machine</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsLoopBack(this IConnectionInfo server)
-        {
-            IPAddress realIp = server.GetTrustedIp();
-            return IPAddress.Any.Equals(realIp) || IPAddress.Loopback.Equals(realIp);
-        }
-       
+        public static bool IsLoopBack(this IConnectionInfo server) 
+            => IPAddress.Loopback.Equals(GetTrustedIp(server));
+
         /// <summary>
         /// Did the connection set the dnt header?
         /// </summary>
@@ -493,7 +530,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                 //Standard https protocol header
                 string? protocol = server.Headers[X_FORWARDED_PROTO_HEADER];
                 //If the header is set and equals https then tls is being used
-                return string.IsNullOrWhiteSpace(protocol) ? isSecure : "https".Equals(protocol, StringComparison.OrdinalIgnoreCase);
+                return string.IsNullOrWhiteSpace(protocol) ? isSecure : string.Equals("https", protocol, StringComparison.OrdinalIgnoreCase);
             }
             else
             {

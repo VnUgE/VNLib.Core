@@ -18,7 +18,7 @@ tasks:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
         #init cmake build with greedy enabled
-      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release -DENABLE_GREEDY=1 {{.CMAKE_ARGS}}
+      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release -DENABLE_GREEDY=1 {{.CLI_ARGS}}
       - cmake --build build/ --config Release
       - cmd: echo "Your vnlib_mimalloc library file can be found in '{{.USER_WORKING_DIR}}/build'"
         silent: true
@@ -26,7 +26,7 @@ tasks:
   build:
     cmds:  
      #build our library
-     - cmake -B./build -DENABLE_GREEDY=1 {{.CMAKE_ARGS}} 
+     - cmake -B./build -DENABLE_GREEDY=1 {{.CLI_ARGS}} 
      - cmake --build build/ --config Debug 
      - cmake --build build/ --config Release 
 
@@ -72,7 +72,7 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
      #pack mimalloc source code and create the archive
-     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude vendor/docs/ --exclude vendor/doc/ --exclude vendor/test/ --exclude vendor/ide/ --exclude vendor/out/ -czf 'bin/src.tgz' ."
+     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude vendor/test/ --exclude vendor/out/ -czf 'bin/src.tgz' ."
 
   clean:
     ignore_error: true

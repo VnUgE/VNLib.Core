@@ -1,13 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Nullable>enable</Nullable>
     <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
     <RootNamespace>VNLib.Plugins.Runtime</RootNamespace>
     <AssemblyName>VNLib.Plugins.Runtime</AssemblyName>
-    <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
   </PropertyGroup>
 
   <PropertyGroup>

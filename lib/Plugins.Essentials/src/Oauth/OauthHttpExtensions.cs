@@ -90,40 +90,40 @@ namespace VNLib.Plugins.Essentials.Oauth
                 ForwardOnlyWriter<char> writer = new(buffer.Span);
 
                 //Build the error message string
-                writer.Append("{\"error\":\"");
+                writer.AppendSmall("{\"error\":\"");
                 switch (error)
                 {
                     case ErrorType.InvalidRequest:
-                        writer.Append("invalid_request");
+                        writer.AppendSmall("invalid_request");
                         break;
                     case ErrorType.InvalidClient:
-                        writer.Append("invalid_client");
+                        writer.AppendSmall("invalid_client");
                         break;
                     case ErrorType.UnauthorizedClient:
-                        writer.Append("unauthorized_client");
+                        writer.AppendSmall("unauthorized_client");
                         break;
                     case ErrorType.InvalidToken:
-                        writer.Append("invalid_token");
+                        writer.AppendSmall("invalid_token");
                         break;
                     case ErrorType.UnsupportedResponseType:
-                        writer.Append("unsupported_response_type");
+                        writer.AppendSmall("unsupported_response_type");
                         break;
                     case ErrorType.InvalidScope:
-                        writer.Append("invalid_scope");
+                        writer.AppendSmall("invalid_scope");
                         break;
                     case ErrorType.ServerError:
-                        writer.Append("server_error");
+                        writer.AppendSmall("server_error");
                         break;
                     case ErrorType.TemporarilyUnavailable:
-                        writer.Append("temporarily_unavailable");
+                        writer.AppendSmall("temporarily_unavailable");
                         break;
                     default:
-                        writer.Append("error");
+                        writer.AppendSmall("error");
                         break;
                 }
-                writer.Append("\",\"error_description\":\"");
+                writer.AppendSmall("\",\"error_description\":\"");
                 writer.Append(description);
-                writer.Append("\"}");
+                writer.AppendSmall("\"}");
 
                 //Close the response with the json data
                 ev.CloseResponse(code, ContentType.Json, writer.AsSpan());

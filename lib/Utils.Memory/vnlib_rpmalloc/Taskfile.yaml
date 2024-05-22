@@ -42,23 +42,15 @@ tasks:
 
     #get licenses for debug
     - task: licenses
-      vars: 
-        TARGET: './build/Debug'
+      vars: { TARGET: './build/Debug' }
 
     - task: licenses
-      vars:
-        TARGET: './build/Release'
-   
+      vars: { TARGET: './build/Release' }
 
-    #static debug lib
-    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
     #dynamic debug lib
-    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
-    
-    #release static lib
-    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
+    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' .
     #release dll
-    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' .
 
     #source code
     - task: pack_source

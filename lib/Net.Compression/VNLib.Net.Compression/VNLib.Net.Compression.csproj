@@ -2,16 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
     <RootNamespace>VNLib.Net.Compression</RootNamespace>
     <AssemblyName>VNLib.Net.Compression</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <AnalysisLevel>latest-all</AnalysisLevel>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
-    
     <!--Enable dynamic loading because it's dynamically loaded by servers-->
     <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
   </PropertyGroup>
 
   <PropertyGroup>

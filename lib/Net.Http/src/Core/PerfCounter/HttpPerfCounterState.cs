@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: HttpControlMask.cs 
+* File: ConnectionInfo.cs 
 *
-* HttpControlMask.cs is part of VNLib.Net.Http which is part of the larger 
+* ConnectionInfo.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -22,23 +22,11 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Net.Http
+namespace VNLib.Net.Http.Core.PerfCounter
 {
-    /// <summary>
-    /// Contains HttpServer related function masks for altering http server
-    /// behavior
-    /// </summary>
-    public static class HttpControlMask
+    internal struct HttpPerfCounterState
     {
-        /// <summary>
-        /// Tells the http server that dynamic response compression should be disabled
-        /// </summary>
-        public const ulong CompressionDisabled = 0x01UL;
-
-        /// <summary>
-        /// Tells the server not to set a 0 content length header when sending a response that does 
-        /// not have an entity body to send. 
-        /// </summary>
-        public const ulong ImplictContentLengthDisabled = 0x02UL;
+        internal long StartValue;
+        internal long StopValue;
     }
 }

@@ -26,6 +26,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Threading;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -204,6 +205,27 @@ namespace VNLib.Plugins.Essentials
                 throw new ContentTypeUnacceptableException("The client does not accept the content type of the response");
             }
 
+            /*
+             * If the underlying stream is actaully a memory stream, 
+             * create a wrapper for it to read as a memory response.
+             * This is done to avoid a user-space copy since we can 
+             * get access to access the internal buffer
+             * 
+             * Stream length also should not cause an integer overflow,
+             * which also mean position is assumed not to overflow 
+             * or cause an overflow during reading
+             */
+            if(stream is MemoryStream ms && length < int.MaxValue)
+            {
+                Entity.CloseResponse(
+                    code, 
+                    type, 
+                    new MemStreamWrapper(ms, (int)length)
+                );
+
+                return;
+            }
+
             Entity.CloseResponse(code, type, stream, length);
         }
 
@@ -246,5 +268,37 @@ namespace VNLib.Plugins.Essentials
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler) => Entity.DangerousChangeProtocol(protocolHandler);
+
+
+        private sealed class MemStreamWrapper(MemoryStream memStream, int length) : IMemoryResponseReader 
+        {
+            readonly int length = length;
+
+            /*
+             * Stream may be offset by the caller, it needs 
+             * to be respected during streaming.
+             */
+            int read = (int)memStream.Position;
+
+            public int Remaining
+            {
+                get
+                {
+                    Debug.Assert(length - read >= 0);
+                    return length - read;
+                }
+            }
+
+            public void Advance(int written) => read += written;
+
+            ///<inheritdoc/>
+            public void Close() => memStream.Dispose();
+
+            public ReadOnlyMemory<byte> GetMemory()
+            {
+                byte[] intBuffer = memStream.GetBuffer();
+                return new ReadOnlyMemory<byte>(intBuffer, read, Remaining);
+            }
+        }
     }
 }

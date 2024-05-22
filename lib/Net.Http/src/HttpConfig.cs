@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -124,5 +124,10 @@ namespace VNLib.Net.Http
         /// the server.
         /// </summary>
         public readonly IHttpCompressorManager? CompressorManager { get; init; } = null;
+
+        /// <summary>
+        /// Enables debug performance counters
+        /// </summary>
+        public readonly bool DebugPerformanceCounters { get; init; } = false;
     }
 }

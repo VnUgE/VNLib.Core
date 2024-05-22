@@ -227,29 +227,29 @@ namespace VNLib.Net.Http
             ForwardOnlyWriter<char> sb = new(buffer);
             if ((type & CacheType.NoCache) > 0)
             {
-                sb.Append("no-cache, ");
+                sb.AppendSmall("no-cache, ");
             }
             if ((type & CacheType.NoStore) > 0)
             {
-                sb.Append("no-store, ");
+                sb.AppendSmall("no-store, ");
             }
             if ((type & CacheType.Public) > 0)
             {
-                sb.Append("public, ");
+                sb.AppendSmall("public, ");
             }
             if ((type & CacheType.Private) > 0)
             {
-                sb.Append("private, ");
+                sb.AppendSmall("private, ");
             }
             if ((type & CacheType.Revalidate) > 0)
             {
-                sb.Append("must-revalidate, ");
+                sb.AppendSmall("must-revalidate, ");
             }
             if (immutable)
             {
-                sb.Append("immutable, ");
+                sb.AppendSmall("immutable, ");
             }
-            sb.Append("max-age=");
+            sb.AppendSmall("max-age=");
             sb.Append(maxAge);
             return sb.ToString();
         }

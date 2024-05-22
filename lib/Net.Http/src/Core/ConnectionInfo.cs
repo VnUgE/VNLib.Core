@@ -88,33 +88,17 @@ namespace VNLib.Net.Http
         public IReadOnlyCollection<string> Accept => Context.Request.Accept;
 
         ///<inheritdoc/>
-        public ref readonly TransportSecurityInfo? GetTransportSecurityInfo() => ref Context.GetSecurityInfo();       
+        public ref readonly TransportSecurityInfo? GetTransportSecurityInfo() => ref Context.GetSecurityInfo(); 
 
         ///<inheritdoc/>
-        public void SetCookie(string name, string value, string? domain, string? path, TimeSpan Expires, CookieSameSite sameSite, bool httpOnly, bool secure)
+        public void SetCookie(in HttpResponseCookie cookie)
         {
             //name MUST not be null
-            ArgumentNullException.ThrowIfNull(name);
+            ArgumentException.ThrowIfNullOrWhiteSpace(cookie.Name, nameof(cookie.Name));
 
-            //Create the new cookie
-            HttpCookie cookie = new(name)
-            {
-                Value = value,
-                Domain = domain,
-                Path = path,
-                MaxAge = Expires,
-                //Set the session lifetime flag if the timeout is max value
-                IsSession = Expires == TimeSpan.MaxValue,
-                //If the connection is cross origin, then we need to modify the secure and samsite values
-                SameSite = CrossOrigin ? CookieSameSite.None : sameSite,
-                Secure = secure | CrossOrigin,
-                HttpOnly = httpOnly
-            };
-
-            //Set the cookie
             Context.Response.AddCookie(in cookie);
         }
-       
+
         internal ConnectionInfo(HttpContext ctx)
         {
             //Update the context referrence

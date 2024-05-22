@@ -29,6 +29,7 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 
 using VNLib.Utils.Logging;
+using VNLib.Plugins.Essentials.Endpoints;
 using VNLib.Plugins.Essentials.Middleware;
 
 namespace VNLib.Plugins.Essentials

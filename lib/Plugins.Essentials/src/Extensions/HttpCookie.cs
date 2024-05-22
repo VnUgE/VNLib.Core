@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -33,6 +33,7 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// </summary>
     /// <param name="Name">The cookie name</param>
     /// <param name="Value">The cookie value</param>
+    [Obsolete("Obsolete in favor of HttpResponseCookie")]
     public readonly record struct HttpCookie (string Name, string Value)
     {
         /// <summary>

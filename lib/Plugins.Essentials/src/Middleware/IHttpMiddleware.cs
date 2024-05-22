@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -40,5 +40,19 @@ namespace VNLib.Plugins.Essentials.Middleware
         /// <param name="entity">The entity to process</param>
         /// <returns>The result of the operation</returns>
         ValueTask<FileProcessArgs> ProcessAsync(HttpEntity entity);
+
+        /// <summary>
+        /// Post processes an HTTP entity with possible file selection. May optionally mutate the 
+        /// current arguments before the event processor completes a response. 
+        /// </summary>
+        /// <param name="entity">The entity that has been processes and is ready to close</param>
+        /// <param name="currentArgs">The current file processor arguments</param>
+        /// <remarks>
+        /// Generally this function should simply observe results as the entity may already have been 
+        /// configured for a response, such as by a virtual routine. You should inspect the current arguments
+        /// before mutating the reference.
+        /// </remarks>
+        virtual void VolatilePostProcess(HttpEntity entity, ref FileProcessArgs currentArgs)
+        { }
     }
 }
