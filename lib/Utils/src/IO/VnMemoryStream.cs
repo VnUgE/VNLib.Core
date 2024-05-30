@@ -550,6 +550,7 @@ namespace VNLib.Utils.IO
         
         /// <summary>
         /// Returns a <see cref="ReadOnlySpan{T}"/> window over the data within the entire stream
+        /// that is equal in length to the stream length.
         /// </summary>
         /// <returns>A <see cref="ReadOnlySpan{T}"/> of the data within the entire stream</returns>
         /// <exception cref="OverflowException"></exception>
