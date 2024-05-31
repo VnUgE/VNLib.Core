@@ -60,7 +60,9 @@ namespace VNLib.Utils.Async
         /// </summary>
         /// <param name="singleWriter">A value that specifies only a single thread be enqueing items?</param>
         /// <param name="singleReader">A value that specifies only a single thread will be dequeing</param>
-        /// <param name="capacity">The maxium number of items to enque without failing</param>
+        /// <param name="capacity">
+        /// The maxium number of items to enque without failing. If set to <see cref="int.MaxValue"/> maximum is disabled
+        /// </param>
         public AsyncQueue(bool singleWriter, bool singleReader, int capacity = int.MaxValue)
         {
             if(capacity == int.MaxValue)
