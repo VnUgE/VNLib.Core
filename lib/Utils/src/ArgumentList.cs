@@ -41,18 +41,16 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="args">The array of arguments to clone</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public ArgumentList(string[] args)
-        {
-            ArgumentNullException.ThrowIfNull(args);
-            _args = args.ToList();
-        }
+        [Obsolete("Deprecated in preference to ctor(IEnumerable<string>)")]
+        public ArgumentList(string[] args) : this(args as IEnumerable<string>)
+        { }
 
         /// <summary>
         /// Initalizes the argument parser by copying the given argument list
         /// </summary>
         /// <param name="args">The argument list to clone</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public ArgumentList(IReadOnlyList<string> args)
+        public ArgumentList(IEnumerable<string> args)
         {
             ArgumentNullException.ThrowIfNull(args);
             _args = args.ToList();
@@ -102,5 +100,21 @@ namespace VNLib.Utils
 
         ///<inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        /// <summary>
+        /// Captures the command line arguments from the currently executing process
+        /// and returns them as an ArgumentList
+        /// </summary>
+        /// <returns>The <see cref="ArgumentList"/> containing the current process's argument list</returns>
+        public static ArgumentList CaptureCurrentArgs()
+        {
+            /*
+             *  Capture the current command line arguments and 
+             *  pop the first argument which is always the program 
+             *  name
+             */
+            string[] strings = Environment.GetCommandLineArgs();
+            return new ArgumentList(strings.Skip(1));
+        }
     }
 }

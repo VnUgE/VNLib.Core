@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -28,7 +28,13 @@ using System.Buffers;
 namespace VNLib.Utils.IO
 {
 
-    internal class ArrayPoolStreamBuffer<T> : ISlindingWindowBuffer<T>
+    /// <summary>
+    /// Creates a new <see cref="ArrayPoolStreamBuffer{T}"/> from the 
+    /// given array instance and <see cref="ArrayPool{T}"/> it came from.
+    /// </summary>
+    /// <param name="array">The rented array to use</param>
+    /// <param name="pool">The pool to return the array to when completed</param>
+    internal class ArrayPoolStreamBuffer<T>(T[] array, ArrayPool<T> pool) : ISlindingWindowBuffer<T>
     {
         /// <summary>
         /// The shared <see cref="IStreamBufferFactory{T}"/> instance to allocate buffers 
@@ -36,20 +42,8 @@ namespace VNLib.Utils.IO
         /// </summary>
         public static IStreamBufferFactory<T> Shared { get; } = new DefaultFactory();
 
-        private readonly ArrayPool<T> _pool;
-        private T[] _buffer;
-
-        /// <summary>
-        /// Creates a new <see cref="ArrayPoolStreamBuffer{T}"/> from the 
-        /// given array instance and <see cref="ArrayPool{T}"/> it came from.
-        /// </summary>
-        /// <param name="array">The rented array to use</param>
-        /// <param name="pool">The pool to return the array to when completed</param>
-        public ArrayPoolStreamBuffer(T[] array, ArrayPool<T> pool)
-        {
-            _pool = pool;
-            _buffer = array;
-        }
+        private readonly ArrayPool<T> _pool = pool;
+        private T[] _buffer = array;
 
         ///<inheritdoc/>
         public int WindowStartPos { get; set; }

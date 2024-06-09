@@ -106,14 +106,11 @@ namespace VNLib.Net.Http.Core
 
             //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
             Buffers = new(server.Config.BufferConfig, _compressor != null);
-
-            //Create new request
+         
             Request = new (this, server.Config.MaxUploadsPerRequest);
-            
-            //create a new response object
+           
             Response = new (this, Buffers);
-
-            //Init response writer
+          
             ResponseBody =  new ResponseWriter();
         }
 
