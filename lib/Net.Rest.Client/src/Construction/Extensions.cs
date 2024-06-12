@@ -30,6 +30,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using RestSharp;
+using RestSharp.Interceptors;
 
 namespace VNLib.Net.Rest.Client.Construction
 {
@@ -301,13 +302,8 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="builder"></param>
         /// <param name="withUri">Specifies the uri for the request builder</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
-        public static IRestRequestBuilder<TModel> WithUrl<TModel>(this IRestRequestBuilder<TModel> builder, Func<TModel, Uri> withUri)
-        {
-            //Use the supplied method to convert the uri to a string
-            builder.WithUrl((m) => withUri(m).ToString());
-            return builder;
-        }
-
+        public static IRestRequestBuilder<TModel> WithUrl<TModel>(this IRestRequestBuilder<TModel> builder, Func<TModel, Uri> withUri) 
+            => builder.WithUrl((m) => withUri(m).ToString());
 
         /// <summary>
         /// Sets the uri for all new request messages
@@ -330,12 +326,8 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="builder"></param>
         /// <param name="url">Specifies the uri for the request builder</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
-        public static IRestRequestBuilder<TModel> WithUrl<TModel>(this IRestRequestBuilder<TModel> builder, string url)
-        {
-            //Use the supplied method to convert the uri to a string
-            builder.WithUrl((m) => url);
-            return builder;
-        }
+        public static IRestRequestBuilder<TModel> WithUrl<TModel>(this IRestRequestBuilder<TModel> builder, string url) 
+            => builder.WithUrl((m) => url);
 
         /// <summary>
         /// Specifies a connection header to set for every request
@@ -345,12 +337,8 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="header">The name of the header to set</param>
         /// <param name="func">The callback function to get the request header value</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
-        public static IRestRequestBuilder<TModel> WithHeader<TModel>(this IRestRequestBuilder<TModel> builder, string header, Func<TModel, string> func)
-        {
-            //Specify a header by the given name
-            builder.WithModifier((m, req) => req.AddHeader(header, func(m)));
-            return builder;
-        }
+        public static IRestRequestBuilder<TModel> WithHeader<TModel>(this IRestRequestBuilder<TModel> builder, string header, Func<TModel, string> func) 
+            => builder.WithModifier((m, req) => req.AddHeader(header, func(m)));
 
         /// <summary>
         /// Specifies a static connection header to set for every request
@@ -360,11 +348,43 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="header">The name of the header to set</param>
         /// <param name="value">The static header value to set for all requests</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
-        public static IRestRequestBuilder<TModel> WithHeader<TModel>(this IRestRequestBuilder<TModel> builder, string header, string value)
+        public static IRestRequestBuilder<TModel> WithHeader<TModel>(this IRestRequestBuilder<TModel> builder, string header, string value) 
+            => builder.WithModifier((m, req) => req.AddHeader(header, value));
+
+        /// <summary>
+        /// Adds a client interceptor instance to the request builder
+        /// </summary>
+        /// <typeparam name="TModel"></typeparam>
+        /// <param name="builder"></param>
+        /// <param name="interceptor">A callback function to get an interceptor instance for the builder</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithInterceptor<TModel>(this IRestRequestBuilder<TModel> builder, Func<TModel, Interceptor> interceptor)
         {
-            //Specify a header by the given name
-            builder.WithModifier((m, req) => req.AddHeader(header, value));
-            return builder;
+            ArgumentNullException.ThrowIfNull(interceptor);
+
+            return builder.WithModifier((m, r) =>
+            {
+                r.Interceptors ??= [];
+                r.Interceptors.Add(interceptor(m));
+            });
+        }
+
+        /// <summary>
+        /// Adds a client interceptor instance to the request builder
+        /// </summary>
+        /// <typeparam name="TModel"></typeparam>
+        /// <param name="builder"></param>
+        /// <param name="interceptor">The interceptor instance to add to the request</param>
+        /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
+        public static IRestRequestBuilder<TModel> WithInterceptor<TModel>(this IRestRequestBuilder<TModel> builder, Interceptor interceptor)
+        {
+            ArgumentNullException.ThrowIfNull(interceptor);
+
+            return builder.WithModifier((m, r) =>
+            {
+                r.Interceptors ??= [];
+                r.Interceptors.Add(interceptor);
+            });
         }
 
         /// <summary>
@@ -378,8 +398,7 @@ namespace VNLib.Net.Rest.Client.Construction
         public static IRestRequestBuilder<TModel> WithParameter<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, Func<TModel, string> callback)
         {
             //Get a query item string value from the callback and sets the query paremter
-            builder.WithModifier((m, r) => r.AddParameter(parameter, callback(m), ParameterType.GetOrPost));
-            return builder;
+            return builder.WithModifier((m, r) => r.AddParameter(parameter, callback(m), ParameterType.GetOrPost));
         }
 
         /// <summary>
@@ -393,8 +412,7 @@ namespace VNLib.Net.Rest.Client.Construction
         public static IRestRequestBuilder<TModel> WithParameter<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, string value)
         {
             //Get a query item string value from the callback and sets the query paremter
-            builder.WithModifier((m, r) => r.AddParameter(parameter, value, ParameterType.GetOrPost));
-            return builder;
+            return builder.WithModifier((m, r) => r.AddParameter(parameter, value, ParameterType.GetOrPost));
         }
 
 
