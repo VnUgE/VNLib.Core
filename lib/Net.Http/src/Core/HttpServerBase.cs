@@ -89,11 +89,7 @@ namespace VNLib.Net.Http
         /// Reusable store for obtaining <see cref="HttpContext"/> 
         /// </summary>
         private readonly ObjectRental<HttpContext> ContextStore;
-
-        /// <summary>
-        /// The cached header-line termination value
-        /// </summary>
-        private readonly ReadOnlyMemory<byte> HeaderLineTermination;
+      
         #endregion
 
         /// <summary>
@@ -110,16 +106,6 @@ namespace VNLib.Net.Http
         /// Cached supported compression methods
         /// </summary>
         internal readonly CompressionMethod SupportedCompressionMethods;
-
-        /// <summary>
-        /// Pre-encoded CRLF bytes
-        /// </summary>
-        internal readonly HttpEncodedSegment CrlfBytes;
-
-        /// <summary>
-        /// Pre-encoded HTTP chunking final chunk segment
-        /// </summary>
-        internal readonly HttpEncodedSegment FinalChunkBytes;
 
         private CancellationTokenSource? StopToken;
 
@@ -153,13 +139,6 @@ namespace VNLib.Net.Http
 
             //Cache wildcard root
             _wildcardRoot = ServerRoots.GetValueOrDefault(WILDCARD_KEY);
-
-            //Init pre-encded segments
-            CrlfBytes = HttpEncodedSegment.FromString(HttpHelpers.CRLF, config.HttpEncoding);
-            FinalChunkBytes = HttpEncodedSegment.FromString("0\r\n\r\n", config.HttpEncoding);
-
-            //Store a ref to the crlf memory segment
-            HeaderLineTermination = CrlfBytes.Buffer.AsMemory();
         }
 
         private static void ValidateConfig(in HttpConfig conf)

@@ -53,8 +53,6 @@ namespace VNLib.Net.Http.Core.Buffering
         private IMemoryOwner<byte>? _handle;
         private HttpBufferSegments<byte> _segments;
 
-        #region LifeCycle
-
         ///<inheritdoc/>
         public void AllocateBuffer(IHttpMemoryPool allocator)
         {
@@ -68,24 +66,21 @@ namespace VNLib.Net.Http.Core.Buffering
                 Memory<byte> full = _handle.Memory;
 
                 //Header parse buffer is a special case as it will be double the size due to the char buffer
-                int headerParseBufferSize = GetMaxHeaderBufferSize(in Config);
-                
+                int headerParseBufferSize = GetMaxHeaderBufferSize(in Config);                
                 int responseAndFormDataSize = ComputeResponseAndFormDataBuffer(in Config);
+
+                //Shared header buffer
+                _segments.HeaderAccumulator = GetNextSegment(ref full, headerParseBufferSize);
+                _segments.ResponseAndFormData = GetNextSegment(ref full, responseAndFormDataSize);
+
+                /*
+                 * The chunk accumulator buffer cannot be shared. It is also only
+                 * stored if chunking is enabled.
+                 */
+                _segments.ChunkedResponseAccumulator = _chunkingEnabled 
+                    ? GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize) 
+                    : default;
                
-                _segments = new()
-                {
-                    //Shared header buffer
-                    HeaderAccumulator = GetNextSegment(ref full, headerParseBufferSize),
-
-                    //Shared response and form data buffer
-                    ResponseAndFormData = GetNextSegment(ref full, responseAndFormDataSize),
-
-                    /*
-                     * The chunk accumulator buffer cannot be shared. It is also only
-                     * stored if chunking is enabled.
-                     */
-                    ChunkedResponseAccumulator = _chunkingEnabled ? GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize) : default
-                };
 
                 /*
                  * ************* WARNING ****************
@@ -133,16 +128,13 @@ namespace VNLib.Net.Http.Core.Buffering
 
             //Clear segments
             _segments = default;
-
-            //Free buffer
+          
             if (_handle != null)
             {
                 _handle.Dispose();
                 _handle = null;
             }
         }
-
-        #endregion
 
         ///<inheritdoc/>
         public IHttpHeaderParseBuffer RequestHeaderParseBuffer => _requestHeaderBuffer;
@@ -212,11 +204,11 @@ namespace VNLib.Net.Http.Core.Buffering
         }
 
 
-        readonly struct HttpBufferSegments<T>
+        struct HttpBufferSegments<T>
         {
-            public readonly Memory<T> HeaderAccumulator { get; init; }
-            public readonly Memory<T> ChunkedResponseAccumulator { get; init; }
-            public readonly Memory<T> ResponseAndFormData { get; init; }
+            public Memory<T> HeaderAccumulator;
+            public Memory<T> ChunkedResponseAccumulator;
+            public Memory<T> ResponseAndFormData;
         }  
       
 

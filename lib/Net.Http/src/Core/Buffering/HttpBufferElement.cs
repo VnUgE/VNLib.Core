@@ -76,7 +76,9 @@ namespace VNLib.Net.Http.Core.Buffering
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual Span<byte> GetBinSpan(int offset, int size) 
-            => (offset + size) < _handle.Size ? _handle.GetSpan(offset, size) : throw new ArgumentOutOfRangeException(nameof(offset));
+            => (offset + size) < _handle.Size 
+            ? _handle.GetSpan(offset, size) 
+            : throw new ArgumentOutOfRangeException(nameof(offset));
 
 
         private struct HandleState
@@ -87,6 +89,7 @@ namespace VNLib.Net.Http.Core.Buffering
             public readonly int Size;
             public readonly Memory<byte> Memory;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public HandleState(Memory<byte> mem)
             {
                 Memory = mem;
@@ -97,12 +100,14 @@ namespace VNLib.Net.Http.Core.Buffering
 
             public readonly void Unpin() => _handle.Dispose();
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public readonly Span<byte> GetSpan(int offset, int size)
             {
                 Debug.Assert((offset + size) < Size, "Call to GetSpan failed because the offset/size was out of valid range");
                 return MemoryUtil.GetSpan<byte>(IntPtr.Add(_pointer, offset), size);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public readonly ref byte GetRef() => ref MemoryUtil.GetRef<byte>(_pointer);
         }
     }

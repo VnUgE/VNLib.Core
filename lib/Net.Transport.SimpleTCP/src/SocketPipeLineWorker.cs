@@ -380,11 +380,11 @@ namespace VNLib.Net.Transport.Tcp
                     return new(AwaitFlushTask(result, timer));
                 }
             }
-            catch
+            catch(Exception ex)
             {
                 //Stop timer on exception
                 timer.Stop();
-                throw;
+                return ValueTask.FromException(ex);
             }
         }
 

@@ -36,7 +36,6 @@ using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http.Core;
-using VNLib.Net.Http.Core.Buffering;
 using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.PerfCounter;
 
@@ -60,8 +59,14 @@ namespace VNLib.Net.Http
             {
                 Stream stream = transportContext.ConnectionStream;
 
-                //Set write timeout
+                /*
+                 * Write timeout is constant for the duration of an HTTP 
+                 * connection. Read timeout must be set to active on initial
+                 * loop because a fresh connection is assumed to have data 
+                 * ready.
+                 */
                 stream.WriteTimeout = _config.SendTimeout;
+                stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
 
                 //Init stream
                 context.InitializeContext(transportContext);
@@ -69,6 +74,9 @@ namespace VNLib.Net.Http
                 //Keep the transport open and listen for messages as long as keepalive is enabled
                 do
                 {
+                    //Attempt to buffer a new (or keepalive) connection async
+                    await context.BufferTransportAsync(StopToken!.Token);
+
                     //Set rx timeout low for initial reading
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
                     
@@ -83,9 +91,6 @@ namespace VNLib.Net.Http
 
                     //Reset inactive keeaplive timeout, when expired the following read will throw a cancealltion exception
                     stream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
-                    
-                    //"Peek" or wait for more data to begin another request (may throw timeout exception when timmed out)
-                    await stream.ReadAsync(Memory<byte>.Empty, StopToken!.Token);
                     
                 } while (true);
 
@@ -276,17 +281,14 @@ namespace VNLib.Net.Http
                 //TODO: future support for http2 and http3 over tls
             }
 
-            //Get the parse buffer
-            IHttpHeaderParseBuffer parseBuffer = ctx.Buffers.RequestHeaderParseBuffer;
-            
-            TransportReader reader = new (ctx.GetTransport(), parseBuffer, _config.HttpEncoding, HeaderLineTermination);
+            ctx.GetReader(out TransportReader reader);
 
             HttpStatusCode code;
 
             try
             {
                 //Get the char span
-                Span<char> lineBuf = parseBuffer.GetCharSpan();
+                Span<char> lineBuf = ctx.Buffers.RequestHeaderParseBuffer.GetCharSpan();
                 
                 Http11ParseExtensions.Http1ParseState parseState = new();
                 

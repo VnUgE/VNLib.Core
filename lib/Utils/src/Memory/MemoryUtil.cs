@@ -964,7 +964,8 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Optimized memmove for known small memory blocks. This method is faster than
         /// <see cref="Memmove{T}(ref readonly T, nuint, ref T, nuint, nuint)"/> when the 
-        /// number of elements to copy is known to be small.
+        /// number of elements to copy is known to be small. Pointers to src and dst may be 
+        /// overlapping regions of memory.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="src">A readonly reference to the first element in the source memory sequence</param>
@@ -999,7 +1000,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Low level api for copying data from source memory to destination memory of an
-        /// umanged data type.
+        /// umanged data type. Pointers to src and dst may be overlapping regions of memory.
         /// </summary>
         /// <remarks>
         /// WARNING: It's not possible to do bounds checking when using references. Be sure you 
@@ -1034,6 +1035,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Low level api for copying data from source memory to destination memory of an
         /// umanged data type. This call attempts to force hadrware acceleration if supported.
+        /// Pointers to src and dst may be overlapping regions of memory.
         /// <para>
         /// Understand that using this function attempts to force hardware acceleration, which 
         /// may hurt performance if the data is not large enough to justify the overhead.
