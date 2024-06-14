@@ -112,7 +112,7 @@ namespace VNLib.Net.Http.Core
            
             Response = new (this, Buffers);
           
-            ResponseBody =  new ResponseWriter();
+            ResponseBody = new ResponseWriter();
         }
 
         /// <summary>
@@ -185,16 +185,18 @@ namespace VNLib.Net.Http.Core
 
             _bytesRead = 0;
 
-            Memory<byte> dataBuffer = Buffers.ResponseHeaderBuffer.GetMemory();
+            Memory<byte> dataBuffer = Buffers.RequestHeaderParseBuffer.GetMemory();
 
             /*
              * Since this buffer must be shared with char buffers, size 
              * must be respected. Remember that split buffesr store binary
              * data at the head of the buffer and char data at the tail
              */
-            dataBuffer = dataBuffer[..Buffers.ResponseHeaderBuffer.BinSize];
+            dataBuffer = dataBuffer[..Buffers.RequestHeaderParseBuffer.BinSize];
 
             _bytesRead = await _ctx!.ConnectionStream.ReadAsync(dataBuffer, cancellation);
+
+            Debug.Assert(_bytesRead <= Buffers.RequestHeaderParseBuffer.BinSize);
         }
 
         #endregion

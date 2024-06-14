@@ -49,10 +49,8 @@ namespace VNLib.Net.Http
         //Event handler method for processing incoming data events
         private async Task DataReceivedAsync(ITransportContext transportContext)
         {
-            //Increment open connection count
             Interlocked.Increment(ref OpenConnectionCount);
-            
-            //Rent a new context object to reuse
+           
             HttpContext? context = ContextStore.Rent();
             
             try
@@ -68,19 +66,17 @@ namespace VNLib.Net.Http
                 stream.WriteTimeout = _config.SendTimeout;
                 stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
 
-                //Init stream
                 context.InitializeContext(transportContext);
                 
-                //Keep the transport open and listen for messages as long as keepalive is enabled
+                //Keepalive loop
                 do
                 {
                     //Attempt to buffer a new (or keepalive) connection async
                     await context.BufferTransportAsync(StopToken!.Token);
 
-                    //Set rx timeout low for initial reading
+                    //Return read timeout to active connection timeout after data is received
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
                     
-                    //Process the request
                     bool keepAlive = await ProcessHttpEventAsync(context);
 
                     //If not keepalive, exit the listening loop and clean up connection
@@ -89,12 +85,17 @@ namespace VNLib.Net.Http
                         break;
                     }
 
-                    //Reset inactive keeaplive timeout, when expired the following read will throw a cancealltion exception
+                    //Timeout reset to keepalive timeout waiting for more data on the transport
                     stream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
                     
                 } while (true);
 
-                //Check if an alternate protocol was specified
+                /*
+                 * If keepalive loop breaks, its possible that the connection
+                 * wishes to upgrade to an alternate protocol. 
+                 * 
+                 * Process it here to allow freeing context related resources
+                 */
                 if (context.AlternateProtocol != null)
                 {
                     //Save the current ap
@@ -144,18 +145,16 @@ namespace VNLib.Net.Http
             {
                 _config.ServerLog.Error(ex);
             }
-            
-            //Dec open connection count
+           
             Interlocked.Decrement(ref OpenConnectionCount);
             
             //Return the context for normal operation (alternate protocol will return before now so it will be null)
             if(context != null)
             {
-                //Return context to store
                 ContextStore.Return(context);
             }
-            
-            //Close the transport async
+          
+            //All done, time to close transport and exit
             try
             {
                 await transportContext.CloseConnectionAsync();
@@ -201,8 +200,7 @@ namespace VNLib.Net.Http
                 {
                     return false;
                 }
-
-                //process the request
+              
                 bool processSuccess = await ProcessRequestAsync(context);
 
 #if DEBUG
@@ -296,14 +294,12 @@ namespace VNLib.Net.Http
                 {
                     return code;
                 }
-
-                //Parse the headers
+              
                 if ((code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, in _config, lineBuf)) > 0)
                 {
                     return code;
                 }
-
-                //Prepare entity body for request
+                
                 if ((code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, in _config)) > 0)
                 {
                     return code;
