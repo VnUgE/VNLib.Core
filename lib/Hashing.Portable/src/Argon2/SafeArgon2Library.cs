@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -52,7 +52,7 @@ namespace VNLib.Hashing
         {
             LibHandle = lib;
             //Get the native method
-            methodHandle = lib.GetMethod<Argon2InvokeHash>();
+            methodHandle = lib.GetFunction<Argon2InvokeHash>();
         }
 
         ///<inheritdoc/>

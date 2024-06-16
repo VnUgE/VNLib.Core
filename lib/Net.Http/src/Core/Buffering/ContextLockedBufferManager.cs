@@ -145,6 +145,19 @@ namespace VNLib.Net.Http.Core.Buffering
         ///<inheritdoc/>
         public IChunkAccumulatorBuffer ChunkAccumulatorBuffer => _chunkAccBuffer;
 
+        public Memory<byte> GetInitStreamBuffer()
+        {
+            /*
+            * Since this buffer must be shared with char buffers, size 
+            * must be respected. Remember that split buffesr store binary
+            * data at the head of the buffer and char data at the tail
+            */
+
+            Memory<byte> dataBuffer = RequestHeaderParseBuffer.GetMemory();
+
+            return dataBuffer[..RequestHeaderParseBuffer.BinSize];
+        }
+
 
         /*
          * Response buffer and form data buffer are shared because they are never 

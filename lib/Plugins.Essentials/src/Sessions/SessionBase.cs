@@ -87,7 +87,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             get
             {
                 //try to parse the IP address, otherwise return null
-                _ = IPAddress.TryParse(this[IP_ADDRESS_ENTRY], out IPAddress? ip);
+                _ = IPAddress.TryParse(this[IP_ADDRESS_ENTRY], out IPAddress ip);
                 return ip;
             }
             protected set

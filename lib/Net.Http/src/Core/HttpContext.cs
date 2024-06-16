@@ -172,7 +172,7 @@ namespace VNLib.Net.Http.Core
         {
             /*
              * This function allows for pre-buffering of the transport
-             * before parsing the response. It also allows waiting for more data async 
+             * before parsing the request. It also allows waiting for more data async 
              * when an http1 request is in keep-alive mode waiting for more data. 
              * 
              * We can asynchronously read data when its available and preload 
@@ -185,18 +185,11 @@ namespace VNLib.Net.Http.Core
 
             _bytesRead = 0;
 
-            Memory<byte> dataBuffer = Buffers.RequestHeaderParseBuffer.GetMemory();
-
-            /*
-             * Since this buffer must be shared with char buffers, size 
-             * must be respected. Remember that split buffesr store binary
-             * data at the head of the buffer and char data at the tail
-             */
-            dataBuffer = dataBuffer[..Buffers.RequestHeaderParseBuffer.BinSize];
+            Memory<byte> dataBuffer = Buffers.GetInitStreamBuffer();
 
             _bytesRead = await _ctx!.ConnectionStream.ReadAsync(dataBuffer, cancellation);
 
-            Debug.Assert(_bytesRead <= Buffers.RequestHeaderParseBuffer.BinSize);
+            Debug.Assert(_bytesRead <= dataBuffer.Length);
         }
 
         #endregion
