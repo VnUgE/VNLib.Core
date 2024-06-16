@@ -22,7 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.IO;
 using System.Text;
 
 namespace VNLib.Net.Http.Core
@@ -48,11 +47,5 @@ namespace VNLib.Net.Http.Core
         /// The current connection's http version
         /// </summary>
         HttpVersion CurrentVersion { get; }
-
-        /// <summary>
-        /// Gets the transport stream for the current connection.
-        /// </summary>
-        /// <returns>The current transport stream</returns>
-        Stream GetTransport();
     }
 }

@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using Microsoft.Win32.SafeHandles;
@@ -111,25 +112,32 @@ namespace VNLib.Utils.Memory
             bool result;
 
             //If disposed, set the block handle to zero and exit to avoid raising exceptions during finalization
-            if (IsClosed || IsInvalid)
+            if (IsClosed)
             {
                 block = LPVOID.Zero;
                 return true;
             }
 
+            /*
+             * Checking for invalid is not really necesasry because 
+             * the only way the handle can be invalidated is 
+             * if some derrived class mutates the handle value
+             * and doesn't close the handle
+             */
+            Debug.Assert(IsInvalid == false);
+
             if ((flags & HeapCreation.UseSynchronization) > 0)
             {
                 //wait for lock
                 lock (HeapLock)
-                {
-                    //Free block
+                {                   
                     result = FreeBlock(block);
                     //Release lock before releasing handle
                 }
             }
             else
             {
-                //No lock
+                //No lock needed
                 result = FreeBlock(block);
             }
 

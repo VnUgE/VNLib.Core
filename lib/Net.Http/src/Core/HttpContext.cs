@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Diagnostics;
@@ -81,6 +80,7 @@ namespace VNLib.Net.Http.Core
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
 
+        private readonly TransportManager Transport;
         private readonly ManagedHttpCompressor? _compressor;
         private ITransportContext? _ctx;
         
@@ -105,12 +105,14 @@ namespace VNLib.Net.Http.Core
                 _compressor = null;
             }
 
+            Transport = new();
+
             //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
             Buffers = new(server.Config.BufferConfig, _compressor != null);
          
-            Request = new (this, server.Config.MaxUploadsPerRequest);
+            Request = new (Transport, server.Config.MaxUploadsPerRequest);
            
-            Response = new (this, Buffers);
+            Response = new (this, Transport, Buffers);
           
             ResponseBody = new ResponseWriter();
         }
@@ -134,9 +136,7 @@ namespace VNLib.Net.Http.Core
 
         ///<inheritdoc/>
         public ref readonly HttpEncodedSegment FinalChunkSegment => ref ParentServer.Config.FinalChunkBytes;
-
-        ///<inheritdoc/>
-        public Stream GetTransport() => _ctx!.ConnectionStream;
+     
 
         int _bytesRead;
 
@@ -212,7 +212,7 @@ namespace VNLib.Net.Http.Core
             Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
 
             //Init new connection
-            Response.OnNewConnection(ctx.ConnectionStream);
+            Transport.OnNewConnection(ctx.ConnectionStream);
         } 
 
         ///<inheritdoc/>
@@ -252,6 +252,8 @@ namespace VNLib.Net.Http.Core
         
         bool IReusable.Release()
         {
+            Transport.OnRelease();
+
             _ctx = null;
 
             AlternateProtocol = null;

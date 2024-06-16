@@ -24,6 +24,7 @@
 
 
 using System;
+using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -68,5 +69,17 @@ namespace VNLib.Net.Transport.Tcp
         /// <returns>The number of bytes received</returns>
         int Recv(Span<byte> buffer, int timeout);
 
+        /// <summary>
+        /// Gets as transport buffer writer for more effecient writes
+        /// </summary>
+        IBufferWriter<byte> SendBuffer { get; }
+
+        /// <summary>
+        /// Flushes the send buffer
+        /// </summary>
+        /// <param name="timeout"></param>
+        /// <param name="cancellation"></param>
+        /// <returns>A task that completes when pending write data has been sent</returns>
+        ValueTask FlushSendAsync(int timeout, CancellationToken cancellation);
     }
 }

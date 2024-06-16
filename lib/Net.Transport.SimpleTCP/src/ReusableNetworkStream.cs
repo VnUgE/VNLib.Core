@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -33,6 +33,7 @@
 
 
 using System;
+using System.Buffers;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,7 +46,7 @@ namespace VNLib.Net.Transport.Tcp
     /// <summary>
     /// A reusable stream that marshals data between the socket pipeline and the application
     /// </summary>
-    internal sealed class ReusableNetworkStream : Stream
+    internal sealed class ReusableNetworkStream : Stream, IBufferWriter<byte>
     {
         #region stream basics
         public override bool CanRead => true;
@@ -83,18 +84,31 @@ namespace VNLib.Net.Transport.Tcp
 
         //Timer used to cancel pipeline recv timeouts
         private readonly ITransportInterface Transport;
-      
-        internal ReusableNetworkStream(ITransportInterface transport)
-        {
-            Transport = transport;
-        }
+
+        internal ReusableNetworkStream(ITransportInterface transport) => Transport = transport;
 
         ///<inheritdoc/>
         public override void Close() 
         { }
 
         ///<inheritdoc/>
-        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public override Task FlushAsync(CancellationToken cancellationToken) 
+            => Transport.FlushSendAsync(_sendTimeoutMs, cancellationToken).AsTask();
+
+
+        /*
+         * Expose the buffer writer interface on the stream 
+         * for more efficient publishing
+         */
+
+        ///<inheritdoc/>
+        public void Advance(int count) => Transport.SendBuffer.Advance(count);
+
+        ///<inheritdoc/>
+        public Memory<byte> GetMemory(int sizeHint = 0) => Transport.SendBuffer.GetMemory(sizeHint);
+
+        ///<inheritdoc/>
+        public Span<byte> GetSpan(int sizeHint = 0) => Transport.SendBuffer.GetSpan(sizeHint);
 
         ///<inheritdoc/>
         public override void Flush() 
@@ -136,5 +150,6 @@ namespace VNLib.Net.Transport.Tcp
          */
 
         public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
+     
     }
 }

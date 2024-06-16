@@ -184,7 +184,7 @@ namespace VNLib.Net.Http.Core
                 //Default case is store as a file
                 default:
                     //add upload (if it fails thats fine, no memory to clean up)
-                    request.AddFileUpload(new(request.InputStream, false, request.State.ContentType, null));
+                    request.AddFileUpload(new(request.InputStream, DisposeStream: false, request.State.ContentType, FileName: null));
                     break;
             }
            
@@ -222,7 +222,7 @@ namespace VNLib.Net.Http.Core
             Encoding encoding
         )
         {
-            int length = 0;
+            int charsRead = 0;
             do
             {
                 //read async
@@ -238,18 +238,18 @@ namespace VNLib.Net.Http.Core
                 int numChars = encoding.GetCharCount(binBuffer.Span[..read]);
 
                 //Re-alloc buffer and guard for overflow
-                charBuffer.ResizeIfSmaller(checked(numChars + length));
-
-                //Decode and update position
-                _ = encoding.GetChars(binBuffer.Span[..read], charBuffer.Span.Slice(length, numChars));
-
-                //Update char count
-                length += numChars;
+                charBuffer.ResizeIfSmaller(checked(numChars + charsRead));
+               
+                _ = encoding.GetChars(
+                    bytes: binBuffer.Span[..read], 
+                    chars: charBuffer.Span.Slice(charsRead, numChars)
+                );
+              
+                charsRead += numChars;
 
             } while (true);
-
-            //Return the number of characters read
-            return length;
+           
+            return charsRead;
         }
 
         /*
@@ -299,8 +299,9 @@ namespace VNLib.Net.Http.Core
                 switch (headerType)
                 {
                     case HttpHelpers.ContentDisposition:
-                        //Parse the content dispostion
+
                         HttpHelpers.ParseDisposition(headerValue, out DispType, out Name, out FileName);
+
                         break;
                     case HttpRequestHeader.ContentType:
                         //The header value for content type should be an MIME content type
@@ -320,12 +321,13 @@ namespace VNLib.Net.Http.Core
                 //Only add the upload if the request can accept more uploads, otherwise drop it
                 if (state.Request.CanAddUpload())
                 {
-                    ReadOnlySpan<char> fileData = reader.Window.TrimCRLF();
-
-                    FileUpload upload = UploadFromString(fileData, state, FileName, ctHeaderVal);
-
-                    //Store the file in the uploads 
-                    state.Request.AddFileUpload(in upload);
+                    UploadFromString(
+                        data: reader.Window.TrimCRLF(), 
+                        context: state, 
+                        filename: FileName, 
+                        contentType: ctHeaderVal, 
+                        upload: ref state.Request.AddFileUpload()
+                    );
                 }
             }
 
@@ -344,9 +346,16 @@ namespace VNLib.Net.Http.Core
         /// <param name="data">The string data to copy</param>
         /// <param name="context">The connection context</param>
         /// <param name="filename">The name of the file</param>
-        /// <param name="ct">The content type of the file data</param>
+        /// <param name="contentType">The content type of the file data</param>
+        /// <param name="upload">A reference to the file upload to assign</param>
         /// <returns>The <see cref="FileUpload"/> container</returns>
-        private static FileUpload UploadFromString(ReadOnlySpan<char> data, HttpContext context, string filename, ContentType ct)
+        private static void UploadFromString(
+            ReadOnlySpan<char> data, 
+            HttpContext context, 
+            string filename, 
+            ContentType contentType, 
+            ref FileUpload upload
+        )
         {
             IHttpContextInformation info = context;
             IHttpMemoryPool pool = context.ParentServer.Config.MemoryPool;
@@ -365,7 +374,7 @@ namespace VNLib.Net.Http.Core
                 VnMemoryStream vms = VnMemoryStream.FromHandle(buffHandle, true, bytes, true);
 
                 //Create new upload wrapper that owns the stream
-                return new(vms, true, ct, filename);
+                upload = new(vms, true, contentType, filename);
             }
             catch
             {

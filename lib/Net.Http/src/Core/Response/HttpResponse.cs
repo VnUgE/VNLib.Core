@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.IO;
 using System.Net;
 using System.Threading;
 using System.Diagnostics;
@@ -39,7 +38,8 @@ using VNLib.Net.Http.Core.Buffering;
 
 namespace VNLib.Net.Http.Core.Response
 {
-    internal sealed class HttpResponse(IHttpContextInformation ContextInfo, IHttpBufferManager manager) : IHttpLifeCycle
+
+    internal sealed class HttpResponse(IHttpContextInformation ContextInfo, TransportManager transport, IHttpBufferManager manager) : IHttpLifeCycle
 #if DEBUG
         , IStringSerializeable
 #endif
@@ -47,8 +47,8 @@ namespace VNLib.Net.Http.Core.Response
         const int DefaultCookieCapacity = 2;
 
         private readonly Dictionary<string, HttpResponseCookie> Cookies = new(DefaultCookieCapacity, StringComparer.OrdinalIgnoreCase);
-        private readonly DirectStream ReusableDirectStream = new();
-        private readonly ChunkedStream ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, ContextInfo);
+        private readonly DirectStream ReusableDirectStream = new(transport);
+        private readonly ChunkedStream ReusableChunkedStream = new(manager.ChunkAccumulatorBuffer, transport, ContextInfo);
         private readonly HeaderDataAccumulator Writer = new(manager.ResponseHeaderBuffer, ContextInfo);
 
         private int _headerWriterPosition;
@@ -165,9 +165,6 @@ namespace VNLib.Net.Http.Core.Response
             //Update sent headers
             HeadersSent = true;
 
-            //Get the transport stream to write the response data to
-            Stream transport = ContextInfo.GetTransport();
-
             /*
              * ASYNC NOTICE: It is safe to get the memory block then return the task
              * because the response writer is not cleaned up until the OnComplete()
@@ -175,7 +172,7 @@ namespace VNLib.Net.Http.Core.Response
              */
 
             //Write the response data to the base stream
-            return responseBlock.IsEmpty ? ValueTask.CompletedTask : transport.WriteAsync(responseBlock);
+            return responseBlock.IsEmpty ? ValueTask.CompletedTask : transport.Stream.WriteAsync(responseBlock);
         }
 
         /// <summary>
@@ -261,15 +258,14 @@ namespace VNLib.Net.Http.Core.Response
 
             //reset after getting the written buffer
             _headerWriterPosition = 0;
-
-            //get base stream
-            Stream bs = ContextInfo.GetTransport();
-
+         
             //Write the response data to the base stream
-            await bs.WriteAsync(responseBlock);
+            await transport.Stream.WriteAsync(responseBlock);
 
-            //Flush the base stream to send the data to the client
-            await bs.FlushAsync();
+            /*
+             * Force flush should send data to client
+             */
+            await transport.FlushAsync();
         }
 
         /// <summary>
@@ -298,17 +294,7 @@ namespace VNLib.Net.Http.Core.Response
         ///<inheritdoc/>
         public void OnRelease()
         {
-            ReusableChunkedStream.OnRelease();
-            ReusableDirectStream.OnRelease();
             Cookies.TrimExcess(DefaultCookieCapacity);
-        }
-
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void OnNewConnection(Stream transport)
-        {
-            ReusableChunkedStream.OnNewConnection(transport);
-            ReusableDirectStream.OnNewConnection(transport);
         }
 
         ///<inheritdoc/>
@@ -340,16 +326,16 @@ namespace VNLib.Net.Http.Core.Response
             ReusableChunkedStream.OnComplete();
         }
 
-        private sealed class DirectStream : ReusableResponseStream, IDirectResponsWriter
+        private sealed class DirectStream(TransportManager transport) : IDirectResponsWriter
         {
             ///<inheritdoc/>
-            public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer) => transport!.WriteAsync(buffer);
+            public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer) => transport!.Stream.WriteAsync(buffer);
         }
 
         /// <summary>
         /// Writes chunked HTTP message bodies to an underlying streamwriter 
         /// </summary>
-        private sealed class ChunkedStream(IChunkAccumulatorBuffer buffer, IHttpContextInformation context) : ReusableResponseStream, IResponseDataWriter
+        private sealed class ChunkedStream(IChunkAccumulatorBuffer buffer, TransportManager transport, IHttpContextInformation context) : IResponseDataWriter
         {
             private readonly ChunkDataAccumulator _chunkAccumulator = new(buffer, context);
 
@@ -389,7 +375,7 @@ namespace VNLib.Net.Http.Core.Response
                 _accumulatedBytes = 0;
 
                 //Write remaining data to stream
-                return transport!.WriteAsync(chunkData, CancellationToken.None);
+                return transport.Stream.WriteAsync(chunkData, CancellationToken.None);
             }
 
             #endregion

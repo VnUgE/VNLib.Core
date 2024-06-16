@@ -41,6 +41,8 @@ namespace VNLib.Utils.IO
     /// </summary>
     public sealed class VnMemoryStream : Stream, ICloneable
     {
+        public const int DefaultBufferSize = 4096;
+
         private nint _position;
         private nint _length;
         private bool _isReadonly;
@@ -108,7 +110,7 @@ namespace VNLib.Utils.IO
         /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        public VnMemoryStream(IUnmangedHeap heap) : this(heap, 0, false) { }
+        public VnMemoryStream(IUnmangedHeap heap) : this(heap, DefaultBufferSize, false) { }
        
         /// <summary>
         /// Creates a new memory stream and pre-allocates the internal

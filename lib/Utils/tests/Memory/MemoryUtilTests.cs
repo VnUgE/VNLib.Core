@@ -202,7 +202,7 @@ namespace VNLib.Utils.Memory.Tests
             { }
 
             //test against negative number
-            Assert.ThrowsException<ArgumentException>(() => MemoryUtil.UnsafeAlloc<byte>(-1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.UnsafeAlloc<byte>(-1));
 
             //Alloc large block test (100mb)
             const int largTestSize = 100000 * 1024;
@@ -257,7 +257,7 @@ namespace VNLib.Utils.Memory.Tests
             }
 
             //Negative value
-            Assert.ThrowsException<ArgumentException>(() => _ = MemoryUtil.UnsafeAlloc<byte>(-1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = MemoryUtil.UnsafeAlloc<byte>(-1));
 
 
             /*
@@ -315,7 +315,7 @@ namespace VNLib.Utils.Memory.Tests
             }
 
             //Negative value
-            Assert.ThrowsException<ArgumentException>(() => _ = MemoryUtil.SafeAlloc<byte>(-1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = MemoryUtil.SafeAlloc<byte>(-1));
 
             /*
              * Alloc random sized blocks in a loop, confirm they are empty

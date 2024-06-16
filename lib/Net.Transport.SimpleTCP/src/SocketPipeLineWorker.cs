@@ -234,6 +234,7 @@ namespace VNLib.Net.Transport.Tcp
 
 
         private FlushResult _recvFlushRes;
+      
 
         public async Task RecvDoWorkAsync<TIO>(TIO sock, int bytesTransferred, int recvBufferSize)
             where TIO : ISocketIo
@@ -335,6 +336,28 @@ namespace VNLib.Net.Transport.Tcp
             await RecvPipe.Reader.CompleteAsync();
         }
 
+        ///<inheritdoc/>
+        public IBufferWriter<byte> SendBuffer => SendPipe.Writer;
+
+        ///<inheritdoc/>
+        public ValueTask FlushSendAsync(int timeout, CancellationToken cancellation)
+        {
+            //See if timer is required
+            if (timeout < 1)
+            {
+                NoOpTimerWrapper noOpTimer = default;
+
+                //no timer
+                return SendWithTimerInternalAsync(in noOpTimer, cancellation);
+            }
+            else
+            {
+                TpTimerWrapper sendTimer = new(SendTimer, timeout);
+
+                //Pass new send timer to send method
+                return SendWithTimerInternalAsync(in sendTimer, cancellation);
+            }
+        }
 
         private static async Task AwaitFlushTask<TTimer>(ValueTask<FlushResult> valueTask, TTimer timer)
             where TTimer : INetTimer
@@ -348,6 +371,14 @@ namespace VNLib.Net.Transport.Tcp
             {
                 timer.Stop();
             }
+        }
+
+        private ValueTask SendAsync(ReadOnlySpan<byte> data, int timeout, CancellationToken cancellation)
+        {
+            //Publish send data to send pipe
+            CopyAndPublishDataOnSendPipe(data, _sysSocketBufferSize, SendPipe.Writer);
+
+            return FlushSendAsync(timeout, cancellation);
         }
 
         private ValueTask SendWithTimerInternalAsync<TTimer>(in TTimer timer, CancellationToken cancellation)
@@ -385,28 +416,6 @@ namespace VNLib.Net.Transport.Tcp
                 //Stop timer on exception
                 timer.Stop();
                 return ValueTask.FromException(ex);
-            }
-        }
-
-        private ValueTask SendAsync(ReadOnlySpan<byte> data, int timeout, CancellationToken cancellation)
-        {
-            //Publish send data to send pipe
-            CopyAndPublishDataOnSendPipe(data, _sysSocketBufferSize, SendPipe.Writer);
-
-            //See if timer is required
-            if (timeout < 1)
-            {
-                NoOpTimerWrapper noOpTimer = default;
-
-                //no timer
-                return SendWithTimerInternalAsync(in noOpTimer, cancellation);
-            }
-            else
-            {
-                TpTimerWrapper sendTimer = new(SendTimer, timeout);
-
-                //Pass new send timer to send method
-                return SendWithTimerInternalAsync(in sendTimer, cancellation);
             }
         }
 
@@ -542,7 +551,6 @@ namespace VNLib.Net.Transport.Tcp
                 RecvTimer.Stop();
             }
         }
-      
 
         private static class ThrowHelpers
         {            

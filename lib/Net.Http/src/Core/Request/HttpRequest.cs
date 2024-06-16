@@ -29,10 +29,11 @@ using System.Runtime.CompilerServices;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
+using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http.Core
 {
-    internal sealed class HttpRequest(IHttpContextInformation contextInfo, ushort maxUploads) : IHttpLifeCycle
+    internal sealed class HttpRequest(TransportManager transport, ushort maxUploads) : IHttpLifeCycle
 #if DEBUG
         ,IStringSerializeable
 #endif
@@ -48,7 +49,7 @@ namespace VNLib.Net.Http.Core
         /// A transport stream wrapper that is positioned for reading
         /// the entity body from the input stream
         /// </summary>
-        public readonly HttpInputStream InputStream = new(contextInfo);
+        public readonly HttpInputStream InputStream = new(transport);
 
         /*
          * Evil mutable structure that stores the http request state. 
@@ -63,6 +64,7 @@ namespace VNLib.Net.Http.Core
          */
         private HttpRequestState _state;
         private readonly FileUpload[] _uploads = new FileUpload[maxUploads];
+        private readonly FileUpload[] _singleUpload = new FileUpload[1];
 
         /// <summary>
         /// Gets a mutable structure ref only used to initalize the request 
@@ -120,13 +122,15 @@ namespace VNLib.Net.Http.Core
         }
 
         private void FreeUploadBuffers()
-        {          
-            //Dispose all initialized files 
+        {
+            //Dispose all initialized files, should be much faster than using Array.Clear();
             for (int i = 0; i < _uploads.Length; i++)
             {
                 _uploads[i].Free();
                 _uploads[i] = default;
             }
+
+            _singleUpload[0] = default;
         }
 
         /// <summary>
@@ -136,20 +140,30 @@ namespace VNLib.Net.Http.Core
         public bool CanAddUpload() => _state.UploadCount < _uploads.Length;
 
         /// <summary>
+        /// Attempts to obtain a reference to the next available 
+        /// file upload in the request. If there are no more uploads
+        /// available, a null reference is returned.
+        /// </summary>
+        /// <returns>A reference within the upload array to add the file</returns>
+        public ref FileUpload AddFileUpload()
+        {
+            //See if there is room for another upload
+            if (CanAddUpload())
+            {
+                //get ref to current position and increment the upload count
+                return ref _uploads[_state.UploadCount++];
+            }
+
+            return ref Unsafe.NullRef<FileUpload>();
+        }
+
+        /// <summary>
         /// Attempts to add a file upload to the request if there 
         /// is room for it. If there is no room, it will be ignored.
         /// See <see cref="CanAddUpload"/> to check if another upload can be added.
         /// </summary>
         /// <param name="upload">The file upload structure to add to the list</param>
-        public void AddFileUpload(in FileUpload upload)
-        {
-            //See if there is room for another upload
-            if (CanAddUpload())
-            {
-                //Add file to upload array and increment upload count
-                _uploads[_state.UploadCount++] = upload;
-            }
-        }
+        public void AddFileUpload(in FileUpload upload) => AddFileUpload() = upload;
 
         /// <summary>
         /// Creates a new array and copies the uploads to it.
@@ -160,6 +174,13 @@ namespace VNLib.Net.Http.Core
             if (_state.UploadCount == 0)
             {
                 return Array.Empty<FileUpload>();
+            }
+
+            //Shortcut for a single upload request (hotpath optimization)
+            if (_state.UploadCount == 1)
+            {
+                _singleUpload[0] = _uploads[0];
+                return _singleUpload;
             }
 
             //Create new array to hold uploads
