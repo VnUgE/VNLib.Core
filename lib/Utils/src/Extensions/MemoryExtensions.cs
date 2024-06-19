@@ -268,6 +268,23 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
+        /// Gets a reference to the element at the specified offset from the base
+        /// address of the <see cref="MemoryHandle{T}"/> and casts it to a byte reference
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="block"></param>
+        /// <param name="offset">The number of elements to offset the base reference by</param>
+        /// <returns>The reinterpreted byte reference at the first byte of the element offset</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ref byte GetOffsetByteRef<T>(this IMemoryHandle<T> block, nint offset)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(offset);
+            return ref GetOffsetByteRef(block, (nuint)offset);
+        }
+
+        /// <summary>
         /// Gets a 64bit friendly span offset for the current <see cref="MemoryHandle{T}"/>
         /// </summary>
         /// <typeparam name="T"></typeparam>

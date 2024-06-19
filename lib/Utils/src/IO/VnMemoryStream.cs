@@ -87,8 +87,12 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// Converts a writable <see cref="VnMemoryStream"/> to readonly to allow shallow copies
         /// </summary>
+        /// <remarks>
+        /// This funciton will convert the stream passed into it to a readonly stream. 
+        /// The function passes through the input stream as the return value
+        /// </remarks>
         /// <param name="stream">The stream to make readonly</param>
-        /// <returns>The readonly stream</returns>
+        /// <returns>A reference to the modified input stream</returns>
         public static VnMemoryStream CreateReadonly(VnMemoryStream stream)
         {
             ArgumentNullException.ThrowIfNull(stream);
@@ -103,7 +107,7 @@ namespace VNLib.Utils.IO
         /// global heap instance.
         /// </summary>
         public VnMemoryStream() : this(MemoryUtil.Shared) { }
-        
+
         /// <summary>
         /// Create a new memory stream where buffers will be allocated from the specified heap
         /// </summary>
@@ -111,7 +115,13 @@ namespace VNLib.Utils.IO
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         public VnMemoryStream(IUnmangedHeap heap) : this(heap, DefaultBufferSize, false) { }
-       
+
+        /// <summary>
+        /// Creates a new memory stream using the <see cref="MemoryUtil.Shared"/>
+        /// global heap instance.
+        /// </summary>
+        public VnMemoryStream(nuint bufferSize, bool zero) : this(MemoryUtil.Shared, bufferSize, zero) { }
+
         /// <summary>
         /// Creates a new memory stream and pre-allocates the internal
         /// buffer of the specified size on the specified heap to avoid resizing.
@@ -356,7 +366,7 @@ namespace VNLib.Utils.IO
         }
 
         ///<inheritdoc/>
-        public override unsafe int ReadByte()
+        public override int ReadByte()
         {
             if (LenToPosDiff == 0)
             {
@@ -364,7 +374,7 @@ namespace VNLib.Utils.IO
             }
 
             //get the value at the current position
-            ref byte ptr = ref _buffer.GetOffsetByteRef((nuint)_position);
+            ref byte ptr = ref _buffer.GetOffsetByteRef(_position);
             
             //Increment position
             _position++;
@@ -488,7 +498,7 @@ namespace VNLib.Utils.IO
                 throw new NotSupportedException("Write operation is not allowed on readonly stream!");
             }
             //Calculate the new final position
-            nint newPos = (_position + buffer.Length);
+            nint newPos = checked(_position + buffer.Length);
             //Determine if the buffer needs to be expanded
             if (buffer.Length > LenToPosDiff)
             {
@@ -497,8 +507,16 @@ namespace VNLib.Utils.IO
                 //Update length
                 _length = newPos;
             }
+
             //Copy the input buffer to the internal buffer
-            MemoryUtil.Copy(buffer, 0, _buffer, (nuint)_position, buffer.Length);
+            MemoryUtil.Copy(
+                source: buffer, 
+                sourceOffset: 0, 
+                dest: _buffer, 
+                destOffset: (nuint)_position, 
+                count: buffer.Length
+            );
+            
             //Update the position
             _position = newPos;
         }
