@@ -143,7 +143,8 @@ namespace VNLib.Utils.Memory
              * get the heap's stats, otherwise return an empty handle
              */
             return _lazyHeap.IsLoaded && _lazyHeap.Instance is TrackedHeapWrapper h
-                ? h.GetCurrentStats() : default;
+                ? h.GetCurrentStats() 
+                : default;
         }
 
         /// <summary>

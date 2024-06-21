@@ -34,7 +34,7 @@ namespace VNLib.Utils.Memory
         #region alloc
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool UseUnmanagedHeap<T>(IUnmangedHeap heap, nuint elements)
+        private static bool CanUseUnmanagedHeap<T>(IUnmangedHeap heap, nuint elements)
         {
             /*
             * We may allocate from the share heap only if the heap is not using locks
@@ -123,7 +123,7 @@ namespace VNLib.Utils.Memory
                 return default;
             }
 
-            return UseUnmanagedHeap<T>(Shared, (uint)elements)
+            return CanUseUnmanagedHeap<T>(Shared, (uint)elements)
                 ? UnsafeAlloc<T>(Shared, elements, zero)
                 : UnsafeAlloc(ArrayPool<T>.Shared, elements, zero);
         }
@@ -229,7 +229,7 @@ namespace VNLib.Utils.Memory
         {
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
 
-            if (UseUnmanagedHeap<T>(Shared, elements))
+            if (CanUseUnmanagedHeap<T>(Shared, elements))
             {
                 return SafeAlloc<T>(Shared, elements, zero);
             }
@@ -425,7 +425,7 @@ namespace VNLib.Utils.Memory
                 return default;
             }
 
-            return UseUnmanagedHeap<byte>(Shared, (uint)elements)
+            return CanUseUnmanagedHeap<byte>(Shared, (uint)elements)
                 ? UnsafeAlloc<byte>(Shared, elements, zero)
                 : UnsafeAlloc(ArrayPool<byte>.Shared, elements, zero);
         }
@@ -462,7 +462,7 @@ namespace VNLib.Utils.Memory
         {
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
 
-            return UseUnmanagedHeap<byte>(Shared, (uint)elements)
+            return CanUseUnmanagedHeap<byte>(Shared, (uint)elements)
                 ? SafeAlloc<byte>(Shared, (nuint)elements, zero)
                 : SafeAlloc(ArrayPool<byte>.Shared, elements, zero);
         }

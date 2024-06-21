@@ -36,6 +36,7 @@
  */
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -74,7 +75,7 @@ namespace VNLib.Net.Http
         /// </summary>
         internal static readonly Memory<byte> WriteOnlyScratchBuffer = new byte[64 * 1024];
 
-        private readonly ITransportProvider Transport;
+        private readonly ITransportProvider[] Transports;
         private readonly FrozenDictionary<string, IWebRoot> ServerRoots;
         private readonly IWebRoot? _wildcardRoot;
         private readonly HttpConfig _config;
@@ -114,10 +115,10 @@ namespace VNLib.Net.Http
         /// Immutable data structures are initialzed.
         /// </summary>
         /// <param name="config">The configuration used to create the instance</param>
-        /// <param name="transport">The transport provider to listen to connections from</param>
+        /// <param name="transports">An enumeration of transports to listen for connections on</param>
         /// <param name="sites">A collection of <see cref="IWebRoot"/>s that route incomming connetctions</param>
         /// <exception cref="ArgumentException"></exception>
-        public HttpServer(HttpConfig config, ITransportProvider transport, IEnumerable<IWebRoot> sites)
+        public HttpServer(HttpConfig config, IEnumerable<ITransportProvider> transports, IEnumerable<IWebRoot> sites)
         {
             //Validate the configuration
             ValidateConfig(in config);
@@ -127,12 +128,13 @@ namespace VNLib.Net.Http
             ServerRoots = sites.ToFrozenDictionary(static r => r.Hostname, static tv => tv, StringComparer.OrdinalIgnoreCase);
             //Compile and store the timeout keepalive header
             KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";           
-            //Setup config copy with the internal http pool
-            Transport = transport;
+           
+            Transports = transports.ToArray();
+
             //Cache supported compression methods, or none if compressor is null
-            SupportedCompressionMethods = config.CompressorManager == null ? 
-                CompressionMethod.None : 
-                config.CompressorManager.GetSupportedMethods();
+            SupportedCompressionMethods = config.CompressorManager == null 
+                ? CompressionMethod.None 
+                : config.CompressorManager.GetSupportedMethods();
 
             //Create a new context store
             ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this, SupportedCompressionMethods));
@@ -242,16 +244,34 @@ namespace VNLib.Net.Http
         public Task Start(CancellationToken cancellationToken)
         {
             StopToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            //Start servers with the new token source
-            Transport.Start(StopToken.Token);
-            //Start the listen task
-            return Task.Run(ListenWorkerDoWork, cancellationToken);
+            
+            //Start servers with the new token source before listening for connections
+            Array.ForEach(Transports, p => p.Start(StopToken.Token));
+
+            //Listen to connections on all transports async
+            IEnumerable<Task> runTasks = Transports.Select(ListenAsync);
+
+            //Set running flag and will be reset when all listening tasks are done
+            Running = true;
+
+            return Task.WhenAll(runTasks)
+                .ContinueWith(
+                    OnAllStopped, 
+                    CancellationToken.None, 
+                    TaskContinuationOptions.RunContinuationsAsynchronously, 
+                    TaskScheduler.Default
+                );
+
+            //Defer listening tasks to the task scheduler to avoid blocking this thread
+            Task ListenAsync(ITransportProvider tp) => Task.Run(() => ListenWorkerDoWork(tp), cancellationToken);
+
+            void OnAllStopped(Task _)  => Running = false;
         }
 
         /*
          * A worker task that listens for connections from the transport
          */
-        private async Task ListenWorkerDoWork()
+        private async Task ListenWorkerDoWork(ITransportProvider transport)
         {
             //Set running flag
             Running = true;
@@ -264,7 +284,7 @@ namespace VNLib.Net.Http
                 try
                 {
                     //Listen for new connection 
-                    ITransportContext ctx = await Transport.AcceptAsync(StopToken!.Token);
+                    ITransportContext ctx = await transport.AcceptAsync(StopToken!.Token);
 
                     //Try to dispatch the received event
                     _ = DataReceivedAsync(ctx).ConfigureAwait(false);
