@@ -49,8 +49,12 @@ namespace VNLib.Utils.IO
         
         //Memory
         private readonly IResizeableMemoryHandle<byte> _buffer;
+
         //Default owns handle
         private readonly bool OwnsHandle = true;
+
+        //Lazy loaded memory wrapper
+        private MemoryManager<byte>? _memoryWrapper;
 
         /// <summary>
         /// Creates a new <see cref="VnMemoryStream"/> pointing to the begining of memory, and consumes the handle.
@@ -259,27 +263,31 @@ namespace VNLib.Utils.IO
 
             cancellationToken.ThrowIfCancellationRequested();            
 
+            //Memory manager requires 32bit or less in length
             if(_length < Int32.MaxValue)
             {
-                //Safe to alloc a memory manager to do copy
-                using MemoryManager<byte> asMemManager = _buffer.ToMemoryManager(false);
+                //Get/alloc the internal memory manager and get the block
+                ReadOnlyMemory<byte> asMemory = AsMemory();
+
+                Debug.Assert(asMemory.Length >= LenToPosDiff, "Internal memory block smaller than desired for stream copy");
 
                 /*
                  * CopyTo starts at the current position, as if calling Read() 
                  * so the reader must be offset to match and the _length gives us the 
                  * actual length of the stream and therefor the segment size
-                 */              
+                 */
 
-                while(LenToPosDiff > 0)
+                while (LenToPosDiff > 0)
                 {
                     int blockSize = Math.Min((int)LenToPosDiff, bufferSize);
-                    Memory<byte> window = asMemManager.Memory.Slice((int)_position, blockSize);
+
+                    ReadOnlyMemory<byte> window = asMemory.Slice((int)_position, blockSize);
 
                     //write async
                     await destination.WriteAsync(window, cancellationToken);
 
                     //Update position
-                    _position+= bufferSize;
+                    _position += bufferSize;
                 }
             }
             else
@@ -581,6 +589,40 @@ namespace VNLib.Utils.IO
             //Get span with no offset
             return _buffer.AsSpan(0, len);
         }
+
+        /// <summary>
+        /// Returns a <see cref="ReadOnlyMemory{T}"/> structure which is a window of the buffered
+        /// data as it currently sits. For writeable straems, you must call this function 
+        /// every time the size of the stream changes. The memory structure is just a "pointer" to 
+        /// the internal buffer.
+        /// </summary>
+        /// <returns>
+        /// A memory snapshot of the stream. 
+        /// </returns>
+        /// <remarks>
+        /// This function causes an internal allocation on the first call. After the first call
+        /// to this function, all calls are thread-safe.
+        /// </remarks>
+        public ReadOnlyMemory<byte> AsMemory()
+        {
+            /*
+             * Safe cast stram length to int, because memory window requires a 32bit 
+             * integer. Also will throw before allocating the mmemory manager
+             */
+
+            int len = Convert.ToInt32(_length);
+
+            //Defer/lazy init the memory manager
+            MemoryManager<byte> asMemory = LazyInitializer.EnsureInitialized(ref _memoryWrapper, AllocMemManager);
+
+            Debug.Assert(asMemory != null);
+
+            /*
+             * Buffer window may be larger than the actual stream legnth, so 
+             * slice the memory to the actual length of the stream
+             */
+            return asMemory.Memory[..len];
+        }
       
         /// <summary>
         /// If the current stream is a readonly stream, creates a shallow copy for reading only.
@@ -588,6 +630,8 @@ namespace VNLib.Utils.IO
         /// <returns>New stream shallow copy of the internal stream</returns>
         /// <exception cref="NotSupportedException"></exception>
         public object Clone() => GetReadonlyShallowCopy();
+
+        private MemoryManager<byte> AllocMemManager() => _buffer.ToMemoryManager(false);
 
     }
 }

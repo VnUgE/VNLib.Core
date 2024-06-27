@@ -44,15 +44,20 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// Provides extension methods for manipulating <see cref="HttpEvent"/>s
     /// </summary>
     public static class EssentialHttpEventExtensions
-    {      
-        
+    {         
 
         /*
          * Pooled/tlocal serializers
          */
-        private static ThreadLocal<Utf8JsonWriter> LocalSerializer { get; } = new(() => new(Stream.Null));
-        private static IObjectRental<JsonResponse> ResponsePool { get; } = ObjectRental.Create(ResponseCtor);
+        private static readonly ThreadLocal<Utf8JsonWriter> LocalSerializer = new(() => new(Stream.Null));
+        private static readonly ObjectRental<JsonResponse> ResponsePool = ObjectRental.Create(ResponseCtor);
+
         private static JsonResponse ResponseCtor() => new(ResponsePool);
+
+        /// <summary>
+        /// Purges any idle cached JSON responses from the static pool.
+        /// </summary>
+        public static void PurgeJsonResponseCache() => ResponsePool.CacheClear();
 
         #region Response Configuring
 
@@ -366,8 +371,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             ArgumentNullException.ThrowIfNull(encoding, nameof(encoding));
             
             //Get new simple memory response
-            IMemoryResponseReader reader = new SimpleMemoryResponse(data, encoding);
-            ev.CloseResponse(code, type, reader);
+            ev.CloseResponse(code, type, entity: new SimpleMemoryResponse(data, encoding));
         }
         
         /// <summary>
@@ -435,7 +439,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="UriFormatException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Redirect(this IHttpEvent ev, RedirectType type, string location) 
-            => Redirect(ev, type, new Uri(location, UriKind.RelativeOrAbsolute));
+            => Redirect(ev, type, location: new Uri(location, UriKind.RelativeOrAbsolute));
 
         /// <summary>
         /// Redirects a client using the specified <see cref="RedirectType"/>
@@ -939,7 +943,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <returns>True if operation succeeds.</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public static bool AcceptWebSocket(this IHttpEvent entity, WebSocketAcceptedCallback socketOpenedCallback, string? subProtocol = null, TimeSpan keepAlive = default)
+        public static bool AcceptWebSocket(
+            this IHttpEvent entity, 
+            WebSocketAcceptedCallback socketOpenedCallback, 
+            string? subProtocol = null, 
+            TimeSpan keepAlive = default
+        )
         {
             //Must define an accept callback
             ArgumentNullException.ThrowIfNull(entity);
@@ -971,7 +980,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         private static string GetNewSocketId() => Guid.NewGuid().ToString("N");
 
-        private static bool PrepWebSocket(this IHttpEvent entity, string? subProtocol = null)
+        private static bool PrepWebSocket(this IHttpEvent entity, string? subProtocol)
         {
             ArgumentNullException.ThrowIfNull(entity);
 
@@ -1006,6 +1015,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                     return true;
                 }
             }
+
             //Set the client up for a bad request response, nod a valid websocket request
             entity.CloseResponse(HttpStatusCode.BadRequest);
             return false;

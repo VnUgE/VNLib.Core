@@ -95,5 +95,49 @@ namespace VNLib.Utils.IO.Tests
             Assert.ThrowsException<NotSupportedException>(() => vms.WriteByte(0));
 
         }
+
+        [TestMethod()]
+        public void GetMemOrSpanTest()
+        {
+            //Alloc stream with some initial buffer size
+            using VnMemoryStream vms = new(1024, false);
+
+            //Ensure since no data was written, the returned windows are empty
+            Assert.IsTrue(vms.AsSpan().IsEmpty);
+            Assert.IsTrue(vms.AsMemory().IsEmpty);
+
+            //Write some data
+            byte[] testData = [1, 2, 3, 4, 5, 6, 7, 8];
+            vms.Write(testData);
+
+            Assert.AreEqual(vms.Length, testData.Length);
+
+            //Get the data as a span
+            ReadOnlySpan<byte> span = vms.AsSpan();
+            Assert.AreEqual(span.Length, testData.Length);
+
+            for (int i = 0; i < span.Length; i++)
+            {
+                Assert.AreEqual(span[i], testData[i]);
+            }
+
+            //Get the data as a memory
+            ReadOnlyMemory<byte> memory = vms.AsMemory();
+            Assert.AreEqual(memory.Length, testData.Length);
+
+            for (int i = 0; i < memory.Length; i++)
+            {
+                Assert.AreEqual(memory.Span[i], testData[i]);
+            }
+
+            //Get the data as a byte array
+            byte[] array = vms.ToArray();
+            Assert.AreEqual(array.Length, testData.Length);
+
+            for (int i = 0; i < array.Length; i++)
+            {
+                Assert.AreEqual(array[i], testData[i]);
+            }
+        }
     }
 }

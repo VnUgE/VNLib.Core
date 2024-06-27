@@ -30,7 +30,9 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils.IO;
 using VNLib.Net.Http;
+using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
 
@@ -220,7 +222,41 @@ namespace VNLib.Plugins.Essentials
                 Entity.CloseResponse(
                     code, 
                     type, 
-                    new MemStreamWrapper(ms, (int)length)
+                    entity: new MemStreamWrapper(ms, (int)length)
+                );
+
+                return;
+            }
+
+            /*
+             * Readonly vn streams can also use a shortcut to avoid http buffer allocation and 
+             * async streaming. This is done by wrapping the stream in a memory response reader
+             * 
+             * Allocating a memory manager requires that the stream is readonly
+             */
+            if (stream is VnMemoryStream vms && length < int.MaxValue)
+            {
+                Entity.CloseResponse(
+                   code,
+                   type,
+                   entity: new VnStreamWrapper(vms, (int)length)
+               );
+
+                return;
+            }
+
+            /*
+             * Files can have a bit more performance using the RandomAccess library when reading
+             * sequential segments without buffering. It avoids a user-space copy and async reading
+             * performance without the file being opened as async.
+             */
+            if(stream is FileStream fs)
+            {
+                Entity.CloseResponse(
+                    code,
+                    type,
+                    entity: new DirectFileStream(fs.SafeFileHandle),
+                    length
                 );
 
                 return;
@@ -270,6 +306,40 @@ namespace VNLib.Plugins.Essentials
         void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler) => Entity.DangerousChangeProtocol(protocolHandler);
 
 
+        private sealed class VnStreamWrapper(VnMemoryStream memStream, int length) : IMemoryResponseReader
+        {
+            //Store memory buffer, causes an internal allocation, so avoid calling mutliple times
+            readonly ReadOnlyMemory<byte> _memory = memStream.AsMemory();
+
+            readonly int length = length;
+
+            /*
+             * Stream may be offset by the caller, it needs 
+             * to be respected during streaming.
+             */
+            int read = (int)memStream.Position;
+
+            ///<inheritdoc/>
+            public int Remaining
+            {
+                get
+                {
+                    Debug.Assert(length - read >= 0);
+                    return length - read;
+                }
+            }
+
+            ///<inheritdoc/>
+            public void Advance(int written) => read += written;
+
+            ///<inheritdoc/>
+            public void Close() => memStream.Dispose();
+
+            ///<inheritdoc/>
+            public ReadOnlyMemory<byte> GetMemory() => _memory.Slice(read, Remaining);
+        }
+
+
         private sealed class MemStreamWrapper(MemoryStream memStream, int length) : IMemoryResponseReader 
         {
             readonly int length = length;
@@ -280,6 +350,7 @@ namespace VNLib.Plugins.Essentials
              */
             int read = (int)memStream.Position;
 
+            ///<inheritdoc/>
             public int Remaining
             {
                 get
@@ -289,11 +360,13 @@ namespace VNLib.Plugins.Essentials
                 }
             }
 
+            ///<inheritdoc/>
             public void Advance(int written) => read += written;
 
             ///<inheritdoc/>
             public void Close() => memStream.Dispose();
 
+            ///<inheritdoc/>
             public ReadOnlyMemory<byte> GetMemory()
             {
                 byte[] intBuffer = memStream.GetBuffer();

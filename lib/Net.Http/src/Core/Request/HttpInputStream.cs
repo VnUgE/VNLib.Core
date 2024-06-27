@@ -32,7 +32,6 @@ using System.Runtime.CompilerServices;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-using VNLib.Net.Http.Core.Response;
 
 namespace VNLib.Net.Http.Core
 {

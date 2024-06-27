@@ -27,7 +27,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace VNLib.Net.Http.Core.Response
+namespace VNLib.Net.Http.Core
 {
     internal sealed class TransportManager
     {

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -24,66 +24,60 @@
 
 using System;
 using System.IO;
-using System.Buffers;
+using System.Diagnostics;
 
 using VNLib.Net.Http;
 using VNLib.Utils.IO;
-using VNLib.Utils.Memory;
-using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Plugins.Essentials.Extensions
 {
-    internal sealed class JsonResponse : IJsonSerializerBuffer, IMemoryResponseReader
+    internal sealed class JsonResponse(IObjectRental<JsonResponse> pool) : IJsonSerializerBuffer, IMemoryResponseReader, IDisposable
     {
-        private readonly IObjectRental<JsonResponse> _pool;
+        const int InitBufferSize = 4096;
+        const int MaxSizeThreshold = 24 * 1024; //24KB
 
-        private readonly MemoryHandle<byte> _handle;
-        private readonly IMemoryOwner<byte> _memoryOwner;
+        private readonly IObjectRental<JsonResponse> _pool = pool;
+
         //Stream "owns" the handle, so we cannot dispose the stream
-        private readonly VnMemoryStream _asStream;
-        
-        private int _written;
+        private readonly VnMemoryStream _stream = new(InitBufferSize, false);
 
-        internal JsonResponse(IObjectRental<JsonResponse> pool)
+        private int _read;
+        private ReadOnlyMemory<byte> _dataSegToSend;
+
+        //Cleanup any dangling resources dangling somehow
+        ~JsonResponse() => Dispose();
+
+        ///<inheritdoc/>
+        public void Dispose()
         {
-            /*
-             * I am breaking the memoryhandle rules by referrencing the same
-             * memory handle in two different wrappers.
-             */
-
-            _pool = pool;
-            
-            //Alloc buffer
-            _handle = MemoryUtil.Shared.Alloc<byte>(4096, false);
-            
-            //Create stream around handle and not own it
-            _asStream = VnMemoryStream.FromHandle(_handle, false, 0, false);
-            
-            //Get memory owner from handle
-            _memoryOwner = _handle.ToMemoryManager(false);
-        }
-
-        ~JsonResponse()
-        {
-            _handle.Dispose();
+            _stream.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         ///<inheritdoc/>
         public Stream GetSerialzingStream()
         {
             //Reset stream position
-            _asStream.Seek(0, SeekOrigin.Begin);
-            return _asStream;
+            _stream.Seek(0, SeekOrigin.Begin);
+            return _stream;
         }
 
         ///<inheritdoc/>
         public void SerializationComplete()
         {
-            //Reset written position
-            _written = 0;
+            //Reset data read position
+            _read = 0;
+
             //Update remaining pointer
-            Remaining = Convert.ToInt32(_asStream.Position);
+            Remaining = Convert.ToInt32(_stream.Position);
+
+            /*
+             * Store the written segment for streaming now that the 
+             * serialization is complete. This is the entire window of 
+             * the stream, from 0 - length
+             */
+            _dataSegToSend = _stream.AsMemory();
         }
 
 
@@ -94,21 +88,30 @@ namespace VNLib.Plugins.Essentials.Extensions
         void IMemoryResponseReader.Advance(int written)
         {
             //Update position
-            _written += written;
+            _read += written;
             Remaining -= written;
+
+            Debug.Assert(Remaining > 0);
         }
 
         ///<inheritdoc/>
         void IMemoryResponseReader.Close()
         {
             //Reset and return to pool
-            _written = 0;
+            _read = 0;
             Remaining = 0;
+
+            //if the stream size was pretty large, shrink it before returning to the pool
+            if (_stream.Length > MaxSizeThreshold)
+            {
+                _stream.SetLength(InitBufferSize);
+            }
+
             //Return self back to pool
             _pool.Return(this);
         }
 
         ///<inheritdoc/>
-        ReadOnlyMemory<byte> IMemoryResponseReader.GetMemory() => _memoryOwner.Memory.Slice(_written, Remaining);
+        ReadOnlyMemory<byte> IMemoryResponseReader.GetMemory() => _dataSegToSend.Slice(_read, Remaining);
     }
 }

@@ -47,7 +47,7 @@ namespace VNLib.Net.Http
         private int OpenConnectionCount;
 
         //Event handler method for processing incoming data events
-        private async Task DataReceivedAsync(ITransportContext transportContext)
+        private async Task DataReceivedAsync(ListenerState listenState, ITransportContext transportContext)
         {
             Interlocked.Increment(ref OpenConnectionCount);
            
@@ -77,7 +77,7 @@ namespace VNLib.Net.Http
                     //Return read timeout to active connection timeout after data is received
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
                     
-                    bool keepAlive = await ProcessHttpEventAsync(context);
+                    bool keepAlive = await ProcessHttpEventAsync(listenState, context);
 
                     //If not keepalive, exit the listening loop and clean up connection
                     if (!keepAlive)
@@ -169,9 +169,10 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Main event handler for all incoming connections
         /// </summary>
+        /// <param name="listenState"></param>
         /// <param name="context">Reusable context object</param>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<bool> ProcessHttpEventAsync(HttpContext context)
+        private async Task<bool> ProcessHttpEventAsync(ListenerState listenState, HttpContext context)
         {
             HttpPerfCounterState counter = default;
 
@@ -201,7 +202,7 @@ namespace VNLib.Net.Http
                     return false;
                 }
               
-                bool processSuccess = await ProcessRequestAsync(context);
+                bool processSuccess = await ProcessRequestAsync(listenState, context);
 
 #if DEBUG
                 static void WriteConnectionDebugLog(HttpServer server, HttpContext context)
@@ -382,10 +383,13 @@ namespace VNLib.Net.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<bool> ProcessRequestAsync(HttpContext context)
+        private async Task<bool> ProcessRequestAsync(ListenerState listenState, HttpContext context)
         {
             //Get the server root for the specified location or fallback to a wildcard host if one is selected
-            IWebRoot? root = ServerRoots!.GetValueOrDefault(context.Request.State.Location.DnsSafeHost, _wildcardRoot);
+            IWebRoot? root = listenState.Roots.GetValueOrDefault(
+                context.Request.State.Location.DnsSafeHost, 
+                listenState.DefaultRoute
+            );
             
             if (root == null)
             {

@@ -77,12 +77,12 @@ namespace VNLib.Net.Http
         /// <summary>
         /// A log provider that all server related log entiries will be written to
         /// </summary>
-        public ILogProvider ServerLog { get; init; }
+        public readonly ILogProvider ServerLog { get; init; }
 
         /// <summary>
         /// Server memory pool to use for allocating buffers
         /// </summary>
-        public IHttpMemoryPool MemoryPool { get; init; }
+        public readonly IHttpMemoryPool MemoryPool { get; init; }
 
         /// <summary>
         /// The absolute request entity body size limit in bytes
