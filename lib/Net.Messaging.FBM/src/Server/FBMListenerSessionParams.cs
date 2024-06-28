@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -36,27 +36,27 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// The size of the buffer to use while reading data from the websocket
         /// in the listener loop
         /// </summary>
-        public readonly int RecvBufferSize { get; init; }
+        public required readonly int RecvBufferSize { get; init; }
         /// <summary>
         /// The size of the buffer to store <see cref="FBMMessageHeader"/> values in 
         /// the <see cref="FBMRequestMessage"/>
         /// </summary>
-        public readonly int MaxHeaderBufferSize { get; init; }
+        public required readonly int MaxHeaderBufferSize { get; init; }
         /// <summary>
         /// The size of the internal message response buffer when
         /// not streaming
         /// </summary>
-        public readonly int ResponseBufferSize { get; init; }        
+        public required readonly int ResponseBufferSize { get; init; }        
         /// <summary>
         /// The FMB message header character encoding
         /// </summary>
-        public readonly Encoding HeaderEncoding { get; init; }
+        public required readonly Encoding HeaderEncoding { get; init; }
 
         /// <summary>
         /// The absolute maxium size (in bytes) message to process before
         /// closing the websocket connection. This value should be negotiaed 
         /// by clients or hard-coded to avoid connection issues
         /// </summary>
-        public readonly int MaxMessageSize { get; init; }
+        public required readonly int MaxMessageSize { get; init; }
     }
 }

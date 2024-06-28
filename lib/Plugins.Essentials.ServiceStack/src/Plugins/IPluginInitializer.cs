@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -25,7 +25,7 @@
 
 using VNLib.Utils.Logging;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     internal interface IPluginInitializer
     {

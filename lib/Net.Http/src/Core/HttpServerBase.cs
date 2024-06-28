@@ -115,7 +115,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Gets a value indicating whether the server is listening for connections
         /// </summary>
-        public bool Running { get; private set; }
+        public bool Running => Transports.Any(static t => t.Running);
 
         /// <summary>
         /// Cached supported compression methods
@@ -284,22 +284,11 @@ namespace VNLib.Net.Http
             //Listen to connections on all transports async
             IEnumerable<Task> runTasks = Transports.Select(ListenAsync);
 
-            //Set running flag and will be reset when all listening tasks are done
-            Running = true;
-
             //Calling WhenAll() will force the numeration and schedule listening tasks
-            return Task.WhenAll(runTasks)
-                .ContinueWith(
-                    OnAllStopped, 
-                    CancellationToken.None, 
-                    TaskContinuationOptions.RunContinuationsAsynchronously, 
-                    TaskScheduler.Default
-                );
+            return Task.WhenAll(runTasks);
 
             //Defer listening tasks to the task scheduler to avoid blocking this thread
             Task ListenAsync(ListenerState tp) => Task.Run(() => ListenWorkerDoWork(tp), cancellationToken);
-
-            void OnAllStopped(Task _)  => Running = false;
         }
 
         /*
@@ -308,11 +297,22 @@ namespace VNLib.Net.Http
         private async Task ListenWorkerDoWork(ListenerState state)
         {
             state.Running = true;
-            
-            _config.ServerLog.Information("HTTP server {hc} listening for connections", GetHashCode());
+
+            if (_config.ServerLog.IsEnabled(LogLevel.Verbose))
+            {
+                _config.ServerLog.Verbose(
+                   format: "HTTP server {hc} listening for connections on {iface}",
+                   GetHashCode(),
+                   state.OriginServer
+               );
+            }
+            else
+            {
+                _config.ServerLog.Information("HTTP server {hc} listening for connections", GetHashCode());
+            }
 
             //Listen for connections until canceled
-            while (true)
+            do
             {
                 try
                 {
@@ -331,7 +331,8 @@ namespace VNLib.Net.Http
                 {
                     _config.ServerLog.Error(ex);
                 }
-            }
+
+            } while (true);
 
             //Clear all caches before leaving to aid gc
             CacheHardClear();

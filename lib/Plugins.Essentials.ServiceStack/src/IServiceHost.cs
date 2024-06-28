@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -23,6 +23,7 @@
 */
 
 using VNLib.Net.Http;
+using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -40,9 +41,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         IWebRoot Processor { get; }
 
         /// <summary>
-        /// The host's transport information
+        /// Optional user state to be set during initialization and read at a later time
         /// </summary>
-        IHostTransportInfo TransportInfo { get; }
+        object? UserState { get; }
       
         /// <summary>
         /// Called when a plugin is loaded and is endpoints are extracted

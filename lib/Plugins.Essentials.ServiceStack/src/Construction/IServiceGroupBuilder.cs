@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IDomainBuilder.cs 
+* File: IServiceGroupBuilder.cs 
 *
-* IDomainBuilder.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
-* VNLib collection of libraries and utilities.
+* IServiceGroupBuilder.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
+* is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -23,26 +23,38 @@
 */
 
 using System;
+using System.IO;
+
+using VNLib.Utils.Logging;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {
     /// <summary>
-    /// Allows for defining virtual hosts for the service stack
+    /// Allows for defining service groups for the service stack to manage
     /// </summary>
-    public interface IDomainBuilder
+    public interface IServiceGroupBuilder
     {
+        /// <summary>
+        /// Adds a single virtual host to the domain that must be configured.
+        /// </summary>
+        /// <param name="rootDirectory">The service root directory</param>
+        /// <param name="hooks">The virtual host event hook handler</param>
+        /// <param name="Logger">The log provider</param>
+        /// <returns>The <see cref="IVirtualHostBuilder"/> instance</returns>
+        IVirtualHostBuilder WithVirtualHost(DirectoryInfo rootDirectory, IVirtualHostHooks hooks, ILogProvider Logger);
+
         /// <summary>
         /// Allows for defining a new virtual host for the domain by manually configuring it.
         /// </summary>
         /// <param name="builder">A callback function that passes the new host builder</param>
         /// <returns>The current instance</returns>
-        IDomainBuilder WithServiceGroups(Action<IServiceGroupBuilder> builder);
+        IServiceGroupBuilder WithVirtualHost(Action<IVirtualHostBuilder> builder);
 
         /// <summary>
-        /// Adds a collection of hosts to the domain
+        /// Adds a single pre-configured virtual host to the domain 
         /// </summary>
-        /// <param name="host"></param>
-        /// <returns></returns>
-        IDomainBuilder WithHosts(IServiceHost[] host);
+        /// <param name="config">The pre-configured virtual host configuration</param>
+        /// <returns>The current instance</returns>
+        IServiceGroupBuilder WithVirtualHost(VirtualHostConfiguration config, object? userState);
     }
 }

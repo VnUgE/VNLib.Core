@@ -53,17 +53,11 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Initializes a new instance of the <see cref="HttpConfig"/> struct
         /// </summary>
-        /// <param name="serverLog"></param>
-        /// <param name="memoryPool"></param>
         /// <param name="httpEncoding"></param>
-        public HttpConfig(ILogProvider serverLog, IHttpMemoryPool memoryPool, Encoding httpEncoding)
+        public HttpConfig(Encoding httpEncoding)
         {
-            ArgumentNullException.ThrowIfNull(serverLog);
-            ArgumentNullException.ThrowIfNull(memoryPool);
             ArgumentNullException.ThrowIfNull(httpEncoding);
 
-            ServerLog = serverLog;
-            MemoryPool = memoryPool;
             HttpEncoding = httpEncoding;
 
             //Init pre-encded segments
@@ -77,12 +71,12 @@ namespace VNLib.Net.Http
         /// <summary>
         /// A log provider that all server related log entiries will be written to
         /// </summary>
-        public readonly ILogProvider ServerLog { get; init; }
+        public required readonly ILogProvider ServerLog { get; init; }
 
         /// <summary>
         /// Server memory pool to use for allocating buffers
         /// </summary>
-        public readonly IHttpMemoryPool MemoryPool { get; init; }
+        public required readonly IHttpMemoryPool MemoryPool { get; init; }
 
         /// <summary>
         /// The absolute request entity body size limit in bytes

@@ -29,12 +29,12 @@ using System.Linq;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
 
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
 using VNLib.Plugins.Essentials.Middleware;
+using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {
@@ -46,14 +46,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
     {
 
         /// <summary>
-        /// Creates a new <see cref="IDomainBuilder"/> instance to define your 
-        /// virtual hosts using a built-in event processor type
-        /// </summary>
-        /// <param name="stack"></param>
-        /// <returns>The <see cref="IDomainBuilder"/> used to define your service domain</returns>
-        public static IDomainBuilder WithDomain(this HttpServiceStackBuilder stack) => WithDomain(stack, vhc => FromVirtualHostConfig(vhc.Clone()));
-
-        /// <summary>
         /// Creates a new <see cref="IDomainBuilder"/> instance to define your
         /// virtual hosts with the supplied callback method
         /// </summary>
@@ -62,167 +54,144 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <returns>The service stack builder instance</returns>
         public static HttpServiceStackBuilder WithDomain(this HttpServiceStackBuilder stack, Action<IDomainBuilder> domainBuilder)
         {
-            domainBuilder(stack.WithDomain());
+            domainBuilder(WithDomain(stack));
             return stack;
         }
 
         /// <summary>
-        /// Creates a new <see cref="IDomainBuilder"/> with your custom <see cref="EventProcessor"/> type
-        /// that will be wrapped for runtime processing.
+        /// Creates a new <see cref="IDomainBuilder"/> instance to define your 
+        /// virtual hosts using a built-in event processor type
         /// </summary>
-        /// <typeparam name="T"></typeparam>
         /// <param name="stack"></param>
-        /// <param name="callback">The custom event processor type</param>
-        /// <returns></returns>
-        public static IDomainBuilder WithDomain<T>(this HttpServiceStackBuilder stack, Func<VirtualHostConfiguration, T> callback) 
-            where T : EventProcessor, IRuntimeServiceInjection
+        /// <returns>The <see cref="IDomainBuilder"/> used to define your service domain</returns>
+        public static IDomainBuilder WithDomain(this HttpServiceStackBuilder stack) 
+            => new DomainBuilder(stack.ServiceBuilder);
+
+
+        private sealed class DomainBuilder(ServiceBuilder svcBuilder) : IDomainBuilder
         {
-            List<VirtualHostConfiguration> configs = new();
-            DomainBuilder domains = new(configs, stack);
-
-            //Add callback to capture this collection of configs when built
-            stack.AddHosts(() => configs.Select(c => new CustomServiceHost<T>(c.Clone(), callback(c))).ToArray());
-
-            return domains;
-        }
-
-        /// <summary>
-        /// Adds a single <see cref="IHttpMiddleware"/> instance to the virtual host
-        /// </summary>
-        /// <param name="vhBuilder"></param>
-        /// <param name="middleware">The middleware instance to add</param>
-        /// <returns></returns>
-        public static IVirtualHostBuilder WithMiddleware(this IVirtualHostBuilder vhBuilder, IHttpMiddleware middleware)
-        {
-            vhBuilder.WithOption(c => c.CustomMiddleware.Add(middleware));
-            return vhBuilder;
-        }
-
-        /// <summary>
-        /// Adds multiple <see cref="IHttpMiddleware"/> instances to the virtual host
-        /// </summary>
-        /// <param name="vhBuilder"></param>
-        /// <param name="middleware">The array of middleware instances to add to the collection</param>
-        /// <returns></returns>
-        public static IVirtualHostBuilder WithMiddleware(this IVirtualHostBuilder vhBuilder, params IHttpMiddleware[] middleware)
-        {
-            vhBuilder.WithOption(c => Array.ForEach(middleware, m => c.CustomMiddleware.Add(m)));
-            return vhBuilder;
-        }
-
-
-        public static IVirtualHostBuilder WithLogger(this IVirtualHostBuilder vhBuilder, ILogProvider logger)
-        {
-            vhBuilder.WithOption(c => c.LogProvider = logger);
-            return vhBuilder;
-        }
-
-        public static IVirtualHostBuilder WithEndpoint(this IVirtualHostBuilder vhBuilder, IPEndPoint endpoint)
-        {
-            vhBuilder.WithOption(c => c.TransportEndpoint = endpoint);
-            return vhBuilder;
-        }
-
-        public static IVirtualHostBuilder WithTlsCertificate(this IVirtualHostBuilder vhBuilder, X509Certificate? cert)
-        {
-            vhBuilder.WithOption(c => c.Certificate = cert);
-            return vhBuilder;
-        }
-
-        public static IVirtualHostBuilder WithHostname(this IVirtualHostBuilder virtualHostBuilder, string hostname)
-        {
-            virtualHostBuilder.WithOption(c => c.Hostname = hostname);
-            return virtualHostBuilder;
-        }
-
-        public static IVirtualHostBuilder WithDefaultFiles(this IVirtualHostBuilder vhBuidler, params string[] defaultFiles)
-        {
-            return vhBuidler.WithDefaultFiles((IReadOnlyCollection<string>)defaultFiles);
-        }
-
-        public static IVirtualHostBuilder WithDefaultFiles(this IVirtualHostBuilder vhBuidler, IReadOnlyCollection<string> defaultFiles)
-        {
-            vhBuidler.WithOption(c => c.DefaultFiles = defaultFiles);
-            return vhBuidler;
-        }
-
-        public static IVirtualHostBuilder WithExcludedExtensions(this IVirtualHostBuilder vhBuilder, params string[] excludedExtensions)
-        {
-            return vhBuilder.WithExcludedExtensions(new HashSet<string>(excludedExtensions));
-        }
-
-        public static IVirtualHostBuilder WithExcludedExtensions(this IVirtualHostBuilder vhBuilder, IReadOnlySet<string> excludedExtensions)
-        {
-            vhBuilder.WithOption(c => c.ExcludedExtensions = excludedExtensions);
-            return vhBuilder;
-        }
-
-        public static IVirtualHostBuilder WithAllowedAttributes(this IVirtualHostBuilder vhBuilder, FileAttributes attributes)
-        {
-            vhBuilder.WithOption(c => c.AllowedAttributes = attributes);
-            return vhBuilder;
-        }
-
-        public static IVirtualHostBuilder WithDisallowedAttributes(this IVirtualHostBuilder vhBuilder, FileAttributes attributes)
-        {
-            vhBuilder.WithOption(c => c.DissallowedAttributes = attributes);
-            return vhBuilder;
-        }
-
-        public static IVirtualHostBuilder WithDownstreamServers(this IVirtualHostBuilder vhBuilder, IReadOnlySet<IPAddress> addresses)
-        {
-            vhBuilder.WithOption(c => c.DownStreamServers = addresses);
-            return vhBuilder;
-        }
-
-        /// <summary>
-        /// Adds an array of IP addresses to the downstream server collection. This is a security 
-        /// features that allows event handles to trust connections/ipaddresses that originate from
-        /// trusted downstream servers
-        /// </summary>
-        /// <param name="vhBuilder"></param>
-        /// <param name="addresses">The collection of IP addresses to set as trusted servers</param>
-        /// <returns></returns>
-        public static IVirtualHostBuilder WithDownstreamServers(this IVirtualHostBuilder vhBuilder, params IPAddress[] addresses)
-        {
-            vhBuilder.WithOption(c => c.DownStreamServers = new HashSet<IPAddress>(addresses));
-            return vhBuilder;
-        }
-
-        private static BasicVirtualHost FromVirtualHostConfig(VirtualHostConfiguration configuration)
-        {
-            /*
-             * Event processors configurations are considered immutable. That is, 
-             * top-level elements are not allowed to be changed after the processor
-             * has been created. Some properties/containers are allowed to be modified
-             * such as middleware chains, and the service pool.
-             */
-
-            EventProcessorConfig conf = new(
-                configuration.RootDir.FullName, 
-                configuration.Hostname, 
-                configuration.LogProvider, 
-                configuration)
+            ///<inheritdoc/>
+            public IDomainBuilder WithServiceGroups(Action<IServiceGroupBuilder> builder)
             {
-                AllowedAttributes = configuration.AllowedAttributes,
-                DissallowedAttributes = configuration.DissallowedAttributes,
-                DefaultFiles = configuration.DefaultFiles,
-                ExecutionTimeout = configuration.ExecutionTimeout,
+                svcBuilder.AddHostCollection((col) =>
+                {
+                    SvGroupBuilder group = new();
 
-                //Frozen sets are required for the event processor, for performance reasons
-                DownStreamServers = configuration.DownStreamServers.ToFrozenSet(),
-                ExcludedExtensions = configuration.ExcludedExtensions.ToFrozenSet(),
-            };
+                    builder(group);
 
-            //Add all pre-configured middleware to the chain
-            configuration.CustomMiddleware.ForEach(conf.MiddlewareChain.Add);
+                    group.Configs
+                        .SelectMany(static vc => FromVirtualHostConfig(vc)
+                            .Select(vh => new CustomServiceHost<BasicVirtualHost>(vh, vc.UserState)
+                        ))
+                        .ForEach(col.Add);  //Force enumeration
+                });
 
-            return new(configuration.EventHooks, conf);
+                return this;
+            }
+
+            ///<inheritdoc/>
+            public IDomainBuilder WithHosts(IServiceHost[] hosts)
+            {
+                svcBuilder.AddHostCollection(col => Array.ForEach(hosts, col.Add));
+                return this;
+            }
+
+            private static IEnumerable<BasicVirtualHost> FromVirtualHostConfig(VirtualHostConfiguration configuration)
+            {
+                /*
+                 * Configurations are allowed to define multiple hostnames for a single 
+                 * virtual host. 
+                 */
+
+                return configuration.Hostnames
+                    .Select<string, BasicVirtualHost>((string hostname) =>
+                    {
+                        /*
+                         * Event processors configurations are considered immutable. That is, 
+                         * top-level elements are not allowed to be changed after the processor
+                         * has been created. Some properties/containers are allowed to be modified
+                         * such as middleware chains, and the service pool.
+                         */
+
+                        EventProcessorConfig conf = new(
+                            Directory: configuration.RootDir.FullName,
+                            Hostname: hostname,
+                            Log: configuration.LogProvider,
+                            Options: configuration
+                        )
+                        {
+                            AllowedAttributes = configuration.AllowedAttributes,
+                            DissallowedAttributes = configuration.DissallowedAttributes,
+                            DefaultFiles = configuration.DefaultFiles,
+                            ExecutionTimeout = configuration.ExecutionTimeout,
+                            FilePathCacheMaxAge = configuration.FilePathCacheMaxAge,
+
+                            //Frozen sets are required for the event processor, for performance reasons
+                            DownStreamServers = configuration.DownStreamServers.ToFrozenSet(),
+                            ExcludedExtensions = configuration.ExcludedExtensions.ToFrozenSet(),
+                        };
+
+                        //Add all pre-configured middleware to the chain
+                        configuration.CustomMiddleware.ForEach(conf.MiddlewareChain.Add);
+
+                        return new(configuration.EventHooks, conf);
+                    });
+            }
+
+            private sealed record class SvGroupBuilder : IServiceGroupBuilder
+            {
+                internal readonly List<VirtualHostConfiguration> Configs = new();
+
+                ///<inheritdoc/>
+                public IVirtualHostBuilder WithVirtualHost(DirectoryInfo rootDirectory, IVirtualHostHooks hooks, ILogProvider logger)
+                {
+                    //Create new config instance and add to list
+                    VirtualHostConfiguration config = new()
+                    {
+                        EventHooks = hooks,
+                        RootDir = rootDirectory,
+                        LogProvider = logger
+                    };
+                    Configs.Add(config);
+                    return new VHostBuilder(config);
+                }
+
+                ///<inheritdoc/>
+                public IServiceGroupBuilder WithVirtualHost(Action<IVirtualHostBuilder> builder)
+                {
+                    //Create new config instance and add to list
+                    VirtualHostConfiguration config = new()
+                    {
+                        RootDir = null!,
+                        LogProvider = null!
+                    };
+                  
+                    //Pass the builder to the callback
+                    builder(new VHostBuilder(config));
+
+                    return WithVirtualHost(config, null);
+                }
+
+                ///<inheritdoc/>
+                public IServiceGroupBuilder WithVirtualHost(VirtualHostConfiguration config, object? userState)
+                {
+                    config.UserState = userState;
+                    Configs.Add(config);
+                    return this;
+                }
+
+                private sealed record class VHostBuilder(VirtualHostConfiguration Config) : IVirtualHostBuilder
+                {
+                    ///<inheritdoc/>
+                    public IVirtualHostBuilder WithOption(Action<VirtualHostConfiguration> configCallback)
+                    {
+                        configCallback(Config);
+                        return this;
+                    }
+                }
+            }
         }
 
-
-        private static void AddHosts(this HttpServiceStackBuilder stack, Func<IServiceHost[]> hosts) 
-            => stack.WithDomain(p => Array.ForEach(hosts(), h => p.Add(h)));
 
         private static void OnPluginServiceEvent<T>(this IManagedPlugin plugin, Action<T> loader)
         {
@@ -232,48 +201,21 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             }
         }
 
-        private sealed record class DomainBuilder(List<VirtualHostConfiguration> Configs, HttpServiceStackBuilder Stack) : IDomainBuilder
-        {
-            ///<inheritdoc/>
-            public IVirtualHostBuilder WithVirtualHost(DirectoryInfo rootDirectory, IVirtualHostHooks hooks, ILogProvider logger)
-            {
-                //Create new config instance and add to list
-                VirtualHostConfiguration config = new()
-                {
-                    EventHooks = hooks,
-                    RootDir = rootDirectory,
-                    LogProvider = logger
-                };
-                Configs.Add(config);
-                return new VHostBuilder(config);
-            }
 
-            ///<inheritdoc/>
-            public IDomainBuilder WithVirtualHost(VirtualHostConfiguration config)
-            {
-                Configs.Add(config);
-                return this;
-            }
+        /*
+         * The goal of this class is to added the extra service injection
+         * and manage the IWebRoot instance that will be served by a 
+         * webserver
+         */
 
-            private sealed record class VHostBuilder(VirtualHostConfiguration Config) : IVirtualHostBuilder
-            {
-                ///<inheritdoc/>
-                public IVirtualHostBuilder WithOption(Action<VirtualHostConfiguration> configCallback)
-                {
-                    configCallback(Config);
-                    return this;
-                }
-            }
-        }
-
-        private sealed class CustomServiceHost<T>(IHostTransportInfo Config, T Instance) : IServiceHost 
+        private sealed class CustomServiceHost<T>(T Instance, object? userState) : IServiceHost 
             where T : EventProcessor, IRuntimeServiceInjection
         {
             ///<inheritdoc/>
             public IWebRoot Processor => Instance;
 
             ///<inheritdoc/>
-            public IHostTransportInfo TransportInfo => Config;
+            public object? UserState => userState;
 
             ///<inheritdoc/>
             void IServiceHost.OnRuntimeServiceAttach(IManagedPlugin plugin, IEndpoint[] endpoints)
@@ -300,10 +242,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 plugin.OnPluginServiceEvent<IEnumerable<IHttpMiddleware>>(p => p.ForEach(Instance.Options.MiddlewareChain.Remove));
                 plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => p.ForEach(Instance.Options.MiddlewareChain.Remove));
             }
+
         }
 
 
-        private sealed class BasicVirtualHost(IVirtualHostHooks Hooks, EventProcessorConfig config) : EventProcessor(config), IRuntimeServiceInjection
+        private sealed class BasicVirtualHost(IVirtualHostHooks Hooks, EventProcessorConfig config) 
+            : EventProcessor(config), IRuntimeServiceInjection
         {
             /*
              * Runtime service injection can be tricky, at least in my architecture. If all we have 
@@ -315,16 +259,20 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             private readonly ConditionalWeakTable<IServiceProvider, Type[]> _exposedTypes = new();
 
             ///<inheritdoc/>
-            public override bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity) => Hooks.ErrorHandler(errorCode, entity);
+            public override bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity) 
+                => Hooks.ErrorHandler(errorCode, entity);
 
             ///<inheritdoc/>
-            public override void PreProcessEntity(HttpEntity entity, out FileProcessArgs preProcArgs) => Hooks.PreProcessEntityAsync(entity, out preProcArgs);
+            public override void PreProcessEntity(HttpEntity entity, out FileProcessArgs preProcArgs) 
+                => Hooks.PreProcessEntityAsync(entity, out preProcArgs);
 
             ///<inheritdoc/>
-            public override void PostProcessEntity(HttpEntity entity, ref FileProcessArgs chosenRoutine) => Hooks.PostProcessFile(entity, ref chosenRoutine);
+            public override void PostProcessEntity(HttpEntity entity, ref FileProcessArgs chosenRoutine) 
+                => Hooks.PostProcessFile(entity, ref chosenRoutine);
 
             ///<inheritdoc/>
-            public override string TranslateResourcePath(string requestPath) => Hooks.TranslateResourcePath(requestPath);
+            public override string TranslateResourcePath(string requestPath) 
+                => Hooks.TranslateResourcePath(requestPath);
 
             ///<inheritdoc/>
             public void AddServices(IServiceProvider services)

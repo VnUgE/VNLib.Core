@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Extensions;
+using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -41,17 +42,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// Initalizes a new <see cref="ServiceGroup"/> of virtual hosts
     /// with common transport
     /// </remarks>
-    /// <param name="serviceEndpoint">The <see cref="IPEndPoint"/> to listen for connections on</param>
     /// <param name="hosts">The hosts that share a common interface endpoint</param>
-    public sealed class ServiceGroup(IPEndPoint serviceEndpoint, IEnumerable<IServiceHost> hosts)
+    public sealed class ServiceGroup(IEnumerable<IServiceHost> hosts)
     {
         private readonly LinkedList<IServiceHost> _vHosts = new(hosts);
         private readonly ConditionalWeakTable<IManagedPlugin, IEndpoint[]> _endpointsForPlugins = new();
-
-        /// <summary>
-        /// The <see cref="IPEndPoint"/> transport endpoint for all loaded service hosts
-        /// </summary>
-        public IPEndPoint ServiceEndpoint => serviceEndpoint;
 
         /// <summary>
         /// The collection of hosts that are loaded by this group

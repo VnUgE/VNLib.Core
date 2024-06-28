@@ -66,19 +66,14 @@ namespace VNLib.Net.Transport.Tcp
             if (pipeOptions == null)
             {
                 //Pool is required when using default pipe options
-                _ = config.BufferPool ?? throw new ArgumentException("Buffer pool argument cannot be null");
+                ArgumentNullException.ThrowIfNull(config.BufferPool);
             }
 
-            _ = config.Log ?? throw new ArgumentException("Log argument is required");
+            ArgumentNullException.ThrowIfNull(config.Log, nameof(config.Log));
 
-            if (config.MaxRecvBufferData < 4096)
-            {
-                throw new ArgumentException("MaxRecvBufferData size must be at least 4096 bytes to avoid data pipeline pefromance issues");
-            }
-            if (config.AcceptThreads < 1)
-            {
-                throw new ArgumentException("Accept thread count must be greater than 0");
-            }
+            ArgumentOutOfRangeException.ThrowIfLessThan(config.MaxRecvBufferData, 4096);
+            ArgumentOutOfRangeException.ThrowIfLessThan(config.AcceptThreads, 1u);
+
             if (config.AcceptThreads > Environment.ProcessorCount)
             {
                 config.Log.Debug("Suggestion: Setting accept threads to {pc}", Environment.ProcessorCount);

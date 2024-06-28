@@ -29,7 +29,6 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
@@ -386,16 +385,17 @@ namespace VNLib.Net.Http
         private async Task<bool> ProcessRequestAsync(ListenerState listenState, HttpContext context)
         {
             //Get the server root for the specified location or fallback to a wildcard host if one is selected
-            IWebRoot? root = listenState.Roots.GetValueOrDefault(
-                context.Request.State.Location.DnsSafeHost, 
-                listenState.DefaultRoute
-            );
-            
-            if (root == null)
+        
+            if (!listenState.Roots.TryGetValue(context.Request.State.Location.DnsSafeHost, out IWebRoot? root))
             {
-                context.Respond(HttpStatusCode.NotFound);
-                //make sure control leaves
-                return true;
+                if (listenState.DefaultRoute is null)
+                {
+                    context.Respond(HttpStatusCode.NotFound);
+                    //make sure control leaves
+                    return true;
+                }
+
+                root = listenState.DefaultRoute;
             }
 
             //Check the expect header and return an early status code
