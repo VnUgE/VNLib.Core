@@ -39,7 +39,7 @@ if(ENABLE_BROTLI)
 	FetchContent_Declare(
 	  lib_brotli
 	  GIT_REPOSITORY		https://github.com/google/brotli.git
-	  GIT_TAG				04388304a6f8181cc1f022cc9e95dbb3bfe829a3
+	  GIT_TAG				a528bce9f65be7515a47cec2cbdcd8023822b99b
 	  GIT_PROGRESS			TRUE
 	)
 

@@ -128,11 +128,11 @@ namespace VNLib.Net.Http.Core
             int bytesToRead = Math.Min(Remaining, buffer.Length);
            
             MemoryUtil.Memmove(
-                ref MemoryMarshal.GetArrayDataReference(_buffer),
-                (nuint)GetDataPosition(),
-                ref MemoryMarshal.GetReference(buffer),
-                0, 
-                (nuint)bytesToRead
+                src: in MemoryMarshal.GetArrayDataReference(_buffer),
+                srcOffset: (nuint)GetDataPosition(),
+                dst: ref MemoryMarshal.GetReference(buffer),
+                dstOffset:  0, 
+                elementCount: (nuint)bytesToRead
             );
 
             //Update position pointer

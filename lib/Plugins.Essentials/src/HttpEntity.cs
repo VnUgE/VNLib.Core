@@ -216,13 +216,19 @@ namespace VNLib.Plugins.Essentials
              * Stream length also should not cause an integer overflow,
              * which also mean position is assumed not to overflow 
              * or cause an overflow during reading
+             * 
+             * Finally not all memory streams allow fetching the internal 
+             * buffer, so check that it can be aquired.
              */
-            if(stream is MemoryStream ms && length < int.MaxValue)
+            if (stream is MemoryStream ms 
+                && length < int.MaxValue
+                && ms.TryGetBuffer(out ArraySegment<byte> arrSeg)
+            )
             {
                 Entity.CloseResponse(
                     code, 
                     type, 
-                    entity: new MemStreamWrapper(ms, (int)length)
+                    entity: new MemStreamWrapper(in arrSeg, ms, (int)length)
                 );
 
                 return;
@@ -340,15 +346,16 @@ namespace VNLib.Plugins.Essentials
         }
 
 
-        private sealed class MemStreamWrapper(MemoryStream memStream, int length) : IMemoryResponseReader 
+        private sealed class MemStreamWrapper(ref readonly ArraySegment<byte> data, MemoryStream stream, int length) : IMemoryResponseReader 
         {
+            readonly ArraySegment<byte> _data = data;
             readonly int length = length;
 
             /*
              * Stream may be offset by the caller, it needs 
              * to be respected during streaming.
              */
-            int read = (int)memStream.Position;
+            int read = (int)stream.Position;
 
             ///<inheritdoc/>
             public int Remaining
@@ -364,14 +371,10 @@ namespace VNLib.Plugins.Essentials
             public void Advance(int written) => read += written;
 
             ///<inheritdoc/>
-            public void Close() => memStream.Dispose();
+            public void Close() => stream.Dispose();
 
             ///<inheritdoc/>
-            public ReadOnlyMemory<byte> GetMemory()
-            {
-                byte[] intBuffer = memStream.GetBuffer();
-                return new ReadOnlyMemory<byte>(intBuffer, read, Remaining);
-            }
+            public ReadOnlyMemory<byte> GetMemory() => _data.AsMemory(read, Remaining);
         }
     }
 }

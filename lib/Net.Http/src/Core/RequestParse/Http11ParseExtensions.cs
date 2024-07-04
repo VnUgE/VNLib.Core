@@ -570,7 +570,12 @@ namespace VNLib.Net.Http.Core
         /// <param name="reader">The <see cref="VnStreamReader"/> to read lines from the transport</param>
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1PrepareEntityBody(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, ref readonly HttpConfig Config)
+        public static HttpStatusCode Http1PrepareEntityBody(
+            this HttpRequest Request, 
+            ref Http1ParseState parseState, 
+            ref TransportReader reader, 
+            ref readonly HttpConfig Config
+        )
         {
             /*
             * Evil mutable struct, get a local mutable reference to the request's 

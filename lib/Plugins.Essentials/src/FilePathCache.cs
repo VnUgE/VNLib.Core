@@ -97,8 +97,8 @@ namespace VNLib.Plugins.Essentials
 
             private struct CachedPath
             {
-                public string Path;
-                public long LastStored;
+                public required string Path;
+                public required long LastStored;
             }
         }
 

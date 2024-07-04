@@ -34,7 +34,7 @@ using System.Runtime.CompilerServices;
 using VNLib.Net.Http;
 using VNLib.Hashing;
 using VNLib.Utils;
-using VNLib.Utils.Memory.Caching;
+using VNLib.Utils.IO;
 using static VNLib.Plugins.Essentials.Statics;
 
 namespace VNLib.Plugins.Essentials.Extensions
@@ -44,20 +44,13 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// Provides extension methods for manipulating <see cref="HttpEvent"/>s
     /// </summary>
     public static class EssentialHttpEventExtensions
-    {         
+    {
+        const int JsonInitBufferSize = 4096;
 
         /*
          * Pooled/tlocal serializers
          */
         private static readonly ThreadLocal<Utf8JsonWriter> LocalSerializer = new(() => new(Stream.Null));
-        private static readonly ObjectRental<JsonResponse> ResponsePool = ObjectRental.Create(ResponseCtor);
-
-        private static JsonResponse ResponseCtor() => new(ResponsePool);
-
-        /// <summary>
-        /// Purges any idle cached JSON responses from the static pool.
-        /// </summary>
-        public static void PurgeJsonResponseCache() => ResponsePool.CacheClear();
 
         #region Response Configuring
 
@@ -73,7 +66,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloseResponseJson<T>(this IHttpEvent ev, HttpStatusCode code, T response) => CloseResponseJson(ev, code, response, SR_OPTIONS);
+        public static void CloseResponseJson<T>(this IHttpEvent ev, HttpStatusCode code, T response) 
+            => CloseResponseJson(ev, code, response, SR_OPTIONS);
 
         /// <summary>
         /// Attempts to serialize the JSON object to binary and configure the response for a JSON message body
@@ -90,19 +84,30 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponseJson<T>(this IHttpEvent ev, HttpStatusCode code, T response, JsonSerializerOptions? options)
         {
-            JsonResponse rbuf = ResponsePool.Rent();
+            /*
+            * Taking advantage of a new HttpEntity feature that wraps the memory stream
+            * in a reader class that avoids a user-space copy. While the stream and wrapper
+            * must be allocated, it is far safer and easier on the long term process 
+            * memory than large static pools the application/user cannot control. 
+            */
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
+
+            VnMemoryStream vms = new(JsonInitBufferSize, zero: false);
+
+#pragma warning restore CA2000 // Dispose objects before losing scope
+
             try
             {
                 //Serialze the object on the thread local serializer
-                LocalSerializer.Value!.Serialize(rbuf, response, options);
+                LocalSerializer.Value!.Serialize(vms, response, options);
 
                 //Set the response as the buffer, 
-                ev.CloseResponse(code, ContentType.Json, rbuf);
+                ev.CloseResponse(code, ContentType.Json, vms, vms.Length);
             }
             catch
             {
-                //Return back to pool on error
-                ResponsePool.Return(rbuf);
+                vms.Dispose();
                 throw;
             }
         }
@@ -119,7 +124,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CloseResponseJson(this IHttpEvent ev, HttpStatusCode code, object response, Type type) => CloseResponseJson(ev, code, response, type, SR_OPTIONS);
+        public static void CloseResponseJson(this IHttpEvent ev, HttpStatusCode code, object response, Type type) 
+            => CloseResponseJson(ev, code, response, type, SR_OPTIONS);
         
         /// <summary>
         /// Attempts to serialize the JSON object to binary and configure the response for a JSON message body
@@ -136,19 +142,29 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponseJson(this IHttpEvent ev, HttpStatusCode code, object response, Type type, JsonSerializerOptions? options)
         {
-            JsonResponse rbuf = ResponsePool.Rent();
+            /*
+             * Taking advantage of a new HttpEntity feature that wraps the memory stream
+             * in a reader class that avoids a user-space copy. While the stream and wrapper
+             * must be allocated, it is far safer and easier on the long term process 
+             * memory than large static pools the application/user cannot control. 
+             */
+#pragma warning disable CA2000 // Dispose objects before losing scope
+
+            VnMemoryStream vms = new(JsonInitBufferSize, zero: false);
+
+#pragma warning restore CA2000 // Dispose objects before losing scope
+
             try
             {
                 //Serialze the object on the thread local serializer
-                LocalSerializer.Value!.Serialize(rbuf, response, type, options);
+                LocalSerializer.Value!.Serialize(vms, response, type, options);
 
                 //Set the response as the buffer, 
-                ev.CloseResponse(code, ContentType.Json, rbuf);
+                ev.CloseResponse(code, ContentType.Json, vms, vms.Length);
             }
             catch
             {
-                //Return back to pool on error
-                ResponsePool.Return(rbuf);
+                vms.Dispose();
                 throw;
             }
         }
@@ -174,19 +190,30 @@ namespace VNLib.Plugins.Essentials.Extensions
                 return;
             }
 
-            JsonResponse rbuf = ResponsePool.Rent();
+            /*
+             * Taking advantage of a new HttpEntity feature that wraps the memory stream
+             * in a reader class that avoids a user-space copy. While the stream and wrapper
+             * must be allocated, it is far safer and easier on the long term process 
+             * memory than large static pools the application/user cannot control. 
+             */
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
+
+            VnMemoryStream vms = new(JsonInitBufferSize, zero: false);
+
+#pragma warning restore CA2000 // Dispose objects before losing scope
+
             try
             {
                 //Serialze the object on the thread local serializer
-                LocalSerializer.Value!.Serialize(rbuf, data);
+                LocalSerializer.Value!.Serialize(vms, data);
 
                 //Set the response as the buffer, 
-                ev.CloseResponse(code, ContentType.Json, rbuf);
+                ev.CloseResponse(code, ContentType.Json, vms, vms.Length);
             }
             catch
             {
-                //Return back to pool on error
-                ResponsePool.Return(rbuf);
+                vms.Dispose();
                 throw;
             }
         }
@@ -325,7 +352,8 @@ namespace VNLib.Plugins.Essentials.Extensions
             ArgumentNullException.ThrowIfNull(file);
 
             //Get content type from filename
-            ContentType ct = HttpHelpers.GetContentTypeFromFile(file.Name);            
+            ContentType ct = HttpHelpers.GetContentTypeFromFile(file.Name);
+
             //Set the input as a stream
             ev.CloseResponse(code, ct, file, file.Length);
         }
@@ -373,7 +401,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Get new simple memory response
             ev.CloseResponse(code, type, entity: new SimpleMemoryResponse(data, encoding));
         }
-        
+
         /// <summary>
         /// Close a response to a connection by copying the speciifed binary buffer
         /// </summary>
@@ -392,13 +420,12 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             if (data.IsEmpty)
             {
-                ev.CloseResponse(code);
-                return;
+                ev.CloseResponse(code); 
             }
-
-            //Get new simple memory response
-            IMemoryResponseReader reader = new SimpleMemoryResponse(data);
-            ev.CloseResponse(code, type, reader);
+            else
+            {
+                ev.CloseResponse(code, type, entity: new SimpleMemoryResponse(data));
+            }
         }
 
         /// <summary>
@@ -418,15 +445,18 @@ namespace VNLib.Plugins.Essentials.Extensions
             ArgumentNullException.ThrowIfNull(filePath);
 
             //See if file exists and is within the root's directory
-            if (entity.RequestedRoot.FindResourceInRoot(filePath, out string realPath))
+            if (!entity.RequestedRoot.FindResourceInRoot(filePath, out string realPath))
             {
-                //get file-info
-                FileInfo realFile = new(realPath);
-                //Close the response with the file stream
-                entity.CloseResponse(code, realFile);
-                return true;
+                return false;
             }
-            return false;
+
+            //get file-info
+            FileInfo realFile = new(realPath);
+
+            //Close the response with the file stream
+            entity.CloseResponse(code, realFile);
+
+            return true;
         }
 
         /// <summary>
@@ -514,6 +544,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                     throw new InvalidJsonRequestException(je);
                 }
             }
+
             obj = default;
             return false;
         }
@@ -535,7 +566,9 @@ namespace VNLib.Plugins.Essentials.Extensions
             try
             {
                 //Check for key in argument
-                return ev.RequestArgs.TryGetNonEmptyValue(key, out string? value) ? JsonDocument.Parse(value, options) : null;
+                return ev.RequestArgs.TryGetNonEmptyValue(key, out string? value) 
+                    ? JsonDocument.Parse(value, options) 
+                    : null;
             }
             catch (JsonException je)
             {
@@ -566,11 +599,13 @@ namespace VNLib.Plugins.Essentials.Extensions
             }
 
             FileUpload file = ev.Files[uploadIndex];
+
             //Make sure the file is a json file
             if (file.ContentType != ContentType.Json)
             {
                 return default;
             }
+
             try
             {
                 //Beware this will buffer the entire file object before it attmepts to de-serialize it
@@ -601,12 +636,15 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 return default;
             }
+
             FileUpload file = ev.Files[uploadIndex];
+
             //Make sure the file is a json file
             if (file.ContentType != ContentType.Json)
             {
                 return default;
             }
+
             try
             {
                 return JsonDocument.Parse(file.FileData);
@@ -639,12 +677,15 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 return ValueTask.FromResult<T?>(default);
             }
+
             FileUpload file = ev.Files[uploadIndex];
+
             //Make sure the file is a json file
             if (file.ContentType != ContentType.Json)
             {
                 return ValueTask.FromResult<T?>(default);
             }
+
             //avoid copying the ev struct, so return deserialze task
             static async ValueTask<T?> Deserialze(Stream data, JsonSerializerOptions? options, CancellationToken token)
             {
@@ -658,6 +699,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                     throw new InvalidJsonRequestException(je);
                 }
             }
+
             return Deserialze(file.FileData, options, ev.EventCancellation);
         }
         
@@ -682,12 +724,15 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 return DocTaskDefault;
             }
+
             FileUpload file = ev.Files[uploadIndex];
+
             //Make sure the file is a json file
             if (file.ContentType != ContentType.Json)
             {
                 return DocTaskDefault;
             }
+
             static async Task<JsonDocument?> Deserialze(Stream data, CancellationToken token)
             {
                 try
@@ -700,6 +745,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                     throw new InvalidJsonRequestException(je);
                 }
             }
+
             return Deserialze(file.FileData, ev.EventCancellation);
         }
         
@@ -722,8 +768,10 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 return Task.FromResult<T?>(default);
             }
+
             //Get the file
             FileUpload file = ev.Files[uploadIndex];
+
             return parser(file.FileData);
         }
         
@@ -746,8 +794,10 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 return Task.FromResult<T?>(default);
             }
+
             //Get the file
             FileUpload file = ev.Files[uploadIndex];
+
             //Parse the file using the specified parser
             return parser(file.FileData, file.ContentTypeString());
         }
@@ -771,8 +821,10 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 return ValueTask.FromResult<T?>(default);
             }
+
             //Get the file
             FileUpload file = ev.Files[uploadIndex];
+
             return parser(file.FileData);
         }
         
@@ -880,6 +932,27 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static string ContentTypeString(this in FileUpload upload) => HttpHelpers.GetContentTypeString(upload.ContentType);
 
         /// <summary>
+        /// Copies the contents of the uploaded file to the specified stream asynchronously
+        /// </summary>
+        /// <param name="upload"></param>
+        /// <param name="bufferSize">The size of the buffer to use when copying stream data</param>
+        /// <param name="outputStream">The stream to write the file data to</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns></returns>
+        public static Task CopyToAsync(this in FileUpload upload, Stream outputStream, int bufferSize, CancellationToken cancellation = default) 
+            => upload.FileData.CopyToAsync(outputStream, bufferSize, cancellation);
+
+        /// <summary>
+        /// Copies the contents of the uploaded file to the specified stream asynchronously
+        /// </summary>
+        /// <param name="upload"></param>
+        /// <param name="outputStream">The stream to write the file data to</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>A task that resolves when the copy operation has completed</returns>
+        public static Task CopyToAsync(this in FileUpload upload, Stream outputStream, CancellationToken cancellation = default)
+          => upload.FileData.CopyToAsync(outputStream, cancellation);
+
+        /// <summary>
         /// Sets the <see cref="HttpControlMask.CompressionDisabled"/> flag on the current 
         /// <see cref="IHttpEvent"/> instance to disable dynamic compression on the response.
         /// </summary>
@@ -907,30 +980,31 @@ namespace VNLib.Plugins.Essentials.Extensions
         {
             //Must define an accept callback
             ArgumentNullException.ThrowIfNull(socketOpenedCallback);
-            
-            if (PrepWebSocket(entity, subProtocol))
+
+            if (!PrepWebSocket(entity, subProtocol))
             {
-                //Set a default keep alive if none was specified
-                if (keepAlive == default)
-                {
-                    keepAlive = TimeSpan.FromSeconds(30);
-                }
-
-                IAlternateProtocol ws = new WebSocketSession<T>(GetNewSocketId(), socketOpenedCallback)
-                {
-                    SubProtocol = subProtocol,
-                    IsSecure = entity.Server.IsSecure(),
-                    UserState = userState,
-                    KeepAlive = keepAlive,
-                };
-
-                //Setup a new websocket session with a new session id
-                entity.DangerousChangeProtocol(ws);
-
-                return true;
+                return false;
             }
 
-            return false;
+            //Set a default keep alive if none was specified
+            if (keepAlive == default)
+            {
+                keepAlive = TimeSpan.FromSeconds(30);
+            }
+
+            IAlternateProtocol ws = new WebSocketSession<T>(socketOpenedCallback)
+            {
+                SocketID        = GetNewSocketId(),
+                SubProtocol     = subProtocol,
+                IsSecure        = entity.Server.IsSecure(),
+                UserState       = userState,
+                KeepAlive       = keepAlive,
+            };
+
+            //Setup a new websocket session with a new session id
+            entity.DangerousChangeProtocol(ws);
+
+            return true;
         }
 
         /// <summary>
@@ -952,30 +1026,31 @@ namespace VNLib.Plugins.Essentials.Extensions
         {
             //Must define an accept callback
             ArgumentNullException.ThrowIfNull(entity);
-            ArgumentNullException.ThrowIfNull(socketOpenedCallback);          
+            ArgumentNullException.ThrowIfNull(socketOpenedCallback);
 
-            if(PrepWebSocket(entity, subProtocol))
+            if (!PrepWebSocket(entity, subProtocol))
             {
-                //Set a default keep alive if none was specified
-                if (keepAlive == default)
-                {
-                    keepAlive = TimeSpan.FromSeconds(30);
-                }
-
-                IAlternateProtocol ws = new WebSocketSession(GetNewSocketId(), socketOpenedCallback)
-                {
-                    SubProtocol = subProtocol,
-                    IsSecure = entity.Server.IsSecure(),
-                    KeepAlive = keepAlive,
-                };
-
-                //Setup a new websocket session with a new session id
-                entity.DangerousChangeProtocol(ws);
-
-                return true;
+                return false;
             }
 
-            return false;
+            //Set a default keep alive if none was specified
+            if (keepAlive == default)
+            {
+                keepAlive = TimeSpan.FromSeconds(30);
+            }
+
+            IAlternateProtocol ws = new WebSocketSession(socketOpenedCallback)
+            {
+                SocketID        = GetNewSocketId(),
+                SubProtocol     = subProtocol,
+                IsSecure        = entity.Server.IsSecure(),
+                KeepAlive       = keepAlive,
+            };
+
+            //Setup a new websocket session with a new session id
+            entity.DangerousChangeProtocol(ws);
+
+            return true;
         }
 
         private static string GetNewSocketId() => Guid.NewGuid().ToString("N");

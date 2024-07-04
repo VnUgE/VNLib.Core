@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,8 +23,9 @@
 */
 
 using System;
-using System.IO;
 using System.Text.Json;
+
+using VNLib.Utils.IO;
 
 namespace VNLib.Plugins.Essentials.Extensions
 {
@@ -32,66 +33,61 @@ namespace VNLib.Plugins.Essentials.Extensions
     internal static class InternalSerializerExtensions
     {
         
-        internal static void Serialize<T>(this Utf8JsonWriter writer, IJsonSerializerBuffer buffer, T value, JsonSerializerOptions? options)
+        internal static void Serialize<T>(this Utf8JsonWriter writer, VnMemoryStream buffer, T value, JsonSerializerOptions? options)
         {
-            //Get stream
-            Stream output = buffer.GetSerialzingStream();           
             try
             {
-                //Reset writer
-                writer.Reset(output);
-
-                //Serialize
+                //Reset and init the output stream
+                writer.Reset(buffer);
+               
                 JsonSerializer.Serialize(writer, value, options);
-
-                //flush output
+           
                 writer.Flush();
+
+                buffer.Seek(0, System.IO.SeekOrigin.Begin);
             }
             finally
             {
-                buffer.SerializationComplete();
+                writer.Reset();
             }
         }
 
-        internal static void Serialize(this Utf8JsonWriter writer, IJsonSerializerBuffer buffer, object value, Type type, JsonSerializerOptions? options)
+        internal static void Serialize(this Utf8JsonWriter writer, VnMemoryStream buffer, object value, Type type, JsonSerializerOptions? options)
         {
-            //Get stream
-            Stream output = buffer.GetSerialzingStream();
             try
             {
-                //Reset writer
-                writer.Reset(output);
-
-                //Serialize
-                JsonSerializer.Serialize(writer, value, type, options);
-
-                //flush output
+                //Reset and init the output stream
+                writer.Reset(buffer);
+            
+                JsonSerializer.Serialize(writer, value, options);
+           
                 writer.Flush();
+
+                buffer.Seek(0, System.IO.SeekOrigin.Begin);
             }
             finally
             {
-                buffer.SerializationComplete();
+                writer.Reset();
             }
         }
 
-        internal static void Serialize(this Utf8JsonWriter writer, IJsonSerializerBuffer buffer, JsonDocument document)
-        {
-            //Get stream
-            Stream output = buffer.GetSerialzingStream();
+        internal static void Serialize(this Utf8JsonWriter writer, VnMemoryStream buffer, JsonDocument document)
+        {           
             try
             {
-                //Reset writer
-                writer.Reset(output);
-
-                //Serialize
+                //Reset and init the output stream
+                writer.Reset(buffer);
+                
                 document.WriteTo(writer);
 
-                //flush output
                 writer.Flush();
+
+                buffer.Seek(0, System.IO.SeekOrigin.Begin);
             }
             finally
             {
-                buffer.SerializationComplete();
+                writer.Reset();
+                ;
             }
         }
     }

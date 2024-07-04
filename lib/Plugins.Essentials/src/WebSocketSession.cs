@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -62,10 +62,10 @@ namespace VNLib.Plugins.Essentials
     /// connection context and the underlying transport. This session is managed by the parent
     /// <see cref="HttpServer"/> that it was created on.
     /// </summary>
-    public class WebSocketSession : AlternateProtocolBase
+    public class WebSocketSession(WebSocketAcceptedCallback callback) : AlternateProtocolBase
     {
         internal WebSocket? WsHandle;
-        internal readonly WebSocketAcceptedCallback AcceptedCallback;
+        internal readonly WebSocketAcceptedCallback AcceptedCallback = callback;
 
         /// <summary>
         /// A cancellation token that can be monitored to reflect the state 
@@ -76,7 +76,7 @@ namespace VNLib.Plugins.Essentials
         /// <summary>
         /// Id assigned to this instance on creation
         /// </summary>
-        public string SocketID { get; }
+        public required string SocketID { get; init; }
 
         /// <summary>
         /// Negotiated sub-protocol
@@ -87,13 +87,6 @@ namespace VNLib.Plugins.Essentials
         /// The websocket keep-alive interval
         /// </summary>
         internal TimeSpan KeepAlive { get; init; }
-        
-        internal WebSocketSession(string socketId, WebSocketAcceptedCallback callback)
-        {
-            SocketID = socketId;
-            //Store the callback function
-            AcceptedCallback = callback;
-        }
 
         /// <summary>
         /// Initialzes the created websocket with the specified protocol 
@@ -175,7 +168,8 @@ namespace VNLib.Plugins.Essentials
         /// <param name="flags">Websocket message flags</param>
         /// <returns></returns>
         /// <exception cref="OperationCanceledException"></exception>
-        public ValueTask SendAsync(ReadOnlyMemory<byte> buffer, WebSocketMessageType type, WebSocketMessageFlags flags) => WsHandle!.SendAsync(buffer, type, flags, CancellationToken.None);
+        public ValueTask SendAsync(ReadOnlyMemory<byte> buffer, WebSocketMessageType type, WebSocketMessageFlags flags) 
+            => WsHandle!.SendAsync(buffer, type, flags, CancellationToken.None);
 
 
         /// <summary>
@@ -219,8 +213,8 @@ namespace VNLib.Plugins.Essentials
 
 #nullable enable
 
-        internal WebSocketSession(string sessionId, WebSocketAcceptedCallback<T> callback)
-          : base(sessionId, (ses) => callback((ses as WebSocketSession<T>)!))
+        internal WebSocketSession(WebSocketAcceptedCallback<T> callback)
+          : base((ses) => callback((ses as WebSocketSession<T>)!))
         {
             UserState = default;
         }

@@ -84,7 +84,7 @@ namespace VNLib.Utils.IO
             ArgumentNullException.ThrowIfNull(handle);
 
             return handle.CanRealloc || readOnly
-                ? new VnMemoryStream(handle, length, readOnly, ownsHandle)
+                ? new VnMemoryStream(handle, existingManager: null, length, readOnly, ownsHandle)
                 : throw new ArgumentException("The supplied memory handle must be resizable on a writable stream", nameof(handle));
         }
 
@@ -179,7 +179,14 @@ namespace VNLib.Utils.IO
         /// <param name="length">The length property of the stream</param>
         /// <param name="readOnly">Is the stream readonly (should mostly be true!)</param>
         /// <param name="ownsHandle">Does the new stream own the memory -> <paramref name="buffer"/></param>
-        private VnMemoryStream(IResizeableMemoryHandle<byte> buffer, nint length, bool readOnly, bool ownsHandle)
+        /// <param name="existingManager">A reference to an existing memory manager class</param>
+        private VnMemoryStream(
+            IResizeableMemoryHandle<byte> buffer,
+            MemoryManager<byte>? existingManager,
+            nint length, 
+            bool readOnly, 
+            bool ownsHandle
+        )
         {
             Debug.Assert(length >= 0, "Length must be positive");
             Debug.Assert(buffer.CanRealloc || readOnly, "The supplied buffer is not resizable on a writable stream");
@@ -188,6 +195,7 @@ namespace VNLib.Utils.IO
             _buffer = buffer;                  //Consume the handle
             _length = length;                  //Store length of the buffer
             _isReadonly = readOnly;
+            _memoryWrapper = existingManager;
         }
       
         /// <summary>
@@ -205,7 +213,7 @@ namespace VNLib.Utils.IO
             //Create a new readonly copy (stream does not own the handle)
             return !_isReadonly
                 ? throw new NotSupportedException("This stream is not readonly. Cannot create shallow copy on a mutable stream")
-                : new VnMemoryStream(_buffer, _length, true, false);
+                : new VnMemoryStream(_buffer, _memoryWrapper, _length, readOnly: true, ownsHandle: false);
         }
         
         /// <summary>
