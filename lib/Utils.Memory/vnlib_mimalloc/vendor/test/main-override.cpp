@@ -19,7 +19,7 @@
 #endif
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 static void msleep(unsigned long msecs) { Sleep(msecs); }
 #else
 #include <unistd.h>
@@ -32,12 +32,9 @@ static void heap_late_free();         // issue #204
 static void padding_shrink();         // issue #209
 static void various_tests();
 static void test_mt_shutdown();
-static void large_alloc(void);        // issue #363
 static void fail_aslr();              // issue #372
 static void tsan_numa_test();         // issue #414
-static void strdup_test();            // issue #445 
-static void bench_alloc_large(void);  // issue #xxx
-//static void test_large_migrate(void); // issue #691
+static void strdup_test();            // issue #445
 static void heap_thread_free_huge();
 static void test_std_string();        // issue #697
 
@@ -46,26 +43,21 @@ static void test_stl_allocators();
 
 int main() {
   // mi_stats_reset();  // ignore earlier allocations
-  
-  // test_std_string();
+
+  test_std_string();
   // heap_thread_free_huge();
   /*
-   heap_thread_free_huge();
-   heap_thread_free_large();
-   heap_no_delete();
-   heap_late_free();
-   padding_shrink();
-   various_tests();
-   large_alloc();
-   tsan_numa_test();
-   strdup_test();
+  heap_thread_free_large();
+  heap_no_delete();
+  heap_late_free();
+  padding_shrink();
+  various_tests();
+  tsan_numa_test();
+  strdup_test();
+  test_stl_allocators();
+  test_mt_shutdown();
   */
-  // test_stl_allocators();
-  // test_mt_shutdown();
-  // test_large_migrate();
-  
   //fail_aslr();
-  // bench_alloc_large();
   // mi_stats_print(NULL);
   return 0;
 }
@@ -185,42 +177,6 @@ static void test_stl_allocators() {
 #endif
 }
 
-#if 0
-// issue #691
-static char* cptr;
-
-static void* thread1_allocate()
-{
-  cptr = mi_calloc_tp(char,22085632);
-  return NULL;
-}
-
-static void* thread2_free()
-{
-  assert(cptr);
-  mi_free(cptr);
-  cptr = NULL;
-  return NULL;
-}
-
-static void test_large_migrate(void) {
-  auto t1 = std::thread(thread1_allocate);
-  t1.join();
-  auto t2 = std::thread(thread2_free);
-  t2.join();
-  /*
-  pthread_t thread1, thread2;
-
-  pthread_create(&thread1, NULL, &thread1_allocate, NULL);
-  pthread_join(thread1, NULL);
-
-  pthread_create(&thread2, NULL, &thread2_free, NULL);
-  pthread_join(thread2, NULL);
-  */
-  return;
-}
-#endif
-
 // issue 445
 static void strdup_test() {
 #ifdef _MSC_VER
@@ -294,7 +250,7 @@ static void heap_thread_free_large_worker() {
 
 static void heap_thread_free_large() {
   for (int i = 0; i < 100; i++) {
-    shared_p = mi_malloc_aligned(2 * 1024 * 1024 + 1, 8);
+    shared_p = mi_malloc_aligned(2*1024*1024 + 1, 8);
     auto t1 = std::thread(heap_thread_free_large_worker);
     t1.join();
   }
@@ -305,12 +261,13 @@ static void heap_thread_free_huge_worker() {
 }
 
 static void heap_thread_free_huge() {
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 10; i++) {
     shared_p = mi_malloc(1024 * 1024 * 1024);
     auto t1 = std::thread(heap_thread_free_huge_worker);
     t1.join();
   }
 }
+
 
 static void test_mt_shutdown()
 {
@@ -336,18 +293,6 @@ static void test_mt_shutdown()
   std::cout << "done" << std::endl;
 }
 
-// issue #363
-using namespace std;
-
-void large_alloc(void)
-{
-  char* a = new char[1ull << 25];
-  thread th([&] {
-    delete[] a;
-    });
-  th.join();
-}
-
 // issue #372
 static void fail_aslr() {
   size_t sz = (4ULL << 40); // 4TiB
@@ -367,34 +312,3 @@ static void tsan_numa_test() {
   dummy_worker();
   t1.join();
 }
-
-// issue #?
-#include <chrono>
-#include <random>
-#include <iostream>
-
-static void bench_alloc_large(void) {
-  static constexpr int kNumBuffers = 20;
-  static constexpr size_t kMinBufferSize = 5 * 1024 * 1024;
-  static constexpr size_t kMaxBufferSize = 25 * 1024 * 1024;
-  std::unique_ptr<char[]> buffers[kNumBuffers];
-
-  std::random_device rd;  (void)rd;
-  std::mt19937 gen(42); //rd());
-  std::uniform_int_distribution<> size_distribution(kMinBufferSize, kMaxBufferSize);
-  std::uniform_int_distribution<> buf_number_distribution(0, kNumBuffers - 1);
-
-  static constexpr int kNumIterations = 2000;
-  const auto start = std::chrono::steady_clock::now();
-  for (int i = 0; i < kNumIterations; ++i) {
-    int buffer_idx = buf_number_distribution(gen);
-    size_t new_size = size_distribution(gen);
-    buffers[buffer_idx] = std::make_unique<char[]>(new_size);
-  }
-  const auto end = std::chrono::steady_clock::now();
-  const auto num_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  const auto us_per_allocation = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / kNumIterations;
-  std::cout << kNumIterations << " allocations Done in " << num_ms << "ms." << std::endl;
-  std::cout << "Avg " << us_per_allocation << " us per allocation" << std::endl;
-}
-
