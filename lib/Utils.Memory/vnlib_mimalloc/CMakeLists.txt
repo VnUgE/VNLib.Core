@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
 project(vnlib_mimalloc C)
 set(_MI_PROJ_NAME "vnlib_mimalloc")
