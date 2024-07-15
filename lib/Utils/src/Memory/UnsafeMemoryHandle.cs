@@ -286,7 +286,7 @@ namespace VNLib.Utils.Memory
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns>True if handles are equal, flase otherwise</returns>
-        public static bool operator ==(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => left.Equals(right);
+        public static bool operator ==(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => left.Equals(in right);
 
         /// <summary>
         /// Equality overload
@@ -294,7 +294,7 @@ namespace VNLib.Utils.Memory
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns>True if handles are equal, flase otherwise</returns>
-        public static bool operator !=(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => !left.Equals(right);
+        public static bool operator !=(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => !left.Equals(in right);
 
     }
 }

@@ -38,7 +38,7 @@
 /*
  * 6-26-2024
  * 
- * Server has been transformed to ultilse a single configuration to listen 
+ * Server has been transformed to ultilize a single configuration to listen 
  * on a map of transport servers and isolate those connections to individual 
  * virtual hosts. It allows multiple virtual hosts to be mapped to a single 
  * transport server, but also allow a many-to-many relationship between
@@ -142,7 +142,7 @@ namespace VNLib.Net.Http
             KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
 
             //Map transport listeners to their virtual hosts
-            Transports = MapListeners(bindings);
+            Transports = MapListeners(bindings.ToArray());
 
             //Cache supported compression methods, or none if compressor is null
             SupportedCompressionMethods = config.CompressorManager == null 
@@ -242,8 +242,13 @@ namespace VNLib.Net.Http
             }
         }
 
-        private static ListenerState[] MapListeners(IEnumerable<HttpTransportBinding> bindings)
+        private static ListenerState[] MapListeners(HttpTransportBinding[] bindings)
         {
+            if(bindings.Any(static b => b is null))
+            {
+                throw new ArgumentNullException(nameof(bindings),"Transport bindings containing a null entry.");
+            }
+
             /*
              * Transform the bindings to individual http listeners
              * which also requires a frozen mapping of hostnames to

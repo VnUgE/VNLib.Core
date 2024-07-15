@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: HttpServiceStackBuilder.cs 
+* File: ServiceBuilder.cs 
 *
-* HttpServiceStackBuilder.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* ServiceBuilder.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -55,6 +55,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <returns>The current instance for chaining</returns>
         public ServiceBuilder AddHostCollection(Action<ICollection<IServiceHost>> host)
         {
+            ArgumentNullException.ThrowIfNull(host);
+
             _callbacks.Add(host);
             return this;
         }

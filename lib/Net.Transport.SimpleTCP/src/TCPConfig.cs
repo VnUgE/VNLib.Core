@@ -86,16 +86,16 @@ namespace VNLib.Net.Transport.Tcp
         /// WARNING: Setting this value too low will cause significant CPU overhead and GC load
         /// </para>
         /// </summary>
-        public required readonly int CacheQuota { get; init; }
+        public readonly int CacheQuota { get; init; }
         /// <summary>
         /// An optional callback invoked after the socket has been created
         /// for optional appliction specific socket configuration
         /// </summary>
-        public required readonly Action<Socket>? OnSocketCreated { get; init; } 
+        public readonly Action<Socket>? OnSocketCreated { get; init; } 
         /// <summary>
         /// Enables verbose logging of TCP operations using the <see cref="LogLevel.Verbose"/>
         /// level
         /// </summary>
-        public required readonly bool DebugTcpLog { get; init; }
+        public readonly bool DebugTcpLog { get; init; }
     }
 }

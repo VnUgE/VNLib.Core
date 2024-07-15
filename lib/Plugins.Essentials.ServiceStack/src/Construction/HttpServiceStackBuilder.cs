@@ -112,7 +112,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         ) => WithHttp((sgs) => {
 
             HttpTransportBinding[] vhBindings = getBindings(sgs)
-                .Select(s =>
+                .Select(static s =>
                 {
                     IEnumerable<IWebRoot> procs = s.Hosts.Select(static s => s.Processor);
                     return new HttpTransportBinding(s.Transport, procs);
