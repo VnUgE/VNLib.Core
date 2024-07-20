@@ -38,20 +38,6 @@ namespace VNLib.Utils.Extensions
     public static class ThreadingExtensions
     {
         /// <summary>
-        /// Allows an <see cref="OpenResourceHandle{TResource}"/> to execute within a scope limited context
-        /// </summary>
-        /// <typeparam name="TResource">The resource type</typeparam>
-        /// <param name="rh"></param>
-        /// <param name="safeCallback">The function body that will execute with controlled access to the resource</param>
-        public static void EnterSafeContext<TResource>(this OpenResourceHandle<TResource> rh, Action<TResource> safeCallback)
-        {
-            using (rh)
-            {
-                safeCallback(rh.Resource);
-            }
-        }
-
-        /// <summary>
         /// Waits for exlcusive access to the resource identified by the given moniker
         /// and returns a handle that will release the lock when disposed.
         /// </summary>
@@ -106,6 +92,7 @@ namespace VNLib.Utils.Extensions
             await semaphore.WaitAsync(cancellationToken);
             return new SemSlimReleaser(semaphore);
         }
+
         /// <summary>
         /// Asynchronously waits to enter the <see cref="SemaphoreSlim"/> using a 32-bit signed integer to measure the time intervale
         /// and getting a releaser handle
@@ -135,6 +122,7 @@ namespace VNLib.Utils.Extensions
             semaphore.Wait();
             return new SemSlimReleaser(semaphore);
         }
+
         /// <summary>
         /// Blocks the current thread until it can enter the <see cref="SemaphoreSlim"/>
         /// </summary>
@@ -164,6 +152,7 @@ namespace VNLib.Utils.Extensions
             mutex.WaitOne();
             return new MutexReleaser(mutex);
         }
+
         /// <summary>
         /// Blocks the current thread until it can enter the <see cref="SemaphoreSlim"/>
         /// </summary>
@@ -201,6 +190,7 @@ namespace VNLib.Utils.Extensions
         public static Task<bool> WaitAsync(this WaitHandle handle, int timeoutMs = Timeout.Infinite)
         {
             ArgumentNullException.ThrowIfNull(handle);
+
             //test non-blocking handle state
             if (handle.WaitOne(0))
             {
@@ -223,13 +213,64 @@ namespace VNLib.Utils.Extensions
                     return TrueCompleted;
                 }
             }
+
+            return NoSpinWaitAsync(handle, timeoutMs);
+        }
+
+        /// <summary>
+        /// Asynchronously waits for a the <see cref="WaitHandle"/> to receive a signal. This method spins until 
+        /// a thread yield will occur, then asynchronously yields.
+        /// </summary>
+        /// <param name="handle"></param>
+        /// <param name="timeoutMs">The timeout interval in milliseconds</param>
+        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynct wait event</param>
+        /// <returns>
+        /// A task that compeletes when the wait handle receives a signal or times-out,
+        /// the result of the awaited task will be <c>true</c> if the signal is received, or 
+        /// <c>false</c> if the timeout interval expires
+        /// </returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public static Task<bool> WaitAsync(this WaitHandle handle, int timeoutMs, CancellationToken cancellation = default)
+        {
+            Task<bool> withoutToken = WaitAsync(handle, timeoutMs);
+
+            return withoutToken.IsCompleted 
+                ? withoutToken 
+                : withoutToken.WaitAsync(cancellation);
+        }
+
+        /// <summary>
+        /// Asynchronously waits for a the <see cref="WaitHandle"/> to receive a signal, without checking 
+        /// current state or spinning. This function always returns a new task that will complete when the
+        /// handle is signaled or the timeout interval expires.
+        /// </summary>
+        /// <param name="handle"></param>
+        /// <param name="timeoutMs">Time (in ms)</param>
+        /// <returns></returns>
+        public static Task<bool> NoSpinWaitAsync(this WaitHandle handle, int timeoutMs)
+        {            
             //Completion source used to signal the awaiter when the wait handle is signaled
             TaskCompletionSource<bool> completion = new(TaskCreationOptions.None);
+            
             //Register wait on threadpool to complete the task source
-            RegisteredWaitHandle registration = ThreadPool.RegisterWaitForSingleObject(handle, TaskCompletionCallback, completion, timeoutMs, true);
+            RegisteredWaitHandle registration = ThreadPool.RegisterWaitForSingleObject(
+                handle, 
+                TaskCompletionCallback, 
+                completion, 
+                timeoutMs, executeOnlyOnce: true
+            );
+
             //Register continuation to cleanup
-            _ = completion.Task.ContinueWith(CleanupContinuation, registration, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default)
-                .ConfigureAwait(false);
+            _ = completion.Task.ContinueWith(
+                CleanupContinuation, 
+                registration, 
+                CancellationToken.None, 
+                TaskContinuationOptions.ExecuteSynchronously, 
+                TaskScheduler.Default
+            ).ConfigureAwait(false);
+            
             return completion.Task;
         }
 
