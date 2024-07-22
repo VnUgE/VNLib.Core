@@ -104,7 +104,7 @@ namespace VNLib.Utils.Async
         public AsyncQueue(BoundedChannelOptions options) => _channel = Channel.CreateBounded<T>(options);
 
         /// <inheritdoc/>
-        public bool TryEnque(T item) => _channel.Writer.TryWrite(item);
+        public bool TryEnqueue(T item) => _channel.Writer.TryWrite(item);
 
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
@@ -121,5 +121,7 @@ namespace VNLib.Utils.Async
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public bool TryPeek([MaybeNullWhen(false)] out T result) => _channel.Reader.TryPeek(out result);
+
+        bool IAsyncQueue<T>.TryEnque(T item) => TryEnqueue(item);
     }
 }
