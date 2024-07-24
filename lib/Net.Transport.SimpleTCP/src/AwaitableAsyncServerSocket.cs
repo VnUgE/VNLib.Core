@@ -47,19 +47,21 @@ namespace VNLib.Net.Transport.Tcp
         private Socket? _socket;
 
         public readonly SocketPipeLineWorker SocketWorker;
+        private readonly bool _reuseSocket;
         private readonly AwaitableValueSocketEventArgs _recvArgs = new();
         private readonly AwaitableValueSocketEventArgs _allArgs = new();
 
         private Task _sendTask = Task.CompletedTask;
         private Task _recvTask = Task.CompletedTask;
 
-        public AwaitableAsyncServerSocket(PipeOptions options) : base()
+        public AwaitableAsyncServerSocket(bool reuseSocket, PipeOptions options) : base()
         {
+            _reuseSocket = reuseSocket && IsWindows;    //Reuse only available on Windows
             SocketWorker = new(options);
 
             //Set reuse flags now
-            _recvArgs.DisconnectReuseSocket = IsWindows;
-            _allArgs.DisconnectReuseSocket = IsWindows;
+            _recvArgs.DisconnectReuseSocket = _reuseSocket;
+            _allArgs.DisconnectReuseSocket = _reuseSocket;
         }
       
 
@@ -75,10 +77,10 @@ namespace VNLib.Net.Transport.Tcp
                 //get buffer from the pipe to write initial accept data to
                 Memory<byte> buffer = SocketWorker.GetMemory(recvBuffSize);
                 _allArgs.SetBuffer(buffer);
-
-                //Also on windows we can reuse the previous socket if its set
-                _allArgs.AcceptSocket = _socket;
             }
+
+            //Reuse socket if it's set
+            _allArgs.AcceptSocket = _socket;
 
             //Begin the accept
             SocketError error = await _allArgs.AcceptAsync(serverSocket);
@@ -129,12 +131,12 @@ namespace VNLib.Net.Transport.Tcp
             await _recvTask.ConfigureAwait(false);
 
             /*
-             * Sockets are reused as much as possible on Windows. If the socket
+             * Sockets can be reused as much as possible on Windows. If the socket
              * failes to disconnect cleanly, the release function won't clean it up
              * so it needs to be cleaned up here so at least our args instance
              * can be reused.
              */
-            if(IsWindows && error != SocketError.Success)
+            if(_reuseSocket && error != SocketError.Success)
             {
                 _socket.Dispose();
                 _socket = null;
@@ -168,7 +170,7 @@ namespace VNLib.Net.Transport.Tcp
 
         void IReusable.Prepare()
         {
-            Debug.Assert(_socket == null || IsWindows, "Exepcted stale socket to be NULL on non-Windows platform");
+            Debug.Assert(_socket == null || _reuseSocket, "Exepcted stale socket to be NULL on non-Windows platform");
 
             _allArgs.Prepare();
             _recvArgs.Prepare();
@@ -184,8 +186,8 @@ namespace VNLib.Net.Transport.Tcp
             _allArgs.Release();
             _recvArgs.Release();
 
-            //if the socket is still 'connected' (or not windows), dispose it and clear the accept socket
-            if (_socket?.Connected == true || !IsWindows)
+            //if the socket is still 'connected' (or no reuse), dispose it and clear the accept socket
+            if (_socket?.Connected == true || !_reuseSocket)
             {
                 _socket?.Dispose();
                 _socket = null;

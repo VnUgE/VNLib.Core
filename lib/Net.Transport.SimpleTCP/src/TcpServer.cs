@@ -106,17 +106,13 @@ namespace VNLib.Net.Transport.Tcp
         /// <exception cref="InvalidOperationException"></exception>
         public ITcpListner Listen()
         {
-            Socket serverSock;
-           
             //Configure socket on the current thread so exceptions will be raised to the caller
-            serverSock = new(_config.LocalEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            Socket serverSock = new(_config.LocalEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             
             serverSock.Bind(_config.LocalEndPoint);
-         
-            serverSock.Listen(_config.BackLog);
 
             //See if keepalive should be used
-            if (_config.TcpKeepalive)
+            if (_config.TcpKeepAliveTime > 0)
             {
                 //Setup socket keepalive from config
                 serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
@@ -126,7 +122,9 @@ namespace VNLib.Net.Transport.Tcp
 
             //Invoke socket created callback
             _config.OnSocketCreated?.Invoke(serverSock);
-            
+
+            serverSock.Listen(_config.BackLog);
+
             TcpListenerNode listener = new(in Config, serverSock, _pipeOptions);
 
             listener.StartWorkers();

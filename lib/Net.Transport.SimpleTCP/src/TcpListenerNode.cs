@@ -62,7 +62,7 @@ namespace VNLib.Net.Transport.Tcp
 
             //Arguments constructor
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            AwaitableAsyncServerSocket ArgsConstructor() => new(pipeOptions);
+            AwaitableAsyncServerSocket ArgsConstructor() => new(Config.ReuseSocket, pipeOptions);
 
             SockAsyncArgPool = ObjectRental.CreateReusable(ArgsConstructor, config.CacheQuota);
 
@@ -186,7 +186,7 @@ namespace VNLib.Net.Transport.Tcp
                         bool maxConsReached = _connectedClients > Config.MaxConnections;
 
                         //Add to waiting queue
-                        if (maxConsReached || !WaitingSockets!.TryEnque(acceptArgs))
+                        if (maxConsReached || !WaitingSockets!.TryEnqueue(acceptArgs))
                         {
                             /*
                              * If max connections are reached or the queue is overflowing, 

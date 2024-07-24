@@ -53,10 +53,6 @@ namespace VNLib.Net.Transport.Tcp
         /// </summary>
         public required readonly int KeepaliveInterval { get; init; }
         /// <summary>
-        /// Enables TCP keepalive
-        /// </summary>
-        public required readonly bool TcpKeepalive { get; init; }
-        /// <summary>
         /// The maximum number of waiting WSA asynchronous socket accept operations
         /// </summary>
         public required readonly uint AcceptThreads { get; init; }
@@ -73,6 +69,11 @@ namespace VNLib.Net.Transport.Tcp
         /// The listener socket backlog count
         /// </summary>
         public required readonly int BackLog { get; init; }
+        /// <summary>
+        /// Reuse the TCP socket descriptor after a socket has been closed.
+        /// Only available on Windows platforms.
+        /// </summary>
+        public required readonly bool ReuseSocket { get; init; }
         /// <summary>
         /// The <see cref="MemoryPool{T}"/> to allocate transport buffers from
         /// </summary>
