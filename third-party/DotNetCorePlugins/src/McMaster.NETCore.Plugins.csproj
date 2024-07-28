@@ -16,7 +16,7 @@ See https://github.com/natemcmaster/DotNetCorePlugins/blob/main/README.md for mo
 
   <ItemGroup>
     <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="3.1.6" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
