@@ -39,40 +39,45 @@ namespace VNLib.Net.Transport.Tcp
         /// <summary>
         /// The <see cref="IPEndPoint"/> the listening socket will bind to
         /// </summary>
-        public readonly IPEndPoint LocalEndPoint { get; init; }
+        public required readonly IPEndPoint LocalEndPoint { get; init; }
         /// <summary>
         /// The log provider used to write logging information to
         /// </summary>
-        public readonly ILogProvider Log { get; init; }
+        public required readonly ILogProvider Log { get; init; }
         /// <summary>
         /// If TCP keepalive is enabled, the amount of time the connection is considered alive before another probe message is sent
         /// </summary>
-        public readonly int TcpKeepAliveTime { get; init; }
+        public required readonly int TcpKeepAliveTime { get; init; }
         /// <summary>
         /// If TCP keepalive is enabled, the amount of time the connection will wait for a keepalive message
         /// </summary>
-        public readonly int KeepaliveInterval { get; init; }
-        /// <summary>
-        /// Enables TCP keepalive
-        /// </summary>
-        public readonly bool TcpKeepalive { get; init; }
+        public required readonly int KeepaliveInterval { get; init; }
         /// <summary>
         /// The maximum number of waiting WSA asynchronous socket accept operations
         /// </summary>
-        public readonly uint AcceptThreads { get; init; }
+        public required readonly uint AcceptThreads { get; init; }
         /// <summary>
         /// The maximum size (in bytes) the transport will buffer in
         /// the receiving pipeline.
         /// </summary>
-        public readonly int MaxRecvBufferData { get; init; }
+        public required readonly int MaxRecvBufferData { get; init; }
+        /// <summary>
+        /// The maximum number of allowed socket connections to this server
+        /// </summary>
+        public required readonly long MaxConnections { get; init; }
         /// <summary>
         /// The listener socket backlog count
         /// </summary>
-        public readonly int BackLog { get; init; }
+        public required readonly int BackLog { get; init; }
+        /// <summary>
+        /// Reuse the TCP socket descriptor after a socket has been closed.
+        /// Only available on Windows platforms.
+        /// </summary>
+        public required readonly bool ReuseSocket { get; init; }
         /// <summary>
         /// The <see cref="MemoryPool{T}"/> to allocate transport buffers from
         /// </summary>
-        public readonly MemoryPool<byte> BufferPool { get; init; }
+        public required readonly MemoryPool<byte> BufferPool { get; init; }
         /// <summary>
         /// <para>
         /// The maxium number of event objects that will be cached 

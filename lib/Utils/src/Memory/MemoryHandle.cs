@@ -229,8 +229,7 @@ namespace VNLib.Utils.Memory
 
             //If adding ref failed, the handle is closed
             ObjectDisposedException.ThrowIf(!addRef, this);
-            
-            //Create a new system.buffers memory handle from the offset ptr address
+         
             return new MemoryHandle(ptr, pinnable: this);
         }
 
@@ -250,7 +249,10 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         public bool Equals(MemoryHandle<T>? other)
         {
-            return other != null && (IsClosed | other.IsClosed) == false && _length == other._length && handle == other.handle;
+            return other != null 
+                && (IsClosed | other.IsClosed) == false 
+                && _length == other._length 
+                && handle == other.handle;
         }
 
         ///<inheritdoc/>

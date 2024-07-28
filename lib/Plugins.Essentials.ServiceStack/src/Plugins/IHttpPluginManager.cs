@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -25,7 +25,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     /// <summary>
     /// Represents a live plugin controller that manages all

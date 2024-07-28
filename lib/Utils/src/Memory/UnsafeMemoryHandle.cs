@@ -29,8 +29,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Diagnostics.CodeAnalysis;
 
-using VNLib.Utils.Extensions;
-
 namespace VNLib.Utils.Memory
 {
 
@@ -62,16 +60,7 @@ namespace VNLib.Utils.Memory
         public readonly Span<T> Span
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                return _handleType switch
-                {
-                    HandleType.None => Span<T>.Empty,
-                    HandleType.Pool => _poolArr!.AsSpan(0, _length),
-                    HandleType.PrivateHeap => MemoryUtil.GetSpan<T>(_memoryPtr, _length),
-                    _ => throw new InvalidOperationException("Invalid handle type"),
-                };
-            }
+            get => AsSpan();  
         }
 
         /// <summary>
@@ -153,7 +142,7 @@ namespace VNLib.Utils.Memory
                         IntPtr unalloc = _memoryPtr;
                         //Free the unmanaged handle
                         bool unsafeFreed = _heap!.Free(ref unalloc);
-                        Debug.Assert(unsafeFreed, "A previously allocated unsafe memhandle failed to free");
+                        Debug.Assert(unsafeFreed, "A previously allocated unsafe memhandle failed to free block");
                     }
                     break;
             }
@@ -193,6 +182,8 @@ namespace VNLib.Utils.Memory
         {
             switch (_handleType)
             {
+                case HandleType.None:
+                    return ref Unsafe.NullRef<T>();
                 case HandleType.Pool:
                     return ref MemoryMarshal.GetArrayDataReference(_poolArr!);
                 case HandleType.PrivateHeap:
@@ -207,7 +198,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <returns>The memory block that is held by the internl handle</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly Span<T> AsSpan() => Span;
+        public readonly Span<T> AsSpan() => AsSpan(0, _length);
 
         /// <summary>
         /// Returns a <see cref="Span{T}"/> that represents the memory block pointed to by this handle
@@ -216,7 +207,7 @@ namespace VNLib.Utils.Memory
         /// <returns>The desired memory block at the desired element offset</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly Span<T> AsSpan(int start) => Span[start..];
+        public readonly Span<T> AsSpan(int start) => AsSpan(start, _length - start);
 
         /// <summary>
         /// Returns a <see cref="Span{T}"/> that represents the memory block pointed to by this handle
@@ -226,7 +217,23 @@ namespace VNLib.Utils.Memory
         /// <returns>The desired memory block at the desired element offset and length</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>"
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly Span<T> AsSpan(int start, int length) => Span.Slice(start, length);
+        public readonly Span<T> AsSpan(int start, int length)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(start);
+            ArgumentOutOfRangeException.ThrowIfNegative(length);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(length - start, _length);
+
+            /*
+             * If the handle is empty, a null ref should be returned. The 
+             * check above will gaurd against calling this function on non-empty
+             * handles. So adding 0 to 0 on the reference should not cause any issues.
+             */
+            
+            return MemoryMarshal.CreateSpan(
+                ref Unsafe.Add(ref GetReference(), start), 
+                length
+            );
+        }
 
         ///<inheritdoc/>
         public readonly override int GetHashCode()
@@ -248,7 +255,9 @@ namespace VNLib.Utils.Memory
         /// <returns>True if the other handle points to the same block of memory as the current handle</returns>
         public readonly bool Equals(in UnsafeMemoryHandle<T> other)
         {
-            return _handleType == other._handleType && Length == other.Length && GetHashCode() == other.GetHashCode();
+            return _handleType == other._handleType 
+                && Length == other.Length 
+                && GetHashCode() == other.GetHashCode();
         }
 
         /// <summary>
@@ -277,7 +286,7 @@ namespace VNLib.Utils.Memory
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns>True if handles are equal, flase otherwise</returns>
-        public static bool operator ==(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => left.Equals(right);
+        public static bool operator ==(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => left.Equals(in right);
 
         /// <summary>
         /// Equality overload
@@ -285,7 +294,7 @@ namespace VNLib.Utils.Memory
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns>True if handles are equal, flase otherwise</returns>
-        public static bool operator !=(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => !left.Equals(right);
+        public static bool operator !=(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => !left.Equals(in right);
 
     }
 }

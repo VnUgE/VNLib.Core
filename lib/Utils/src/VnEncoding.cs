@@ -91,64 +91,17 @@ namespace VNLib.Utils
         /// <returns>The object decoded from the stream</returns>
         /// <exception cref="JsonException"></exception>
         /// <exception cref="NotSupportedException"></exception>
-        public static ValueTask<T?> JSONDeserializeFromBinaryAsync<T>(Stream? data, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static ValueTask<T?> JSONDeserializeFromBinaryAsync<T>(
+            Stream? data, 
+            JsonSerializerOptions? options = null, 
+            CancellationToken cancellationToken = default
+        )
         {
             //Return default if null
-            return data == null || data.Length == 0 ? ValueTask.FromResult<T?>(default) : JsonSerializer.DeserializeAsync<T>(data, options, cancellationToken);
-        }
-
-        /// <summary>
-        /// Attempts to deserialze a json object from a stream of UTF8 data
-        /// </summary>
-        /// <param name="data">Binary data to read from</param>
-        /// <param name="type"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> object to pass to deserializer</param>
-        /// <param name="cancellationToken"></param>
-        /// <returns>The object decoded from the stream</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        public static ValueTask<object?> JSONDeserializeFromBinaryAsync(Stream? data, Type type, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default)
-        {
-            //Return default if null
-            return data == null || data.Length == 0 ? ValueTask.FromResult<object?>(default) : JsonSerializer.DeserializeAsync(data, type, options, cancellationToken);
-        }
-
-        /// <summary>
-        /// Attempts to serialize the object to json and write the encoded data to the stream
-        /// </summary>
-        /// <typeparam name="T">The object type to serialize</typeparam>
-        /// <param name="data">The object to serialize</param>
-        /// <param name="output">The <see cref="Stream"/> to write output data to</param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> object to pass to serializer</param>
-        /// <exception cref="JsonException"></exception>
-        public static void JSONSerializeToBinary<T>(T data, Stream output, JsonSerializerOptions? options = null)
-        {
-            //return if null
-            if(data == null)
-            {
-                return;
-            }
-            //Serialize
-            JsonSerializer.Serialize(output, data, options);
-        }
-        /// <summary>
-        /// Attempts to serialize the object to json and write the encoded data to the stream
-        /// </summary>
-        /// <param name="data">The object to serialize</param>
-        /// <param name="output">The <see cref="Stream"/> to write output data to</param>
-        /// <param name="type"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> object to pass to serializer</param>
-        /// <exception cref="JsonException"></exception>
-        public static void JSONSerializeToBinary(object data, Stream output, Type type, JsonSerializerOptions? options = null)
-        {
-            //return if null
-            if (data == null)
-            {
-                return;
-            }
-            //Serialize
-            JsonSerializer.Serialize(output, data, type, options);
-        }
+            return data == null || data.Length == 0 
+                ? ValueTask.FromResult<T?>(default) 
+                : JsonSerializer.DeserializeAsync<T>(data, options, cancellationToken);
+        }      
 
         #region Base32
         
@@ -250,11 +203,8 @@ namespace VNLib.Utils
                 //right shift the value to lower 5 bits
                 val >>= 3;
 
-                //Lookup charcode
-                char base32Char = RFC_4648_BASE32_CHARS[val];
-
                 //append the character to the writer
-                writer.Append(base32Char);
+                writer.Append(RFC_4648_BASE32_CHARS[val]);
 
                 //Shift input left by 5 bits so the next 5 bits can be read
                 inputAsLong <<= 5;
@@ -282,6 +232,15 @@ namespace VNLib.Utils
         }
 
         /// <summary>
+        /// Gets the size of the buffer required to decode a base32 encoded 
+        /// string. This buffer size will always be smaller than the input size.
+        /// </summary>
+        /// <param name="inputSize">The base32 encoded data input size</param>
+        /// <returns>The size of the output buffer needed to write decoded data to</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nint Base32DecodedSizeSize(nint inputSize) => (inputSize * 5) / 8;
+
+        /// <summary>
         /// Attempts to decode the Base32 encoded string
         /// </summary>
         /// <param name="input">The Base32 encoded data to decode</param>
@@ -292,53 +251,57 @@ namespace VNLib.Utils
         {
             //TODO support Big-Endian byte order
 
+            int count = 0;
+            ulong bufferLong = 0;                   //buffer used to shift data while decoding
+            byte* buffer = (byte*)&bufferLong;      //re-cast to byte* to use it as a byte buffer
+
             //trim padding characters
             input = input.Trim('=');
 
             //Calc the number of bytes to write
-            int outputSize = (input.Length * 5) / 8;
+            nint outputSize = Base32DecodedSizeSize(input.Length);
 
             //make sure the output buffer is large enough
             if(writer.RemainingSize < outputSize)
             {
                 return false;
             }
-            
-            //buffer used to shift data while decoding
-            ulong bufferLong = 0;
-            
-            //re-cast to byte* to index it as a byte buffer
-            byte* buffer = (byte*)&bufferLong;
-            
-            int count = 0, len = input.Length;
 
-            while(count < len)
+            while(count < input.Length)
             {
-                //Convert the character to its char code
-                byte charCode = GetCharCode(input[count]);
-
-                //write byte to buffer
-                buffer[0] |= charCode;
+                /*
+                 * Attempts to accumulate 8 bytes from the input buffer
+                 * and write it from hi-lo byte order to the output buffer
+                 * 
+                 * The underlying 64-bit integer is shifted left by 5 bits
+                 * on every loop, removing leading zero bits. The OR operation
+                 * ignores the zeros when the next byte is written, and anything 
+                 * leading is shifted off the end when 8 bytes are written.
+                 * 
+                 * Reemeber: each character only contains 5 bits of useful data
+                 */
+                
+                buffer[0] |= GetCharCode(input[count]);
 
                 count++;
 
                 //If 8 characters have been decoded, reset the buffer
-                if((count % 8) == 0)
+                if ((count % 8) == 0)
                 {
                     //Write the 5 upper bytes in reverse order to the output buffer
                     for(int j = 0; j < 5; j++)
                     {
                         writer.Append(buffer[4 - j]);
                     }
-                    //reset
+                    
                     bufferLong = 0;
                 }
 
-                //left shift the buffer up by 5 bits
+                //left shift the buffer up by 5 bits, because thats all we 
                 bufferLong <<= 5;
             }
 
-            //If remaining data has not be written, but has been buffed, finalize it
+            //If remaining data has not be written, but has been bufferedd, finalize it
             if (writer.Written < outputSize)
             {
                 //calculate how many bits the buffer still needs to be shifted by (will be 5 bits off because of the previous loop)
@@ -348,7 +311,7 @@ namespace VNLib.Utils
                 bufferLong <<= remainingShift;
 
                 //calc remaining bytes
-                int remaining = (outputSize - writer.Written);
+                nint remaining = (outputSize - writer.Written);
 
                 //Write remaining bytes to the output
                 for(int i = 0; i < remaining; i++)
@@ -455,31 +418,24 @@ namespace VNLib.Utils
         /// <returns>The base32 encoded string representation of the specified buffer</returns>
         /// <exception cref="InternalBufferTooSmallException"></exception>
         public static string ToBase32String(ReadOnlySpan<byte> binBuffer, bool withPadding = false)
-        {
-            string value;
+        {            
             //Calculate the base32 entropy to alloc an appropriate buffer (minium buffer of 2 chars)
             int entropy = Base32CalcMaxBufferSize(binBuffer.Length);
-
-            //Alloc buffer for enough size (2*long bytes) is not an issue
+           
             using UnsafeMemoryHandle<char> charBuffer = MemoryUtil.UnsafeAlloc<char>(entropy);
 
             //Encode
             ERRNO encoded = TryToBase32Chars(binBuffer, charBuffer.Span);
+
             if (!encoded)
             {
                 throw new InternalBufferTooSmallException("Base32 char buffer was too small");
             }
-            //Convert with or w/o padding
-            if (withPadding)
-            {
-                value = charBuffer.Span[0..(int)encoded].ToString();
-            }
-            else
-            {
-                value = charBuffer.Span[0..(int)encoded].Trim('=').ToString();
-            }
 
-            return value;
+            //Convert with or w/o padding
+            return withPadding 
+                ? charBuffer.Span[0..(int)encoded].ToString() 
+                : charBuffer.Span[0..(int)encoded].Trim('=').ToString();
         }   
         
         /// <summary>
@@ -494,12 +450,14 @@ namespace VNLib.Utils
         {
             //calc size of bin buffer
             int size = base32.Length;
-            //Rent a bin buffer
+           
             using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAlloc(size);
-            //Try to decode the data
+            
             ERRNO decoded = TryFromBase32Chars(base32, binBuffer.Span);
-            //Marshal back to a struct 
-            return decoded ? MemoryMarshal.Read<T>(binBuffer.Span[..(int)decoded]) : throw new InternalBufferTooSmallException("Binbuffer was too small");
+           
+            return decoded 
+                ? MemoryMarshal.Read<T>(binBuffer.Span[..(int)decoded])
+                : throw new InternalBufferTooSmallException("Binbuffer was too small");
         }
 
         /// <summary>
@@ -536,11 +494,11 @@ namespace VNLib.Utils
         {
             //get the size of the structure
             int binSize = Unsafe.SizeOf<T>();
-            //Rent a bin buffer
+         
             Span<byte> binBuffer = stackalloc byte[binSize];
-            //Write memory to buffer
+        
             MemoryMarshal.Write(binBuffer, in value);
-            //Convert to base32
+
             return ToBase32String(binBuffer, withPadding);
         }
 
@@ -548,28 +506,9 @@ namespace VNLib.Utils
 
         #region percent encoding
 
-        private const int MAX_STACKALLOC = 1024;
+        private const int MAX_STACKALLOC = 512;
 
-        private static readonly ReadOnlyMemory<byte> HexToUtf8Pos = new byte[16]
-        {
-            0x30, //0
-            0x31, //1
-            0x32, //2
-            0x33, //3
-            0x34, //4
-            0x35, //5
-            0x36, //6
-            0x37, //7
-            0x38, //8
-            0x39, //9
-
-            0x41, //A
-            0x42, //B
-            0x43, //C
-            0x44, //D
-            0x45, //E
-            0x46  //F
-        };
+        private static readonly byte[] HexToUtf8Pos = "0123456789ABCDEF"u8.ToArray();
 
         /// <summary>
         /// Deterimes the size of the buffer needed to encode a utf8 encoded 
@@ -630,7 +569,7 @@ namespace VNLib.Utils
         public static ERRNO PercentEncode(ReadOnlySpan<byte> utf8Bytes, Span<byte> utf8Output, ReadOnlySpan<byte> allowedChars = default)
         {
             int outPos = 0, len = utf8Bytes.Length;
-            ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.Span;
+            ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.AsSpan();
 
             if (allowedChars.IsEmpty)
             {
@@ -645,11 +584,13 @@ namespace VNLib.Utils
                     }
                     else
                     {
-                        //Percent encode
+                        /*
+                        * Leading byte is %, followed by a single byte 
+                        * for the hi and low nibble of the value
+                        */
+                      
                         utf8Output[outPos++] = 0x25;  // '%'
-                                                      //Calc and store the encoded by the upper 4 bits
                         utf8Output[outPos++] = lookupTable[(value & 0xf0) >> 4];
-                        //Store lower 4 bits in encoded value
                         utf8Output[outPos++] = lookupTable[value & 0x0f];
                     }
                 }
@@ -667,11 +608,13 @@ namespace VNLib.Utils
                     }
                     else
                     {
-                        //Percent encode
-                        utf8Output[outPos++] = 0x25;  // '%'
-                         //Calc and store the encoded by the upper 4 bits
+                        /*
+                         * Leading byte is %, followed by a single byte 
+                         * for the hi and low nibble of the value
+                         */
+                        
+                        utf8Output[outPos++] = 0x25;  // '%'                        
                         utf8Output[outPos++] = lookupTable[(value & 0xf0) >> 4];
-                        //Store lower 4 bits in encoded value
                         utf8Output[outPos++] = lookupTable[value & 0x0f];
                     }
                 }
@@ -711,7 +654,7 @@ namespace VNLib.Utils
         public static ERRNO PercentDecode(ReadOnlySpan<byte> utf8Encoded, Span<byte> utf8Output)
         {
             int outPos = 0, len = utf8Encoded.Length;
-            ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.Span;
+            ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.AsSpan();
 
             for (int i = 0; i < len; i++)
             {
@@ -816,9 +759,13 @@ namespace VNLib.Utils
         /// return value. The default value is System.Base64FormattingOptions.None.
         /// </param>
         /// <returns>The number of characters encoded, or <see cref="ERRNO.E_FAIL"/> if conversion was unsuccessful</returns>
-        public static ERRNO TryToBase64Chars(ReadOnlySpan<byte> buffer, Span<char> base64, Base64FormattingOptions options = Base64FormattingOptions.None)
+        public static ERRNO TryToBase64Chars(
+            ReadOnlySpan<byte> buffer, 
+            Span<char> base64, 
+            Base64FormattingOptions options = Base64FormattingOptions.None
+        )
         {
-            return Convert.TryToBase64Chars(buffer, base64, out int charsWritten, options: options) ? charsWritten : ERRNO.E_FAIL;
+            return Convert.TryToBase64Chars(buffer, base64, out int charsWritten, options) ? charsWritten : ERRNO.E_FAIL;
         }
        
 
@@ -905,8 +852,17 @@ namespace VNLib.Utils
         /// <returns>The size of the <paramref name="base64"/> buffer</returns>
         public static ERRNO Base64ToUrlSafe(ReadOnlySpan<byte> base64, Span<byte> base64Url)
         {
+            ArgumentOutOfRangeException.ThrowIfLessThan(base64.Length, base64Url.Length, nameof(base64));
+
             //Aligned copy to the output buffer
-            base64.CopyTo(base64Url);
+            MemoryUtil.Memmove(
+                ref MemoryMarshal.GetReference(base64Url),
+                0,
+                ref MemoryMarshal.GetReference(base64),
+                0,
+                (nuint)base64Url.Length
+            );
+
             //One time convert the output buffer to url safe
             Base64ToUrlSafeInPlace(base64Url);
             return base64.Length;
@@ -923,8 +879,17 @@ namespace VNLib.Utils
         /// <returns>The size of the <paramref name="base64Url"/> buffer</returns>
         public static ERRNO Base64FromUrlSafe(ReadOnlySpan<byte> base64Url, Span<byte> base64)
         {
+            ArgumentOutOfRangeException.ThrowIfLessThan(base64.Length, base64Url.Length, nameof(base64));
+
             //Aligned copy to the output buffer
-            base64Url.CopyTo(base64);
+            MemoryUtil.Memmove(
+                ref MemoryMarshal.GetReference(base64Url),
+                0,
+                ref MemoryMarshal.GetReference(base64),
+                0,
+                (nuint)base64Url.Length
+            );
+
             //One time convert the output buffer to url safe
             Base64FromUrlSafeInPlace(base64);
             return base64Url.Length;
@@ -982,27 +947,62 @@ namespace VNLib.Utils
 
             //Set the encoding to utf8
             encoding ??= Encoding.UTF8;
+
             //get the number of bytes to alloc a buffer
             int decodedSize = encoding.GetByteCount(chars);
 
             if(decodedSize > MAX_STACKALLOC)
             {
-                //Alloc heap buffer
                 using UnsafeMemoryHandle<byte> decodeHandle = MemoryUtil.UnsafeAlloc(decodedSize);
+
                 //Get the utf8 binary data
                 int count = encoding.GetBytes(chars, decodeHandle.Span);
                 return Base64UrlDecode(decodeHandle.Span[..count], output);
             }
             else
-            {
-                //Alloc stack buffer
+            {               
                 Span<byte> decodeBuffer = stackalloc byte[decodedSize];
+
                 //Get the utf8 binary data
                 int count = encoding.GetBytes(chars, decodeBuffer);
                 return Base64UrlDecode(decodeBuffer[..count], output);
             }
         }
 
+        private static string ConvertToBase64UrlStringInternal(
+            ReadOnlySpan<byte> rawData,
+            Span<byte> buffer,
+            bool includePadding,
+            Encoding encoding
+        )
+        {
+            //Conver to base64
+            OperationStatus status = Base64.EncodeToUtf8(rawData, buffer, out _, out int written, true);
+
+            //Check for invalid states
+            Debug.Assert(status != OperationStatus.DestinationTooSmall, "Buffer allocation was too small for the conversion");
+            Debug.Assert(status != OperationStatus.NeedMoreData, "Need more data status was returned but is not valid for an encoding operation");
+
+            //Should never occur, but just in case, this is an input error
+            if (status == OperationStatus.InvalidData)
+            {
+                throw new ArgumentException("Your input data contained values that could not be converted to base64", nameof(rawData));
+            }
+
+            Span<byte> base64 = buffer[..written];
+
+            //Make url safe
+            Base64ToUrlSafeInPlace(base64);
+
+            //Remove padding
+            if (!includePadding)
+            {
+                base64 = base64.TrimEnd((byte)0x3d);
+            }
+
+            //Convert to string
+            return encoding.GetString(base64);
+        }
 
         /// <summary>
         /// Base64url encodes the binary buffer to its utf8 binary representation
@@ -1068,58 +1068,8 @@ namespace VNLib.Utils
         /// <param name="includePadding">A value that indicates if the base64 padding characters should be included</param>
         /// <returns>The base64url encoded string</returns>
         /// <exception cref="ArgumentException"></exception>
-        public static string ToBase64UrlSafeString(ReadOnlySpan<byte> rawData, bool includePadding)
-        {
-            if (rawData.IsEmpty)
-            {
-                throw new ArgumentException("The input buffer was empty", nameof(rawData));
-            }
-
-            int maxBufSize = Base64.GetMaxEncodedToUtf8Length(rawData.Length);
-            
-            if(maxBufSize > MAX_STACKALLOC)
-            {
-                //Alloc heap buffer
-                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage(maxBufSize);
-                return ConvertToBase64UrlStringInternal(rawData, buffer.Span, includePadding);
-            }
-            else
-            {
-                //Stack alloc buffer
-                Span<byte> buffer = stackalloc byte[maxBufSize];
-                return ConvertToBase64UrlStringInternal(rawData, buffer, includePadding);
-            }
-        }
-
-        private static string ConvertToBase64UrlStringInternal(ReadOnlySpan<byte> rawData, Span<byte> buffer, bool includePadding)
-        {
-            //Conver to base64
-            OperationStatus status = Base64.EncodeToUtf8(rawData, buffer, out _, out int written, true);
-
-            //Check for invalid states
-            Debug.Assert(status != OperationStatus.DestinationTooSmall, "Buffer allocation was too small for the conversion");
-            Debug.Assert(status != OperationStatus.NeedMoreData, "Need more data status was returned but is not valid for an encoding operation");
-
-            //Should never occur, but just in case, this is an input error
-            if (status == OperationStatus.InvalidData)
-            {
-                throw new ArgumentException("Your input data contained values that could not be converted to base64", nameof(rawData));
-            }
-
-            Span<byte> base64 = buffer[..written];
-
-            //Make url safe
-            Base64ToUrlSafeInPlace(base64);
-
-            //Remove padding
-            if (!includePadding)
-            {
-                base64 = base64.TrimEnd((byte)0x3d);
-            }
-
-            //Convert to string
-            return Encoding.UTF8.GetString(base64);
-        }
+        [Obsolete("Use Base64UrlEncode instead")]
+        public static string ToBase64UrlSafeString(ReadOnlySpan<byte> rawData, bool includePadding) => Base64UrlEncode(rawData, includePadding);
 
         /// <summary>
         /// Encodes the binary input buffer to its base64url safe utf8 encoding, and writes the output 
@@ -1151,6 +1101,41 @@ namespace VNLib.Utils
 
                 Base64ToUrlSafeInPlace(nonPadded);
                 return nonPadded.Length;
+            }
+        }
+
+        /// <summary>
+        /// Encodes the binary intput buffer to its base64url safe encoding, then converts the binary 
+        /// value to it character encoded value and allocates a new string. Defaults to UTF8 character 
+        /// encoding. Base64url is a subset of ASCII,UTF7,UTF8,UTF16 etc so most encodings should be safe.
+        /// </summary>
+        /// <param name="input">The input binary intput buffer</param>
+        /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
+        /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>
+        /// <returns>The base64url encoded string of the input data using the desired encoding</returns>
+        public static string Base64UrlEncode(ReadOnlySpan<byte> input, bool includePadding, Encoding? encoding = null)
+        {
+            if (input.IsEmpty)
+            {
+                return string.Empty;
+            }
+
+            encoding ??= Encoding.UTF8;
+
+            //We need to alloc an intermediate buffer, get the base64 max size
+            int maxSize = Base64.GetMaxEncodedToUtf8Length(input.Length);
+
+            if (maxSize > MAX_STACKALLOC)
+            {
+                //Alloc heap buffer
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(maxSize);
+                return ConvertToBase64UrlStringInternal(input, buffer.Span, includePadding, encoding);
+            }
+            else
+            {
+                //Alloc stack buffer
+                Span<byte> bufer = stackalloc byte[maxSize];
+                return ConvertToBase64UrlStringInternal(input, bufer, includePadding, encoding);
             }
         }
 

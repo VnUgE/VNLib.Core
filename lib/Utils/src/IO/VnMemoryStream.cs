@@ -41,14 +41,20 @@ namespace VNLib.Utils.IO
     /// </summary>
     public sealed class VnMemoryStream : Stream, ICloneable
     {
+        public const int DefaultBufferSize = 4096;
+
         private nint _position;
         private nint _length;
         private bool _isReadonly;
         
         //Memory
         private readonly IResizeableMemoryHandle<byte> _buffer;
+
         //Default owns handle
         private readonly bool OwnsHandle = true;
+
+        //Lazy loaded memory wrapper
+        private MemoryManager<byte>? _memoryWrapper;
 
         /// <summary>
         /// Creates a new <see cref="VnMemoryStream"/> pointing to the begining of memory, and consumes the handle.
@@ -78,15 +84,19 @@ namespace VNLib.Utils.IO
             ArgumentNullException.ThrowIfNull(handle);
 
             return handle.CanRealloc || readOnly
-                ? new VnMemoryStream(handle, length, readOnly, ownsHandle)
+                ? new VnMemoryStream(handle, existingManager: null, length, readOnly, ownsHandle)
                 : throw new ArgumentException("The supplied memory handle must be resizable on a writable stream", nameof(handle));
         }
 
         /// <summary>
         /// Converts a writable <see cref="VnMemoryStream"/> to readonly to allow shallow copies
         /// </summary>
+        /// <remarks>
+        /// This funciton will convert the stream passed into it to a readonly stream. 
+        /// The function passes through the input stream as the return value
+        /// </remarks>
         /// <param name="stream">The stream to make readonly</param>
-        /// <returns>The readonly stream</returns>
+        /// <returns>A reference to the modified input stream</returns>
         public static VnMemoryStream CreateReadonly(VnMemoryStream stream)
         {
             ArgumentNullException.ThrowIfNull(stream);
@@ -101,15 +111,21 @@ namespace VNLib.Utils.IO
         /// global heap instance.
         /// </summary>
         public VnMemoryStream() : this(MemoryUtil.Shared) { }
-        
+
         /// <summary>
         /// Create a new memory stream where buffers will be allocated from the specified heap
         /// </summary>
         /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        public VnMemoryStream(IUnmangedHeap heap) : this(heap, 0, false) { }
-       
+        public VnMemoryStream(IUnmangedHeap heap) : this(heap, DefaultBufferSize, false) { }
+
+        /// <summary>
+        /// Creates a new memory stream using the <see cref="MemoryUtil.Shared"/>
+        /// global heap instance.
+        /// </summary>
+        public VnMemoryStream(nuint bufferSize, bool zero) : this(MemoryUtil.Shared, bufferSize, zero) { }
+
         /// <summary>
         /// Creates a new memory stream and pre-allocates the internal
         /// buffer of the specified size on the specified heap to avoid resizing.
@@ -163,7 +179,14 @@ namespace VNLib.Utils.IO
         /// <param name="length">The length property of the stream</param>
         /// <param name="readOnly">Is the stream readonly (should mostly be true!)</param>
         /// <param name="ownsHandle">Does the new stream own the memory -> <paramref name="buffer"/></param>
-        private VnMemoryStream(IResizeableMemoryHandle<byte> buffer, nint length, bool readOnly, bool ownsHandle)
+        /// <param name="existingManager">A reference to an existing memory manager class</param>
+        private VnMemoryStream(
+            IResizeableMemoryHandle<byte> buffer,
+            MemoryManager<byte>? existingManager,
+            nint length, 
+            bool readOnly, 
+            bool ownsHandle
+        )
         {
             Debug.Assert(length >= 0, "Length must be positive");
             Debug.Assert(buffer.CanRealloc || readOnly, "The supplied buffer is not resizable on a writable stream");
@@ -172,6 +195,7 @@ namespace VNLib.Utils.IO
             _buffer = buffer;                  //Consume the handle
             _length = length;                  //Store length of the buffer
             _isReadonly = readOnly;
+            _memoryWrapper = existingManager;
         }
       
         /// <summary>
@@ -189,7 +213,7 @@ namespace VNLib.Utils.IO
             //Create a new readonly copy (stream does not own the handle)
             return !_isReadonly
                 ? throw new NotSupportedException("This stream is not readonly. Cannot create shallow copy on a mutable stream")
-                : new VnMemoryStream(_buffer, _length, true, false);
+                : new VnMemoryStream(_buffer, _memoryWrapper, _length, readOnly: true, ownsHandle: false);
         }
         
         /// <summary>
@@ -247,27 +271,31 @@ namespace VNLib.Utils.IO
 
             cancellationToken.ThrowIfCancellationRequested();            
 
+            //Memory manager requires 32bit or less in length
             if(_length < Int32.MaxValue)
             {
-                //Safe to alloc a memory manager to do copy
-                using MemoryManager<byte> asMemManager = _buffer.ToMemoryManager(false);
+                //Get/alloc the internal memory manager and get the block
+                ReadOnlyMemory<byte> asMemory = AsMemory();
+
+                Debug.Assert(asMemory.Length >= LenToPosDiff, "Internal memory block smaller than desired for stream copy");
 
                 /*
                  * CopyTo starts at the current position, as if calling Read() 
                  * so the reader must be offset to match and the _length gives us the 
                  * actual length of the stream and therefor the segment size
-                 */              
+                 */
 
-                while(LenToPosDiff > 0)
+                while (LenToPosDiff > 0)
                 {
                     int blockSize = Math.Min((int)LenToPosDiff, bufferSize);
-                    Memory<byte> window = asMemManager.Memory.Slice((int)_position, blockSize);
+
+                    ReadOnlyMemory<byte> window = asMemory.Slice((int)_position, blockSize);
 
                     //write async
                     await destination.WriteAsync(window, cancellationToken);
 
                     //Update position
-                    _position+= bufferSize;
+                    _position += bufferSize;
                 }
             }
             else
@@ -354,7 +382,7 @@ namespace VNLib.Utils.IO
         }
 
         ///<inheritdoc/>
-        public override unsafe int ReadByte()
+        public override int ReadByte()
         {
             if (LenToPosDiff == 0)
             {
@@ -362,7 +390,7 @@ namespace VNLib.Utils.IO
             }
 
             //get the value at the current position
-            ref byte ptr = ref _buffer.GetOffsetByteRef((nuint)_position);
+            ref byte ptr = ref _buffer.GetOffsetByteRef(_position);
             
             //Increment position
             _position++;
@@ -486,7 +514,7 @@ namespace VNLib.Utils.IO
                 throw new NotSupportedException("Write operation is not allowed on readonly stream!");
             }
             //Calculate the new final position
-            nint newPos = (_position + buffer.Length);
+            nint newPos = checked(_position + buffer.Length);
             //Determine if the buffer needs to be expanded
             if (buffer.Length > LenToPosDiff)
             {
@@ -495,8 +523,16 @@ namespace VNLib.Utils.IO
                 //Update length
                 _length = newPos;
             }
+
             //Copy the input buffer to the internal buffer
-            MemoryUtil.Copy(buffer, 0, _buffer, (nuint)_position, buffer.Length);
+            MemoryUtil.Copy(
+                source: buffer, 
+                sourceOffset: 0, 
+                dest: _buffer, 
+                destOffset: (nuint)_position, 
+                count: buffer.Length
+            );
+            
             //Update the position
             _position = newPos;
         }
@@ -550,6 +586,7 @@ namespace VNLib.Utils.IO
         
         /// <summary>
         /// Returns a <see cref="ReadOnlySpan{T}"/> window over the data within the entire stream
+        /// that is equal in length to the stream length.
         /// </summary>
         /// <returns>A <see cref="ReadOnlySpan{T}"/> of the data within the entire stream</returns>
         /// <exception cref="OverflowException"></exception>
@@ -560,6 +597,40 @@ namespace VNLib.Utils.IO
             //Get span with no offset
             return _buffer.AsSpan(0, len);
         }
+
+        /// <summary>
+        /// Returns a <see cref="ReadOnlyMemory{T}"/> structure which is a window of the buffered
+        /// data as it currently sits. For writeable straems, you must call this function 
+        /// every time the size of the stream changes. The memory structure is just a "pointer" to 
+        /// the internal buffer.
+        /// </summary>
+        /// <returns>
+        /// A memory snapshot of the stream. 
+        /// </returns>
+        /// <remarks>
+        /// This function causes an internal allocation on the first call. After the first call
+        /// to this function, all calls are thread-safe.
+        /// </remarks>
+        public ReadOnlyMemory<byte> AsMemory()
+        {
+            /*
+             * Safe cast stram length to int, because memory window requires a 32bit 
+             * integer. Also will throw before allocating the mmemory manager
+             */
+
+            int len = Convert.ToInt32(_length);
+
+            //Defer/lazy init the memory manager
+            MemoryManager<byte> asMemory = LazyInitializer.EnsureInitialized(ref _memoryWrapper, AllocMemManager);
+
+            Debug.Assert(asMemory != null);
+
+            /*
+             * Buffer window may be larger than the actual stream legnth, so 
+             * slice the memory to the actual length of the stream
+             */
+            return asMemory.Memory[..len];
+        }
       
         /// <summary>
         /// If the current stream is a readonly stream, creates a shallow copy for reading only.
@@ -567,6 +638,8 @@ namespace VNLib.Utils.IO
         /// <returns>New stream shallow copy of the internal stream</returns>
         /// <exception cref="NotSupportedException"></exception>
         public object Clone() => GetReadonlyShallowCopy();
+
+        private MemoryManager<byte> AllocMemManager() => _buffer.ToMemoryManager(false);
 
     }
 }

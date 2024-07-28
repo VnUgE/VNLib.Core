@@ -45,16 +45,14 @@ namespace VNLib.Net.Http.Core
     /// <param name="buffer">The shared binary buffer</param>
     /// <param name="encoding">The encoding to use when reading bianry</param>
     /// <param name="lineTermination">The line delimiter to search for</param>
-    internal struct TransportReader(Stream transport, IHttpHeaderParseBuffer buffer, Encoding encoding, ReadOnlyMemory<byte> lineTermination) : IVnTextReader
+    internal struct TransportReader(Stream transport, IHttpHeaderParseBuffer buffer, Encoding encoding, ReadOnlyMemory<byte> lineTermination) 
+        : IVnTextReader
     {
         ///<inheritdoc/>
         public readonly Encoding Encoding => encoding;
 
         ///<inheritdoc/>
-        public readonly ReadOnlyMemory<byte> LineTermination => lineTermination;
-
-        ///<inheritdoc/>
-        public readonly Stream BaseStream => transport;
+        public readonly ReadOnlyMemory<byte> LineTermination => lineTermination;      
        
         private readonly uint MaxBufferSize = (uint)buffer.BinSize;
 
@@ -79,13 +77,21 @@ namespace VNLib.Net.Http.Core
         ///<inheritdoc/>
         public void Advance(int count)
         {
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), "Count must be positive");
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
 
             //Advance the window start by the count and set the position
             _position = _position.AdvanceStart(count);
+        }
+
+        /// <summary>
+        /// Sets the number of bytes to read from the transport stream
+        /// </summary>
+        /// <param name="start">The number of bytes to make available within the buffer window</param>
+        public void SetAvailableData(int start)
+        {
+            Debug.Assert(start <= MaxBufferSize, "Stream buffer would overflow");
+
+            _position = _position.AdvanceEnd(start);
         }
 
         ///<inheritdoc/>
@@ -110,7 +116,7 @@ namespace VNLib.Net.Http.Core
             {
                 //Get a ref to the entire buffer segment, then do an in-place move to shift the data to the start of the buffer
                 ref byte ptr = ref buffer.DangerousGetBinRef(0);
-                MemoryUtil.Memmove(ref ptr, _position.WindowStart, ref ptr, 0, windowSize);
+                MemoryUtil.Memmove(ref ptr, _position.WindowStart, ref ptr, dstOffset: 0, windowSize);
 
                 /*
                  * Now that data has been shifted, update the position to 

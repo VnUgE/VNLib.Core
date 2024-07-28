@@ -23,8 +23,8 @@
 */
 
 using System;
-using System.IO;
 using System.Text;
+using System.Threading;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
@@ -80,6 +80,7 @@ namespace VNLib.Net.Http.Core
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
 
+        private readonly TransportManager Transport;
         private readonly ManagedHttpCompressor? _compressor;
         private ITransportContext? _ctx;
         
@@ -104,17 +105,16 @@ namespace VNLib.Net.Http.Core
                 _compressor = null;
             }
 
+            Transport = new();
+
             //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
             Buffers = new(server.Config.BufferConfig, _compressor != null);
-
-            //Create new request
-            Request = new (this, server.Config.MaxUploadsPerRequest);
-            
-            //create a new response object
-            Response = new (this, Buffers);
-
-            //Init response writer
-            ResponseBody =  new ResponseWriter();
+         
+            Request = new (Transport, server.Config.MaxUploadsPerRequest);
+           
+            Response = new (this, Transport, Buffers);
+          
+            ResponseBody = new ResponseWriter();
         }
 
         /// <summary>
@@ -132,13 +132,65 @@ namespace VNLib.Net.Http.Core
         HttpVersion IHttpContextInformation.CurrentVersion => Request.State.HttpVersion;
 
         ///<inheritdoc/>
-        public ref readonly HttpEncodedSegment CrlfSegment => ref ParentServer.CrlfBytes;
+        public ref readonly HttpEncodedSegment CrlfSegment => ref ParentServer.Config.CrlfBytes;
 
         ///<inheritdoc/>
-        public ref readonly HttpEncodedSegment FinalChunkSegment => ref ParentServer.FinalChunkBytes;
+        public ref readonly HttpEncodedSegment FinalChunkSegment => ref ParentServer.Config.FinalChunkBytes;
+     
 
-        ///<inheritdoc/>
-        public Stream GetTransport() => _ctx!.ConnectionStream;
+        int _bytesRead;
+
+        /*
+         * The following functions operate in tandem. Data should be buffered
+         * by a call to BufferTransportAsync() and then made availbe by a call to
+         * GetReader(). This set of functions only happens once per request/response
+         * cycle. This allows a async buffer filling before a syncronous transport
+         * read. 
+         */
+
+        public void GetReader(out TransportReader reader)
+        {
+            Debug.Assert(_ctx != null, "Request to transport reader was called by the connection context was null");
+
+            reader = new(
+                _ctx!.ConnectionStream,
+                Buffers.RequestHeaderParseBuffer,
+                ParentServer.Config.HttpEncoding,
+                ParentServer.Config.HeaderLineTermination
+            );
+
+            /*
+             * Specal function to set available data
+             * NOTE: this can be dangerous as the buffer is 
+             */
+            reader.SetAvailableData(_bytesRead);
+
+            Debug.Assert(reader.Available == _bytesRead);
+        }
+
+        public async ValueTask BufferTransportAsync(CancellationToken cancellation)
+        {
+            /*
+             * This function allows for pre-buffering of the transport
+             * before parsing the request. It also allows waiting for more data async 
+             * when an http1 request is in keep-alive mode waiting for more data. 
+             * 
+             * We can asynchronously read data when its available and preload 
+             * the transport reader. The only catch is we need to access the 
+             * raw Memory<byte> structure within the buffer. So the binary
+             * buffer size MUST be respected.
+             */
+
+            Debug.Assert(_ctx != null, "Request to buffer transport was called by the connection context was null");
+
+            _bytesRead = 0;
+
+            Memory<byte> dataBuffer = Buffers.GetInitStreamBuffer();
+
+            _bytesRead = await _ctx!.ConnectionStream.ReadAsync(dataBuffer, cancellation);
+
+            Debug.Assert(_bytesRead <= dataBuffer.Length);
+        }
 
         #endregion
 
@@ -153,7 +205,7 @@ namespace VNLib.Net.Http.Core
             Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
 
             //Init new connection
-            Response.OnNewConnection(ctx.ConnectionStream);
+            Transport.OnNewConnection(ctx.ConnectionStream);
         } 
 
         ///<inheritdoc/>
@@ -176,6 +228,8 @@ namespace VNLib.Net.Http.Core
         ///<inheritdoc/>
         public void EndRequest()
         {
+            _bytesRead = 0; //Must reset after every request
+
             Request.OnComplete();
             Response.OnComplete();
             ResponseBody.OnComplete();
@@ -191,6 +245,8 @@ namespace VNLib.Net.Http.Core
         
         bool IReusable.Release()
         {
+            Transport.OnRelease();
+
             _ctx = null;
 
             AlternateProtocol = null;

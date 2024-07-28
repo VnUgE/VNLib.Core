@@ -91,11 +91,11 @@ namespace VNLib.Net.Http
             //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
             if (length == 0)
             {
+                //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 stream.Dispose();
                 return;
             }
-
-            //Set status code
+         
             Context.Response.SetStatusCode(code);
             
             //Finally store the stream input
@@ -120,11 +120,11 @@ namespace VNLib.Net.Http
             //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
             if (entity.Remaining == 0)
             {
+                //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 entity.Close();
                 return;
             }
-
-            //Set status code
+          
             Context.Response.SetStatusCode(code);
 
             //Store the memory reader input
@@ -150,6 +150,7 @@ namespace VNLib.Net.Http
             //If stream is empty, ignore it, the server will default to 0 content length and avoid overhead
             if (length == 0)
             {
+                //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 stream.Dispose();
                 return;
             }

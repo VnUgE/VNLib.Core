@@ -25,6 +25,7 @@
 using System;
 using System.Text;
 
+using VNLib.Net.Http.Core;
 using VNLib.Utils.Logging;
 
 namespace VNLib.Net.Http
@@ -32,15 +33,51 @@ namespace VNLib.Net.Http
     /// <summary>
     /// Represents configration variables used to create the instance and manage http connections
     /// </summary>
-    /// <param name="ServerLog">
-    /// A log provider that all server related log entiries will be written to
-    /// </param>
-    /// <param name="MemoryPool">
-    /// Server memory pool to use for allocating buffers
-    /// </param>
-    public readonly record struct HttpConfig(ILogProvider ServerLog, IHttpMemoryPool MemoryPool)
+    public readonly record struct HttpConfig
     {
-        
+        /// <summary>
+        /// Pre-encoded CRLF bytes
+        /// </summary>
+        internal readonly HttpEncodedSegment CrlfBytes;
+
+        /// <summary>
+        /// Pre-encoded HTTP chunking final chunk segment
+        /// </summary>
+        internal readonly HttpEncodedSegment FinalChunkBytes;
+
+        /// <summary>
+        /// The cached header-line termination value
+        /// </summary>
+        internal readonly ReadOnlyMemory<byte> HeaderLineTermination;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="HttpConfig"/> struct
+        /// </summary>
+        /// <param name="httpEncoding"></param>
+        public HttpConfig(Encoding httpEncoding)
+        {
+            ArgumentNullException.ThrowIfNull(httpEncoding);
+
+            HttpEncoding = httpEncoding;
+
+            //Init pre-encded segments
+            CrlfBytes = HttpEncodedSegment.FromString(HttpHelpers.CRLF, httpEncoding);
+            FinalChunkBytes = HttpEncodedSegment.FromString("0\r\n\r\n", httpEncoding);
+
+            //Store a ref to the crlf memory segment
+            HeaderLineTermination = CrlfBytes.Buffer.AsMemory();
+        }
+
+        /// <summary>
+        /// A log provider that all server related log entiries will be written to
+        /// </summary>
+        public required readonly ILogProvider ServerLog { get; init; }
+
+        /// <summary>
+        /// Server memory pool to use for allocating buffers
+        /// </summary>
+        public required readonly IHttpMemoryPool MemoryPool { get; init; }
+
         /// <summary>
         /// The absolute request entity body size limit in bytes
         /// </summary>

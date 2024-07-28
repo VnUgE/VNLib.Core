@@ -29,14 +29,12 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http.Core;
-using VNLib.Net.Http.Core.Buffering;
 using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.PerfCounter;
 
@@ -48,32 +46,37 @@ namespace VNLib.Net.Http
         private int OpenConnectionCount;
 
         //Event handler method for processing incoming data events
-        private async Task DataReceivedAsync(ITransportContext transportContext)
+        private async Task DataReceivedAsync(ListenerState listenState, ITransportContext transportContext)
         {
-            //Increment open connection count
             Interlocked.Increment(ref OpenConnectionCount);
-            
-            //Rent a new context object to reuse
+           
             HttpContext? context = ContextStore.Rent();
             
             try
             {
                 Stream stream = transportContext.ConnectionStream;
 
-                //Set write timeout
+                /*
+                 * Write timeout is constant for the duration of an HTTP 
+                 * connection. Read timeout must be set to active on initial
+                 * loop because a fresh connection is assumed to have data 
+                 * ready.
+                 */
                 stream.WriteTimeout = _config.SendTimeout;
+                stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
 
-                //Init stream
                 context.InitializeContext(transportContext);
                 
-                //Keep the transport open and listen for messages as long as keepalive is enabled
+                //Keepalive loop
                 do
                 {
-                    //Set rx timeout low for initial reading
+                    //Attempt to buffer a new (or keepalive) connection async
+                    await context.BufferTransportAsync(StopToken!.Token);
+
+                    //Return read timeout to active connection timeout after data is received
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
                     
-                    //Process the request
-                    bool keepAlive = await ProcessHttpEventAsync(context);
+                    bool keepAlive = await ProcessHttpEventAsync(listenState, context);
 
                     //If not keepalive, exit the listening loop and clean up connection
                     if (!keepAlive)
@@ -81,15 +84,17 @@ namespace VNLib.Net.Http
                         break;
                     }
 
-                    //Reset inactive keeaplive timeout, when expired the following read will throw a cancealltion exception
+                    //Timeout reset to keepalive timeout waiting for more data on the transport
                     stream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
-                    
-                    //"Peek" or wait for more data to begin another request (may throw timeout exception when timmed out)
-                    await stream.ReadAsync(Memory<byte>.Empty, StopToken!.Token);
                     
                 } while (true);
 
-                //Check if an alternate protocol was specified
+                /*
+                 * If keepalive loop breaks, its possible that the connection
+                 * wishes to upgrade to an alternate protocol. 
+                 * 
+                 * Process it here to allow freeing context related resources
+                 */
                 if (context.AlternateProtocol != null)
                 {
                     //Save the current ap
@@ -139,18 +144,16 @@ namespace VNLib.Net.Http
             {
                 _config.ServerLog.Error(ex);
             }
-            
-            //Dec open connection count
+           
             Interlocked.Decrement(ref OpenConnectionCount);
             
             //Return the context for normal operation (alternate protocol will return before now so it will be null)
             if(context != null)
             {
-                //Return context to store
                 ContextStore.Return(context);
             }
-            
-            //Close the transport async
+          
+            //All done, time to close transport and exit
             try
             {
                 await transportContext.CloseConnectionAsync();
@@ -165,9 +168,10 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Main event handler for all incoming connections
         /// </summary>
+        /// <param name="listenState"></param>
         /// <param name="context">Reusable context object</param>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<bool> ProcessHttpEventAsync(HttpContext context)
+        private async Task<bool> ProcessHttpEventAsync(ListenerState listenState, HttpContext context)
         {
             HttpPerfCounterState counter = default;
 
@@ -196,9 +200,8 @@ namespace VNLib.Net.Http
                 {
                     return false;
                 }
-
-                //process the request
-                bool processSuccess = await ProcessRequestAsync(context);
+              
+                bool processSuccess = await ProcessRequestAsync(listenState, context);
 
 #if DEBUG
                 static void WriteConnectionDebugLog(HttpServer server, HttpContext context)
@@ -276,17 +279,14 @@ namespace VNLib.Net.Http
                 //TODO: future support for http2 and http3 over tls
             }
 
-            //Get the parse buffer
-            IHttpHeaderParseBuffer parseBuffer = ctx.Buffers.RequestHeaderParseBuffer;
-            
-            TransportReader reader = new (ctx.GetTransport(), parseBuffer, _config.HttpEncoding, HeaderLineTermination);
+            ctx.GetReader(out TransportReader reader);
 
             HttpStatusCode code;
 
             try
             {
                 //Get the char span
-                Span<char> lineBuf = parseBuffer.GetCharSpan();
+                Span<char> lineBuf = ctx.Buffers.RequestHeaderParseBuffer.GetCharSpan();
                 
                 Http11ParseExtensions.Http1ParseState parseState = new();
                 
@@ -294,14 +294,12 @@ namespace VNLib.Net.Http
                 {
                     return code;
                 }
-
-                //Parse the headers
+              
                 if ((code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, in _config, lineBuf)) > 0)
                 {
                     return code;
                 }
-
-                //Prepare entity body for request
+                
                 if ((code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, in _config)) > 0)
                 {
                     return code;
@@ -384,16 +382,20 @@ namespace VNLib.Net.Http
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<bool> ProcessRequestAsync(HttpContext context)
+        private async Task<bool> ProcessRequestAsync(ListenerState listenState, HttpContext context)
         {
             //Get the server root for the specified location or fallback to a wildcard host if one is selected
-            IWebRoot? root = ServerRoots!.GetValueOrDefault(context.Request.State.Location.DnsSafeHost, _wildcardRoot);
-            
-            if (root == null)
+        
+            if (!listenState.Roots.TryGetValue(context.Request.State.Location.DnsSafeHost, out IWebRoot? root))
             {
-                context.Respond(HttpStatusCode.NotFound);
-                //make sure control leaves
-                return true;
+                if (listenState.DefaultRoute is null)
+                {
+                    context.Respond(HttpStatusCode.NotFound);
+                    //make sure control leaves
+                    return true;
+                }
+
+                root = listenState.DefaultRoute;
             }
 
             //Check the expect header and return an early status code

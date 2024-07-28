@@ -47,10 +47,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.SHA1;
           
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => SHA1.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => SHA1.TryHashData(data, output, out count);
         
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACSHA1.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => HMACSHA1.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Sha256 : IHashAlgorithm
@@ -59,10 +61,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.SHA256;
 
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => SHA256.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => SHA256.TryHashData(data, output, out count);
 
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACSHA256.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count)
+                => HMACSHA256.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Sha384 : IHashAlgorithm
@@ -71,10 +75,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.SHA384;
           
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => SHA384.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count)
+                => SHA384.TryHashData(data, output, out count);
 
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACSHA384.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => HMACSHA384.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Sha512 : IHashAlgorithm
@@ -83,10 +89,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.SHA512;
            
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => SHA512.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => SHA512.TryHashData(data, output, out count);
            
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACSHA512.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => HMACSHA512.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Md5 : IHashAlgorithm
@@ -95,10 +103,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.MD5;
           
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => MD5.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count)
+                => MD5.TryHashData(data, output, out count);
            
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACMD5.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count)
+                => HMACMD5.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Sha3_256 : IHashAlgorithm
@@ -109,10 +119,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.SHA256;
            
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => SHA3_256.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count)
+                => SHA3_256.TryHashData(data, output, out count);
           
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACSHA3_256.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count)
+                => HMACSHA3_256.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Sha3_384 : IHashAlgorithm
@@ -123,10 +135,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.SHA384;
            
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => SHA3_384.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => SHA3_384.TryHashData(data, output, out count);
           
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACSHA3_384.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count)
+                => HMACSHA3_384.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Sha3_512 : IHashAlgorithm
@@ -137,10 +151,12 @@ namespace VNLib.Hashing
             public readonly int HashSize => (int)HashAlg.SHA512;
           
             ///<inheritdoc/>
-            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) => SHA3_512.TryHashData(data, output, out count);
+            public readonly bool TryComputeHash(ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => SHA3_512.TryHashData(data, output, out count);
            
             ///<inheritdoc/>
-            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) => HMACSHA3_512.TryHashData(key, data, output, out count);
+            public readonly bool TryComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, out int count) 
+                => HMACSHA3_512.TryHashData(key, data, output, out count);
         }
 
         private readonly struct Blake2b : IHashAlgorithm

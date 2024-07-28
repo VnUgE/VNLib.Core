@@ -65,9 +65,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             None = 0x00,
             IsSet = 0x01,
-            IpMatch = 0x02,
-            IsCrossOrigin = 0x04,
-            CrossOriginMatch = 0x08,
+            IpMatch = 0x02
         }
 
         private readonly ISession UserSession;
@@ -114,24 +112,6 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _flags.HasFlag(SessionFlags.IpMatch);
-        }
-
-        /// <summary>
-        /// If the current connection and stored session have matching cross origin domains
-        /// </summary>
-        public readonly bool CrossOriginMatch
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _flags.HasFlag(SessionFlags.CrossOriginMatch);
-        }      
-
-        /// <summary>
-        /// Was the original session cross origin?
-        /// </summary>
-        public readonly bool CrossOrigin
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _flags.HasFlag(SessionFlags.IsCrossOrigin);
         }
 
         /// <summary>
@@ -252,10 +232,10 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             UserSession = session;
 
-            SessionFlags flags = SessionFlags.IsSet;
+            _flags |= SessionFlags.IsSet;
 
             //Set ip match flag if current ip and stored ip match
-            flags |= trueIp.Equals(session.UserIP) ? SessionFlags.IpMatch : SessionFlags.None;
+            _flags |= trueIp.Equals(session.UserIP) ? SessionFlags.IpMatch : SessionFlags.None;
           
             //If the session is new, we can store intial security variables
             if (session.IsNew)
@@ -266,8 +246,6 @@ namespace VNLib.Plugins.Essentials.Sessions
                 UserAgent = ci.UserAgent;
                 SpecifiedOrigin = ci.Origin;
                 SecurityProcol = ci.GetSslProtocol();
-
-                flags |= ci.CrossOrigin ? SessionFlags.IsCrossOrigin : SessionFlags.None;
             }
             else
             {
@@ -275,15 +253,7 @@ namespace VNLib.Plugins.Essentials.Sessions
                 UserAgent = session.GetUserAgent();
                 SpecifiedOrigin = session.GetOriginUri();
                 SecurityProcol = session.GetSecurityProtocol();
-
-                flags |= session.IsCrossOrigin() ? SessionFlags.IsCrossOrigin : SessionFlags.None;
             }
-
-            //Set cross origin orign match flags, if the stored origin, and connection origin
-            flags |= ci.Origin != null && ci.Origin.Equals(SpecifiedOrigin) ? SessionFlags.CrossOriginMatch : SessionFlags.None;
-
-            //store flags
-            _flags = flags;
         }
 
         ///<inheritdoc/>

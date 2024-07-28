@@ -14,8 +14,8 @@ terms of the MIT license. A copy of the license can be found in the file
 // functions and macros.
 // --------------------------------------------------------------------------
 
-#include "mimalloc/types.h"
-#include "mimalloc/track.h"
+#include "types.h"
+#include "track.h"
 
 #if (MI_DEBUG>0)
 #define mi_trace_message(...)  _mi_trace_message(__VA_ARGS__)
@@ -53,11 +53,6 @@ terms of the MIT license. A copy of the license can be found in the file
 #define mi_decl_externc
 #endif
 
-// pthreads
-#if !defined(_WIN32) && !defined(__wasi__)
-#define  MI_USE_PTHREADS
-#include <pthread.h>
-#endif
 
 // "options.c"
 void       _mi_fputs(mi_output_fun* out, void* arg, const char* prefix, const char* message);
@@ -84,10 +79,12 @@ extern mi_decl_cache_align const mi_page_t  _mi_page_empty;
 bool       _mi_is_main_thread(void);
 size_t     _mi_current_thread_count(void);
 bool       _mi_preloading(void);           // true while the C runtime is not initialized yet
-mi_threadid_t _mi_thread_id(void) mi_attr_noexcept;
-mi_heap_t*    _mi_heap_main_get(void);     // statically allocated main backing heap
 void       _mi_thread_done(mi_heap_t* heap);
 void       _mi_thread_data_collect(void);
+void       _mi_tld_init(mi_tld_t* tld, mi_heap_t* bheap);
+mi_threadid_t _mi_thread_id(void) mi_attr_noexcept;
+mi_heap_t*    _mi_heap_main_get(void);     // statically allocated main backing heap
+mi_subproc_t* _mi_subproc_from_id(mi_subproc_id_t subproc_id);
 
 // os.c
 void       _mi_os_init(void);                                            // called from process init
@@ -100,7 +97,6 @@ size_t     _mi_os_good_alloc_size(size_t size);
 bool       _mi_os_has_overcommit(void);
 bool       _mi_os_has_virtual_reserve(void);
 
-bool       _mi_os_purge(void* p, size_t size, mi_stats_t* stats);
 bool       _mi_os_reset(void* addr, size_t size, mi_stats_t* tld_stats);
 bool       _mi_os_commit(void* p, size_t size, bool* is_zero, mi_stats_t* stats);
 bool       _mi_os_decommit(void* addr, size_t size, mi_stats_t* stats);
@@ -130,15 +126,22 @@ void       _mi_arena_unsafe_destroy_all(mi_stats_t* stats);
 
 bool       _mi_arena_segment_clear_abandoned(mi_segment_t* segment);
 void       _mi_arena_segment_mark_abandoned(mi_segment_t* segment);
-size_t     _mi_arena_segment_abandoned_count(void);
 
-typedef struct mi_arena_field_cursor_s { // abstract
-  mi_arena_id_t  start;
-  int            count;
-  size_t         bitmap_idx;
+void*      _mi_arena_meta_zalloc(size_t size, mi_memid_t* memid);
+void       _mi_arena_meta_free(void* p, mi_memid_t memid, size_t size);
+
+typedef struct mi_arena_field_cursor_s { // abstract struct
+  size_t         os_list_count;           // max entries to visit in the OS abandoned list
+  size_t         start;                   // start arena idx (may need to be wrapped)
+  size_t         end;                     // end arena idx (exclusive, may need to be wrapped)
+  size_t         bitmap_idx;              // current bit idx for an arena
+  mi_subproc_t*  subproc;                 // only visit blocks in this sub-process
+  bool           visit_all;               // ensure all abandoned blocks are seen (blocking)
+  bool           hold_visit_lock;         // if the subproc->abandoned_os_visit_lock is held
 } mi_arena_field_cursor_t;
-void          _mi_arena_field_cursor_init(mi_heap_t* heap, mi_arena_field_cursor_t* current);
+void          _mi_arena_field_cursor_init(mi_heap_t* heap, mi_subproc_t* subproc, bool visit_all, mi_arena_field_cursor_t* current);
 mi_segment_t* _mi_arena_segment_clear_abandoned_next(mi_arena_field_cursor_t* previous);
+void          _mi_arena_field_cursor_done(mi_arena_field_cursor_t* current);
 
 // "segment-map.c"
 void       _mi_segment_map_allocated_at(const mi_segment_t* segment);
@@ -148,8 +151,7 @@ void       _mi_segment_map_freed_at(const mi_segment_t* segment);
 mi_page_t* _mi_segment_page_alloc(mi_heap_t* heap, size_t block_size, size_t page_alignment, mi_segments_tld_t* tld, mi_os_tld_t* os_tld);
 void       _mi_segment_page_free(mi_page_t* page, bool force, mi_segments_tld_t* tld);
 void       _mi_segment_page_abandon(mi_page_t* page, mi_segments_tld_t* tld);
-bool       _mi_segment_try_reclaim_abandoned( mi_heap_t* heap, bool try_all, mi_segments_tld_t* tld);
-void       _mi_segment_collect(mi_segment_t* segment, bool force, mi_segments_tld_t* tld);
+uint8_t*   _mi_segment_page_start(const mi_segment_t* segment, const mi_page_t* page, size_t* page_size);
 
 #if MI_HUGE_PAGE_ABANDON
 void       _mi_segment_huge_page_free(mi_segment_t* segment, mi_page_t* page, mi_block_t* block);
@@ -157,11 +159,10 @@ void       _mi_segment_huge_page_free(mi_segment_t* segment, mi_page_t* page, mi
 void       _mi_segment_huge_page_reset(mi_segment_t* segment, mi_page_t* page, mi_block_t* block);
 #endif
 
-uint8_t*   _mi_segment_page_start(const mi_segment_t* segment, const mi_page_t* page, size_t* page_size); // page start for any page
+void       _mi_segments_collect(bool force, mi_segments_tld_t* tld);
 void       _mi_abandoned_reclaim_all(mi_heap_t* heap, mi_segments_tld_t* tld);
-void       _mi_abandoned_await_readers(void);
-void       _mi_abandoned_collect(mi_heap_t* heap, bool force, mi_segments_tld_t* tld);
 bool       _mi_segment_attempt_reclaim(mi_heap_t* heap, mi_segment_t* segment);
+bool       _mi_segment_visit_blocks(mi_segment_t* segment, int heap_tag, bool visit_blocks, mi_block_visit_fun* visitor, void* arg);
 
 // "page.c"
 void*      _mi_malloc_generic(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment)  mi_attr_noexcept mi_attr_malloc;
@@ -186,11 +187,15 @@ size_t     _mi_bin_size(uint8_t bin);           // for stats
 uint8_t    _mi_bin(size_t size);                // for stats
 
 // "heap.c"
+void       _mi_heap_init(mi_heap_t* heap, mi_tld_t* tld, mi_arena_id_t arena_id, bool noreclaim, uint8_t tag);
 void       _mi_heap_destroy_pages(mi_heap_t* heap);
 void       _mi_heap_collect_abandon(mi_heap_t* heap);
 void       _mi_heap_set_default_direct(mi_heap_t* heap);
 bool       _mi_heap_memid_is_suitable(mi_heap_t* heap, mi_memid_t memid);
 void       _mi_heap_unsafe_destroy_all(void);
+mi_heap_t* _mi_heap_by_tag(mi_heap_t* heap, uint8_t tag);
+void       _mi_heap_area_init(mi_heap_area_t* area, mi_page_t* page);
+bool       _mi_heap_area_visit_blocks(const mi_heap_area_t* area, mi_page_t* page, mi_block_visit_fun* visitor, void* arg);
 
 // "stats.c"
 void       _mi_stats_done(mi_stats_t* stats);
@@ -317,26 +322,9 @@ static inline uintptr_t _mi_align_up(uintptr_t sz, size_t alignment) {
   }
 }
 
-// Align downwards
-static inline uintptr_t _mi_align_down(uintptr_t sz, size_t alignment) {
-  mi_assert_internal(alignment != 0);
-  uintptr_t mask = alignment - 1;
-  if ((alignment & mask) == 0) { // power of two?
-    return (sz & ~mask);
-  }
-  else {
-    return ((sz / alignment) * alignment);
-  }
-}
-
 // Align a pointer upwards
 static inline void* mi_align_up_ptr(void* p, size_t alignment) {
   return (void*)_mi_align_up((uintptr_t)p, alignment);
-}
-
-// Align a pointer downwards
-static inline void* mi_align_down_ptr(void* p, size_t alignment) {
-  return (void*)_mi_align_down((uintptr_t)p, alignment);
 }
 
 
@@ -346,6 +334,14 @@ static inline uintptr_t _mi_divide_up(uintptr_t size, size_t divider) {
   return (divider == 0 ? size : ((size + divider - 1) / divider));
 }
 
+
+// clamp an integer
+static inline size_t _mi_clamp(size_t sz, size_t min, size_t max) {
+  if (sz < min) return min;
+  else if (sz > max) return max;
+  else return sz;
+}
+
 // Is memory zero initialized?
 static inline bool mi_mem_is_zero(const void* p, size_t size) {
   for (size_t i = 0; i < size; i++) {
@@ -353,7 +349,6 @@ static inline bool mi_mem_is_zero(const void* p, size_t size) {
   }
   return true;
 }
-
 
 // Align a byte size to a size in _machine words_,
 // i.e. byte size == `wsize*sizeof(void*)`.
@@ -379,10 +374,10 @@ static inline bool mi_mul_overflow(size_t count, size_t size, size_t* total) {
 }
 #else /* __builtin_umul_overflow is unavailable */
 static inline bool mi_mul_overflow(size_t count, size_t size, size_t* total) {
-  #define MI_MUL_NO_OVERFLOW ((size_t)1 << (4*sizeof(size_t)))  // sqrt(SIZE_MAX)
+  #define MI_MUL_COULD_OVERFLOW ((size_t)1 << (4*sizeof(size_t)))  // sqrt(SIZE_MAX)
   *total = count * size;
   // note: gcc/clang optimize this to directly check the overflow flag
-  return ((size >= MI_MUL_NO_OVERFLOW || count >= MI_MUL_NO_OVERFLOW) && size > 0 && (SIZE_MAX / size) < count);
+  return ((size >= MI_MUL_COULD_OVERFLOW || count >= MI_MUL_COULD_OVERFLOW) && size > 0 && (SIZE_MAX / size) < count);
 }
 #endif
 
@@ -449,44 +444,29 @@ static inline mi_segment_t* _mi_ptr_segment(const void* p) {
   #endif
 }
 
-static inline mi_page_t* mi_slice_to_page(mi_slice_t* s) {
-  mi_assert_internal(s->slice_offset== 0 && s->slice_count > 0);
-  return (mi_page_t*)(s);
-}
-
-static inline mi_slice_t* mi_page_to_slice(mi_page_t* p) {
-  mi_assert_internal(p->slice_offset== 0 && p->slice_count > 0);
-  return (mi_slice_t*)(p);
-}
-
 // Segment belonging to a page
 static inline mi_segment_t* _mi_page_segment(const mi_page_t* page) {
   mi_assert_internal(page!=NULL);
   mi_segment_t* segment = _mi_ptr_segment(page);
-  mi_assert_internal(segment == NULL || ((mi_slice_t*)page >= segment->slices && (mi_slice_t*)page < segment->slices + segment->slice_entries));
+  mi_assert_internal(segment == NULL || page == &segment->pages[page->segment_idx]);
   return segment;
 }
 
-static inline mi_slice_t* mi_slice_first(const mi_slice_t* slice) {
-  mi_slice_t* start = (mi_slice_t*)((uint8_t*)slice - slice->slice_offset);
-  mi_assert_internal(start >= _mi_ptr_segment(slice)->slices);
-  mi_assert_internal(start->slice_offset == 0);
-  mi_assert_internal(start + start->slice_count > slice);
-  return start;
+// used internally
+static inline size_t _mi_segment_page_idx_of(const mi_segment_t* segment, const void* p) {
+  // if (segment->page_size > MI_SEGMENT_SIZE) return &segment->pages[0];  // huge pages
+  ptrdiff_t diff = (uint8_t*)p - (uint8_t*)segment;
+  mi_assert_internal(diff >= 0 && (size_t)diff <= MI_SEGMENT_SIZE /* for huge alignment it can be equal */);
+  size_t idx = (size_t)diff >> segment->page_shift;
+  mi_assert_internal(idx < segment->capacity);
+  mi_assert_internal(segment->page_kind <= MI_PAGE_MEDIUM || idx == 0);
+  return idx;
 }
 
-// Get the page containing the pointer (performance critical as it is called in mi_free)
+// Get the page containing the pointer
 static inline mi_page_t* _mi_segment_page_of(const mi_segment_t* segment, const void* p) {
-  mi_assert_internal(p > (void*)segment);
-  ptrdiff_t diff = (uint8_t*)p - (uint8_t*)segment;
-  mi_assert_internal(diff > 0 && diff <= (ptrdiff_t)MI_SEGMENT_SIZE);
-  size_t idx = (size_t)diff >> MI_SEGMENT_SLICE_SHIFT;
-  mi_assert_internal(idx <= segment->slice_entries);
-  mi_slice_t* slice0 = (mi_slice_t*)&segment->slices[idx];
-  mi_slice_t* slice = mi_slice_first(slice0);  // adjust to the block that holds the page data
-  mi_assert_internal(slice->slice_offset == 0);
-  mi_assert_internal(slice >= segment->slices && slice < segment->slices + segment->slice_entries);
-  return mi_slice_to_page(slice);
+  size_t idx = _mi_segment_page_idx_of(segment, p);
+  return &((mi_segment_t*)segment)->pages[idx];
 }
 
 // Quick page start for initialized pages
@@ -509,8 +489,8 @@ static inline size_t mi_page_block_size(const mi_page_t* page) {
 }
 
 static inline bool mi_page_is_huge(const mi_page_t* page) {
-  mi_assert_internal((page->is_huge && _mi_page_segment(page)->kind == MI_SEGMENT_HUGE) ||
-                     (!page->is_huge && _mi_page_segment(page)->kind != MI_SEGMENT_HUGE));
+  mi_assert_internal((page->is_huge && _mi_page_segment(page)->page_kind == MI_PAGE_HUGE) ||
+                     (!page->is_huge && _mi_page_segment(page)->page_kind != MI_PAGE_HUGE));
   return page->is_huge;
 }
 
@@ -522,11 +502,7 @@ static inline size_t mi_page_usable_block_size(const mi_page_t* page) {
 
 // size of a segment
 static inline size_t mi_segment_size(mi_segment_t* segment) {
-  return segment->segment_slices * MI_SEGMENT_SLICE_SIZE;
-}
-
-static inline uint8_t* mi_segment_end(mi_segment_t* segment) {
-  return (uint8_t*)segment + mi_segment_size(segment);
+  return segment->segment_size;
 }
 
 // Thread free access
@@ -546,6 +522,7 @@ static inline mi_heap_t* mi_page_heap(const mi_page_t* page) {
 static inline void mi_page_set_heap(mi_page_t* page, mi_heap_t* heap) {
   mi_assert_internal(mi_page_thread_free_flag(page) != MI_DELAYED_FREEING);
   mi_atomic_store_release(&page->xheap,(uintptr_t)heap);
+  if (heap != NULL) { page->heap_tag = heap->tag; }
 }
 
 // Thread free flag helpers
@@ -647,13 +624,12 @@ static inline bool mi_is_in_same_segment(const void* p, const void* q) {
 }
 
 static inline bool mi_is_in_same_page(const void* p, const void* q) {
-  mi_segment_t* segment = _mi_ptr_segment(p);
-  if (_mi_ptr_segment(q) != segment) return false;
-  // assume q may be invalid // return (_mi_segment_page_of(segment, p) == _mi_segment_page_of(segment, q));
-  mi_page_t* page = _mi_segment_page_of(segment, p);
-  size_t psize;
-  uint8_t* start = _mi_segment_page_start(segment, page, &psize);
-  return (start <= (uint8_t*)q && (uint8_t*)q < start + psize);
+  mi_segment_t* segmentp = _mi_ptr_segment(p);
+  mi_segment_t* segmentq = _mi_ptr_segment(q);
+  if (segmentp != segmentq) return false;
+  size_t idxp = _mi_segment_page_idx_of(segmentp, p);
+  size_t idxq = _mi_segment_page_idx_of(segmentq, q);
+  return (idxp == idxq);
 }
 
 static inline uintptr_t mi_rotl(uintptr_t x, uintptr_t shift) {
@@ -723,50 +699,6 @@ static inline void mi_block_set_next(const mi_page_t* page, mi_block_t* block, c
   mi_block_set_nextx(page,block,next,NULL);
   #endif
 }
-
-
-// -------------------------------------------------------------------
-// commit mask
-// -------------------------------------------------------------------
-
-static inline void mi_commit_mask_create_empty(mi_commit_mask_t* cm) {
-  for (size_t i = 0; i < MI_COMMIT_MASK_FIELD_COUNT; i++) {
-    cm->mask[i] = 0;
-  }
-}
-
-static inline void mi_commit_mask_create_full(mi_commit_mask_t* cm) {
-  for (size_t i = 0; i < MI_COMMIT_MASK_FIELD_COUNT; i++) {
-    cm->mask[i] = ~((size_t)0);
-  }
-}
-
-static inline bool mi_commit_mask_is_empty(const mi_commit_mask_t* cm) {
-  for (size_t i = 0; i < MI_COMMIT_MASK_FIELD_COUNT; i++) {
-    if (cm->mask[i] != 0) return false;
-  }
-  return true;
-}
-
-static inline bool mi_commit_mask_is_full(const mi_commit_mask_t* cm) {
-  for (size_t i = 0; i < MI_COMMIT_MASK_FIELD_COUNT; i++) {
-    if (cm->mask[i] != ~((size_t)0)) return false;
-  }
-  return true;
-}
-
-// defined in `segment.c`:
-size_t _mi_commit_mask_committed_size(const mi_commit_mask_t* cm, size_t total);
-size_t _mi_commit_mask_next_run(const mi_commit_mask_t* cm, size_t* idx);
-
-#define mi_commit_mask_foreach(cm,idx,count) \
-  idx = 0; \
-  while ((count = _mi_commit_mask_next_run(cm,&idx)) > 0) {
-
-#define mi_commit_mask_foreach_end() \
-    idx += count; \
-  }
-
 
 
 /* -----------------------------------------------------------

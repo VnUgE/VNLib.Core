@@ -51,7 +51,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
   config->page_size = 64*MI_KiB; // WebAssembly has a fixed page size: 64KiB
   config->alloc_granularity = 16;
   config->has_overcommit = false;
-  config->must_free_whole = true;
+  config->has_partial_free = false;
   config->has_virtual_reserve = false;
 }
 
@@ -200,7 +200,7 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
 // Thread init/done
 //----------------------------------------------------------------
 
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+#if defined(MI_USE_PTHREADS)
 
 // use pthread local storage keys to detect thread ending
 // (and used with MI_TLS_PTHREADS for the default heap)

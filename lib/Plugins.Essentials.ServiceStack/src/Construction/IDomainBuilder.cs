@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -22,9 +22,7 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.IO;
-
-using VNLib.Utils.Logging;
+using System;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {
@@ -34,19 +32,17 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
     public interface IDomainBuilder
     {
         /// <summary>
-        /// Adds a single virtual host to the domain that must be configured.
+        /// Allows for defining a new virtual host for the domain by manually configuring it.
         /// </summary>
-        /// <param name="rootDirectory">The service root directory</param>
-        /// <param name="hooks">The virtual host event hook handler</param>
-        /// <param name="Logger">The log provider</param>
-        /// <returns>The <see cref="IVirtualHostBuilder"/> instance</returns>
-        IVirtualHostBuilder WithVirtualHost(DirectoryInfo rootDirectory, IVirtualHostHooks hooks, ILogProvider Logger);
+        /// <param name="builder">A callback function that passes the new host builder</param>
+        /// <returns>The current instance</returns>
+        IDomainBuilder WithServiceGroups(Action<IServiceGroupBuilder> builder);
 
         /// <summary>
-        /// Adds a single pre-configured virtual host to the domain 
+        /// Adds a collection of hosts to the domain
         /// </summary>
-        /// <param name="config">The pre-configured virtual host configuration</param>
-        /// <returns>The current instance</returns>
-        IDomainBuilder WithVirtualHost(VirtualHostConfiguration config);
+        /// <param name="host"></param>
+        /// <returns></returns>
+        IDomainBuilder WithHosts(IServiceHost[] host);
     }
 }

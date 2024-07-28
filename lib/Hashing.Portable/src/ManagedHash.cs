@@ -321,7 +321,7 @@ namespace VNLib.Hashing
                 HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer),
                 HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer),
                 HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer),
-                HashEncodingMode.Base64Url => VnEncoding.ToBase64UrlSafeString(hashBuffer, true),
+                HashEncodingMode.Base64Url => VnEncoding.Base64UrlEncode(hashBuffer, true),
                 _ => throw new ArgumentException("Encoding mode is not supported"),
             };
         }
@@ -343,7 +343,7 @@ namespace VNLib.Hashing
                 HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer),
                 HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer),
                 HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer),
-                HashEncodingMode.Base64Url => VnEncoding.ToBase64UrlSafeString(hashBuffer, true),
+                HashEncodingMode.Base64Url => VnEncoding.Base64UrlEncode(hashBuffer, true),
                 _ => throw new ArgumentException("Encoding mode is not supported"),
             };
         }
@@ -366,15 +366,15 @@ namespace VNLib.Hashing
         {
             return alg switch
             {
-                HashAlg.SHA3_512 => computeHashInternal(in _3_sha512, data, buffer, key),
-                HashAlg.SHA3_384 => computeHashInternal(in _3_sha384, data, buffer, key),
-                HashAlg.SHA3_256 => computeHashInternal(in _3_sha256, data, buffer, key),
-                HashAlg.BlAKE2B => computeHashInternal(in _blake2bAlg, data, buffer, key),
-                HashAlg.SHA512 => computeHashInternal(in _sha512Alg, data, buffer, key),
-                HashAlg.SHA384 => computeHashInternal(in _sha384Alg, data, buffer, key),
-                HashAlg.SHA256 => computeHashInternal(in _sha256Alg, data, buffer, key),
-                HashAlg.SHA1 => computeHashInternal(in _sha1Alg, data, buffer, key),
-                HashAlg.MD5 => computeHashInternal(in _md5Alg, data, buffer, key),
+                HashAlg.SHA3_512 => computeHashInternal(in _3_sha512,   data, buffer, key),
+                HashAlg.SHA3_384 => computeHashInternal(in _3_sha384,   data, buffer, key),
+                HashAlg.SHA3_256 => computeHashInternal(in _3_sha256,   data, buffer, key),
+                HashAlg.BlAKE2B  => computeHashInternal(in _blake2bAlg, data, buffer, key),
+                HashAlg.SHA512   => computeHashInternal(in _sha512Alg,  data, buffer, key),
+                HashAlg.SHA384   => computeHashInternal(in _sha384Alg,  data, buffer, key),
+                HashAlg.SHA256   => computeHashInternal(in _sha256Alg,  data, buffer, key),
+                HashAlg.SHA1     => computeHashInternal(in _sha1Alg,    data, buffer, key),
+                HashAlg.MD5      => computeHashInternal(in _md5Alg,     data, buffer, key),
                 _ => throw new ArgumentException("Invalid hash algorithm", nameof(alg))
             };
 

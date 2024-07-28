@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -47,7 +47,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         }
 
         private readonly MessageSegmentEnumerator _messageEnumerator;
-        private readonly ISlindingWindowBuffer<byte> _headerAccumulator;
+        private readonly HeaderDataAccumulator _headerAccumulator;
         private readonly Encoding _headerEncoding;
 
         private IAsyncMessageBody? MessageBody;
@@ -57,7 +57,7 @@ namespace VNLib.Net.Messaging.FBM.Server
 
         void IReusable.Prepare()
         {
-            (_headerAccumulator as HeaderDataAccumulator)!.Prepare();
+            _headerAccumulator!.Prepare();
         }
 
         bool IReusable.Release()

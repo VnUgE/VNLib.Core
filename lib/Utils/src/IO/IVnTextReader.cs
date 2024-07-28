@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.IO;
 using System.Text;
 
 namespace VNLib.Utils.IO
@@ -33,10 +32,6 @@ namespace VNLib.Utils.IO
     /// </summary>
     public interface IVnTextReader
     {
-        /// <summary>
-        /// The base stream to read data from
-        /// </summary>
-        Stream BaseStream { get; }
         /// <summary>
         /// The character encoding used by the TextReader
         /// </summary>

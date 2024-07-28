@@ -143,7 +143,8 @@ namespace VNLib.Utils.Memory
              * get the heap's stats, otherwise return an empty handle
              */
             return _lazyHeap.IsLoaded && _lazyHeap.Instance is TrackedHeapWrapper h
-                ? h.GetCurrentStats() : default;
+                ? h.GetCurrentStats() 
+                : default;
         }
 
         /// <summary>
@@ -518,7 +519,8 @@ namespace VNLib.Utils.Memory
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CopyStruct<T>(ref readonly byte source, void* target) where T : unmanaged => CopyStruct(in source, (T*)target);
+        public static void CopyStruct<T>(ref readonly byte source, void* target) where T : unmanaged 
+            => CopyStruct(in source, (T*)target);
 
         /// <summary>
         /// Copies structure data from a source sequence of data to the target structure reference.
@@ -547,7 +549,8 @@ namespace VNLib.Utils.Memory
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, T* target) where T : unmanaged => CopyStruct(sourceData, ref *target);
+        public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, T* target) where T : unmanaged 
+            => CopyStruct(sourceData, ref *target);
 
         /// <summary>
         /// Copies structure data from a source sequence of data to the target structure reference.
@@ -557,7 +560,8 @@ namespace VNLib.Utils.Memory
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, void* target) where T: unmanaged => CopyStruct(sourceData, (T*)target);
+        public static void CopyStruct<T>(ReadOnlySpan<byte> sourceData, void* target) where T: unmanaged 
+            => CopyStruct(sourceData, (T*)target);
 
 
         /// <summary>
@@ -742,7 +746,7 @@ namespace VNLib.Utils.Memory
                 ref Refs.AsByte(source, (nuint)sourceOffset),
                 ref Refs.AsByte(dest, destOffset),
                 ByteCount<T>((uint)count),
-                false
+                forceAcceleration: false
             );
         }
 
@@ -773,7 +777,7 @@ namespace VNLib.Utils.Memory
             RMemCopyHandle<T> src = new(source, (nuint)sourceOffset);
             MemhandleCopyHandle<T> dst = new(dest, destOffset);
 
-            MemmoveInternal<T, RMemCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, (nuint)count, false);
+            MemmoveInternal<T, RMemCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, (nuint)count, forceAcceleration: false);
         }
 
         /// <summary>
@@ -808,7 +812,7 @@ namespace VNLib.Utils.Memory
                 ref Refs.AsByte(source, (nuint)sourceOffset), 
                 ref Refs.AsByte(dest, (nuint)destOffset),
                 ByteCount<T>((uint)count),
-                false
+                forceAcceleration: false
             );
         }
 
@@ -841,7 +845,7 @@ namespace VNLib.Utils.Memory
             MemhandleCopyHandle<T> src = new(source, (nuint)sourceOffset);
             WMemCopyHandle<T> dst = new(dest, (nuint)destOffset);
 
-            MemmoveInternal<T, MemhandleCopyHandle<T>, WMemCopyHandle<T>>(in src, in dst, (nuint)count, false);
+            MemmoveInternal<T, MemhandleCopyHandle<T>, WMemCopyHandle<T>>(in src, in dst, (nuint)count, forceAcceleration: false);
         }
 
         /// <summary>
@@ -871,7 +875,7 @@ namespace VNLib.Utils.Memory
             MemhandleCopyHandle<T> src = new(source, sourceOffset);
             MemhandleCopyHandle<T> dst = new(dest, destOffset);
 
-            MemmoveInternal<T, MemhandleCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, count, false);
+            MemmoveInternal<T, MemhandleCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, count, forceAcceleration: false);
         }
 
         /// <summary>
@@ -900,7 +904,7 @@ namespace VNLib.Utils.Memory
             MemhandleCopyHandle<T> src = new(source, sourceOffset);
             ArrayCopyHandle<T> dst = new(dest, destOffset);
 
-            MemmoveInternal<T, MemhandleCopyHandle<T>, ArrayCopyHandle<T>>(in src, in dst, count, false);
+            MemmoveInternal<T, MemhandleCopyHandle<T>, ArrayCopyHandle<T>>(in src, in dst, count, forceAcceleration: false);
         }
 
         /// <summary>
@@ -929,7 +933,7 @@ namespace VNLib.Utils.Memory
             ArrayCopyHandle<T> ach = new(source, sourceOffset);
             MemhandleCopyHandle<T> mch = new(dest, destOffset);
 
-            MemmoveInternal<T, ArrayCopyHandle<T>, MemhandleCopyHandle<T>>(in ach, in mch, count, false);
+            MemmoveInternal<T, ArrayCopyHandle<T>, MemhandleCopyHandle<T>>(in ach, in mch, count, forceAcceleration: false);
         }
 
         /// <summary>
@@ -958,13 +962,14 @@ namespace VNLib.Utils.Memory
             ArrayCopyHandle<T> srcH = new(source, sourceOffset);
             ArrayCopyHandle<T> dstH = new(dest, destOffset);
 
-            MemmoveInternal<T, ArrayCopyHandle<T>, ArrayCopyHandle<T>>(in srcH, in dstH, count, false);
+            MemmoveInternal<T, ArrayCopyHandle<T>, ArrayCopyHandle<T>>(in srcH, in dstH, count, forceAcceleration: false);
         }
 
         /// <summary>
         /// Optimized memmove for known small memory blocks. This method is faster than
         /// <see cref="Memmove{T}(ref readonly T, nuint, ref T, nuint, nuint)"/> when the 
-        /// number of elements to copy is known to be small.
+        /// number of elements to copy is known to be small. Pointers to src and dst may be 
+        /// overlapping regions of memory.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="src">A readonly reference to the first element in the source memory sequence</param>
@@ -999,7 +1004,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Low level api for copying data from source memory to destination memory of an
-        /// umanged data type.
+        /// umanged data type. Pointers to src and dst may be overlapping regions of memory.
         /// </summary>
         /// <remarks>
         /// WARNING: It's not possible to do bounds checking when using references. Be sure you 
@@ -1027,13 +1032,14 @@ namespace VNLib.Utils.Memory
                 in Refs.AsByteR(in src, srcOffset),
                 ref Refs.AsByte(ref dst, dstOffset),
                 ByteCount<T>(elementCount),
-                false
+                forceAcceleration: false
             );
         }
 
         /// <summary>
         /// Low level api for copying data from source memory to destination memory of an
         /// umanged data type. This call attempts to force hadrware acceleration if supported.
+        /// Pointers to src and dst may be overlapping regions of memory.
         /// <para>
         /// Understand that using this function attempts to force hardware acceleration, which 
         /// may hurt performance if the data is not large enough to justify the overhead.
@@ -1329,7 +1335,7 @@ namespace VNLib.Utils.Memory
             //Pin the array
             GCHandle arrHandle = GCHandle.Alloc(array, GCHandleType.Pinned);
 
-            //safe to get array basee pointer
+            //safe to get array base pointer
             ref T arrBase = ref MemoryMarshal.GetArrayDataReference(array);
 
             //Get element offset
@@ -1571,8 +1577,6 @@ namespace VNLib.Utils.Memory
 
             MemoryHandle Pin();
 
-            nuint Size { get; }
-
             nuint Offset { get; }
 
             void Validate(nuint count);
@@ -1582,9 +1586,6 @@ namespace VNLib.Utils.Memory
         {
             ///<inheritdoc/>
             public readonly nuint Offset => offset;
-
-            ///<inheritdoc/>
-            public readonly nuint Size => ByteCount<T>((nuint)array.Length);
 
             ///<inheritdoc/>
             public readonly MemoryHandle Pin() => PinArrayAndGetHandle(array, 0);
@@ -1602,9 +1603,6 @@ namespace VNLib.Utils.Memory
             public readonly nuint Offset => offset;
 
             ///<inheritdoc/>
-            public readonly nuint Size => ByteCount<T>((nuint)block.Length);
-
-            ///<inheritdoc/>
             public readonly MemoryHandle Pin() => block.Pin();
 
             ///<inheritdoc/>
@@ -1620,9 +1618,6 @@ namespace VNLib.Utils.Memory
             public readonly nuint Offset => offset;
 
             ///<inheritdoc/>
-            public readonly nuint Size => ByteCount<T>((nuint)block.Length);
-
-            ///<inheritdoc/>
             public readonly MemoryHandle Pin() => block.Pin();
 
             ///<inheritdoc/>
@@ -1636,9 +1631,6 @@ namespace VNLib.Utils.Memory
         {
             ///<inheritdoc/>
             public readonly nuint Offset => offset;
-
-            ///<inheritdoc/>
-            public readonly nuint Size => handle.Length;
 
             ///<inheritdoc/>
             public readonly MemoryHandle Pin() => handle.Pin(0);

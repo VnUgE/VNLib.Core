@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -51,12 +51,15 @@ namespace VNLib.Net.Http.Core
         /// Performs a dangerous reference based copy-to (aka memmove)
         /// </summary>
         /// <param name="output">The output buffer to write the encoded segment to</param>
-        internal readonly int DangerousCopyTo(Span<byte> output)
+        /// <param name="offset">Points to the first byte in the buffer to write to</param>
+        internal readonly int DangerousCopyTo(Span<byte> output, int offset)
         {
             Debug.Assert(output.Length >= Length, "Output span was empty and could not be written to");
+            Debug.Assert(offset >= 0, "Buffer underrun detected");
+            Debug.Assert(offset + Length <= output.Length, "Output span was too small to hold the encoded segment");
 
             //Get reference of output buffer span
-            return DangerousCopyTo(ref MemoryMarshal.GetReference(output));
+            return DangerousCopyTo(ref MemoryMarshal.GetReference(output), (nuint)offset);
         }
 
         /// <summary>
@@ -73,14 +76,15 @@ namespace VNLib.Net.Http.Core
             //Ensure enough space is available
             if(offset + Length <= buffer.Size)
             {
+                //More efficient to get the offset ref from the buffer directly
                 ref byte dst = ref buffer.DangerousGetBinRef(offset);
-                return DangerousCopyTo(ref dst);
+                return DangerousCopyTo(ref dst, destOffset: 0);
             }
 
             throw new ArgumentOutOfRangeException(nameof(offset), "Buffer is too small to hold the encoded segment");
         }
 
-        private readonly int DangerousCopyTo(ref byte output)
+        private readonly int DangerousCopyTo(ref byte output, nuint destOffset)
         {
             Debug.Assert(!Unsafe.IsNullRef(ref output), "Output span was empty and could not be written to");
 
@@ -88,7 +92,7 @@ namespace VNLib.Net.Http.Core
             ref byte src = ref MemoryMarshal.GetArrayDataReference(Buffer);
 
             //Call memmove with the buffer offset and desired length
-            MemoryUtil.SmallMemmove(ref src, Offset, ref output, 0, Length);
+            MemoryUtil.SmallMemmove(ref src, Offset, ref output, destOffset, Length);
             return Length;
         }
 

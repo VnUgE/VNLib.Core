@@ -35,7 +35,23 @@
  *  to function safely with async programming practices.
  */
 
+/*
+ * 6-26-2024
+ * 
+ * Server has been transformed to ultilize a single configuration to listen 
+ * on a map of transport servers and isolate those connections to individual 
+ * virtual hosts. It allows multiple virtual hosts to be mapped to a single 
+ * transport server, but also allow a many-to-many relationship between
+ * transport servers and virtual hosts.
+ * 
+ * The reason for this is HTTP server resource efficiency. A single HTTP server
+ * isolates its caching and memory pools. By sharing caches across transport 
+ * bindings, we can still have the security isolation of transport : virtual host
+ * but share the resources of the server.
+ */
+
 using System;
+using System.Linq;
 using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -74,9 +90,8 @@ namespace VNLib.Net.Http
         /// </summary>
         internal static readonly Memory<byte> WriteOnlyScratchBuffer = new byte[64 * 1024];
 
-        private readonly ITransportProvider Transport;
-        private readonly FrozenDictionary<string, IWebRoot> ServerRoots;
-        private readonly IWebRoot? _wildcardRoot;
+        private readonly ListenerState[] Transports;
+
         private readonly HttpConfig _config;
 
         #region caches
@@ -89,11 +104,7 @@ namespace VNLib.Net.Http
         /// Reusable store for obtaining <see cref="HttpContext"/> 
         /// </summary>
         private readonly ObjectRental<HttpContext> ContextStore;
-
-        /// <summary>
-        /// The cached header-line termination value
-        /// </summary>
-        private readonly ReadOnlyMemory<byte> HeaderLineTermination;
+      
         #endregion
 
         /// <summary>
@@ -104,22 +115,12 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Gets a value indicating whether the server is listening for connections
         /// </summary>
-        public bool Running { get; private set; }
+        public bool Running => Transports.Any(static t => t.Running);
 
         /// <summary>
         /// Cached supported compression methods
         /// </summary>
         internal readonly CompressionMethod SupportedCompressionMethods;
-
-        /// <summary>
-        /// Pre-encoded CRLF bytes
-        /// </summary>
-        internal readonly HttpEncodedSegment CrlfBytes;
-
-        /// <summary>
-        /// Pre-encoded HTTP chunking final chunk segment
-        /// </summary>
-        internal readonly HttpEncodedSegment FinalChunkBytes;
 
         private CancellationTokenSource? StopToken;
 
@@ -128,38 +129,28 @@ namespace VNLib.Net.Http
         /// Immutable data structures are initialzed.
         /// </summary>
         /// <param name="config">The configuration used to create the instance</param>
-        /// <param name="transport">The transport provider to listen to connections from</param>
-        /// <param name="sites">A collection of <see cref="IWebRoot"/>s that route incomming connetctions</param>
+        /// <param name="bindings">One to many relational mapping between a transport provider and it's routes</param>
         /// <exception cref="ArgumentException"></exception>
-        public HttpServer(HttpConfig config, ITransportProvider transport, IEnumerable<IWebRoot> sites)
+        public HttpServer(HttpConfig config, IEnumerable<HttpTransportBinding> bindings)
         {
             //Validate the configuration
             ValidateConfig(in config);
 
             _config = config;
-            //Configure roots and their directories
-            ServerRoots = sites.ToFrozenDictionary(static r => r.Hostname, static tv => tv, StringComparer.OrdinalIgnoreCase);
+            
             //Compile and store the timeout keepalive header
-            KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";           
-            //Setup config copy with the internal http pool
-            Transport = transport;
+            KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
+
+            //Map transport listeners to their virtual hosts
+            Transports = MapListeners(bindings.ToArray());
+
             //Cache supported compression methods, or none if compressor is null
-            SupportedCompressionMethods = config.CompressorManager == null ? 
-                CompressionMethod.None : 
-                config.CompressorManager.GetSupportedMethods();
+            SupportedCompressionMethods = config.CompressorManager == null 
+                ? CompressionMethod.None 
+                : config.CompressorManager.GetSupportedMethods();
 
             //Create a new context store
             ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this, SupportedCompressionMethods));
-
-            //Cache wildcard root
-            _wildcardRoot = ServerRoots.GetValueOrDefault(WILDCARD_KEY);
-
-            //Init pre-encded segments
-            CrlfBytes = HttpEncodedSegment.FromString(HttpHelpers.CRLF, config.HttpEncoding);
-            FinalChunkBytes = HttpEncodedSegment.FromString("0\r\n\r\n", config.HttpEncoding);
-
-            //Store a ref to the crlf memory segment
-            HeaderLineTermination = CrlfBytes.Buffer.AsMemory();
         }
 
         private static void ValidateConfig(in HttpConfig conf)
@@ -251,6 +242,34 @@ namespace VNLib.Net.Http
             }
         }
 
+        private static ListenerState[] MapListeners(HttpTransportBinding[] bindings)
+        {
+            if(bindings.Any(static b => b is null))
+            {
+                throw new ArgumentNullException(nameof(bindings),"Transport bindings containing a null entry.");
+            }
+
+            /*
+             * Transform the bindings to individual http listeners
+             * which also requires a frozen mapping of hostnames to
+             * virtual host
+             */
+
+            return bindings.Select(static b => new ListenerState
+            {
+                OriginServer = b.Transport,
+
+                Roots = b.Roots.ToFrozenDictionary(
+                    static r => r.Hostname,
+                    static tv => tv,
+                    StringComparer.OrdinalIgnoreCase
+                ),
+
+                //Yoink the wildcard route if it's set
+                DefaultRoute = b.Roots.FirstOrDefault(static r => string.Equals(r.Hostname, WILDCARD_KEY, StringComparison.OrdinalIgnoreCase))
+            }).ToArray();
+        }
+
         /// <summary>
         /// Begins listening for connections on configured interfaces for configured hostnames.
         /// </summary>
@@ -263,32 +282,50 @@ namespace VNLib.Net.Http
         public Task Start(CancellationToken cancellationToken)
         {
             StopToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            //Start servers with the new token source
-            Transport.Start(StopToken.Token);
-            //Start the listen task
-            return Task.Run(ListenWorkerDoWork, cancellationToken);
+            
+            //Start servers with the new token source before listening for connections
+            Array.ForEach(Transports, p => p.OriginServer.Start(StopToken.Token));
+
+            //Listen to connections on all transports async
+            IEnumerable<Task> runTasks = Transports.Select(ListenAsync);
+
+            //Calling WhenAll() will force the numeration and schedule listening tasks
+            return Task.WhenAll(runTasks);
+
+            //Defer listening tasks to the task scheduler to avoid blocking this thread
+            Task ListenAsync(ListenerState tp) => Task.Run(() => ListenWorkerDoWork(tp), cancellationToken);
         }
 
         /*
          * A worker task that listens for connections from the transport
          */
-        private async Task ListenWorkerDoWork()
+        private async Task ListenWorkerDoWork(ListenerState state)
         {
-            //Set running flag
-            Running = true;
-            
-            _config.ServerLog.Information("HTTP server {hc} listening for connections", GetHashCode());
+            state.Running = true;
+
+            if (_config.ServerLog.IsEnabled(LogLevel.Verbose))
+            {
+                _config.ServerLog.Verbose(
+                   format: "HTTP server {hc} listening for connections on {iface}",
+                   GetHashCode(),
+                   state.OriginServer
+               );
+            }
+            else
+            {
+                _config.ServerLog.Information("HTTP server {hc} listening for connections", GetHashCode());
+            }
 
             //Listen for connections until canceled
-            while (true)
+            do
             {
                 try
                 {
                     //Listen for new connection 
-                    ITransportContext ctx = await Transport.AcceptAsync(StopToken!.Token);
+                    ITransportContext ctx = await state.OriginServer.AcceptAsync(StopToken!.Token);
 
                     //Try to dispatch the received event
-                    _ = DataReceivedAsync(ctx).ConfigureAwait(false);
+                    _ = DataReceivedAsync(state, ctx).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -299,13 +336,14 @@ namespace VNLib.Net.Http
                 {
                     _config.ServerLog.Error(ex);
                 }
-            }
+
+            } while (true);
 
             //Clear all caches before leaving to aid gc
             CacheHardClear();
 
-            //Clear running flag
-            Running = false;
+            state.Running = false;
+           
             _config.ServerLog.Information("HTTP server {hc} exiting", GetHashCode());
         }
        
@@ -341,5 +379,31 @@ namespace VNLib.Net.Http
                     break;
             }
         }
+
+        private sealed class ListenerState
+        {
+            /*
+             * Indexers ensure correct access during debug builds, but fields
+             * can be used directly for tiny performance boost in release builds
+             */
+
+            public bool Running;
+
+#if DEBUG
+
+            public required ITransportProvider OriginServer { get; init; }
+
+            public required FrozenDictionary<string, IWebRoot> Roots { get; init; }
+
+            public required IWebRoot? DefaultRoute { get; init; }
+
+#else
+            public required ITransportProvider OriginServer;
+            public required FrozenDictionary<string, IWebRoot> Roots;
+            public required IWebRoot? DefaultRoute;
+#endif
+
+        }
+
     }
 }

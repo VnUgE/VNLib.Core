@@ -7,7 +7,6 @@
 #include <mimalloc.h>
 #include <mimalloc-override.h>  // redefines malloc etc.
 
-
 static void double_free1();
 static void double_free2();
 static void corrupt_free();
@@ -19,8 +18,7 @@ static void test_reserved(void);
 static void negative_stat(void);
 static void alloc_huge(void);
 static void test_heap_walk(void);
-static void test_heap_arena(void);
-static void test_align(void);
+
 
 int main() {
   mi_version();
@@ -36,10 +34,7 @@ int main() {
   // negative_stat();
   // test_heap_walk();
   // alloc_huge();
-  // test_heap_walk();
-  // test_heap_arena();
-  // test_align();
-  
+
   void* p1 = malloc(78);
   void* p2 = malloc(24);
   free(p1);
@@ -55,7 +50,7 @@ int main() {
   free(p1);
   free(p2);
   free(s);
-  
+
   /* now test if override worked by allocating/freeing across the api's*/
   //p1 = mi_malloc(32);
   //free(p1);
@@ -68,13 +63,6 @@ int main() {
   // test_process_info();
   
   return 0;
-}
-
-static void test_align() {
-  void* p = mi_malloc_aligned(256, 256);
-  if (((uintptr_t)p % 256) != 0) {
-    fprintf(stderr, "%p is not 256 alignend!\n", p);
-  }
 }
 
 static void invalid_free() {
@@ -226,20 +214,6 @@ static void test_heap_walk(void) {
   mi_heap_malloc(heap, 2097160);
   mi_heap_malloc(heap, 24576);
   mi_heap_visit_blocks(heap, true, &test_visit, NULL);
-}
-
-static void test_heap_arena(void) {
-  mi_arena_id_t arena_id;
-  int err = mi_reserve_os_memory_ex(100 * 1024 * 1024, false /* commit */, false /* allow large */, true /* exclusive */, &arena_id);
-  if (err) abort();
-  mi_heap_t* heap = mi_heap_new_in_arena(arena_id);
-  for (int i = 0; i < 500000; i++) {
-    void* p = mi_heap_malloc(heap, 1024);
-    if (p == NULL) {
-      printf("out of memory after %d kb (expecting about 100_000kb)\n", i);
-      break;
-    }
-  }
 }
 
 // ----------------------------

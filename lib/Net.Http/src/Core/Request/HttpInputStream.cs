@@ -38,7 +38,7 @@ namespace VNLib.Net.Http.Core
     /// <summary>
     /// Specialized stream to allow reading a request entity body with a fixed content length.
     /// </summary>
-    internal sealed class HttpInputStream(IHttpContextInformation ContextInfo) : Stream
+    internal sealed class HttpInputStream(TransportManager transport) : Stream
     {
         private StreamState _state;
         private InitDataBuffer? _initalData;
@@ -74,7 +74,6 @@ namespace VNLib.Net.Http.Core
         internal ref InitDataBuffer? Prepare(long contentLength)
         {
             _state.ContentLength = contentLength;
-            _state.InputStream = ContextInfo.GetTransport();
             return ref _initalData;
         }
 
@@ -153,10 +152,8 @@ namespace VNLib.Net.Http.Core
             //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
             {
-                //Read from transport
-                ERRNO read = _state.InputStream!.Read(writer.Remaining);
+                ERRNO read = transport.Stream!.Read(writer.Remaining);
 
-                //Update writer position
                 writer.Advance(read);
 
                 _state.Position += read;
@@ -189,27 +186,23 @@ namespace VNLib.Net.Http.Core
             {
                 //Read as much as possible from internal buffer
                 ERRNO read = _initalData.Value.Read(writer.Remaining.Span);
-
-                //Advance writer 
+               
                 writer.Advance(read);
-
-                //Update position
+                
                 _state.Position += read;
             }
 
             //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
-            {
-                //Read from transport
-                int read = await _state.InputStream!.ReadAsync(writer.Remaining, cancellationToken).ConfigureAwait(true);
-
-                //Update writer position
+            {                
+                int read = await transport.Stream.ReadAsync(writer.Remaining, cancellationToken)
+                    .ConfigureAwait(true);
+                
                 writer.Advance(read);
 
                 _state.Position += read;
             }
-
-            //Return number of bytes written to the buffer
+          
             return writer.Written;
         }
 
@@ -249,13 +242,11 @@ namespace VNLib.Net.Http.Core
             while (bytesToRead > 0)
             {
                 //Read data to the discard buffer until reading is completed (read == 0)
-                read = await _state.InputStream!.ReadAsync(HttpServer.WriteOnlyScratchBuffer.Slice(0, bytesToRead), CancellationToken.None)
+                read = await transport.Stream!.ReadAsync(HttpServer.WriteOnlyScratchBuffer.Slice(0, bytesToRead), CancellationToken.None)
                     .ConfigureAwait(true);
-
-                //Update position
+               
                 _state.Position += read;
-
-                //Recalculate the number of bytes to read
+               
                 bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
             }
         }
@@ -286,7 +277,6 @@ namespace VNLib.Net.Http.Core
 
         private struct StreamState
         {
-            public Stream? InputStream;
             public long Position;
             public long ContentLength;
         }

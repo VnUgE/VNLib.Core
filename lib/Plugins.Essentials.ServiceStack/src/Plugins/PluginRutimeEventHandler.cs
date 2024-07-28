@@ -28,7 +28,7 @@ using System.Linq;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Runtime;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     internal sealed class PluginRutimeEventHandler(ServiceDomain Domain) : IPluginEventListener
     {

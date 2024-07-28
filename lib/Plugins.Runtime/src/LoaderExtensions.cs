@@ -445,28 +445,29 @@ namespace VNLib.Plugins.Runtime
         /// <summary>
         /// Specifies the directory that the plugin loader will search for plugins in
         /// </summary>
-        /// <param name="path">The search directory path</param>
+        /// <param name="paths">An array of search directories</param>
         /// <param name="builder"></param>
         /// <returns>The current builder instance for chaining</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static PluginStackBuilder WithSearchDirectory(this PluginStackBuilder builder, string path) => WithSearchDirectory(builder, new DirectoryInfo(path));
+        public static PluginStackBuilder WithSearchDirectories(this PluginStackBuilder builder, string[] paths) 
+            => WithSearchDirectories(builder, paths.Select(static p => new DirectoryInfo(p)).ToArray());
 
         /// <summary>
         /// Specifies the directory that the plugin loader will search for plugins in
         /// </summary>
-        /// <param name="dir">The search directory instance</param>
+        /// <param name="dirs">The search directory instance</param>
         /// <param name="builder"></param>
         /// <returns>The current builder instance for chaining</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static PluginStackBuilder WithSearchDirectory(this PluginStackBuilder builder, DirectoryInfo dir)
+        public static PluginStackBuilder WithSearchDirectories(this PluginStackBuilder builder, DirectoryInfo[] dirs)
         {
-            ArgumentNullException.ThrowIfNull(builder, nameof(builder));
-            ArgumentNullException.ThrowIfNull(dir, nameof(dir));
-
-            PluginDirectorySearcher dirSearcher = new (dir);
-            builder.WithDiscoveryManager(dirSearcher);
+            ArgumentNullException.ThrowIfNull(builder);
+            ArgumentNullException.ThrowIfNull(dirs);
+          
+            builder.WithDiscoveryManager(discoveryManager: new PluginDirectorySearcher(dirs));
             return builder;
         }
+       
 
         /// <summary>
         /// Registers a new <see cref="SharedPluginServiceProvider"/> for the current plugin stack
@@ -493,15 +494,19 @@ namespace VNLib.Plugins.Runtime
         /// <returns>An enumeration of all <see cref="LivePlugin"/> wrappers</returns>
         public static IEnumerable<LivePlugin> GetAllPlugins(this IPluginStack stack) => stack.Plugins.SelectMany(static p => p.Controller.Plugins);
 
-        private sealed record class PluginDirectorySearcher(DirectoryInfo Dir) : IPluginDiscoveryManager
+        private sealed record class PluginDirectorySearcher(DirectoryInfo[] SearchDirs) : IPluginDiscoveryManager
         {
             private const string PLUGIN_FILE_EXTENSION = ".dll";
 
             ///<inheritdoc/>
             public string[] DiscoverPluginFiles()
             {
-                //Enumerate all dll files within the seach directory
-                IEnumerable<DirectoryInfo> dirs = Dir.EnumerateDirectories("*", SearchOption.TopDirectoryOnly);
+                /*
+                 * Accumulate all plugin child directores 
+                 * from the search directories
+                 */
+
+                IEnumerable<DirectoryInfo> dirs = SearchDirs.SelectMany(static p => p.EnumerateDirectories("*", SearchOption.TopDirectoryOnly));
 
                 //Search all directories for plugins and return the paths
                 return GetPluginPaths(dirs).ToArray();
@@ -547,19 +552,16 @@ namespace VNLib.Plugins.Runtime
                 //Get the plugin config file name
                 string pluginConfigFile = GetConfigFilePathCallback(asmConfig);
 
-                using JsonDocument hConfig = JsonDocument.Parse(HostJson, jdo);
-
-                //Read the plugin config file
+                using JsonDocument hostConfig = JsonDocument.Parse(HostJson, jdo);
+             
                 if (FileOperations.FileExists(pluginConfigFile))
                 {
                     //Open file stream to read data
-                    using FileStream confStream = File.OpenRead(pluginConfigFile);
+                    using FileStream pluginConfFileData = File.OpenRead(pluginConfigFile);
 
-                    //Parse the config file
-                    using JsonDocument pConfig = JsonDocument.Parse(confStream, jdo);
-
-                    //Merge the configs
-                    using JsonDocument merged = hConfig.Merge(pConfig,"host", "plugin");
+                    using JsonDocument pluginConf = JsonDocument.Parse(pluginConfFileData, jdo);
+                  
+                    using JsonDocument merged = hostConfig.Merge(pluginConf,"host", "plugin");
 
                     //Write the merged config to the output stream
                     using Utf8JsonWriter writer = new(configData);
@@ -569,10 +571,9 @@ namespace VNLib.Plugins.Runtime
                 {
                     byte[] pluginConfig = Encoding.UTF8.GetBytes("{}");
 
-                    using JsonDocument pConfig = JsonDocument.Parse(pluginConfig, jdo);
+                    using JsonDocument pluginConf = JsonDocument.Parse(pluginConfig, jdo);
 
-                    //Merge the configs
-                    using JsonDocument merged = hConfig.Merge(pConfig,"host", "plugin");
+                    using JsonDocument merged = hostConfig.Merge(pluginConf, "host", "plugin");
 
                     //Write the merged config to the output stream
                     using Utf8JsonWriter writer = new(configData);

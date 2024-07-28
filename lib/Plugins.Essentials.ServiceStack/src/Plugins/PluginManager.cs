@@ -29,7 +29,7 @@ using System.Collections.Generic;
 using VNLib.Utils;
 using VNLib.Utils.Logging;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
 
     /// <summary>
@@ -70,9 +70,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             Check();
 
-            foreach(IManagedPlugin plugin in _loadedPlugins)
+            foreach (IManagedPlugin plugin in _loadedPlugins)
             {
-                if(plugin.SendCommandToPlugin(pluginName, message, nameComparison))
+                if (plugin.SendCommandToPlugin(pluginName, message, nameComparison))
                 {
                     return true;
                 }

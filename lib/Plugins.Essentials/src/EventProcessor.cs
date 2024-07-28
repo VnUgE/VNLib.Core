@@ -159,6 +159,8 @@ namespace VNLib.Plugins.Essentials
 
         private readonly MiddlewareController _middleware = new(config);
 
+        private readonly FilePathCache _pathCache = FilePathCache.GetCacheStore(config.FilePathCacheMaxAge);
+
         ///<inheritdoc/>
         public virtual async ValueTask ClientConnectedAsync(IHttpEvent httpEvent)
         {
@@ -619,6 +621,25 @@ namespace VNLib.Plugins.Essentials
         /// <param name="path">An out parameter that is set to the absolute path to the existing and accessable resource</param>
         /// <returns>True if the resource exists and is allowed to be accessed</returns>
         public bool FindResourceInRoot(string resourcePath, out string path)
+        {
+            //Try to get the translated file path from cache
+            if (_pathCache.TryGetMappedPath(resourcePath, out path))
+            {
+                return true;
+            }
+
+            //Cache miss, force a lookup
+            if (FindFileResourceInternal(resourcePath, out path))
+            {
+                //Store the path in the cache for next lookup
+                _pathCache.StorePathMapping(resourcePath, path);
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool FindFileResourceInternal(string resourcePath, out string path)
         {
             //Check after fully qualified path name because above is a special case
             path = TranslateResourcePath(resourcePath);

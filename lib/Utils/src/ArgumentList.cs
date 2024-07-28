@@ -41,18 +41,16 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="args">The array of arguments to clone</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public ArgumentList(string[] args)
-        {
-            ArgumentNullException.ThrowIfNull(args);
-            _args = args.ToList();
-        }
+        [Obsolete("Deprecated in preference to ctor(IEnumerable<string>)")]
+        public ArgumentList(string[] args) : this(args as IEnumerable<string>)
+        { }
 
         /// <summary>
         /// Initalizes the argument parser by copying the given argument list
         /// </summary>
         /// <param name="args">The argument list to clone</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public ArgumentList(IReadOnlyList<string> args)
+        public ArgumentList(IEnumerable<string> args)
         {
             ArgumentNullException.ThrowIfNull(args);
             _args = args.ToList();
@@ -73,9 +71,9 @@ namespace VNLib.Utils
         /// <summary>
         /// Determines of the given argument is present in the argument list
         /// </summary>
-        /// <param name="arg"></param>
+        /// <param name="arg">The name of the argument to check existence of</param>
         /// <returns>A value that indicates if the argument is present in the list</returns>
-        public bool HasArgument(string arg) => _args.Contains(arg);
+        public bool HasArgument(string arg) => HasArgument(_args, arg);
 
         /// <summary>
         /// Determines if the argument is present in the argument list and 
@@ -91,16 +89,91 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="arg">The argument to get following value of</param>
         /// <returns>The argument value if found</returns>
-        public string? GetArgument(string arg)
-        {
-            int index = _args.IndexOf(arg);
-            return index == -1 || index + 1 >= _args.Count ? null : this[index + 1];
-        }
+        public string? GetArgument(string arg) => GetArgument(_args, arg);
 
         ///<inheritdoc/>
         public IEnumerator<string> GetEnumerator() => _args.GetEnumerator();
 
         ///<inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        /// <summary>
+        /// Captures the command line arguments from the currently executing process
+        /// and returns them as an ArgumentList
+        /// </summary>
+        /// <returns>The <see cref="ArgumentList"/> containing the current process's argument list</returns>
+        public static ArgumentList CaptureCurrentArgs()
+        {
+            /*
+             *  Capture the current command line arguments and 
+             *  pop the first argument which is always the program 
+             *  name
+             */
+            string[] strings = Environment.GetCommandLineArgs();
+            return new ArgumentList(strings.Skip(1));
+        }
+
+        /// <summary>
+        /// Determines of the given argument is present in the argument list
+        /// </summary>
+        /// <param name="argsList">The collection to search for the arugment within</param>
+        /// <param name="argName">The name of the argument to check existence of</param>
+        /// <returns>A value that indicates if the argument is present in the list</returns>
+        public static bool HasArgument<T>(T argsList, string argName) where T: IEnumerable<string>
+            => argsList.Contains(argName, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Determines if the argument is present in the argument list and 
+        /// has a non-null value following it.
+        /// </summary>
+        ///  <param name="argsList">The collection to search for the arugment within</param>
+        /// <param name="argName">The name of the argument to check existence of</param>
+        /// <returns>A value that indicates if a non-null argument is present in the list</returns>
+        public static bool HasArgumentValue<T>(T argsList, string argName) where T : IEnumerable<string>
+            => GetArgument(argsList, argName) != null;
+
+        /// <summary>
+        /// Gets the value following the specified argument, or 
+        /// null no value follows the specified argument
+        /// </summary>
+        /// <param name="argsList">The collection to search for the arugment within</param>
+        /// <param name="argName">The name of the argument to check existence of</param>
+        /// <returns>The argument value if found</returns>
+        public static string? GetArgument<T>(T argsList, string argName) where T : IEnumerable<string>
+        {
+            ArgumentNullException.ThrowIfNull(argsList);
+
+            /*
+             * Try to optimize some fetching for types that have
+             * better performance for searching/indexing
+             */
+            if (argsList is IList<string> argList)
+            {
+                int index = argList.IndexOf(argName);
+                return index == -1 || index + 1 >= argList.Count 
+                    ? null 
+                    : argList[index + 1];
+            }
+            else if(argsList is string[] argsArr)
+            {
+                return findInArray(argsArr, argName);
+            }
+            else
+            {
+                //TODO use linq instead of converting to array on every call
+                return findInArray(
+                    argsList.ToArray(), 
+                    argName
+                );
+            }
+
+            static string? findInArray(string[] argsArr, string argName)
+            {
+                int index = Array.IndexOf(argsArr, argName);
+                return index == -1 || index + 1 >= argsArr.Length
+                    ? null
+                    : argsArr[index + 1];
+            }
+        }
     }
 }

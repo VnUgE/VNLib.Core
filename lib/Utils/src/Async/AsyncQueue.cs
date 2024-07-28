@@ -60,7 +60,9 @@ namespace VNLib.Utils.Async
         /// </summary>
         /// <param name="singleWriter">A value that specifies only a single thread be enqueing items?</param>
         /// <param name="singleReader">A value that specifies only a single thread will be dequeing</param>
-        /// <param name="capacity">The maxium number of items to enque without failing</param>
+        /// <param name="capacity">
+        /// The maxium number of items to enque without failing. If set to <see cref="int.MaxValue"/> maximum is disabled
+        /// </param>
         public AsyncQueue(bool singleWriter, bool singleReader, int capacity = int.MaxValue)
         {
             if(capacity == int.MaxValue)
@@ -102,7 +104,7 @@ namespace VNLib.Utils.Async
         public AsyncQueue(BoundedChannelOptions options) => _channel = Channel.CreateBounded<T>(options);
 
         /// <inheritdoc/>
-        public bool TryEnque(T item) => _channel.Writer.TryWrite(item);
+        public bool TryEnqueue(T item) => _channel.Writer.TryWrite(item);
 
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
@@ -119,5 +121,7 @@ namespace VNLib.Utils.Async
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public bool TryPeek([MaybeNullWhen(false)] out T result) => _channel.Reader.TryPeek(out result);
+
+        bool IAsyncQueue<T>.TryEnque(T item) => TryEnqueue(item);
     }
 }

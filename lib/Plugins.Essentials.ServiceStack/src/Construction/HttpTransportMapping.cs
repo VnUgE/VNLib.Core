@@ -1,12 +1,12 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IHostTransportInfo.cs 
+* File: HttpTransportMapping.cs 
 *
-* IHostTransportInfo.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
-* VNLib collection of libraries and utilities.
+* HttpTransportMapping.cs is part of VNLib.Plugins.Essentials.ServiceStack which is
+* part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -22,26 +22,16 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
+using System.Collections.Generic;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+using VNLib.Net.Http;
+
+namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {
     /// <summary>
-    /// Represents the service host's network/transport 
-    /// information including the optional certificate and
-    /// the endpoint to listen on
+    /// Represents a mapping of service hosts to a transport provider
     /// </summary>
-    public interface IHostTransportInfo
-    {
-        /// <summary>
-        /// Optional TLS certificate to use
-        /// </summary>
-        X509Certificate? Certificate { get; }
-
-        /// <summary>
-        /// The endpoint to listen on
-        /// </summary>
-        IPEndPoint TransportEndpoint { get; }
-    }
+    /// <param name="Hosts">The collection of service hosts to map to transports</param>
+    /// <param name="Transport">The transport that will provide networking to the host collection</param>
+    public record class HttpTransportMapping(IEnumerable<IServiceHost> Hosts, ITransportProvider Transport);
 }

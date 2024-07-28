@@ -36,15 +36,15 @@ using VNLib.Plugins.Runtime;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Runtime.Services;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
 
-    internal sealed class PluginStackInitializer(PluginRutimeEventHandler Listener, IPluginStack Stack, IManualPlugin[] ManualPlugins, bool ConcurrentLoad) 
+    internal sealed class PluginStackInitializer(PluginRutimeEventHandler Listener, IPluginStack Stack, IManualPlugin[] ManualPlugins, bool ConcurrentLoad)
         : IPluginInitializer
     {
         private readonly LinkedList<IManagedPlugin> _managedPlugins = new();
         private readonly LinkedList<ManualPluginWrapper> _manualPlugins = new();
-       
+
         private void PrepareStack()
         {
             /*
@@ -79,7 +79,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             //Combine all managed plugins and initialize them individually
             IEnumerable<IManagedPlugin> plugins = _managedPlugins.Union(_manualPlugins);
 
-            foreach(IManagedPlugin p in plugins)
+            foreach (IManagedPlugin p in plugins)
             {
                 //Try init plugin and add it to the list of loaded plugins
                 if (InitializePluginCore(p, debugLog))
@@ -153,7 +153,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                         debugLog.Warn("No plugin instances were exposed via {asm} assembly. This may be due to an assebmly mismatch", plugin.ToString());
                     }
                 }
-                else if(plugin is ManualPluginWrapper mpw)
+                else if (plugin is ManualPluginWrapper mpw)
                 {
                     //Initialzie plugin wrapper
                     mpw.Plugin.Initialize();
@@ -312,8 +312,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
                 return false;
             }
-          
-            void IManagedPlugin.OnPluginLoaded() 
+
+            void IManagedPlugin.OnPluginLoaded()
             { }
 
             void IManagedPlugin.OnPluginUnloaded()

@@ -49,9 +49,24 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         public ref struct Http1ParseState
         {
-            internal UriBuilder? Location;
-            internal bool IsAbsoluteRequestUrl;
+            internal Uri? AbsoluteUri;
+            internal UriSegments Location;
             internal long ContentLength;
+        }
+
+        /*
+         * Reduces load when parsing uri components 
+         * and allows a one-time vaidation once the uri
+         * is compiled
+         */
+        internal ref struct UriSegments
+        {
+            public string Scheme;
+            public string Host;
+            public string Path;
+            public string Query;
+
+            public int Port;
         }
 
 
@@ -120,29 +135,23 @@ namespace VNLib.Net.Http.Core
                 return HttpStatusCode.HttpVersionNotSupported;
             }
 
-            //Set keepalive flag if http11
+            //Http 1.1 spec defaults to keepalive if the connection header is not set to close
             reqState.KeepAlive = reqState.HttpVersion == HttpVersion.Http11;
 
-            //Get the location segment from the request line
             pathAndQuery = requestLine[(index + 1)..endloc].TrimCRLF();
 
             //Process an absolute uri, 
             if (pathAndQuery.Contains("://", StringComparison.Ordinal))
             {
                 //Convert the location string to a .net string and init the location builder (will perform validation when the Uri propery is used)
-                parseState.Location = new(pathAndQuery.ToString());
-                parseState.IsAbsoluteRequestUrl = true;
+                parseState.AbsoluteUri = new(pathAndQuery.ToString());
                 return 0;
             }
-            //Try to capture a realative uri
+            //Must be a relaive uri that starts with /
             else if (pathAndQuery.Length > 0 && pathAndQuery[0] == '/')
             {
-                //Create a default location uribuilder
-                parseState.Location = new()
-                {
-                    //Set a default scheme
-                    Scheme = usingTls ? Uri.UriSchemeHttps : Uri.UriSchemeHttp,
-                };
+                //Set default scheme
+                parseState.Location.Scheme = usingTls ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
 
                 //Need to manually parse the query string
                 int q = pathAndQuery.IndexOf('?');
@@ -161,6 +170,7 @@ namespace VNLib.Net.Http.Core
                 }
                 return 0;
             }
+
             //Cannot service an unknonw location
             return HttpStatusCode.BadRequest;
         }
@@ -334,16 +344,20 @@ namespace VNLib.Net.Http.Core
                                 }
                                 
                                 //Verify that the host matches the host header if absolue uri is set
-                                if (parseState.IsAbsoluteRequestUrl)
+                                if (parseState.AbsoluteUri != null)
                                 {
-                                    if (!hostOnly.Equals(parseState.Location!.Host, StringComparison.OrdinalIgnoreCase))
+                                    if (!hostOnly.Equals(parseState.Location.Host, StringComparison.OrdinalIgnoreCase))
                                     {
                                         return HttpStatusCode.BadRequest;
                                     }
                                 }
 
-                                //store the host value
-                                parseState.Location!.Host = hostOnly;
+                                /*
+                                 * Uri segments are only assigned/used if an absolute 
+                                 * uri was not set in the request line.
+                                 */
+
+                                parseState.Location.Host = hostOnly;
                                 
                                 //If the port span is empty, no colon was found or the port is invalid
                                 if (!port.IsEmpty)
@@ -444,16 +458,14 @@ namespace VNLib.Net.Http.Core
                                         //Validate explicit range
                                         if(!HttpRange.IsValidRangeValue(startRangeValue, endRangeValue))
                                         {
-                                            //Ignore and continue parsing headers
+                                            //If range is invalid were supposed to ignore it and continue
                                             break;
                                         }
-
-                                        //Set full http range
+                                      
                                         reqState.Range = HttpRange.FullRange(startRangeValue, endRangeValue);
                                     }
                                     else
                                     {
-                                        //From-end range
                                         reqState.Range = HttpRange.FromEnd(endRangeValue);
                                     }
                                 }
@@ -509,18 +521,43 @@ namespace VNLib.Net.Http.Core
                 return HttpStatusCode.BadRequest;
             }
 
+            //Store absolute uri if set
+            if(parseState.AbsoluteUri != null)
+            {
+                reqState.Location = parseState.AbsoluteUri;
+            }
             //Check the final location to make sure data was properly sent
-            if (string.IsNullOrWhiteSpace(parseState.Location?.Host)
+            else if(string.IsNullOrWhiteSpace(parseState.Location.Host)
                 || string.IsNullOrWhiteSpace(parseState.Location.Scheme)
                 || string.IsNullOrWhiteSpace(parseState.Location.Path)
-                )
+            )
             {
                 return HttpStatusCode.BadRequest;
             }
+            else
+            {
+                /*
+                 * Double allocations are not ideal here, but for now, its the 
+                 * safest way to build and validate a foreign uri. Its better
+                 * than it was.
+                 * 
+                 * A string could be build from heap memory then passed to the 
+                 * uri constructor for validation, but this will work for now.
+                 */
 
-            //Store the finalized location
-            reqState.Location = parseState.Location.Uri;
-            
+                //Build the final uri if successfully parsed into segments
+                reqState.Location = new UriBuilder(
+                    scheme: parseState.Location.Scheme,
+                    host: parseState.Location.Host,
+                    port: parseState.Location.Port,
+                    path: parseState.Location.Path,
+                    extraValue: null
+                )
+                {
+                    Query = parseState.Location.Query,
+                }.Uri;                
+            }
+
             return 0;
         }
 
@@ -533,7 +570,12 @@ namespace VNLib.Net.Http.Core
         /// <param name="reader">The <see cref="VnStreamReader"/> to read lines from the transport</param>
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1PrepareEntityBody(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, ref readonly HttpConfig Config)
+        public static HttpStatusCode Http1PrepareEntityBody(
+            this HttpRequest Request, 
+            ref Http1ParseState parseState, 
+            ref TransportReader reader, 
+            ref readonly HttpConfig Config
+        )
         {
             /*
             * Evil mutable struct, get a local mutable reference to the request's 

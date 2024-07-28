@@ -90,5 +90,11 @@ namespace VNLib.Plugins.Essentials
         /// A <see cref="TimeSpan"/> for how long a connection may remain open before all operations are cancelled
         /// </summary>
         public TimeSpan ExecutionTimeout { get; init; } = TimeSpan.Zero;
+
+        /// <summary>
+        /// Enables or disables the use of the file path cache. If set to zero , the cache will be disabled,
+        /// otherwise sets the maximum amount of time a file path is to be cached.
+        /// </summary>
+        public TimeSpan FilePathCacheMaxAge { get; init; } = TimeSpan.Zero;
     }
 }

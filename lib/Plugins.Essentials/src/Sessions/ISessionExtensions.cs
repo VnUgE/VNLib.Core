@@ -78,10 +78,26 @@ namespace VNLib.Plugins.Essentials.Sessions
         public static void InitNewSession(this ISession session, IConnectionInfo ci)
         {
             session.IsCrossOrigin(ci.CrossOrigin);
-            session.SetOrigin(ci.Origin?.ToString());
             session.SetRefer(ci.Referer?.ToString());
             session.SetSecurityProtocol(ci.GetSslProtocol());
             session.SetUserAgent(ci.UserAgent);
+
+            /*
+             * If no origin is specified, then we can use the authority of 
+             * our current virtual host because it cannot be a cross-origin 
+             * request.
+             */
+            if(ci.Origin is null)
+            {
+                string scheme = ci.RequestUri.Scheme;
+                string authority = ci.RequestUri.Authority;
+
+                session.SetOrigin($"{scheme}{authority}");
+            }
+            else
+            {
+                session.SetOrigin(ci.Origin.ToString());
+            }
         }
        
     }

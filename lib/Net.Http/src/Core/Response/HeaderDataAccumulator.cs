@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -35,16 +35,10 @@ namespace VNLib.Net.Http.Core.Response
     /// <summary>
     /// Specialized data accumulator for compiling response headers
     /// </summary>
-    internal readonly struct HeaderDataAccumulator
+    internal readonly struct HeaderDataAccumulator(IResponseHeaderAccBuffer accBuffer, IHttpContextInformation ctx)
     {
-        private readonly IResponseHeaderAccBuffer _buffer;
-        private readonly IHttpContextInformation _contextInfo;
-
-        public HeaderDataAccumulator(IResponseHeaderAccBuffer accBuffer, IHttpContextInformation ctx)
-        {
-            _buffer = accBuffer;
-            _contextInfo = ctx;
-        }
+        private readonly IResponseHeaderAccBuffer _buffer = accBuffer;
+        private readonly IHttpContextInformation _contextInfo = ctx;
 
         /// <summary>
         /// Gets the accumulated response data as its memory buffer, and resets the internal accumulator

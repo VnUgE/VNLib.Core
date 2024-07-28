@@ -25,7 +25,7 @@
 using System;
 using System.ComponentModel.Design;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     /// <summary>
     /// Represents a plugin managed by a <see cref="IHttpPluginManager"/> that includes dynamically loaded plugins

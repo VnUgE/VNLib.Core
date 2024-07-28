@@ -41,21 +41,29 @@ namespace VNLib.Utils.IO
     /// Provides a memory optimized <see cref="TextWriter"/> implementation. Optimized for writing
     /// to network streams
     /// </summary>
-    public class VnStreamWriter : TextWriter
+    /// <remarks>
+    /// Creates a new <see cref="VnStreamWriter"/> that writes encoded data to the base stream 
+    /// and uses the specified buffer.
+    /// </remarks>
+    /// <param name="baseStream">The underlying stream to write data to</param>
+    /// <param name="encoding">The <see cref="Encoding"/> to use when writing to the stream</param>
+    /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
+    /// <exception cref="ArgumentNullException"></exception>
+    public class VnStreamWriter(Stream baseStream, Encoding encoding, ISlindingWindowBuffer<byte> buffer) : TextWriter
     {
-        private readonly Encoder Enc;
+        private readonly Encoder Enc = encoding.GetEncoder();
 
-        private readonly ISlindingWindowBuffer<byte> _buffer;
+        private readonly ISlindingWindowBuffer<byte> _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
        
         private bool closed;
 
         /// <summary>
         /// Gets the underlying stream that interfaces with the backing store
         /// </summary>
-        public virtual Stream BaseStream { get; }
+        public virtual Stream BaseStream { get; } = baseStream ?? throw new ArgumentNullException(nameof(buffer));
 
         ///<inheritdoc/>
-        public override Encoding Encoding { get; }
+        public override Encoding Encoding { get; } = encoding ?? throw new ArgumentNullException(nameof(encoding));
 
         /// <summary>
         /// Line termination to use when writing lines to the output
@@ -95,24 +103,6 @@ namespace VNLib.Utils.IO
         public VnStreamWriter(Stream baseStream, Encoding encoding, int bufferSize, IStreamBufferFactory<byte> bufferFactory)
             : this(baseStream, encoding, bufferFactory?.CreateBuffer(bufferSize)!)
         {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="VnStreamWriter"/> that writes encoded data to the base stream 
-        /// and uses the specified buffer.
-        /// </summary>
-        /// <param name="baseStream">The underlying stream to write data to</param>
-        /// <param name="encoding">The <see cref="Encoding"/> to use when writing to the stream</param>
-        /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
-        /// <exception cref="ArgumentNullException"></exception>
-        public VnStreamWriter(Stream baseStream, Encoding encoding, ISlindingWindowBuffer<byte> buffer)
-        {
-            BaseStream = baseStream ?? throw new ArgumentNullException(nameof(buffer));
-            Encoding = encoding ?? throw new ArgumentNullException(nameof(encoding));
-            _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
-
-            //Get an encoder
-            Enc = encoding.GetEncoder();
         }
 
         ///<inheritdoc/>

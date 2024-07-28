@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -26,8 +26,6 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-
-using VNLib.Net.Http.Core;
 
 namespace VNLib.Net.Http
 {
@@ -58,8 +56,9 @@ namespace VNLib.Net.Http
             try
             {
                 //Call child initialize method
-                await RunAsync(transport);
-                CancelSource.Cancel();
+                await RunAsync(transport).ConfigureAwait(false);
+                
+                await CancelSource.CancelAsync();
             }
             finally
             {
@@ -73,7 +72,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Is the current socket connected using transport security
         /// </summary>
-        public virtual bool IsSecure { get; init; }
+        public required virtual bool IsSecure { get; init; }
 
         /// <summary>
         /// Determines if the instance is pending cancelation 

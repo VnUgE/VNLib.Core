@@ -27,7 +27,7 @@ using System.Collections.Generic;
 
 using VNLib.Plugins.Essentials.Runtime;
 
-namespace VNLib.Plugins.Essentials.ServiceStack
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     /// <summary>
     /// Internal and service stack specific extensions for plugins

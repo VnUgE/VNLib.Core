@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -66,6 +66,7 @@ namespace VNLib.Utils.IO
         /// <remarks>Allows reading lines of data from the stream without allocations</remarks>
         public static ERRNO ReadLine<T>(this T reader, Span<char> charBuffer) where T : class, IVnTextReader
         {
+            ArgumentNullException.ThrowIfNull(reader);
             return ReadLineInternal(ref reader, charBuffer);
         }
 
@@ -118,6 +119,7 @@ namespace VNLib.Utils.IO
         /// <remarks>You should use the <see cref="IVnTextReader.Available"/> property to know how much remaining data is buffered</remarks>
         public static int ReadRemaining<T>(this T reader, Span<byte> buffer) where T : class, IVnTextReader
         {
+            ArgumentNullException.ThrowIfNull(reader);
             return ReadRemainingInternal(ref reader, buffer);
         }
        

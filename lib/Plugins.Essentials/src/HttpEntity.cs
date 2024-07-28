@@ -30,7 +30,9 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils.IO;
 using VNLib.Net.Http;
+using VNLib.Plugins.Essentials.Content;
 using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
 
@@ -214,13 +216,53 @@ namespace VNLib.Plugins.Essentials
              * Stream length also should not cause an integer overflow,
              * which also mean position is assumed not to overflow 
              * or cause an overflow during reading
+             * 
+             * Finally not all memory streams allow fetching the internal 
+             * buffer, so check that it can be aquired.
              */
-            if(stream is MemoryStream ms && length < int.MaxValue)
+            if (stream is MemoryStream ms 
+                && length < int.MaxValue
+                && ms.TryGetBuffer(out ArraySegment<byte> arrSeg)
+            )
             {
                 Entity.CloseResponse(
                     code, 
                     type, 
-                    new MemStreamWrapper(ms, (int)length)
+                    entity: new MemStreamWrapper(in arrSeg, ms, (int)length)
+                );
+
+                return;
+            }
+
+            /*
+             * Readonly vn streams can also use a shortcut to avoid http buffer allocation and 
+             * async streaming. This is done by wrapping the stream in a memory response reader
+             * 
+             * Allocating a memory manager requires that the stream is readonly
+             */
+            if (stream is VnMemoryStream vms && length < int.MaxValue)
+            {
+                Entity.CloseResponse(
+                   code,
+                   type,
+                   entity: new VnStreamWrapper(vms, (int)length)
+               );
+
+                return;
+            }
+
+            /*
+             * Files can have a bit more performance using the RandomAccess library when reading
+             * sequential segments without buffering. It avoids a user-space copy and async reading
+             * performance without the file being opened as async.
+             */
+            if(stream is FileStream fs)
+            {
+                Entity.CloseResponse(
+                    code,
+                    type,
+                    entity: new DirectFileStream(fs.SafeFileHandle),
+                    length
                 );
 
                 return;
@@ -270,8 +312,11 @@ namespace VNLib.Plugins.Essentials
         void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler) => Entity.DangerousChangeProtocol(protocolHandler);
 
 
-        private sealed class MemStreamWrapper(MemoryStream memStream, int length) : IMemoryResponseReader 
+        private sealed class VnStreamWrapper(VnMemoryStream memStream, int length) : IMemoryResponseReader
         {
+            //Store memory buffer, causes an internal allocation, so avoid calling mutliple times
+            readonly ReadOnlyMemory<byte> _memory = memStream.AsMemory();
+
             readonly int length = length;
 
             /*
@@ -280,6 +325,7 @@ namespace VNLib.Plugins.Essentials
              */
             int read = (int)memStream.Position;
 
+            ///<inheritdoc/>
             public int Remaining
             {
                 get
@@ -289,16 +335,46 @@ namespace VNLib.Plugins.Essentials
                 }
             }
 
+            ///<inheritdoc/>
             public void Advance(int written) => read += written;
 
             ///<inheritdoc/>
             public void Close() => memStream.Dispose();
 
-            public ReadOnlyMemory<byte> GetMemory()
+            ///<inheritdoc/>
+            public ReadOnlyMemory<byte> GetMemory() => _memory.Slice(read, Remaining);
+        }
+
+
+        private sealed class MemStreamWrapper(ref readonly ArraySegment<byte> data, MemoryStream stream, int length) : IMemoryResponseReader 
+        {
+            readonly ArraySegment<byte> _data = data;
+            readonly int length = length;
+
+            /*
+             * Stream may be offset by the caller, it needs 
+             * to be respected during streaming.
+             */
+            int read = (int)stream.Position;
+
+            ///<inheritdoc/>
+            public int Remaining
             {
-                byte[] intBuffer = memStream.GetBuffer();
-                return new ReadOnlyMemory<byte>(intBuffer, read, Remaining);
+                get
+                {
+                    Debug.Assert(length - read >= 0);
+                    return length - read;
+                }
             }
+
+            ///<inheritdoc/>
+            public void Advance(int written) => read += written;
+
+            ///<inheritdoc/>
+            public void Close() => stream.Dispose();
+
+            ///<inheritdoc/>
+            public ReadOnlyMemory<byte> GetMemory() => _data.AsMemory(read, Remaining);
         }
     }
 }

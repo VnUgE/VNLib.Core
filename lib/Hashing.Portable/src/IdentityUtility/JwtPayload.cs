@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -22,6 +22,7 @@
 * along with VNLib.Hashing.Portable. If not, see http://www.gnu.org/licenses/.
 */
 
+using System.Text.Json;
 using System.Collections.Generic;
 
 using VNLib.Utils;
@@ -31,9 +32,9 @@ namespace VNLib.Hashing.IdentityUtility
     /// <summary>
     /// A fluent api structure for adding and committing claims to a <see cref="JsonWebToken"/>
     /// </summary>
-    public readonly record struct JwtPayload : IIndexable<string, object>
+    public readonly record struct JwtPayload : IIndexable<string, object?>
     {
-        private readonly Dictionary<string, object> Claims;
+        private readonly Dictionary<string, object?> Claims;
         private readonly JsonWebToken Jwt;
 
         internal JwtPayload(JsonWebToken jwt, int initialCapacity)
@@ -43,7 +44,7 @@ namespace VNLib.Hashing.IdentityUtility
         }
 
         ///<inheritdoc/>
-        public readonly object this[string key]
+        public readonly object? this[string key]
         {
             get => Claims[key];
             set => Claims[key] = value;
@@ -55,7 +56,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="claim">The clame name</param>
         /// <param name="value">The value of the claim</param>
         /// <returns>The chained response object</returns>
-        public readonly JwtPayload AddClaim(string claim, object value)
+        public readonly JwtPayload AddClaim(string claim, object? value)
         {
             Claims.Add(claim, value);
             return this;
@@ -67,6 +68,16 @@ namespace VNLib.Hashing.IdentityUtility
         public readonly void CommitClaims()
         {
             Jwt.WritePayload(Claims);
+            Claims.Clear();
+        }
+
+        /// <summary>
+        /// Writes all claims to the <see cref="JsonWebToken"/> payload segment
+        /// </summary>
+        /// <param name="options">Json serializer options to pass to the serializer</param>
+        public readonly void CommitClaims(JsonSerializerOptions? options)
+        {
+            Jwt.WritePayload(Claims, options);
             Claims.Clear();
         }
     }

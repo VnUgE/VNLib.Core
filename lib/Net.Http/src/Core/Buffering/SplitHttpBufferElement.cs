@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -30,12 +30,10 @@ using VNLib.Utils.Memory;
 
 namespace VNLib.Net.Http.Core.Buffering
 {
-    internal abstract class SplitHttpBufferElement : HttpBufferElement, ISplitHttpBuffer
+    internal abstract class SplitHttpBufferElement(int binSize) : HttpBufferElement, ISplitHttpBuffer
     {
         ///<inheritdoc/>
-        public int BinSize { get; }
-
-        internal SplitHttpBufferElement(int binSize) => BinSize = binSize;
+        public int BinSize { get; } = binSize;
 
         ///<inheritdoc/>
         public Span<char> GetCharSpan()

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -33,49 +33,31 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 
 using VNLib.Utils.Memory;
 
 namespace VNLib.Net.Http.Core.Buffering
 {
 
-    internal sealed class ContextLockedBufferManager : IHttpBufferManager
+    internal sealed class ContextLockedBufferManager(in HttpBufferConfig config, bool chunkingEnabled) : IHttpBufferManager
     {
-        private readonly HttpBufferConfig Config;
-        private readonly int TotalBufferSize;
+        private readonly HttpBufferConfig Config = config;
+        private readonly bool _chunkingEnabled = chunkingEnabled;
+        private readonly int TotalBufferSize = ComputeTotalBufferSize(in config, chunkingEnabled);
 
-        private readonly HeaderAccumulatorBuffer _requestHeaderBuffer;
-        private readonly HeaderAccumulatorBuffer _responseHeaderBuffer;
-        private readonly ChunkAccBuffer _chunkAccBuffer;
-        private readonly bool _chunkingEnabled;
-
-        public ContextLockedBufferManager(in HttpBufferConfig config, bool chunkingEnabled)
-        {
-            Config = config;
-            _chunkingEnabled = chunkingEnabled;
-
-            //Compute total buffer size from server config
-            TotalBufferSize = ComputeTotalBufferSize(in config, chunkingEnabled);
-
-             /*
-              * Individual instances of the header accumulator buffer are required
-              * because the user controls the size of the binary buffer for responses 
-              * and requests. The buffer segment is shared between the two instances.
-              */
-            _requestHeaderBuffer = new(config.RequestHeaderBufferSize);           
-            _responseHeaderBuffer = new(config.ResponseHeaderBufferSize);
-
-            _chunkAccBuffer = new();
-        }
+        private readonly HeaderAccumulatorBuffer _requestHeaderBuffer = new(config.RequestHeaderBufferSize);
+        private readonly HeaderAccumulatorBuffer _responseHeaderBuffer = new(config.ResponseHeaderBufferSize);
+        private readonly ChunkAccBuffer _chunkAccBuffer = new();       
 
         private IMemoryOwner<byte>? _handle;
         private HttpBufferSegments<byte> _segments;
 
-        #region LifeCycle
-
         ///<inheritdoc/>
         public void AllocateBuffer(IHttpMemoryPool allocator)
         {
+            Debug.Assert(_handle == null, "Memory Leak: new http buffer alloacted when an existing buffer was not freed.");
+
             //Alloc a single buffer for the entire context
             _handle = allocator.AllocateBufferForContext(TotalBufferSize);
 
@@ -84,26 +66,21 @@ namespace VNLib.Net.Http.Core.Buffering
                 Memory<byte> full = _handle.Memory;
 
                 //Header parse buffer is a special case as it will be double the size due to the char buffer
-                int headerParseBufferSize = GetMaxHeaderBufferSize(in Config);
-
-                //Response/form data buffer
+                int headerParseBufferSize = GetMaxHeaderBufferSize(in Config);                
                 int responseAndFormDataSize = ComputeResponseAndFormDataBuffer(in Config);
 
-                //Slice and store the buffer segments
-                _segments = new()
-                {
-                    //Shared header buffer
-                    HeaderAccumulator = GetNextSegment(ref full, headerParseBufferSize),
+                //Shared header buffer
+                _segments.HeaderAccumulator = GetNextSegment(ref full, headerParseBufferSize);
+                _segments.ResponseAndFormData = GetNextSegment(ref full, responseAndFormDataSize);
 
-                    //Shared response and form data buffer
-                    ResponseAndFormData = GetNextSegment(ref full, responseAndFormDataSize),
-
-                    /*
-                     * The chunk accumulator buffer cannot be shared. It is also only
-                     * stored if chunking is enabled.
-                     */
-                    ChunkedResponseAccumulator = _chunkingEnabled ? GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize) : default
-                };
+                /*
+                 * The chunk accumulator buffer cannot be shared. It is also only
+                 * stored if chunking is enabled.
+                 */
+                _segments.ChunkedResponseAccumulator = _chunkingEnabled 
+                    ? GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize) 
+                    : default;
+               
 
                 /*
                  * ************* WARNING ****************
@@ -151,16 +128,13 @@ namespace VNLib.Net.Http.Core.Buffering
 
             //Clear segments
             _segments = default;
-
-            //Free buffer
+          
             if (_handle != null)
             {
                 _handle.Dispose();
                 _handle = null;
             }
         }
-
-        #endregion
 
         ///<inheritdoc/>
         public IHttpHeaderParseBuffer RequestHeaderParseBuffer => _requestHeaderBuffer;
@@ -170,6 +144,19 @@ namespace VNLib.Net.Http.Core.Buffering
 
         ///<inheritdoc/>
         public IChunkAccumulatorBuffer ChunkAccumulatorBuffer => _chunkAccBuffer;
+
+        public Memory<byte> GetInitStreamBuffer()
+        {
+            /*
+            * Since this buffer must be shared with char buffers, size 
+            * must be respected. Remember that split buffesr store binary
+            * data at the head of the buffer and char data at the tail
+            */
+
+            Memory<byte> dataBuffer = RequestHeaderParseBuffer.GetMemory();
+
+            return dataBuffer[..RequestHeaderParseBuffer.BinSize];
+        }
 
 
         /*
@@ -230,19 +217,17 @@ namespace VNLib.Net.Http.Core.Buffering
         }
 
 
-        readonly struct HttpBufferSegments<T>
+        struct HttpBufferSegments<T>
         {
-            public readonly Memory<T> HeaderAccumulator { get; init; }
-            public readonly Memory<T> ChunkedResponseAccumulator { get; init; }
-            public readonly Memory<T> ResponseAndFormData { get; init; }
+            public Memory<T> HeaderAccumulator;
+            public Memory<T> ChunkedResponseAccumulator;
+            public Memory<T> ResponseAndFormData;
         }  
       
 
-        private sealed class HeaderAccumulatorBuffer: SplitHttpBufferElement, IResponseHeaderAccBuffer, IHttpHeaderParseBuffer
-        {
-            public HeaderAccumulatorBuffer(int binSize):base(binSize)
-            { }
-        }
+        private sealed class HeaderAccumulatorBuffer(int binSize) : 
+            SplitHttpBufferElement(binSize), IResponseHeaderAccBuffer, IHttpHeaderParseBuffer
+        { }
 
         private sealed class ChunkAccBuffer : HttpBufferElement, IChunkAccumulatorBuffer
         { }

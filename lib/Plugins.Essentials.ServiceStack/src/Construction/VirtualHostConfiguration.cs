@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -26,7 +26,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Collections.Generic;
-using System.Security.Cryptography.X509Certificates;
 
 using VNLib.Utils.Logging;
 using VNLib.Plugins.Essentials.Middleware;
@@ -36,34 +35,28 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
     /// <summary>
     /// A virtual host configuration container
     /// </summary>
-    public class VirtualHostConfiguration : IHostTransportInfo, IEpProcessingOptions
+    public class VirtualHostConfiguration : IEpProcessingOptions
     {
+        /// <summary>
+        /// Optional user state object
+        /// </summary>
+        internal object? UserState { get; set; }
+
         /// <summary>
         /// The directory that this virtual host will serve files from
         /// </summary>
-        public DirectoryInfo RootDir { get; set; } = null!;
+        public required DirectoryInfo RootDir { get; set; }
 
         /// <summary>
         /// The hostname, or domain name, that this virtual host will respond to
         /// <para>Default: *</para>
         /// </summary>
-        public string Hostname { get; set; } = "*";
-
-        /// <summary>
-        /// The transport endpoint that this virtual host will listen on
-        /// <para>Default: 0.0.0.0:80</para>
-        /// </summary>
-        public IPEndPoint TransportEndpoint { get; set; } = new IPEndPoint(IPAddress.Any, 80);
-
-        /// <summary>
-        /// An optional certificate to use for TLS connections
-        /// </summary>
-        public X509Certificate? Certificate { get; set; }
+        public string[] Hostnames { get; set; } = [ "*" ];
 
         /// <summary>
         /// A log provider to use for this virtual host
         /// </summary>
-        public ILogProvider LogProvider { get; set; } = null!;
+        public required ILogProvider LogProvider { get; set; }
 
         /// <summary>
         /// The name of a default file to search for within a directory if no file is specified (index.html).
@@ -111,6 +104,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// A set of custom middleware to add to virtual host middleware pipeline
         /// </summary>
         public ICollection<IHttpMiddleware> CustomMiddleware { get; } = new List<IHttpMiddleware>();
+
+        /// <summary>
+        /// A <see cref="TimeSpan"/> for how long a file path may be cached before being revalidated. Setting to 
+        /// zero will disable path caching
+        /// </summary>
+        public TimeSpan FilePathCacheMaxAge { get; set; } = TimeSpan.Zero;
 
         internal VirtualHostConfiguration Clone() => (VirtualHostConfiguration)MemberwiseClone();
     }
