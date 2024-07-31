@@ -59,8 +59,8 @@ tasks:
     desc: 'Configures the module for local development'
     cmds:
     #build native libs for development
-     - cd lib/Utils.Memory/vnlib_rpmalloc && task build
-     - cd lib/Utils.Memory/vnlib_mimalloc && task build
+     - cd lib/Utils.Memory/vnlib_rpmalloc && task dev-init
+     - cd lib/Utils.Memory/vnlib_mimalloc && task dev-init
      - cd lib/Utils.Cryptography/monocypher && task build
      - cd lib/Utils.Cryptography/argon2 && task build
      - cd lib/Net.Compression/vnlib_compress && task build

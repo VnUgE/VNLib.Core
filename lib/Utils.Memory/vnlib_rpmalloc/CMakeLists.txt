@@ -13,12 +13,11 @@ message(STATUS "Build type is '${build_type}'")
 set(CMAKE_C_STANDARD 11)					#c11 is required for rpmalloc static assertions
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-#export header files to the main project
-file(GLOB HEADERS *.h)
-
 #Add indepednent source files to the project
 set(VNLIB_RPMALLOC_SOURCES 
+    "NativeHeapApi.h"
 	"vnlib_rpmalloc.c" 
+    "vendor/rpmalloc.h"
 	"vendor/rpmalloc.c"
 )
 
@@ -26,8 +25,8 @@ set(VNLIB_RPMALLOC_SOURCES
 include_directories(vendor)
 
 #create shared/static libs
-add_library(${_RP_PROJ_NAME} SHARED ${VNLIB_RPMALLOC_SOURCES} ${HEADERS})
-add_library(${_RP_PROJ_NAME}_static STATIC ${VNLIB_RPMALLOC_SOURCES} ${HEADERS})
+add_library(${_RP_PROJ_NAME} SHARED ${VNLIB_RPMALLOC_SOURCES})
+add_library(${_RP_PROJ_NAME}_static STATIC ${VNLIB_RPMALLOC_SOURCES})
 #enable fPIC for shared library
 set_target_properties(${_RP_PROJ_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

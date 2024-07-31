@@ -25,9 +25,9 @@ PREREQUISITES:
 
 NOTE: 
 If you have any mimalloc specific CMake options you want to use, when running task, you can pass them as 
-an the MIMALLOC_CMAKE_ARGS env variable. 
+on the command line following a double hyphen '--' 
 
-Example: >task MIMALLOC_CMAKE_ARGS="-DMI_SECURE=ON" (enable secure mode for mimalloc)
+Example: >task -- -DMI_SECURE=ON (enable secure mode for mimalloc)
 
 See: https://microsoft.github.io/mimalloc/build.html for more information on mimalloc specific CMake options.
 
@@ -35,6 +35,12 @@ BUILDING:
 1. You have already downloaded all the source code to build this library 
 2. Navigate to directory containing the Taskfile.yaml file in the root
 3. Run the default task: > task (yes literally just type "task" and hit enter if you installed Task gobally)
+
+You may build a debug version with the following task command:
+>task debug
+
+You may always use the task list command to see all available public tasks:
+>task --list
 
 WINDOWS:
 The taskfile should print on screen where the output library file was placed. It will be in the build directory

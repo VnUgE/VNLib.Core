@@ -51,7 +51,7 @@
         #ifdef _P_IS_WINDOWS
             #define VNLIB_HEAP_API __declspec(dllimport)
         #else
-            #define VNLIB_HEAP_API
+            #define VNLIB_HEAP_API extern
         #endif /* _P_IS_WINDOWS */
     #endif /* !VNLIB_EXPORTING */
 #endif /* !VNLIB_EXPORT */
@@ -72,12 +72,9 @@ typedef enum HeapCreationFlags
     HEAP_CREATION_SUPPORTS_REALLOC = 0x08
 } HeapCreationFlags;
 
-#ifdef _P_IS_WINDOWS
-typedef void* LPVOID;
-#endif /* !WIN32 */
-
 /* The vnlib ERRNO type, integer/process dependent,
-internally represented as a pointer */
+ internally represented as a pointer 
+*/
 typedef void* ERRNO;
 
 /* A pointer to a heap structure that was stored during heap creation */

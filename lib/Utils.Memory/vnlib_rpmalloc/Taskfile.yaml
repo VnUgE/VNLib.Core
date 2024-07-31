@@ -9,6 +9,7 @@
 version: '3'
 
 vars:
+  DEP_NAME: 'rpmalloc'
   PROJECT_NAME: 'vnlib_rpmalloc'
 
 tasks:
@@ -16,28 +17,44 @@ tasks:
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
-        #build with defaults
-        #init cmake build with greedy enabled
-      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE=Release -DENABLE_GREEDY=1 {{.CMAKE_ARGS}}
-      - cmake --build build/ --config Release
-      - cmd: echo "Your vnlib_rpmalloc library file can be found in '{{.USER_WORKING_DIR}}/build'"
-        silent: true
-  
+     #init cmake build with greedy enabled
+     - task: build-internal
+       vars: 
+         BUILD_TYPE: "Release"
+         CLI_ARGS: "-DENABLE_GREEDY=1 {{ .CLI_ARGS }}"
+     
+     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{.USER_WORKING_DIR}}/build'"
+       silent: true
+
+  debug:
+    cmds:
+     - task: build-internal
+       vars: 
+         BUILD_TYPE: "Debug"
+         CLI_ARGS: "-DENABLE_GREEDY=1 {{ .CLI_ARGS }}"
+
   build:
+    desc: 'DO NOT USE! This function is used internally during releases.'
     cmds:
      #init cmake build with greedy enabled
-     - cmake -B./build -DENABLE_GREEDY=1
+     - cmake -B./build -DENABLE_GREEDY=1 {{ .CLI_ARGS }} 
      - cmake --build build/ --config Debug
      - cmake --build build/ --config Release
 
+  build-internal:
+    internal: true
+    cmds:      
+      #build with defaults
+      #init cmake build with greedy enabled
+      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }} {{ .CLI_ARGS }}
+      - cmake --build build/ --config {{ .BUILD_TYPE }}
+
   postbuild_success:
     vars:
-      #required files to include in tar
-      TAR_FILES: "license.txt readme.txt rpmalloc_license.txt"
-    
+      ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
     cmds:
       #make bin dir
-    - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
+    - cmd: powershell -Command "New-Item -Type Directory -Force -Path '{{ .ARTIFACTS_OUT }}'"
       ignore_error: true
 
     #get licenses for debug
@@ -48,29 +65,49 @@ tasks:
       vars: { TARGET: './build/Release' }
 
     #dynamic debug lib
-    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' .
+    - cd build/Debug && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' .
     #release dll
-    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' .
+    - cd build/Release && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-release-{{.PROJECT_NAME}}.tgz' .
 
     #source code
     - task: pack_source
+  
 
   licenses:
+    internal: true
     cmds:
-     #add rpmalloc license to binary output
-     - powershell -Command "Copy-Item -Path vendor/license -Destination '{{.TARGET}}/rpmalloc_license.txt'"
+     #add license to binary output
+     - powershell -Command "Copy-Item -Path vendor/license -Destination '{{.TARGET}}/{{ .DEP_NAME }}_license.txt'"
      #add my license file
      - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
      #add readme file
      - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
   
   pack_source:
-    dir: '{{.USER_WORKING_DIR}}'
+    internal: true
+    desc: "Packs up the project source code and creates a tarball in the builds binary directory"
+    vars:
+      TARGET_SOURCE: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}/src.tgz'
+      SOURCE_FILES: 
+        CMakeLists.txt
+        Taskfile.yaml
+        vendor
+        LICENSE
+        NativeHeapApi.h
+        vnlib_rpmalloc.c
+
     cmds:
-     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude vendor/build/* -czf 'bin/src.tgz' ."
+      #tar up the source
+     - tar -czf "{{.TARGET_SOURCE}}" {{ .SOURCE_FILES | join " " }}  
 
   clean:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
        cmd: powershell Remove-Item -Recurse '{{.ITEM}}' -Force
+
+  #called by module for initializing the project
+  dev-init:
+    internal: false
+    cmds:
+     - task: debug
