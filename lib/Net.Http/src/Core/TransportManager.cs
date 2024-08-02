@@ -47,7 +47,7 @@ namespace VNLib.Net.Http.Core
                 Debug.Assert(_stream != null, "Transport stream was accessed but was set to null");
                 return _stream;
             }
-            set => _stream = value;
+            private set => _stream = value;
         }
 
         public IBufferWriter<byte> Writer
@@ -57,7 +57,7 @@ namespace VNLib.Net.Http.Core
                 Debug.Assert(_asWriter != null, "Transport buffer writer accessed but the writer is null");
                 return _asWriter;
             }
-            set => _asWriter = value;
+            private set => _asWriter = value;
         }
 
 #else
