@@ -11,9 +11,9 @@
 version: '3'
 
 vars:
-  INT_DIR: '{{.SCRATCH_DIR}}/obj/{{.MODULE_NAME}}/'
+  INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
   MS_ARGS: '/p:RunAnalyzersDuringBuild=false /p:IntermediateOutputPath="{{.INT_DIR}}" /p:UseCommonOutputDirectory=true /p:BuildInParallel=true /p:MultiProcessorCompilation=true /p:ErrorOnDuplicatePublishOutputFiles=false'
-  PACK_OUT: '{{.OUTPUT_DIR}}/{{.HEAD_SHA}}/pkg'
+  PACK_OUT: '{{ .OUTPUT_DIR }}/{{ .HEAD_SHA }}/pkg'
 
 tasks:
 
@@ -22,7 +22,7 @@ tasks:
     cmds:
      - git reset --hard  #clean up any local changes
      - git remote update     
-     - git pull origin {{.BRANCH_NAME}} --verify-signatures 
+     - git pull origin {{ .BRANCH_NAME }} --verify-signatures 
      #re-write semver after hard reset
      - dotnet-gitversion.exe /updateprojectfiles
 
@@ -49,11 +49,11 @@ tasks:
 
 #called by build pipeline to clean module
   clean:
+    ignore_error: true
     cmds:
     #clean solution
      - dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
      - cmd: powershell -Command "rm {{ .ARCHIVE_FILE_NAME }} --Force" 
-       ignore_error: true
 
   dev-init:
     desc: 'Configures the module for local development'
@@ -63,10 +63,10 @@ tasks:
      - cd lib/Utils.Memory/vnlib_mimalloc && task dev-init
      - cd lib/Utils.Cryptography/monocypher && task build
      - cd lib/Utils.Cryptography/argon2 && task build
-     - cd lib/Net.Compression/vnlib_compress && task build
+     - cd lib/Net.Compression/vnlib_compress && task build   
      - cmd: echo "dev init complete"
        silent: true
-  
+    
 
 #Internal tasks
   build_debug:

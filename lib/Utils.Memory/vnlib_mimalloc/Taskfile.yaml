@@ -10,7 +10,8 @@ version: '3'
 
 vars:
   DEP_NAME: 'mimalloc'
-  PROJECT_NAME: 'vnlib_mimalloc'
+  PROJECT_NAME: 'vnlib_{{ .DEP_NAME }}'
+  ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
 
 tasks:
 
@@ -23,14 +24,14 @@ tasks:
          BUILD_TYPE: "Release"
          CLI_ARGS: "-DENABLE_GREEDY=1 {{ .CLI_ARGS }}"
      
-     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{.USER_WORKING_DIR}}/build'"
+     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/build'"
        silent: true
 
   debug:
     cmds:
      - task: build-internal
        vars: 
-         BUILD_TYPE: "Debug"
+         BUILD_TYPE: "debug"
          CLI_ARGS: "-DENABLE_GREEDY=1 {{ .CLI_ARGS }}"
 
   build:
@@ -38,8 +39,8 @@ tasks:
     cmds:
      #init cmake build with greedy enabled
      - cmake -B./build -DENABLE_GREEDY=1 {{ .CLI_ARGS }} 
-     - cmake --build build/ --config Debug
-     - cmake --build build/ --config Release
+     - cmake --build build/ --config debug
+     - cmake --build build/ --config release
 
   build-internal:
     internal: true
@@ -50,38 +51,39 @@ tasks:
       - cmake --build build/ --config {{ .BUILD_TYPE }}
 
   postbuild_success:
-    vars:
-      ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
     cmds:
       #make bin dir
-    - cmd: powershell -Command "New-Item -Type Directory -Force -Path '{{ .ARTIFACTS_OUT }}'"
+    - cmd: powershell mkdir -Force '{{ .ARTIFACTS_OUT }}'
       ignore_error: true
-
-    #get licenses for debug
-    - task: licenses
-      vars: { TARGET: './build/Debug' }
-
-    - task: licenses
-      vars: { TARGET: './build/Release' }
-
-    #dynamic debug lib
-    - cd build/Debug && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' .
-    #release dll
-    - cd build/Release && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-release-{{.PROJECT_NAME}}.tgz' .
-
-    #source code
-    - task: pack_source
   
+    - task: pack_parallel
 
-  licenses:
+  pack_parallel:
+    internal: true
+    deps:
+     - task: pack_source
+
+     - task: pack_artifacts
+       vars: { BUILD_TYPE: 'debug' }
+     - task: pack_artifacts
+       vars: { BUILD_TYPE: 'release' }
+
+  #packs binary artifacts for distribution
+  pack_artifacts:
+    internal: true
+    deps:
+     - task: pack_resources
+       vars: { TARGET: './build/{{ .BUILD_TYPE }}' }
+    cmds:
+    - cmd: cd build/{{ .BUILD_TYPE }} && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-{{ .BUILD_TYPE }}-{{ .PROJECT_NAME }}.tgz' .
+  
+  pack_resources:
     internal: true
     cmds:
-     #add mimalloc license to binary output
-     - powershell -Command "Copy-Item -Path vendor/license -Destination '{{.TARGET}}/{{ .DEP_NAME }}_license.txt'"
-     #add my license file
-     - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
-     #add readme file
-     - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
+     - powershell cp NativeHeapApi.h '{{ .TARGET }}/'
+     - powershell cp vendor/license '{{ .TARGET }}/{{ .DEP_NAME }}_license.txt'
+     - powershell cp license '{{ .TARGET }}/license.txt'
+     - powershell cp build.readme.txt '{{ .TARGET }}/readme.txt'
   
   pack_source:
     internal: true
@@ -94,20 +96,21 @@ tasks:
         vendor
         LICENSE
         NativeHeapApi.h
-        vnlib_mimalloc.c
+        '{{ .PROJECT_NAME }}.c'
 
     cmds:
       #tar up the source
-     - tar -czf "{{.TARGET_SOURCE}}" {{ .SOURCE_FILES | join " " }}  
+     - tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}  
 
   clean:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell Remove-Item -Recurse '{{.ITEM}}' -Force
+       cmd: powershell rm -Recurse -Force '{{.ITEM}}'
 
   #called by module for initializing the project, it's not internal but hidden
   dev-init:
     internal: false
     cmds:
      - task: debug
+  

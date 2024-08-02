@@ -19,68 +19,84 @@ tasks:
     cmds:
       #build with defaults
       - task: build
-      - cmd: echo "Your Argon2 dll file can be found in '{{.USER_WORKING_DIR}}/build'"
+      - cmd: echo "Your Argon2 library file can be found in '{{ .USER_WORKING_DIR }}/build'"
         silent: true
   
   build:
     cmds:
      #init cmake build with greedy enabled
-     - cmake -B./build
- 
-     - cmake --build build/ --config Debug
-     - cmake --build build/ --config Release 
+     - cmake -B./build 
+     - cmake --build build/ --config debug
+     - cmake --build build/ --config release 
 
  
   postbuild_success:
-    vars:
-      #required files to include in tar
-      TAR_FILES: "license.txt readme.txt argon2.h"
-    
     cmds:
       #make bin dir
-    - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
+    - cmd: powershell mkdir -Force 'bin/'
       ignore_error: true
-
-    #add embeded resources to output dirs
-    - task: embed
-      vars: 
-        TARGET: './build/Debug'
-
-    - task: embed
-      vars:
-        TARGET: './build/Release'
-   
-
-    #static debug lib
-    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
-    #dynamic debug lib
-    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
     
-    #release static lib
-    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
-    #release dll
-    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
-
-    #source code
-    - task: pack_source
-
-  embed:
-    cmds:
-     #add license file
-     - powershell -Command "Copy-Item -Path ./license -Destination '{{.TARGET}}/license.txt'"
-     #add readme file
-     - powershell -Command "Copy-Item -Path ./build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
-     #add argon2 header file
-     - powershell -Command "Copy-Item -Path ./include/argon2.h -Destination '{{.TARGET}}/argon2.h'"
+    - task: parallel_postbuild
   
+  parallel_postbuild:
+    internal: true
+    vars:
+      #required files to include in tar
+      BIN_FILES: 
+        license.txt 
+        readme.txt 
+        argon2.h 
+        '{{ .PROJECT_NAME }}.dll'
+
+    deps:
+     - task: pack_source
+  
+     - task: pack_artifacts
+       vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .BIN_FILES }} {{ .PROJECT_NAME }}.pdb' }  
+     - task: pack_artifacts
+       vars: { BUILD_MODE: 'release', TAR_FILES: '{{ .BIN_FILES }}' }
+
+  #packs up the binary artifacts for distribution
+  pack_artifacts:
+    internal: true
+    deps:
+      - task: embed
+        vars: { TARGET: './build/{{ .BUILD_MODE }}' }
+    cmds:
+      - cmd: cd build/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
+
+  #add embeded resources to the binary output for distribution
+  embed:
+    internal: true
+    cmds:
+     - powershell cp LICENSE '{{.TARGET}}/license.txt'
+     - powershell cp build.readme.txt '{{.TARGET}}/readme.txt'
+     - powershell cp include/argon2.h '{{.TARGET}}/argon2.h'
+  
+  #packages source code for distribution
   pack_source:
+    internal: true
+    vars:
+      EXCLUDES:
+        
+      INCLUDES:
+        src/*
+        include/*
+        CHANGELOG.md
+        CMakeLists.txt
+        README.md
+        LICENSE
+        Argon2.sln
+        libargon2.pc.in
+        Makefile
+        Taskfile.yaml
+
     cmds:
      #just pack up current directory, excluding build, bin, and git directories
-     - powershell -Command "tar --exclude build/* --exclude bin/* -czf bin/src.tgz ."
-
+     - tar {{ .EXCLUDES }} -czf 'bin/src.tgz' {{ .INCLUDES }}
 
   clean:
     ignore_error: true
     cmds: 
-     - cmd: powershell -Command "Remove-Item -Recurse './bin'"
-     - cmd: powershell -Command "Remove-Item -Recurse './build'"
+     - for: [ bin/, build/ ]
+       cmd: powershell -Command "Remove-Item -Recurse '{{ .ITEM }}'"

@@ -1,0 +1,49 @@
+# https://taskfile.dev
+
+#Called by the vnbuild system to produce builds for my website
+#https://www.vaughnnugent.com/resources/software
+
+# Taskfile specific to DotNetCorePlugins project
+# currently this taskfile only packs up the source code 
+# and test source code into a source code tgz file for 
+# distribution. The changes file and license file are also
+# included
+
+version: '3'
+
+tasks:
+
+  #when build succeeds, archive the output into a tgz 
+  postbuild_success:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+     - task: pack_source
+  
+  pack_source:
+    internal: true
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      EXCLUDES:
+        --exclude='bin/*'
+        --exclude='obj/*'
+        #--exclude='.tarignore'
+      INCLUDES:
+        src/*
+        test/*
+        CHANGES.md
+        LICENSE
+        Taskfile.yaml
+        README.md
+
+    cmds:
+      #pack up source code and put in output
+     - cmd: cd .. && tar {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/bin/src.tgz' {{ .INCLUDES }}    
+
+
+#Remove the output dirs on clean
+  clean:
+    dir: '{{.USER_WORKING_DIR}}'
+    ignore_error: true
+    cmds:
+    - for: [ bin/, obj/ ]
+      cmd: powershell -Command "rm -Recurse -Force '{{.ITEM}}'"

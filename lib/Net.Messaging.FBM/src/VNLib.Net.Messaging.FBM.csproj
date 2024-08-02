@@ -20,7 +20,7 @@
     <Description>Fixed Buffer Messaging protocol class library. Implements a high-performance asynchronous request/response messaging architecture build on top of HTTP websockets. Provides client and server data structures.</Description>
     <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Net.Messaging.FBM</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Messaging.FBM</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>

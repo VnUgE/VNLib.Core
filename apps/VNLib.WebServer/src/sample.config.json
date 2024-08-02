@@ -1,0 +1,167 @@
+﻿{
+
+  //Host application config, config is loaded as a read-only DOM that is available 
+  //to the host and loaded child plugins, all elements are available to plugins via the 'HostConfig' property
+
+  "tcp": {
+    "keepalive_sec": 0,           //How long to wait for a keepalive response before closing the connection (0 to disable tcp keepalive)
+    "keepalive_interval_sec": 0,  //How long to wait between keepalive probes
+    "max_recv_size": 655360,      //640k absolute maximum recv buffer (defaults to OS socket buffer size)
+    "max_connections": 50000,     //Per listener instance
+    "backlog": 1000,              //OS socket backlog,
+
+    "tx_buffer": 65536,           //OS socket send buffer size
+    "rx_buffer": 65536            //OS socket recv buffer size
+  },
+
+  "http": {
+    "default_version": "HTTP/1.1",      //The defaut HTTP version to being requests with (does not support http/2 yet)
+    "multipart_max_buf_size": 20480,    //The size of the buffer to use when parsing multipart/form data uploads
+    "multipart_max_size": 80240,        //The maxium ammount of data (in bytes) allows for mulitpart/form data file uploads
+    "max_entity_size": 1024000,         //Absolute maximum size (in bytes) of the request entity body (exludes headers)
+    "keepalive_ms": 1000000,            //Keepalive ms for HTTP1.1 keepalive connections
+    "header_buf_size": 8128,            //The buffer size to use when parsing headers (also the maxium request header size allowed) 
+    "max_request_header_count": 50,     //The maxium number of headers allowed in an HTTP request message
+    "max_connections": 5000,            //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed
+    "recv_timeout_ms": 5000,            //time (in ms) to wait for a response from an active connection in recv mode, before dropping it
+    "send_timeout_ms": 60000,           //Time in ms to wait for the client to accept transport data before terminating the connection
+    "response_header_buf_size": 16384,  //The size (in bytes) of the buffer used to store all response header data
+    "max_uploads_per_request": 10,      //Max number of multi-part file uploads allowed per request
+
+    "compression": {
+      "enabled": true,      //controls compression globally
+      "assembly": "",       //A custom assembly path (ex: 'VNLib.Net.Compression.dll')
+      "max_size": 512000,   //Maxium size of a response to compress before it's bypassed
+      "min_size": 2048      //Minium size of a response to compress, if smaller compression is bypassed
+    }
+  },
+
+  //Maxium ammount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned
+  "max_execution_time_ms": 20000,
+
+  //Collection of objects to define hosts+interfaces to build server listeners from
+  "virtual_hosts": [
+    {
+
+      //The directory path for files served by this endpoint
+      "path": "path/to/website/root",
+
+      //The hostname to listen for, "*" as wildcard, and "[system]" as the default hostname for the current machine. Must be unique
+      "hostnames": [ "*", "localhost" ],
+      
+      "trace": false,               //Enables connection trace logging for this endpoint
+      "force_port_check": false,    //If set, requires the port in the host header to match the transport port
+
+      //Enable synthetic benchmarking
+      "benchmark": {
+        "enabled": false,
+        "random": true,
+        "size": 128
+      },
+
+      //The interface to bind to, you may not mix TLS and non-TLS connections on the same interface
+      "interfaces": [
+        {
+          "address": "0.0.0.0",
+          "port": 8080,
+
+          "ssl": true,                                //Enables TLS for this interface for this host specifically
+          "certificate": "/path/to/cert.pfx|pem",     //Cert may be pem or pfx (include private key in pfx, or include private key in a pem file)
+          "private_key": "/path/to/private_key.pem",  //A pem encoded private key, REQUIRED if using a PEM certificate, may be encrypted with a password
+          "password": "plain-text-password",          //An optional password for the ssl private key
+          "client_cert_required": false,              //requires that any client connecting to this host present a valid certificate
+          "use_os_ciphers": false                     //Use the OS's ciphers instead of the hard-coded ciphers
+        }
+      ],
+
+
+      //Collection of "trusted" servers to allow proxy header support from
+      "downstream_servers": [ "127.0.0.1" ],
+
+      /*
+        Specify a list of ip addresses that are allowed to connect to the server, 403 will be returned if connections are not on this list
+        whitelist works behind a trusted downstream server that supports X-Forwared-For headers
+      */
+      "whitelist": [ "127.0.0.1" ],
+
+      "blacklist": [ "127.0.0.1" ],   //Individual IP addresses to blacklist
+
+      //A list of file extensions to deny access to, if a resource is requested and has one of the following extensions, a 404 is returned
+      "deny_extensions": [ ".env", ".htaccess", ".php", ".gitignore" ],
+
+      //The default file extensions to append to a resource that does not have a file extension
+      "default_files": [ "index.html", "index.htm" ],
+
+      //Key-value headers object, some headers are special and are controlled by the vh processor
+      "headers": {
+        "header1": "header-value"
+      },
+
+      "cors": {
+        "enabled": true,                    //Enables cors protections for this host
+        "deny_cors_connections": false,     //If true, all cors connections will be denied
+        "allowed_origins": [ "localhost:8089" ]
+      },
+
+      //A list of error file objects, files are loaded into memory (and watched for changes) and returned when the specified error code occurs
+      "error_files": [
+        {
+          "code": 404,
+          "path": "path/to/404"
+        },
+        {
+          "code": 403,
+          "path": "path/to/403"
+        }
+      ],
+
+      //Default http cache time for files
+      "cache_default_sec": 864000
+    }
+  ],
+
+
+  //Defines the directory where plugin's are to be loaded from
+  "plugins": {
+    "enabled": true,  //Enable plugin loading
+    //Hot-reload creates collectable assemblies that allow full re-load support in the host application, should only be used for development purposes!
+    "hot_reload": false,
+    "reload_delay_sec": 2,
+    "paths": [
+      "/path/to/plugins_dir"
+    ]
+    //"assets":"",
+    //"config_dir": ""
+  },
+
+  "sys_log": {
+    //"path": "path/to/syslog/file",
+    //"template": "serilog template for writing to file",
+    //"flush_sec": 5,
+    //"retained_files": 31,
+    //"file_size_limit": 10485760,
+    //"interval": "infinite"
+  },
+
+  "app_log": {
+    //"path": "path/to/applog/file",
+    //"template": "serilog template for writing to file",
+    //"flush_sec": 5,
+    //"retained_files": 31,
+    //"file_size_limit": 10485760,
+    //"interval": "infinite"
+  },
+
+
+  //Global secrets object, used by the host and pluings for a specialized secrets
+  "secrets": {
+
+  }
+
+  //global or local configuration to define custom password hashing requirements instead of defaults
+  /*
+  "passwords": {
+
+  }
+  */
+}

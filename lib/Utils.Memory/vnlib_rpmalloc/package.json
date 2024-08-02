@@ -1,10 +1,10 @@
 {
   "name": "vnlib_rpmalloc",
-  "version": "0.1.4",
+  "version": "0.0.0",
   "output_dir": "bin",
   "author": "Vaughn Nugent",
   "description": "A project to maintain an x64 Windows dynamic and static library for RpMalloc by Mattias Jansson for use with the NativeHeapApi to for VNLib.Utils native heap loading. This project includes pre-build Windows x64 binaries as well as the source code for building the dynamic and static libraries on your system",
-  "copyright": "Copyright \u00A9 2023 Vaughn Nugent",
+  "copyright": "Copyright \u00A9 2024 Vaughn Nugent",
   "company": "Vaughn Nugent",
-  "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils.Memory/vnlib_rpmalloc"
+  "repository": "https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Memory/vnlib_rpmalloc"
 }

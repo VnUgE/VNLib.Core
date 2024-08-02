@@ -31,33 +31,79 @@ tasks:
      - cmake -B./build -DCI_PRECOMPILE=ON -DENABLE_RPMALLOC=ON
  
      #build for platform
-     - cmake --build build/ --config Debug
-     - cmake --build build/ --config Release
+     - cmake --build build/ --config debug
+     - cmake --build build/ --config release
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
+    cmds:
+     - cmd: powershell mkdir -Force 'bin/'
+     - task: pack_parallel   
+
+  pack_parallel:
+    internal: true
     vars:
       #required files to include in tar
-      TAR_FILES: "{{.PROJECT_NAME}}.dll {{.PROJECT_NAME}}.pdb {{.PROJECT_NAME}}.lib license.txt"
+      REL_TAR_FILES: 
+        "{{ .PROJECT_NAME }}.dll 
+        {{ .PROJECT_NAME }}.lib 
+        compression.h
+        license.txt"
+      DEBUG_TAR_FILES: 
+        "{{ .PROJECT_NAME }}.dll 
+        {{ .PROJECT_NAME }}.pdb 
+        {{ .PROJECT_NAME }}.lib 
+        compression.h
+        license.txt"
+
+    deps:
+     - task: pack_source
+
+     - task: pack_artifacts
+       vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .DEBUG_TAR_FILES }}' }
+     - task: pack_artifacts
+       vars: { BUILD_MODE: 'release', TAR_FILES: '{{ .REL_TAR_FILES }}' }
+
+  #packs up the binary artifacts for distribution
+  pack_artifacts:
+    internal: true
+    deps:
+      - task: embed
+        vars: { TARGET: './build/{{ .BUILD_MODE }}' }
     cmds:
-     - cmd: powershell mkdir -Force './bin'
-     #copy source code to target
-     - cmd: powershell -Command "tar --exclude build/* --exclude .vs/* --exclude bin/* --exclude third-party/* -czf bin/src.tgz ."
-    
-     #copy license file to debug and release output
-     - cmd: powershell -Command "cp ../LICENSE build/Debug/license.txt"
-     - cmd: powershell -Command "cp ../LICENSE build/Release/license.txt"
+      - cmd: cd build/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
 
-     #create static-build archives
-     - cd build/Debug && tar -czf ../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz {{.TAR_FILES}}
-     - cd build/Release && tar -czf ../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz {{.TAR_FILES}}  
+ #add embeded resources to the binary output for distribution
+  embed:
+    internal: true
+    cmds:
+     - powershell cp ../LICENSE '{{.TARGET}}/license.txt'
+     - powershell cp compression.h '{{.TARGET}}/compression.h'
+  
+  #packages source code for distribution
+  pack_source:
+    internal: true
+    vars:
+      EXCLUDES:
+        
+      INCLUDES:
+       "*.c
+        *.h
+        CMakeLists.txt
+        LICENSE
+        Taskfile.yaml"
 
-#Remove the output dirs on clean
+    cmds:
+     #just pack up current directory, excluding build, bin, and git directories
+     - tar {{ .EXCLUDES }} -czf 'bin/src.tgz' {{ .INCLUDES }} 
+
+
+  #Remove the output dirs on clean
   clean:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell Remove-Item -Recurse '{{.ITEM}}' -Force
+       cmd: powershell rm -Recurse '{{.ITEM}}' -Force
     
   clean-third-party:
     internal: false
