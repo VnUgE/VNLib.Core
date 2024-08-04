@@ -92,5 +92,7 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("path_filter")]
         public string? PathFilter { get; set; }
 
+        [JsonPropertyName("max_execution_time_ms")]
+        public int MaxExecutionTimeMs { get; set; } = 20000;
     }
 }

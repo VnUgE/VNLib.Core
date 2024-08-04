@@ -18,16 +18,16 @@
     "default_version": "HTTP/1.1",      //The defaut HTTP version to being requests with (does not support http/2 yet)
     "multipart_max_buf_size": 20480,    //The size of the buffer to use when parsing multipart/form data uploads
     "multipart_max_size": 80240,        //The maxium ammount of data (in bytes) allows for mulitpart/form data file uploads
-    "max_entity_size": 1024000,         //Absolute maximum size (in bytes) of the request entity body (exludes headers)
-    "keepalive_ms": 1000000,            //Keepalive ms for HTTP1.1 keepalive connections
+    "max_entity_size": 1024000,         //Absolute maximum size (in bytes) of the request entity body (exludes headers)    
     "header_buf_size": 8128,            //The buffer size to use when parsing headers (also the maxium request header size allowed) 
     "max_request_header_count": 50,     //The maxium number of headers allowed in an HTTP request message
-    "max_connections": 5000,            //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed
-    "recv_timeout_ms": 5000,            //time (in ms) to wait for a response from an active connection in recv mode, before dropping it
-    "send_timeout_ms": 60000,           //Time in ms to wait for the client to accept transport data before terminating the connection
+    "max_connections": 5000,            //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed   
     "response_header_buf_size": 16384,  //The size (in bytes) of the buffer used to store all response header data
     "max_uploads_per_request": 10,      //Max number of multi-part file uploads allowed per request
-
+    "keepalive_ms": 1000000,            //Keepalive ms for HTTP1.1 keepalive connections
+    "recv_timeout_ms": 5000,            //time (in ms) to wait for a response from an active connection in recv mode, before dropping it
+    "send_timeout_ms": 60000,           //Time in ms to wait for the client to accept transport data before terminating the connection
+    
     "compression": {
       "enabled": true,      //controls compression globally
       "assembly": "",       //A custom assembly path (ex: 'VNLib.Net.Compression.dll')
@@ -35,9 +35,6 @@
       "min_size": 2048      //Minium size of a response to compress, if smaller compression is bypassed
     }
   },
-
-  //Maxium ammount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned
-  "max_execution_time_ms": 20000,
 
   //Collection of objects to define hosts+interfaces to build server listeners from
   "virtual_hosts": [
@@ -48,7 +45,7 @@
 
       //The hostname to listen for, "*" as wildcard, and "[system]" as the default hostname for the current machine. Must be unique
       "hostnames": [ "*", "localhost" ],
-      
+
       "trace": false,               //Enables connection trace logging for this endpoint
       "force_port_check": false,    //If set, requires the port in the host header to match the transport port
 
@@ -84,7 +81,7 @@
       */
       "whitelist": [ "127.0.0.1" ],
 
-      "blacklist": [ "127.0.0.1" ],   //Individual IP addresses to blacklist
+      "blacklist": [ "127.0.0.1" ], //Individual IP addresses to blacklist
 
       //A list of file extensions to deny access to, if a resource is requested and has one of the following extensions, a 404 is returned
       "deny_extensions": [ ".env", ".htaccess", ".php", ".gitignore" ],
@@ -116,7 +113,10 @@
       ],
 
       //Default http cache time for files
-      "cache_default_sec": 864000
+      "cache_default_sec": 864000,
+
+      //Maxium ammount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned
+      "max_execution_time_ms": 20000
     }
   ],
 
@@ -134,22 +134,26 @@
     //"config_dir": ""
   },
 
-  "sys_log": {
-    //"path": "path/to/syslog/file",
-    //"template": "serilog template for writing to file",
-    //"flush_sec": 5,
-    //"retained_files": 31,
-    //"file_size_limit": 10485760,
-    //"interval": "infinite"
-  },
+  "logs": {
+    "sys_log": {
+      "enabled": false,
+      //"path": "path/to/syslog/file",
+      //"template": "serilog template for writing to file",
+      //"flush_sec": 5,
+      //"retained_files": 31,
+      //"file_size_limit": 10485760,
+      //"interval": "infinite"
+    },
 
-  "app_log": {
-    //"path": "path/to/applog/file",
-    //"template": "serilog template for writing to file",
-    //"flush_sec": 5,
-    //"retained_files": 31,
-    //"file_size_limit": 10485760,
-    //"interval": "infinite"
+    "app_log": {
+      "enabled": false,
+      //"path": "path/to/applog/file",
+      //"template": "serilog template for writing to file",
+      //"flush_sec": 5,
+      //"retained_files": 31,
+      //"file_size_limit": 10485760,
+      //"interval": "infinite"
+    }
   },
 
 

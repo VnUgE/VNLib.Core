@@ -55,7 +55,6 @@ Starting...
         private static readonly DirectoryInfo EXE_DIR = new(Environment.CurrentDirectory);
 
         private const string DEFAULT_CONFIG_PATH = "config.json";
-        internal const string SESSION_TIMEOUT_PROP_NAME = "max_execution_time_ms";
         internal const string TCP_CONF_PROP_NAME = "tcp";
         internal const string LOAD_DEFAULT_HOSTNAME_VALUE = "[system]";
         internal const string PLUGINS_CONFIG_PROP_NAME = "plugins";

@@ -40,7 +40,7 @@ using VNLib.WebServer.Config.Model;
 namespace VNLib.WebServer
 {   
 
-    internal sealed partial class JsonWebConfigBuilder(VirtualHostServerConfig VhConfig, TimeSpan execTimeout, ILogProvider logger) 
+    internal sealed partial class JsonWebConfigBuilder(VirtualHostServerConfig VhConfig, ILogProvider logger) 
         : IVirtualHostConfigBuilder
     {
         //Use pre-compiled default regex
@@ -55,7 +55,7 @@ namespace VNLib.WebServer
                 //File root is required
                 RootDir                 = new(VhConfig.DirPath!),
                 LogProvider             = logger,
-                ExecutionTimeout        = execTimeout,
+                ExecutionTimeout        = GetExecutionTimeout(VhConfig),
                 WhiteList               = GetIpWhitelist(VhConfig),
                 DownStreamServers       = GetDownStreamServers(VhConfig),
                 ExcludedExtensions      = GetExlcudedExtensions(VhConfig),
@@ -168,6 +168,12 @@ namespace VNLib.WebServer
             }
 
             return (downstreamServers ?? []).ToFrozenSet();
+        }
+
+        private static TimeSpan GetExecutionTimeout(VirtualHostServerConfig conf)
+        {
+            //Get the execution timeout
+            return TimeSpan.FromMilliseconds(conf.MaxExecutionTimeMs);
         }
 
         private static FrozenSet<IPAddress>? GetIpWhitelist(VirtualHostServerConfig conf)

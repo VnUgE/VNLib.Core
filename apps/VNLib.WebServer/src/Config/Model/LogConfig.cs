@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
-* File: BenchmarkConfig.cs 
+* File: LogConfig.cs 
 *
-* BenchmarkConfig.cs is part of VNLib.WebServer which is part of the
+* LogConfig.cs is part of VNLib.WebServer which is part of the
 * larger VNLib collection of libraries and utilities.
 *
 * VNLib.WebServer is free software: you can redistribute it and/or modify 
@@ -26,18 +26,27 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
-
-    internal sealed class BenchmarkConfig
+    internal sealed class LogConfig
     {
-
         [JsonPropertyName("enabled")]
-        public bool Enabled { get; set; }
+        public bool Enabled { get; set; } = false;
 
-        [JsonPropertyName("size")]
-        public int Size { get; set; }
+        [JsonPropertyName("path")]
+        public string? Path { get; set; }
 
-        [JsonPropertyName("random")]
-        public bool Random { get; set; }
+        [JsonPropertyName("template")]
+        public string? Template { get; set; }
 
+        [JsonPropertyName("flush_sec")]
+        public int FlushIntervalSeconds { get; set; } = 10;
+
+        [JsonPropertyName("retained_files")]
+        public int RetainedFiles { get; set; } = 31;
+
+        [JsonPropertyName("file_size_limit")]
+        public int FileSizeLimit { get; set; } = 500 * 1000 * 1024;
+
+        [JsonPropertyName("interval")]
+        public string Interval { get; set; } = "infinite";
     }
 }

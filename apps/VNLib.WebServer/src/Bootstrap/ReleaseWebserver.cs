@@ -30,7 +30,6 @@ using System.Text.Json;
 using System.Collections.Generic;
 
 using VNLib.Utils.Logging;
-using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
 using VNLib.Plugins.Runtime;
 
@@ -214,23 +213,19 @@ namespace VNLib.WebServer.Bootstrap
         ///<inheritdoc/>
         protected override VirtualHostConfig[] GetAllVirtualHosts()
         {
-            JsonElement rootEl = config.GetDocumentRoot();
             ILogProvider log = logger.AppLog;
 
             LinkedList<VirtualHostConfig> configs = new();
 
             try
             {
-                //execution timeout
-                TimeSpan execTimeout = rootEl.GetProperty(SESSION_TIMEOUT_PROP_NAME).GetTimeSpan(TimeParseType.Milliseconds);
-
                 int index = 0;
 
                 //Enumerate all virtual host configurations
                 foreach (VirtualHostServerConfig vhConfig in GetVirtualHosts())
                 {
                
-                    VirtualHostConfig conf = new JsonWebConfigBuilder(vhConfig, execTimeout, log).GetBaseConfig();
+                    VirtualHostConfig conf = new JsonWebConfigBuilder(vhConfig, log).GetBaseConfig();
 
                     //Configure event hooks
                     conf.EventHooks = new VirtualHostHooks(conf);

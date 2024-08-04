@@ -24,27 +24,23 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Collections.Generic;
 
 using Serilog;
 
-using VNLib.Utils.Extensions;
+using VNLib.WebServer.Config;
+using VNLib.WebServer.Config.Model;
 
 namespace VNLib.WebServer.RuntimeLoading
 {
     internal sealed class ServerLogBuilder
     {
-        public LoggerConfiguration SysLogConfig { get; }
-        public LoggerConfiguration AppLogConfig { get; }
+        public LoggerConfiguration SysLogConfig { get; } = new();
+
+        public LoggerConfiguration AppLogConfig { get; } = new();
+
         public LoggerConfiguration? DebugConfig { get; }
 
-        public ServerLogBuilder()
-        {
-            AppLogConfig = new();
-            SysLogConfig = new();
-        }
 
         public ServerLogBuilder BuildForConsole(ProcessArguments args)
         {
@@ -55,8 +51,12 @@ namespace VNLib.WebServer.RuntimeLoading
 
         public ServerLogBuilder BuildFromConfig(JsonElement logEl)
         {
-            InitSingleLog(logEl, "app_log", "Application", AppLogConfig);
-            InitSingleLog(logEl, "sys_log", "System", SysLogConfig);
+            if(logEl.TryGetProperty("logs", out logEl))
+            {
+                InitSingleLog(logEl, "app_log", "Application", AppLogConfig);
+                InitSingleLog(logEl, "sys_log", "System", SysLogConfig);
+            }
+            
             return this;
         }
 
@@ -96,57 +96,39 @@ namespace VNLib.WebServer.RuntimeLoading
 
         private static void InitSingleLog(JsonElement el, string elPath, string logName, LoggerConfiguration logConfig)
         {
-            string? filePath = null;
-            string? template = null;
-
-            TimeSpan flushInterval = TimeSpan.FromSeconds(10);
-            int retainedLogs = 31;
-            //Default to 500mb log file size
-            int fileSizeLimit = 500 * 1000 * 1024;
-            RollingInterval interval = RollingInterval.Infinite;
-
-            //try to get the log config object
-            if (el.TryGetProperty(elPath, out JsonElement logEl))
+            if(!el.TryGetProperty(elPath, out el))
             {
-                IReadOnlyDictionary<string, JsonElement> conf = logEl.EnumerateObject().ToDictionary(static s => s.Name, static s => s.Value);
-
-                filePath = conf.GetPropString("path");
-                template = conf.GetPropString("template");
-
-                if (conf.TryGetValue("flush_sec", out JsonElement flushEl))
-                {
-                    flushInterval = flushEl.GetTimeSpan(TimeParseType.Seconds);
-                }
-
-                if (conf.TryGetValue("retained_files", out JsonElement retainedEl))
-                {
-                    retainedLogs = retainedEl.GetInt32();
-                }
-
-                if (conf.TryGetValue("file_size_limit", out JsonElement sizeEl))
-                {
-                    fileSizeLimit = sizeEl.GetInt32();
-                }
-
-                if (conf.TryGetValue("interval", out JsonElement intervalEl))
-                {
-                    interval = Enum.Parse<RollingInterval>(intervalEl.GetString()!, true);
-                }
-
-                //Set default objects
-                filePath ??= Path.Combine(Environment.CurrentDirectory, $"{elPath}.txt");
-                template ??= $"{{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}} [{{Level:u3}}] {logName} {{Message:lj}}{{NewLine}}{{Exception}}";
-
-                //Configure the log file writer
-                logConfig.WriteTo.File(filePath,
-                    buffered: true,
-                    retainedFileCountLimit: retainedLogs,
-                    formatProvider:null,
-                    fileSizeLimitBytes: fileSizeLimit,
-                    rollingInterval: interval,
-                    outputTemplate: template,
-                    flushToDiskInterval: flushInterval);
+                return;
             }
+
+            LogConfig? conf = el.Deserialize<LogConfig>();
+
+            if(conf == null || !conf.Enabled)
+            {
+                return;
+            }
+
+            //Default path if the user did not set one or set it to null
+            conf.Path ??= Path.Combine(Environment.CurrentDirectory, $"{elPath}.txt");
+           
+            conf.Template ??= $"{{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}} [{{Level:u3}}] {logName} {{Message:lj}}{{NewLine}}{{Exception}}";
+
+            Validate.EnsureNotNull(conf.Interval, "You must not set a null rolling log interval");
+            Validate.EnsureRange(conf.FlushIntervalSeconds, 1, 6000, "flush_sec");
+            Validate.EnsureRange(conf.RetainedFiles, 1, 100, "retained_files");
+            Validate.EnsureRange(conf.FileSizeLimit, 100, 1000000000, "file_size_limit");
+
+            //Configure the log file writer
+            logConfig.WriteTo.File(
+                path: conf.Path,
+                buffered: true,
+                retainedFileCountLimit: conf.RetainedFiles,
+                formatProvider: null,
+                fileSizeLimitBytes: conf.FileSizeLimit,
+                rollingInterval: Enum.Parse<RollingInterval>(conf.Interval, ignoreCase: true),
+                outputTemplate: conf.Template,
+                flushToDiskInterval: TimeSpan.FromSeconds(conf.FlushIntervalSeconds)
+            );
 
             //If the log element is not specified in config, do not write log files
         }
