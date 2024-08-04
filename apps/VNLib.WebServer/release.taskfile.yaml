@@ -1,0 +1,56 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+
+
+tasks:
+
+  default:
+    desc: "Runs the server in a default startup mode for production use"
+    vars:
+      ARGS: "--config ../config/config.json --input-off"
+
+    cmds:
+     - task: run
+       vars: { ARGS: '{{.ARGS}}' }
+
+  run-debug:
+    env: 
+      VNLIB_SHARED_HEAP_DIAGNOSTICS: 1
+      MIMALLOC_VERBOSE: 1  #incase mimalloc is used we can force debugging
+
+    vars:
+      ARGS: "--config ../config/config.json --debug"
+
+    cmds:
+     - task: run
+       vars: { ARGS: '{{.ARGS}}' }
+
+  run-paranoid:
+    desc: "Runs the server with paranoid security settings"
+    env:
+      VNLIB_SHARED_HEAP_GLOBAL_ZERO: 1   #force global heap zeroing
+      VNLIB_SHARED_HEAP_DIAGNOSTICS: 0	 #disable heap diagnostics
+
+    vars:
+      #enable zero allocation, even though global heap zero is set
+      # silent mode to reduce logging to the console
+      # force OS ciphers for TLS encryption
+      ARGS: "--config ../config/config.json
+            --zero-alloc
+            --silent
+            --use-os-ciphers
+            --input-off"
+
+    cmds:
+      task: run
+      vars: { ARGS: '{{.ARGS}}' }
+
+  run:
+    des: "Run the webserver with your specified command line arguments"
+    interactive: true
+    cmds:
+      #run the webserver as a cross-platform application
+      - dotnet VNLib.WebServer.dll {{.ARGS}} {{.CLI_ARGS}}

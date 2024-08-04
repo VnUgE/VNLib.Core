@@ -25,9 +25,10 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)feature_zlib.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="$(MSBuildThisFileDirectory)CMakeLists.txt" />
+    <None Include="$(MSBuildThisFileDirectory)..\package.json" />
+    <None Include="$(MSBuildThisFileDirectory)..\Taskfile.yaml" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
+    <Text Include="$(MSBuildThisFileDirectory)..\CMakeLists.txt" />
   </ItemGroup>
 </Project>

@@ -1,16 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFramework>net8.0</TargetFramework>
     <OutputType>library</OutputType>
     <Nullable>enable</Nullable>
     <IsPublishable>False</IsPublishable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageDescription>Provides API for dynamically loading assemblies into a .NET application.
-
-This package should be used by the host application which needs to load plugins.
-See https://github.com/natemcmaster/DotNetCorePlugins/blob/main/README.md for more samples and documentation.
-    </PackageDescription>
+    <PackageDescription>Provides API for dynamically loading assemblies into a .NET application. This package should be used by the host application which needs to load plugins. See https://github.com/natemcmaster/DotNetCorePlugins/blob/main/README.md for more samples and documentation.</PackageDescription>
     <PackageTags>.NET Core;plugins</PackageTags>
   </PropertyGroup>
 
@@ -21,6 +17,21 @@ See https://github.com/natemcmaster/DotNetCorePlugins/blob/main/README.md for mo
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\lib\Utils\src\VNLib.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>False</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Taskfile.yaml">
+      <Pack>False</Pack>
+    </None>
   </ItemGroup>
 
 </Project>

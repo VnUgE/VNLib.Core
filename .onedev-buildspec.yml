@@ -1,14 +1,20 @@
-version: 17
+version: 33
 jobs:
-- name: Push to GitHub
+- name: Repo Sync Push
   steps:
   - !PushRepository
-    name: GitHub Sync
+    name: Github sync push
     remoteUrl: https://github.com/VnUgE/VNLib.Core.git
     userName: VnUgE
     passwordSecret: git-access-token
-    withLfs: false
-    force: false
+    force: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PushRepository
+    name: Codeberg push sync
+    remoteUrl: https://codeberg.org/VnUgE/VNLib.Core.git
+    userName: VnUgE
+    passwordSecret: codeberg-access-token
+    force: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
   - !TagCreateTrigger
@@ -18,13 +24,11 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
-  cpuRequirement: 250
-  memoryRequirement: 256
   timeout: 3600
-- name: Pull from GitHub
+- name: Repo Sync Pull
   steps:
   - !PullRepository
-    name: Sync from GitHub
+    name: GitHub sync pull
     remoteUrl: https://github.com/VnUgE/VNLib.Core.git
     userName: VnUgE
     passwordSecret: git-access-token
@@ -39,6 +43,4 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
-  cpuRequirement: 250
-  memoryRequirement: 256
   timeout: 3600

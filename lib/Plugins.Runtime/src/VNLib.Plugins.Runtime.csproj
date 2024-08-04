@@ -20,7 +20,7 @@
     <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <Description>A runtime plugin loader for .NET. Allows runtime loading and tracking of .NET assemblies that export the VNLib.Plugin.IPlugin interface.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins.Runtime</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins.Runtime</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>

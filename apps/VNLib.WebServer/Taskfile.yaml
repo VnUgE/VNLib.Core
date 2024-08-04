@@ -1,0 +1,112 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  BINARY_DIR: 'bin'
+  INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
+  MS_ARGS: '/p:RunAnalyzersDuringBuild=false /p:IntermediateOutputPath="{{ .INT_DIR }}" /p:UseCommonOutputDirectory=true /p:BuildInParallel=true /p:MultiProcessorCompilation=true /p:ErrorOnDuplicatePublishOutputFiles=false'
+
+tasks:
+
+  #called by build pipeline to build module
+  build:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+
+     #managed source supports arm32 unmanaged does not
+    - for: [ win-x64, linux-x64, osx-x64, linux-arm64, linux-arm ]
+      cmd: powershell -Command 'dotnet publish -c debug -r {{ .ITEM }} {{ .BUILD_FLAGS }} --sc false {{ .MS_ARGS }}' 
+    
+    #build release mode after all debug builds
+    - for: [ win-x64, linux-x64, osx-x64, linux-arm64, linux-arm ]
+      cmd: powershell -Command 'dotnet publish -c release -r {{ .ITEM }} {{ .BUILD_FLAGS }} --sc false {{ .MS_ARGS }}'
+
+    #package as a tool
+    #- dotnet pack -c debug {{.MS_ARGS}} -o "{{.PACK_OUT}}/debug/" -p:PackageVersion={{.BUILD_VERSION}}  
+
+  #when build succeeds, archive the output into a tgz 
+  postbuild_success:
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      RELEASE_DIR: "{{ .BINARY_DIR }}/release/{{ .TARGET_FRAMEWORK }}"
+
+    cmds:
+
+     - cmd: powershell mkdir {{ .BINARY_DIR }} -Force
+
+     #remove uncessary files from the release dir
+     - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
+
+     - task: pack_parallel
+
+  pack_parallel:
+    internal: true
+    deps:
+     - task: pack_source
+  
+     - task: postbuild 
+       vars: { BUILD_MODE: 'debug', TARGET_OS: linux-x64 }
+     - task: postbuild
+       vars: { BUILD_MODE: 'debug', TARGET_OS: linux-arm }
+     - task: postbuild
+       vars: { BUILD_MODE: 'debug', TARGET_OS: linux-arm64 }
+     - task: postbuild
+       vars: { BUILD_MODE: 'debug', TARGET_OS: win-x64 }
+     - task: postbuild
+       vars: { BUILD_MODE: 'debug', TARGET_OS: osx-x64 }
+
+     - task: postbuild
+       vars: { BUILD_MODE: 'release', TARGET_OS: linux-x64 }
+     - task: postbuild
+       vars: { BUILD_MODE: 'release', TARGET_OS: linux-arm }
+     - task: postbuild
+       vars: { BUILD_MODE: 'release', TARGET_OS: linux-arm64 }
+     - task: postbuild
+       vars: { BUILD_MODE: 'release', TARGET_OS: win-x64 }
+     - task: postbuild
+       vars: { BUILD_MODE: 'release', TARGET_OS: osx-x64 }
+
+  postbuild:
+    internal: true
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      BUILD_DIR: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/{{ .TARGET_OS }}/publish"
+    cmds:     
+     #copy and readme to target
+     - powershell cp ../build.readme.txt '{{ .BUILD_DIR }}/readme.txt'
+     
+     #copy release taskfile
+     #- cd .. && powershell -Command "Copy-Item -Path ./release.taskfile.yaml -Destination '{{.BUILD_DIR}}/Taskfile.yaml'"
+
+     #tar outputs
+     - cd "{{ .BUILD_DIR }}" && tar -czf "{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/{{ .TARGET_OS }}-{{ .BUILD_MODE }}.tgz" .
+
+  pack_source:
+    internal: true
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      EXCLUDES:
+        --exclude='src/bin/*'
+        --exclude='src/obj/*'
+        #--exclude='.tarignore'
+      INCLUDES:
+        src/*
+        LICENSE
+        Taskfile.yaml
+        README.md
+
+    cmds:
+      #pack up source code and put in output
+     - cmd: cd .. && tar {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
+
+    #Remove the output dirs on clean
+  clean:
+    dir: '{{.USER_WORKING_DIR}}'
+    ignore_error: true
+    cmds:
+     - dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
+
+     - for: [ bin/, obj/ ]
+       cmd: powershell Remove-Item -Recurse -Force '{{.USER_WORKING_DIR}}/{{.ITEM}}'
+

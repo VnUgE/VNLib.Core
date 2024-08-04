@@ -23,7 +23,7 @@
     <Description>Provides a standard interface for building dynamically loadable plugins and asynchronus web endpoint processing, compatible with the VNLib.Plugins.Runtime loader library.
     </Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/main/lib/Plugins</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
