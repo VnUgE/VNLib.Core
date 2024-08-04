@@ -14,13 +14,12 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
 message(STATUS "Build type is '${build_type}'")
 
-#export all header files to the main project
-file(GLOB COMP_HEADERS *.h)
-set(VNLIB_COMPRESS_SOURCES 
-	compression.c
-)
-
 include(FetchContent)
+
+#the compression source file is required, all other sources will be added
+set(VNLIB_COMPRESS_SOURCES 
+	src/compression.c
+)
 
 ###############################
 #
@@ -50,7 +49,7 @@ if(ENABLE_BROTLI)
 	include_directories(${lib_brotli_SOURCE_DIR}/c/include)
 
 	#add the brotli source files to the project
-	list(APPEND VNLIB_COMPRESS_SOURCES feature_brotli.c)
+	list(APPEND VNLIB_COMPRESS_SOURCES src/feature_brotli.c)
 	add_compile_definitions(VNLIB_COMPRESSOR_BROTLI_ENABLED)
 endif()
 
@@ -77,7 +76,7 @@ if(ENABLE_ZLIB)
 	include_directories(${lib_cf_zlib_SOURCE_DIR})
 
 	#enable the feature code for zlib and add the source files
-	list(APPEND VNLIB_COMPRESS_SOURCES feature_zlib.c)
+	list(APPEND VNLIB_COMPRESS_SOURCES src/feature_zlib.c)
 	add_compile_definitions(VNLIB_COMPRESSOR_ZLIB_ENABLED)
 endif()
 
@@ -104,12 +103,12 @@ endif()
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(COMPRESS_BUILD_SHARED)
-	add_library(${_COMP_PROJ_NAME} SHARED ${VNLIB_COMPRESS_SOURCES} ${COMP_HEADERS})
+	add_library(${_COMP_PROJ_NAME} SHARED ${VNLIB_COMPRESS_SOURCES})
 	#enable position independent code (for shared libraries with exports)
 	set_target_properties(${_COMP_PROJ_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 else()
 	set(_COMP_PROJ_NAME ${_COMP_PROJ_NAME}_static) #append static to the name
-	add_library(${_COMP_PROJ_NAME} STATIC ${VNLIB_COMPRESS_SOURCES} ${COMP_HEADERS})
+	add_library(${_COMP_PROJ_NAME} STATIC ${VNLIB_COMPRESS_SOURCES})
 endif()
 
 target_compile_features(${_COMP_PROJ_NAME} PRIVATE c_std_90)		#force compiler to use c90 standard for library
