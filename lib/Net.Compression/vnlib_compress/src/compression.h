@@ -35,18 +35,16 @@
 
 #pragma once
 
-#ifndef COMPRESSION_H_
-#define COMPRESSION_H_
+#ifndef _VNCMP_COMPRESSION_H_
+#define _VNCMP_COMPRESSION_H_
 
 #include <stdint.h>
+#include "platform.h"
 
-#if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
-	#define _IS_WINDOWS
-#endif
 
 /*Set api export calling convention(allow used to override)*/
 #ifndef VNLIB_COMPRESS_CC
-	#ifdef _IS_WINDOWS
+	#ifdef _VNCMP_IS_WINDOWS
 		/*STD for importing to other languages such as.NET*/
 		#define VNLIB_COMPRESS_CC __stdcall
 	#else
@@ -56,16 +54,16 @@
 
 #ifndef VNLIB_COMPRESS_EXPORT	/*Allow users to disable the export/impoty macro if using source code directly*/
 	#ifdef VNLIB_COMPRESS_EXPORTING
-		#ifdef _IS_WINDOWS
+		#ifdef _VNCMP_IS_WINDOWS
 			#define VNLIB_COMPRESS_EXPORT __declspec(dllexport)
 		#else
 			#define VNLIB_COMPRESS_EXPORT __attribute__((visibility("default")))
 		#endif /* IS_WINDOWS */
 	#else
-		#ifdef _IS_WINDOWS
+		#ifdef _VNCMP_IS_WINDOWS
 			#define VNLIB_COMPRESS_EXPORT __declspec(dllimport)
 		#else
-			#define VNLIB_COMPRESS_EXPORT
+			#define VNLIB_COMPRESS_EXPORT extern
 		#endif /* IS_WINDOWS */
 	#endif /* !VNLIB_EXPORTING */
 #endif /* !VNLIB_EXPORT */
@@ -74,18 +72,22 @@
 	#define _In_
 #endif
 
+#define VNCMP_SUCCESS					1
+
 /*
 * ERRORS AND CONSTANTS
 */
-#define ERR_INVALID_PTR -1
-#define ERR_OUT_OF_MEMORY -2
+#define ERR_INVALID_PTR					-1
+#define ERR_OUT_OF_MEMORY				-2
+#define ERR_OUT_OF_BOUNDS				-3
+#define ERR_INVALID_ARGUMENT			-4
 
-#define ERR_COMP_TYPE_NOT_SUPPORTED -9
-#define ERR_COMP_LEVEL_NOT_SUPPORTED -10
-#define ERR_INVALID_INPUT_DATA -11
-#define ERR_INVALID_OUTPUT_DATA -12
-#define ERR_COMPRESSION_FAILED -13
-#define ERR_OVERFLOW -14
+#define ERR_COMP_TYPE_NOT_SUPPORTED		-9
+#define ERR_COMP_LEVEL_NOT_SUPPORTED	-10
+#define ERR_INVALID_INPUT_DATA			-11
+#define ERR_INVALID_OUTPUT_DATA			-12
+#define ERR_COMPRESSION_FAILED			-13
+#define ERR_OVERFLOW					-14
 
 /*
 * Enumerated list of supported compression types for user selection
@@ -93,11 +95,11 @@
 */
 typedef enum CompressorType
 {
-	COMP_TYPE_NONE = 0x00,
-	COMP_TYPE_GZIP = 0x01,
-	COMP_TYPE_DEFLATE = 0x02,
-	COMP_TYPE_BROTLI = 0x04,
-	COMP_TYPE_LZ4 = 0x08
+	COMP_TYPE_NONE			= 0x00,
+	COMP_TYPE_GZIP			= 0x01,
+	COMP_TYPE_DEFLATE		= 0x02,
+	COMP_TYPE_BROTLI		= 0x04,
+	COMP_TYPE_LZ4			= 0x08
 } CompressorType;
 
 
@@ -111,31 +113,31 @@ typedef enum CompressionLevel
 	The compression operation should be optimally compressed, even if the operation
 	takes a longer time to complete.
 	*/
-	COMP_LEVEL_OPTIMAL = 0,
+	COMP_LEVEL_OPTIMAL			= 0,
 	/*
 	The compression operation should complete as quickly as possible, even if the
 	resulting file is not optimally compressed.
 	*/
-	COMP_LEVEL_FASTEST = 1,
+	COMP_LEVEL_FASTEST			= 1,
 	/*
 		No compression should be performed on the file.
 	*/
-	COMP_LEVEL_NO_COMPRESSION = 2,
+	COMP_LEVEL_NO_COMPRESSION	= 2,
 	/*
 	The compression operation should create output as small as possible, even if
 	the operation takes a longer time to complete.
 	*/
-	COMP_LEVEL_SMALLEST_SIZE = 3
+	COMP_LEVEL_SMALLEST_SIZE	= 3
 } CompressionLevel;
 
 
 typedef enum CompressorStatus {
-	COMPRESSOR_STATUS_READY = 0x00,
-	COMPRESSOR_STATUS_INITALIZED = 0x01,
-	COMPRESSOR_STATUS_NEEDS_FLUSH = 0x02
+	COMPRESSOR_STATUS_READY			= 0x00,
+	COMPRESSOR_STATUS_INITALIZED	= 0x01,
+	COMPRESSOR_STATUS_NEEDS_FLUSH	= 0x02
 } CompressorStatus;
 
-typedef struct CompressorStateStruct{	
+typedef struct _vn_cmp_state_struct{	
 
 	/*
 	  Pointer to the underlying compressor implementation.
@@ -159,7 +161,7 @@ typedef struct CompressorStateStruct{
 	uint32_t blockSize;
 
 
-} CompressorState;
+} _cmp_state_t;
 
 /*
 * An extern caller generated structure passed to calls for 
@@ -179,10 +181,10 @@ typedef struct CompressionOperationStruct {
 	/*
 	* If the operation is a flush operation
 	*/
-	const int32_t flush;
+	int32_t flush;
 
-	const uint32_t bytesInLength;	
-	const uint32_t bytesOutLength;
+	uint32_t bytesInLength;	
+	uint32_t bytesOutLength;
 
 	/*
 	* Results of the streaming operation
@@ -248,7 +250,11 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(void* compressor);
 * @param inputLength The length of the input data in bytes.
 * @return The maximum compressed size of the specified input data in bytes.
 */
-VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressedSize(_In_ const void* compressor, uint64_t inputLength, int32_t flush);
+VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressedSize(
+	_In_ const void* compressor, 
+	uint64_t inputLength, 
+	int32_t flush
+);
 
 
 /*
@@ -258,6 +264,9 @@ VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressedSize(_In_ const voi
 * @param operation A pointer to the compression operation structure
 * @return The underlying compressor's native return code
 */
-VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressBlock(_In_ const void* compressor, CompressionOperation* operation);
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressBlock(
+	_In_ const void* compressor, 
+	CompressionOperation* operation
+);
 
 #endif /* !VNLIB_COMPRESS_MAIN_H_ */

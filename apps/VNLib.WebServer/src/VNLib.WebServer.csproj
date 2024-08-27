@@ -29,7 +29,7 @@
     <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <Product>VNLib.Webserver</Product>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/vnlib.core</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/app/VNLib.Webserver/</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/apps/VNLib.WebServer</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>

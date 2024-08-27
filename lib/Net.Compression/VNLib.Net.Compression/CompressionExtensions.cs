@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -36,12 +36,18 @@ namespace VNLib.Net.Compression
         /// Compresses a block using the compressor context pointer provided
         /// </summary>
         /// <param name="nativeLib"></param>
-        /// <param name="comp">A pointer to the compressor context</param>
+        /// <param name="compressorInstance">A pointer to the compressor context</param>
         /// <param name="output">A buffer to write the result to</param>
         /// <param name="input">The input block of memory to compress</param>
         /// <param name="finalBlock">A value that indicates if a flush is requested</param>
         /// <returns>The results of the compression operation</returns>
-        public static unsafe CompressionResult CompressBlock(this LibraryWrapper nativeLib, IntPtr comp, Memory<byte> output, ReadOnlyMemory<byte> input, bool finalBlock)
+        public static unsafe CompressionResult CompressBlock(
+            this LibraryWrapper nativeLib,
+            IntPtr compressorInstance,
+            Memory<byte> output,
+            ReadOnlyMemory<byte> input,
+            bool finalBlock
+        )
         {
             /*
              * Since .NET only supports int32 size memory blocks
@@ -51,46 +57,51 @@ namespace VNLib.Net.Compression
              * sizes (read/written)
              */
 
-            //get pointers to the input and output buffers
-            using MemoryHandle inPtr = input.Pin();
-            using MemoryHandle outPtr = output.Pin();
-
             //Create the operation struct
-            CompressionOperation operation;
-            CompressionOperation* op = &operation;
+            CompressionOperation operation = default;
 
-            op->flush = finalBlock ? 1 : 0;
-            op->bytesRead = 0;
-            op->bytesWritten = 0;
+            operation.flush = finalBlock ? 1 : 0;
 
-            //Configure the input and output buffers
-            op->inputBuffer = inPtr.Pointer;
-            op->inputSize = (uint)input.Length;
-
-            op->outputBuffer = outPtr.Pointer;
-            op->outputSize = (uint)output.Length;
-
-            //Call the native compress function
-            nativeLib!.CompressBlock(comp, &operation);
-
-            //Return the number of bytes written
-            return new()
+            checked
             {
-                BytesRead = (int)op->bytesRead,
-                BytesWritten = (int)op->bytesWritten
-            };
+                //get pointers to the input and output buffers
+                using MemoryHandle inPtr = input.Pin();
+                using MemoryHandle outPtr = output.Pin();
+
+                //Configure the input and output buffers
+                operation.inputBuffer = inPtr.Pointer;
+                operation.inputSize = (uint)input.Length;
+
+                operation.outputBuffer = outPtr.Pointer;
+                operation.outputSize = (uint)output.Length;
+
+                //Call the native compress function
+                nativeLib!.CompressBlock(compressorInstance, &operation);
+               
+                return new()
+                {
+                    BytesRead = (int)operation.bytesRead,
+                    BytesWritten = (int)operation.bytesWritten
+                };
+            }
         }
 
         /// <summary>
         /// Compresses a block using the compressor context pointer provided
         /// </summary>
         /// <param name="nativeLib"></param>
-        /// <param name="comp">A pointer to the compressor context</param>
+        /// <param name="compressorInstance">A pointer to the compressor context</param>
         /// <param name="output">A buffer to write the result to</param>
         /// <param name="input">The input block of memory to compress</param>
         /// <param name="finalBlock">A value that indicates if a flush is requested</param>
         /// <returns>The results of the compression operation</returns>
-        public static unsafe CompressionResult CompressBlock(this LibraryWrapper nativeLib, IntPtr comp, Span<byte> output, ReadOnlySpan<byte> input, bool finalBlock)
+        public static unsafe CompressionResult CompressBlock(
+            this LibraryWrapper nativeLib,
+            IntPtr compressorInstance,
+            Span<byte> output,
+            ReadOnlySpan<byte> input,
+            bool finalBlock
+        )
         {
             /*
              * Since .NET only supports int32 size memory blocks
@@ -100,33 +111,31 @@ namespace VNLib.Net.Compression
              * sizes (read/written)
              */
 
-            fixed(byte* inputPtr = &MemoryMarshal.GetReference(input),
-                outPtr = &MemoryMarshal.GetReference(output))
+            //Create the operation struct
+            CompressionOperation operation = default;
+            operation.flush = finalBlock ? 1 : 0;
+
+            checked
             {
-                //Create the operation struct
-                CompressionOperation operation;
-                CompressionOperation* op = &operation;
-
-                op->flush = finalBlock ? 1 : 0;
-                op->bytesRead = 0;
-                op->bytesWritten = 0;
-
-                //Configure the input and output buffers
-                op->inputBuffer = inputPtr;
-                op->inputSize = (uint)input.Length;
-
-                op->outputBuffer = outPtr;
-                op->outputSize = (uint)output.Length;
-
-                //Call the native compress function
-                nativeLib!.CompressBlock(comp, &operation);
-
-                //Return the number of bytes written
-                return new()
+                fixed (byte* inputPtr = &MemoryMarshal.GetReference(input),
+                    outPtr = &MemoryMarshal.GetReference(output))
                 {
-                    BytesRead = (int)op->bytesRead,
-                    BytesWritten = (int)op->bytesWritten
-                };
+                    //Configure the input and output buffers
+                    operation.inputBuffer = inputPtr;
+                    operation.inputSize = (uint)input.Length;
+
+                    operation.outputBuffer = outPtr;
+                    operation.outputSize = (uint)output.Length;
+
+                    //Call the native compress function
+                    nativeLib!.CompressBlock(compressorInstance, &operation);
+                
+                    return new()
+                    {
+                        BytesRead = (int)operation.bytesRead,
+                        BytesWritten = (int)operation.bytesWritten
+                    };
+                }
             }
         }
     }

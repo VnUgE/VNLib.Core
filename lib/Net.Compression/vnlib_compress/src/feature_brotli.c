@@ -21,10 +21,9 @@
 
 #include <brotli/encode.h>
 #include "feature_brotli.h"
-#include "util.h"
 
 #define validateCompState(state) \
-	if (!state) return ERR_INVALID_PTR; \
+	CHECK_NULL_PTR(state); \
 	if (!state->compressor) return ERR_BR_INVALID_STATE; \
 
 /*
@@ -32,13 +31,13 @@
 */
 static void* _brAllocCallback(void* opaque, size_t size)
 {
-	(void)opaque;
+	(void)sizeof(opaque);
 	return vnmalloc(size, 1);
 }
 
 static void _brFreeCallback(void* opaque, void* address)
 {
-	(void)opaque;
+	(void)sizeof(opaque);
 	
 	/*Brotli may pass a null address to the free callback*/
 	if (address)
@@ -48,11 +47,11 @@ static void _brFreeCallback(void* opaque, void* address)
 }
 
 
-int BrAllocCompressor(CompressorState* state)
+int BrAllocCompressor(_cmp_state_t* state)
 {
 	BrotliEncoderState* comp;
 
-	assert(state != NULL);
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state argument");
 
 	/*
 	* Never allow no compression, it is not supported by the br encoder
@@ -119,12 +118,12 @@ int BrAllocCompressor(CompressorState* state)
 		break;
 	}
 
-	return TRUE;
+	return VNCMP_SUCCESS;
 }
 
-void BrFreeCompressor(CompressorState* state)
+void BrFreeCompressor(_cmp_state_t* state)
 {
-	assert(state != NULL);
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");	
 
 	/*
 	* Free the compressor instance if it exists
@@ -136,7 +135,7 @@ void BrFreeCompressor(CompressorState* state)
 	}
 }
 
-int BrCompressBlock(const CompressorState* state, CompressionOperation* operation)
+int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation)
 {
 	BrotliEncoderOperation brOperation;
 	BROTLI_BOOL brResult;
@@ -144,6 +143,8 @@ int BrCompressBlock(const CompressorState* state, CompressionOperation* operatio
 	size_t availableIn, availableOut, totalOut;
 	const uint8_t* nextIn;
 	uint8_t* nextOut;
+
+	DEBUG_ASSERT2(operation != NULL, "Expected non-null operation parameter");
 
 	/* Validate inputs */
 	validateCompState(state)
@@ -159,7 +160,7 @@ int BrCompressBlock(const CompressorState* state, CompressionOperation* operatio
 
 	if (operation->bytesInLength == 0 && operation->flush < 1)
 	{	
-		return TRUE;
+		return VNCMP_SUCCESS;
 	}
 
 	/*
@@ -221,7 +222,7 @@ int BrCompressBlock(const CompressorState* state, CompressionOperation* operatio
 }
 
 
-int64_t BrGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush)
+int64_t BrGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush)
 {
 	size_t size;
 

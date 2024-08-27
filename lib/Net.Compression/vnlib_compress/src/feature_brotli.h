@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -24,6 +24,7 @@
 #ifndef BROTLI_STUB_H_
 #define BROTLI_STUB_H_
 
+#include "util.h"
 #include "compression.h"
 
 #define ERR_BR_INVALID_STATE -24
@@ -35,12 +36,12 @@
 
 #define BR_DEFAULT_WINDOW 22
 
-int BrAllocCompressor(CompressorState* state);
+int BrAllocCompressor(_cmp_state_t* state);
 
-void BrFreeCompressor(CompressorState* state);
+void BrFreeCompressor(_cmp_state_t* state);
 
-int BrCompressBlock(const CompressorState* state, CompressionOperation* operation);
+int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation);
 
-int64_t BrGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush);
+int64_t BrGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush);
 
 #endif /* !BROTLI_STUB_H_ */
