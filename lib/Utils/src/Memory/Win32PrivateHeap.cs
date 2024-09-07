@@ -31,7 +31,7 @@ using System.Runtime.CompilerServices;
 using VNLib.Utils.Native;
 
 using DWORD = System.Int64;
-using LPVOID = System.IntPtr;
+using LPVOID = nint;
 
 namespace VNLib.Utils.Memory
 {
@@ -112,37 +112,43 @@ namespace VNLib.Utils.Memory
         {
             if (cFlags.HasFlag(HeapCreation.Shared))
             {
-                //Clear the synchronization flag because we don't need it for a process heap
+                /*
+                 * When using the process-wide heap, synchronization is enabled 
+                 * so we should clear the flag to prevent UnmanagedHeapBase from
+                 * using CLR mutual exclusion methods
+                 */
                 cFlags &= ~HeapCreation.UseSynchronization;
 
-                //Get the process heap
-                LPVOID handle = GetProcessHeap();
-
-                //The heap does not own the handle 
-                return new Win32PrivateHeap(handle, cFlags, false);
+                return new Win32PrivateHeap(
+                    GetProcessHeap(), 
+                    cFlags, 
+                    ownsHeandle: false  //The heap does not own the handle because it's shared, so it cannot be freed
+                );
             }
             
             if (cFlags.HasFlag(HeapCreation.UseSynchronization))
             {    
                 /*
                  * When the synchronization flag is set, we dont need to use 
-                 * the win32 serialization method
+                 * the win32 serialization method because the UnmanagedHeapBase
+                 * class will handle locking using better/faster CLR methods
                  */
 
                 flags |= HEAP_NO_SERIALIZE;
             }
 
             //Call create, throw exception if the heap falled to allocate
-            ERRNO heapHandle = HeapCreate(flags, initialSize, maxHeapSize);
+            ERRNO heapHandle = (ERRNO)HeapCreate(flags, initialSize, maxHeapSize);
             
             if (!heapHandle)
             {
                 throw new NativeMemoryException("Heap could not be created");
             }
+
             Trace.WriteLine($"Win32 private heap {heapHandle:x} created");
 
             //Heap has been created so we can wrap it
-            return new(heapHandle, cFlags, true);
+            return new(heapHandle, cFlags, ownsHeandle: true);
         }
 
         /// <summary>
@@ -152,9 +158,11 @@ namespace VNLib.Utils.Memory
         /// <param name="win32HeapHandle">An open and valid handle to a win32 private heap</param>
         /// <param name="flags">The heap creation flags to obey</param>
         /// <returns>A wrapper around the specified heap</returns>
-        public static Win32PrivateHeap ConsumeExisting(IntPtr win32HeapHandle, HeapCreation flags) => new (win32HeapHandle, flags, true);
+        public static Win32PrivateHeap ConsumeExisting(IntPtr win32HeapHandle, HeapCreation flags) 
+            => new (win32HeapHandle, flags, ownsHeandle: true);
 
-        private Win32PrivateHeap(IntPtr heapPtr, HeapCreation flags, bool ownsHeandle) : base(flags, ownsHeandle) => handle = heapPtr;
+        private Win32PrivateHeap(IntPtr heapPtr, HeapCreation flags, bool ownsHeandle) : base(flags, ownsHeandle) 
+            => handle = heapPtr;
 
         /// <summary>
         /// Retrieves the size of a memory block allocated from the current heap.
@@ -170,14 +178,12 @@ namespace VNLib.Utils.Memory
         /// <returns>True if the block is valid, false otherwise</returns>
         public bool Validate(ref LPVOID block)
         {
-            bool result;
             //Lock the heap before validating
             lock (HeapLock)
             {
                 //validate the block on the current heap
-                result = HeapValidate(handle, HEAP_NO_FLAGS, block);
+                return HeapValidate(handle, HEAP_NO_FLAGS, block);
             }
-            return result;           
         }
 
         /// <summary>
@@ -188,15 +194,12 @@ namespace VNLib.Utils.Memory
         /// <remarks>This can be a consuming operation which will block all allocations</remarks>
         public bool Validate()
         {
-            bool result;
-            
             //Lock the heap before validating
             lock (HeapLock)
             {
                 //validate the entire heap
-                result = HeapValidate(handle, HEAP_NO_FLAGS, IntPtr.Zero);
+                return HeapValidate(handle, HEAP_NO_FLAGS, IntPtr.Zero);
             }
-            return result;
         }
 
         ///<inheritdoc/>
@@ -211,22 +214,28 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override sealed LPVOID AllocBlock(nuint elements, nuint size, bool zero)
         {
-            nuint bytes = checked(elements * size);
-            
-            return HeapAlloc(handle, zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, bytes);
+            return HeapAlloc(
+                handle, 
+                flags: zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, 
+                dwBytes: checked(elements * size)
+            );
         }
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected override sealed bool FreeBlock(LPVOID block) => HeapFree(handle, HEAP_NO_FLAGS, block);
+        protected override sealed bool FreeBlock(LPVOID block) 
+            => HeapFree(handle, HEAP_NO_FLAGS, block);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override sealed LPVOID ReAllocBlock(LPVOID block, nuint elements, nuint size, bool zero)
         {
-            nuint bytes = checked(elements * size);
-            
-            return HeapReAlloc(handle, zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, block, bytes);
+            return HeapReAlloc(
+                handle, 
+                dwFlags: zero ? HEAP_ZERO_MEMORY : HEAP_NO_FLAGS, 
+                lpMem: block, 
+                dwBytes: checked(elements * size)
+            );
         }
     }
 }

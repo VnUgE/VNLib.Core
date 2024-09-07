@@ -253,11 +253,15 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="other">The other handle to test</param>
         /// <returns>True if the other handle points to the same block of memory as the current handle</returns>
+        /// <remarks>
+        /// Memory handles are the same if - The use the same underlying allocation type, handle size is the same
+        /// and the address of the block is the same.
+        /// </remarks>
         public readonly bool Equals(in UnsafeMemoryHandle<T> other)
         {
             return _handleType == other._handleType 
-                && Length == other.Length 
-                && GetHashCode() == other.GetHashCode();
+                && _length == other._length
+                && Unsafe.AreSame(ref GetReference(), ref other.GetReference());
         }
 
         /// <summary>
@@ -266,7 +270,12 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="other">The other handle to test</param>
         /// <returns>True if the other handle points to the same block of memory as the current handle</returns>
-        public readonly bool Equals(UnsafeMemoryHandle<T> other) => Equals(in other);
+        /// <remarks>
+        /// Memory handles are the same if - The use the same underlying allocation type, handle size is the same
+        /// and the address of the block is the same.
+        /// </remarks>
+        public readonly bool Equals(UnsafeMemoryHandle<T> other) 
+            => Equals(in other);
 
         /// <summary>
         /// Override for object equality operator, will cause boxing
@@ -275,10 +284,14 @@ namespace VNLib.Utils.Memory
         /// <param name="obj">The other object to compare</param>
         /// <returns>
         /// True if the passed object is of type <see cref="UnsafeMemoryHandle{T}"/> 
-        /// and uses the structure equality operator
-        /// false otherwise.
+        /// and uses the structure equality operator false otherwise.
         /// </returns>
-        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj is UnsafeMemoryHandle<T> other && Equals(in other);
+        /// <remarks>
+        /// Memory handles are the same if - The use the same underlying allocation type, handle size is the same
+        /// and the address of the block is the same.
+        /// </remarks>
+        public readonly override bool Equals([NotNullWhen(true)] object? obj) 
+            => obj is UnsafeMemoryHandle<T> other && Equals(in other);
 
         /// <summary>
         /// Equality overload
@@ -286,7 +299,8 @@ namespace VNLib.Utils.Memory
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns>True if handles are equal, flase otherwise</returns>
-        public static bool operator ==(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => left.Equals(in right);
+        public static bool operator ==(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) 
+            => left.Equals(in right);
 
         /// <summary>
         /// Equality overload
@@ -294,7 +308,8 @@ namespace VNLib.Utils.Memory
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns>True if handles are equal, flase otherwise</returns>
-        public static bool operator !=(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right) => !left.Equals(in right);
+        public static bool operator !=(in UnsafeMemoryHandle<T> left, in UnsafeMemoryHandle<T> right)
+            => !left.Equals(in right);
 
     }
 }

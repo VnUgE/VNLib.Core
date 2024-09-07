@@ -206,7 +206,8 @@ namespace VNLib.Utils.Memory
         /// <returns>The reference to the item at the desired offset</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe ref T GetOffsetRef(nuint offset) => ref Unsafe.AsRef<T>(GetOffset(offset));
+        public unsafe ref T GetOffsetRef(nuint offset) 
+            => ref Unsafe.AsRef<T>(GetOffset(offset));
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
@@ -256,9 +257,11 @@ namespace VNLib.Utils.Memory
         }
 
         ///<inheritdoc/>
-        public override bool Equals(object? obj) => obj is MemoryHandle<T> oHandle && Equals(oHandle);
+        public override bool Equals(object? obj) 
+            => obj is MemoryHandle<T> oHandle && Equals(oHandle);
 
         ///<inheritdoc/>
-        public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), handle.GetHashCode(), _length);
+        public override int GetHashCode() 
+            => HashCode.Combine(base.GetHashCode(), handle.GetHashCode(), _length);
     }
 }

@@ -483,6 +483,68 @@ namespace VNLib.Utils.Memory
             return SafeAlloc(elements: (int)NearestPage(elements), zero);
         }
 
+        /// <summary>
+        /// DANGEROUS: Creates a new <see cref="MemoryHandle{T}"/> from an existing pointer that 
+        /// belongs to the specified heap. This handle owns the pointer and will free it back 
+        /// to the heap when disposed. No validation is performed on the pointer, so it is
+        /// the responsibility of the caller to ensure the pointer is valid and points to a
+        /// block of memory that was allocated from the specified heap.
+        /// </summary>
+        /// <param name="blockPtr">The pointer to the existing block of memory</param>
+        /// <param name="elements">The element size of the block (NOT byte size)</param>
+        /// <param name="heap">The unmanaged heap this block was allocated from (and can be freed back to)</param>
+        /// <param name="zero">A flag that indicates if block should be zeroed during reallocations</param>
+        /// <returns>A <see cref="MemoryHandle{T}"/> wrapper</returns>
+        public static MemoryHandle<T> ToHandle<T>(nint blockPtr, nuint elements, IUnmangedHeap heap, bool zero) 
+            where T : unmanaged
+        {
+            ArgumentNullException.ThrowIfNull(heap);
+
+            return new MemoryHandle<T>(heap, blockPtr, elements, zero);
+        }
+
+        /// <summary>
+        /// DANGEROUS: Creates a new <see cref="MemoryHandle{T}"/> from an existing pointer that 
+        /// belongs to the specified heap. This handle owns the pointer and will free it back 
+        /// to the heap when disposed. No validation is performed on the pointer, so it is
+        /// the responsibility of the caller to ensure the pointer is valid and points to a
+        /// block of memory that was allocated from the specified heap.
+        /// </summary>
+        /// <param name="blockPtr">The pointer to the existing block of memory</param>
+        /// <param name="elements">The element size of the block (NOT byte size)</param>
+        /// <param name="heap">The unmanaged heap this block was allocated from (and can be freed back to)</param>
+        /// <returns>A <see cref="MemoryHandle{T}"/> wrapper</returns>
+        public static UnsafeMemoryHandle<T> ToUnsafeHandle<T>(nint blockPtr, int elements, IUnmangedHeap heap)
+            where T : unmanaged
+        {
+            ArgumentNullException.ThrowIfNull(heap);
+
+            return new UnsafeMemoryHandle<T>(heap, blockPtr, elements);
+        }
+
+        /// <summary>
+        /// Determines if two memory handles are equal by comparing their 
+        /// lengths and their base block addresses. This method is useful
+        /// for comparing memory handles that may have been reallocated
+        /// or copied.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle1">The first handle to compare</param>
+        /// <param name="handle2">The secondary handle to compare against</param>
+        /// <returns>
+        /// True if the handle lengths are equal and the base block addresses
+        /// are the same, otherwise false.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static bool AreHandlesEqual<T>(IMemoryHandle<T> handle1, IMemoryHandle<T> handle2)
+        {
+            ArgumentNullException.ThrowIfNull(handle1);
+            ArgumentNullException.ThrowIfNull(handle2);
+
+            return handle1.Length == handle2.Length 
+                && Unsafe.AreSame(ref handle1.GetReference(), ref handle2.GetReference());
+        }
+
         #endregion
     }
 
