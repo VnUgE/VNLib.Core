@@ -63,7 +63,7 @@ tasks:
      - cd lib/Utils.Memory/vnlib_mimalloc && task dev-init
      - cd lib/Utils.Cryptography/monocypher && task build
      - cd lib/Utils.Cryptography/argon2 && task build
-     - cd lib/Net.Compression/vnlib_compress && task build   
+     - cd lib/Net.Compression/vnlib_compress && task build 
      - cmd: echo "dev init complete"
        silent: true
     

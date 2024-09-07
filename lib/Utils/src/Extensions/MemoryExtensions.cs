@@ -339,7 +339,8 @@ namespace VNLib.Utils.Extensions
         /// <returns>The new <see cref="SubSequence{T}"/> within the block</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SubSequence<T> GetSubSequence<T>(this IMemoryHandle<T> block, nuint offset, int size) => new (block, offset, size);
+        public static SubSequence<T> GetSubSequence<T>(this IMemoryHandle<T> block, nuint offset, int size) 
+            => new (block, offset, size);
         
         /// <summary>
         /// Gets a <see cref="SubSequence{T}"/> window within the current block
@@ -809,7 +810,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [Obsolete("Functions are included directly on the type now")]
-        public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start) where T: unmanaged => handle.Span[start..];
+        public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start) where T: unmanaged 
+            => handle.Span[start..];
 
         /// <summary>
         /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
@@ -822,7 +824,8 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [Obsolete("Functions are included directly on the type now")]
-        public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start, int count) where T : unmanaged => handle.Span.Slice(start, count);
+        public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start, int count) where T : unmanaged 
+            => handle.Span.Slice(start, count);
 
         /// <summary>
         /// Raises an <see cref="ObjectDisposedException"/> if the current handle 

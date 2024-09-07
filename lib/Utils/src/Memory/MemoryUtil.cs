@@ -159,8 +159,6 @@ namespace VNLib.Utils.Memory
 
         private static IUnmangedHeap InitHeapInternal(bool isShared, bool enableStats, bool globalZero)
         {
-            bool IsWindows = OperatingSystem.IsWindows();
-            
             //Get environment varable
             string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
             string? rawFlagsEnv = Environment.GetEnvironmentVariable(SHARED_HEAP_RAW_FLAGS);
@@ -195,8 +193,8 @@ namespace VNLib.Utils.Memory
                 //Attempt to load the heap
                 heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, userFlags);
             }
-            //No user heap was specified, use fallback
-            else if (IsWindows)
+            //No user heap was specified, use fallback on windows
+            else if (OperatingSystem.IsWindows())
             {
                 //We can use win32 heaps
               

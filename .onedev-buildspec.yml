@@ -25,22 +25,3 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: Repo Sync Pull
-  steps:
-  - !PullRepository
-    name: GitHub sync pull
-    remoteUrl: https://github.com/VnUgE/VNLib.Core.git
-    userName: VnUgE
-    passwordSecret: git-access-token
-    refs: refs/heads/* refs/tags/*
-    withLfs: false
-    force: false
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
-  triggers:
-  - !ScheduleTrigger
-    cronExpression: 0 15 10 ? * *
-    projects: VNLib.Core
-  retryCondition: never
-  maxRetries: 3
-  retryDelay: 30
-  timeout: 3600

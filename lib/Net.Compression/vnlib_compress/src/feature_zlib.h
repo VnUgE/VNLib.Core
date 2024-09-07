@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -24,6 +24,7 @@
 #ifndef ZLIB_STUB_H_
 #define ZLIB_STUB_H_
 
+#include "util.h"
 #include "compression.h"
 
 #define ERR_GZ_INVALID_STATE -16
@@ -31,20 +32,19 @@
 
 /* Allow user to define their own memory level value */
 #ifndef GZ_DEFAULT_MEM_LEVEL
-#define GZ_DEFAULT_MEM_LEVEL 8
+	#define GZ_DEFAULT_MEM_LEVEL 8
 #endif
 
 /* Specifies the window value to enable GZIP */
 #define GZ_ENABLE_GZIP_WINDOW 15 + 16
 #define GZ_ENABLE_RAW_DEFLATE_WINDOW -15
 
+int DeflateAllocCompressor(_cmp_state_t* state);
 
-int DeflateAllocCompressor(CompressorState* state);
+int DeflateFreeCompressor(_cmp_state_t* state);
 
-int DeflateFreeCompressor(CompressorState* state);
+int DeflateCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation);
 
-int DeflateCompressBlock(const CompressorState* state, CompressionOperation* operation);
-
-int64_t DeflateGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush);
+int64_t DeflateGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush);
 
 #endif 

@@ -29,7 +29,7 @@
     <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
     <Product>VNLib.Webserver</Product>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/vnlib.core</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/app/VNLib.Webserver/</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/apps/VNLib.WebServer</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
@@ -68,7 +68,7 @@
     <PackageReference Include="Serilog" Version="4.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="YamlDotNet" Version="16.0.0" />
+    <PackageReference Include="YamlDotNet" Version="16.1.0" />
   </ItemGroup>
   
   <ItemGroup>

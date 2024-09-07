@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -94,16 +94,26 @@ namespace VNLib.Net.Compression
             public CompressionResult Compress(ReadOnlyMemory<byte> input, Memory<byte> output)
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                return LibComp.CompressBlock(compressor, output, input, false);
+               
+                return LibComp.CompressBlock(
+                    CompressorHandle.DangerousGetHandle(), 
+                    output, 
+                    input, 
+                    finalBlock: false
+                );
             }
 
             ///<inheritdoc/>
             public CompressionResult Compress(ReadOnlySpan<byte> input, Span<byte> output)
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                return LibComp.CompressBlock(compressor, output, input, false);
+               
+                return LibComp.CompressBlock(
+                    CompressorHandle.DangerousGetHandle(), 
+                    output, 
+                    input, 
+                    finalBlock: false
+                );
             }
 
             ///<inheritdoc/>
@@ -113,8 +123,14 @@ namespace VNLib.Net.Compression
             public int Flush(Memory<byte> buffer)
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                CompressionResult result = LibComp.CompressBlock(compressor, buffer, default, true);
+               
+                CompressionResult result = LibComp.CompressBlock(
+                    CompressorHandle.DangerousGetHandle(), 
+                    buffer, 
+                    input: default, 
+                    finalBlock: true
+                );
+
                 return result.BytesWritten;
             }
 
@@ -122,8 +138,14 @@ namespace VNLib.Net.Compression
             public int Flush(Span<byte> buffer)
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                CompressionResult result = LibComp.CompressBlock(compressor, buffer, default, true);
+
+                CompressionResult result = LibComp.CompressBlock(
+                    CompressorHandle.DangerousGetHandle(), 
+                    buffer, 
+                    input: default, 
+                    finalBlock: true
+                );
+                
                 return result.BytesWritten;
             }
 
@@ -131,32 +153,42 @@ namespace VNLib.Net.Compression
             public uint GetBlockSize()
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                return LibComp.GetBlockSize(compressor);
+  
+                return LibComp.GetBlockSize(
+                    CompressorHandle.DangerousGetHandle()
+                );
             }
 
             ///<inheritdoc/>
             public uint GetCompressedSize(uint size)
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                return (uint)LibComp.GetOutputSize(compressor, size, 1);
+
+                return (uint)LibComp.GetOutputSize(
+                    CompressorHandle.DangerousGetHandle(), 
+                    size, 
+                    flush: 1    //truthy enables flushing
+                );
             }
 
             ///<inheritdoc/>
             public CompressionLevel GetCompressionLevel()
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                return LibComp.GetCompressorLevel(compressor);
+
+                return LibComp.GetCompressorLevel(
+                    CompressorHandle.DangerousGetHandle()
+                );
             }
 
             ///<inheritdoc/>
             public CompressionMethod GetCompressionMethod()
             {
                 CompressorHandle.ThrowIfClosed();
-                IntPtr compressor = CompressorHandle.DangerousGetHandle();
-                return LibComp.GetCompressorType(compressor);
+                
+                return LibComp.GetCompressorType(
+                    CompressorHandle.DangerousGetHandle()
+                );
             }
         }
     }

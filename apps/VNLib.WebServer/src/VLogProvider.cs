@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -35,14 +35,10 @@ using VNLib.Utils.Logging;
 
 namespace VNLib.WebServer
 {
-    internal sealed class VLogProvider : VnDisposeable, ILogProvider
+    internal sealed class VLogProvider(LoggerConfiguration config) : VnDisposeable, ILogProvider
     {
-        private readonly Logger LogCore;
+        private readonly Logger LogCore = config.CreateLogger();
 
-        public VLogProvider(LoggerConfiguration config)
-        {
-            LogCore = config.CreateLogger();
-        }
         public void Flush() { }
 
         public object GetLogProvider() => LogCore;
@@ -51,22 +47,16 @@ namespace VNLib.WebServer
         public bool IsEnabled(LogLevel level) => LogCore.IsEnabled((LogEventLevel)level);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(LogLevel level, string value)
-        {
-            LogCore.Write((LogEventLevel)level, value);
-        }
+        public void Write(LogLevel level, string value) 
+            => LogCore.Write((LogEventLevel)level, value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(LogLevel level, Exception exception, string value = "")
-        {
-            LogCore.Write((LogEventLevel)level, exception, value);
-        }
+        public void Write(LogLevel level, Exception exception, string value = "") 
+            => LogCore.Write((LogEventLevel)level, exception, value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(LogLevel level, string value, params object[] args)
-        {
-            LogCore.Write((LogEventLevel)level, value, args);
-        }
+        public void Write(LogLevel level, string value, params object[] args) 
+            => LogCore.Write((LogEventLevel)level, value, args);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(LogLevel level, string value, params ValueType[] args)

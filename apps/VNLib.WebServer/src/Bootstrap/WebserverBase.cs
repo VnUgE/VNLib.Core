@@ -93,6 +93,10 @@ namespace VNLib.WebServer.Bootstrap
             HttpServiceStackBuilder builder = new HttpServiceStackBuilder()
                                     .LoadPluginsConcurrently(loadPluginsConcurrently)
                                     .WithBuiltInHttp(TcpConfig.ReduceBindingsForGroups, http)
+                                    .WithManualPlugins(plugins =>
+                                    {
+
+                                    })
                                     .WithDomain(domain =>
                                     {
                                         domain.WithServiceGroups(vh =>

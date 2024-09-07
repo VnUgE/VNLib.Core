@@ -26,7 +26,6 @@
 
 #include <zlib.h>
 #include "feature_zlib.h"
-#include "util.h"
 
 #define validateCompState(state) \
 	if (!state) return ERR_INVALID_PTR; \
@@ -37,28 +36,27 @@
 */
 static void* _gzAllocCallback(void* opaque, uint32_t items, uint32_t size)
 {
-	(void)opaque;
+	(void)sizeof(opaque);
 	return vnmalloc(items, size);
 }
 
 static void _gzFreeCallback(void* opaque, void* address)
 {
-	(void)opaque;
+	(void)sizeof(opaque);
 	vnfree(address);
 }
 
-int DeflateAllocCompressor(CompressorState* state)
+int DeflateAllocCompressor(_cmp_state_t* state)
 {	
 	int result, compLevel;
-	z_stream* stream;
 
-	assert(state);
+	DEBUG_ASSERT2(state, "Expected non-null state parameter");
 
 	/*
 	* Allocate the z-stream state on the heap so we can
 	* store it in the compressor state
 	*/
-	stream = (z_stream*)vncalloc(1, sizeof(z_stream));
+	z_stream* stream = (z_stream*)vncalloc(1, sizeof(z_stream));
 
 	if (!stream) 
 	{
@@ -146,14 +144,14 @@ int DeflateAllocCompressor(CompressorState* state)
 	* Assign the z-stream state to the compressor state, all done!
 	*/
 	state->compressor = stream;
-	return TRUE;
+	return VNCMP_SUCCESS;
 }
 
-int DeflateFreeCompressor(CompressorState* state)
+int DeflateFreeCompressor(_cmp_state_t* state)
 {
 	int result;
 
-	assert(state);
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
 
 	/*
 	* Free the z-stream state, only if the compressor is initialized
@@ -186,12 +184,11 @@ int DeflateFreeCompressor(CompressorState* state)
 		return result == Z_OK || result == Z_DATA_ERROR;
 	}
 
-	return TRUE;
+	return VNCMP_SUCCESS;
 }
 
-int DeflateCompressBlock(const CompressorState* state, CompressionOperation* operation)
+int DeflateCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation)
 {
-	z_stream* stream;
 	int result;
 
 	validateCompState(state)
@@ -207,10 +204,10 @@ int DeflateCompressBlock(const CompressorState* state, CompressionOperation* ope
 
 	if (operation->bytesInLength == 0 && operation->flush < 1)
 	{
-		return TRUE;
+		return VNCMP_SUCCESS;
 	}
 
-	stream = (z_stream*)state->compressor;
+	z_stream* stream = (z_stream*)state->compressor;
 
 	/*
 	* Overwrite the stream state with the operation parameters from
@@ -264,7 +261,7 @@ int DeflateCompressBlock(const CompressorState* state, CompressionOperation* ope
 	return result;
 }
 
-int64_t DeflateGetCompressedSize(const CompressorState* state, uint64_t length, int32_t flush)
+int64_t DeflateGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush)
 {
 	uint64_t compressedSize;
 

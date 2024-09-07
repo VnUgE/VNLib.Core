@@ -18,7 +18,10 @@ include(FetchContent)
 
 #the compression source file is required, all other sources will be added
 set(VNLIB_COMPRESS_SOURCES 
+	src/util.h
+	src/platform.h
 	src/compression.c
+	src/compression.h
 )
 
 ###############################
@@ -80,20 +83,6 @@ if(ENABLE_ZLIB)
 	add_compile_definitions(VNLIB_COMPRESSOR_ZLIB_ENABLED)
 endif()
 
-#Add support for rpmalloc memmory allocator
-if(ENABLE_RPMALLOC)
-
-	#enable greedy mode for rpmalloc
-	set(ENABLE_GREEDY ON)
-
-	add_subdirectory(
-		../../Utils.Memory/vnlib_rpmalloc/
-		${CMAKE_CURRENT_BINARY_DIR}/vnlib_rpmalloc/
-	)
-
-	add_compile_definitions(VNLIB_CUSTOM_MALLOC_ENABLE)
-endif()
-
 ###############################
 #
 #	CONFIGURE LIBRARY BUILD
@@ -111,7 +100,7 @@ else()
 	add_library(${_COMP_PROJ_NAME} STATIC ${VNLIB_COMPRESS_SOURCES})
 endif()
 
-target_compile_features(${_COMP_PROJ_NAME} PRIVATE c_std_90)		#force compiler to use c90 standard for library
+target_compile_features(${_COMP_PROJ_NAME} PRIVATE c_std_99)		#force compiler to use c90 standard for library
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
@@ -133,15 +122,6 @@ if(ENABLE_ZLIB)
 	endif()
 
 	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE zlib)
-endif()
-
-#link rpmalloc to the main project
-if(ENABLE_RPMALLOC)		
-	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE vnlib_rpmalloc_static)
-	add_dependencies(${_COMP_PROJ_NAME} vnlib_rpmalloc_static)
-
-	#Include the nativeheap api header
-	target_include_directories(${_COMP_PROJ_NAME} PRIVATE ../../Utils.Memory/vnlib_rpmalloc/)
 endif()
 
 #setup flags for windows compilation
@@ -209,15 +189,31 @@ else()
 	message(FATAL_ERROR "Unsupported compiler, sorry. Submit an issue for your platform and I'll work on it :)")
 endif()
 
-if(NATIVE_HEAP_LIB_PATH)
+if(NATIVE_HEAP_NAME)
 
-	message(STATUS "Linking native heap library to the main project found at ${NATIVE_HEAP_LIB_PATH}")
+	find_library(
+		_native_heap_lib
+		NAMES 
+		  ${NATIVE_HEAP_NAME}_static	#attempt to load static library first
+		  ${NATIVE_HEAP_NAME}
+		
+		HINTS 
+		  ${NATIVE_HEAP_SRC}  
+		  ${NATIVE_HEAP_SRC}/build  
+		  ${NATIVE_HEAP_SRC}/build/${CMAKE_BUILD_TYPE}
+
+		NO_CACHE
+		REQUIRED
+	)
+	
+	message(STATUS "Linking native heap library to the main project found at ${_native_heap_lib}")
 
 	#Include the nativeheap api header
 	include_directories(${NATIVE_HEAP_INCLUDES})
-	
+
 	#If manual heap linking is enabled, we need to link the native heap library
-	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE ${NATIVE_HEAP_LIB_PATH})
-	target_compile_definitions(${_COMP_PROJ_NAME} PRIVATE VNLIB_CUSTOM_MALLOC_ENABLE)	#configure src
+	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE ${_native_heap_lib})
+
+	target_compile_definitions(${_COMP_PROJ_NAME} PRIVATE VNLIB_CUSTOM_MALLOC_ENABLE)	#enable native heap memory overrides
 
 endif()
