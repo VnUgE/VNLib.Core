@@ -54,7 +54,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         private Action<ServiceBuilder>? _hostBuilder;
         private Func<IReadOnlyCollection<ServiceGroup>, IHttpServer[]>? _getServers;
         private Func<IPluginStack>? _getPlugins;
-        private IManualPlugin[]? manualPlugins;
+        private Action<ICollection<IManualPlugin>>? _addManualPlugins;
         private bool loadConcurrently;
 
         /// <summary>
@@ -129,9 +129,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// </summary>
         /// <param name="plugins">The array of plugins (or params) to add</param>
         /// <returns>The current instance for chaining</returns>
-        public HttpServiceStackBuilder WithManualPlugins(params IManualPlugin[] plugins)
+        public HttpServiceStackBuilder WithManualPlugins(Action<ICollection<IManualPlugin>>? plugins)
         {
-            manualPlugins = plugins;
+            _addManualPlugins = plugins;
             return this;
         }
 
@@ -181,8 +181,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
         private PluginStackInitializer GetPluginStack(ServiceDomain domain)
         {
-            //Always init manual array
-            manualPlugins ??= [];
+            List<IManualPlugin> _manualPlugins = [];
+
+            //Add manual plugins if configured
+            _addManualPlugins?.Invoke(_manualPlugins);
 
             //Only load plugins if the callback is configured
             IPluginStack? plugins = _getPlugins?.Invoke();
@@ -191,7 +193,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             plugins ??= new EmptyPluginStack();
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
-            return new (domain.GetListener(), plugins, manualPlugins, loadConcurrently);
+            return new(domain.GetListener(), plugins, [.. _manualPlugins], loadConcurrently);
         }
 
         /*
