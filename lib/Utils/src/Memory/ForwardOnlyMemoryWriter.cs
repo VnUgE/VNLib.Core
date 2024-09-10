@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -29,43 +29,39 @@ namespace VNLib.Utils.Memory
     /// <summary>
     /// Provides a mutable sliding buffer writer
     /// </summary>
-    public record struct ForwardOnlyMemoryWriter<T>
+    /// <param name="Buffer">The buffer to write data to</param>
+    public record struct ForwardOnlyMemoryWriter<T>(Memory<T> Buffer)
     {
-        /// <summary>
-        /// The buffer for writing output data to
-        /// </summary>
-        public readonly Memory<T> Buffer { get; }
+        private int _written;
 
         /// <summary>
         /// The number of characters written to the buffer
         /// </summary>
-        public int Written { readonly get; set; }
+        public int Written
+        {
+            readonly get => _written;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                _written = value;
+            }
+        }
 
         /// <summary>
         /// The number of characters remaining in the buffer
         /// </summary>
-        public readonly int RemainingSize => Buffer.Length - Written;
+        public readonly int RemainingSize => Buffer.Length - _written;
 
         /// <summary>
         /// The remaining buffer window
         /// </summary>
-        public readonly Memory<T> Remaining => Buffer[Written..];
-
-        /// <summary>
-        /// Creates a new <see cref="ForwardOnlyWriter{T}"/> assigning the specified buffer
-        /// </summary>
-        /// <param name="buffer">The buffer to write data to</param>
-        public ForwardOnlyMemoryWriter(Memory<T> buffer)
-        {
-            Buffer = buffer;
-            Written = 0;
-        }
-
+        public readonly Memory<T> Remaining => Buffer[_written..];
+        
         /// <summary>
         /// Returns a compiled string from the characters written to the buffer
         /// </summary>
         /// <returns>A string of the characters written to the buffer</returns>
-        public readonly override string ToString() => Buffer[..Written].ToString();
+        public readonly override string ToString() => Buffer[.._written].ToString();
 
         /// <summary>
         /// Appends a sequence to the buffer
@@ -75,15 +71,14 @@ namespace VNLib.Utils.Memory
         public void Append(ReadOnlyMemory<T> data)
         {
             //Make sure the current window is large enough to buffer the new string
-            if (data.Length > RemainingSize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(Remaining), "The internal buffer does not have enough buffer space");
-            }
-            Memory<T> window = Buffer[Written..];
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(data));
+
+            Memory<T> window = Buffer[_written..];
+
             //write data to window
             data.CopyTo(window);
-            //update char position
-            Written += data.Length;
+
+            Advance(data.Length);
         }
 
         /// <summary>
@@ -94,12 +89,10 @@ namespace VNLib.Utils.Memory
         public void Append(T c)
         {
             //Make sure the current window is large enough to buffer the new string
-            if (RemainingSize == 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(Remaining), "The internal buffer does not have enough buffer space");
-            }
+            ArgumentOutOfRangeException.ThrowIfZero(RemainingSize);
+
             //Write data to buffer and increment the buffer position
-            Buffer.Span[Written++] = c;
+            Buffer.Span[_written++] = c;
         }
 
         /// <summary>
@@ -109,17 +102,15 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public void Advance(int count)
         {
-            if (count > RemainingSize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count), count, "Cannot advance past the end of the buffer");
-            }
-            Written += count;
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(count, RemainingSize);
+
+            _written += count;
         }
 
         /// <summary>
         /// Resets the writer by setting the <see cref="Written"/> 
         /// property to 0.
         /// </summary>
-        public void Reset() => Written = 0;
+        public void Reset() => _written = 0;
     }
 }

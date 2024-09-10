@@ -61,11 +61,11 @@ namespace VNLib.Utils.Memory
         private void SetValue(int index, string? value)
         {
             //Try to get the old reference and erase it
-            StringRef strRef = ProtectedElements[index];
+            ref StringRef strRef = ref ProtectedElements[index];
             strRef.Erase();
 
-            //Set the new value and determine if it is interned
-            ProtectedElements[index] = StringRef.Create(value);
+            //Assign new string reference
+            strRef = StringRef.Create(value);
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace VNLib.Utils.Memory
         protected string? CopyStringAtIndex(int index)
         {
             Check();
-            StringRef str = ProtectedElements[index];
+            ref readonly StringRef str = ref ProtectedElements[index];
             
             if(str.Value is null)
             {
@@ -101,7 +101,8 @@ namespace VNLib.Utils.Memory
         }
 
         ///<inheritdoc/>
-        protected override void Free() => Array.ForEach(ProtectedElements, static p => p.Erase());
+        protected override void Free() 
+            => Array.ForEach(ProtectedElements, static p => p.Erase());
 
         /// <summary>
         /// Erases the contents of the supplied string if it
@@ -109,10 +110,14 @@ namespace VNLib.Utils.Memory
         /// not be erased, nor will a null string
         /// </summary>
         /// <param name="str">The reference to the string to zero</param>
-        public static void EraseString(string? str) => StringRef.Create(str).Erase();
+        public static void EraseString(string? str) 
+            => StringRef.Create(str).Erase();
 
-        private readonly record struct StringRef(string? Value, bool IsInterned)
+        private readonly struct StringRef(string? value, bool isInterned)
         {
+            public readonly string? Value = value;
+            public readonly bool IsInterned = isInterned;
+
             public readonly void Erase()
             {
                 /*
@@ -125,8 +130,8 @@ namespace VNLib.Utils.Memory
                 }
             }
 
-            internal static StringRef Create(string? str) => str is null ? 
-                new(null, false)
+            internal static StringRef Create(string? str) => str is null 
+                ? new(value: null, isInterned: false)
                 : new(str, string.IsInterned(str) != null);
         }
     }

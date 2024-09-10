@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Runtime.CompilerServices;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -89,6 +88,7 @@ namespace VNLib.Utils.Memory.Tests
             handle.Span[120] = 10;
 
             Assert.IsTrue(*handle.GetOffset(120) == 10);
+            Assert.IsTrue(handle.GetOffsetRef(120) == 10);
         }
 
 
