@@ -26,6 +26,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 
+using VNLib.Utils.Resources;
 using VNLib.Plugins.Attributes;
 
 namespace VNLib.Plugins.Runtime
@@ -76,18 +77,14 @@ namespace VNLib.Plugins.Runtime
             Plugin = plugin;
             OriginAsm = originAsm;
             PluginType = plugin.GetType();
-            GetConsoleHandler();
+            PluginConsoleHandler = GetConsoleHandler(plugin);
         }
 
-        private void GetConsoleHandler()
+        private static ConsoleEventHandlerSignature? GetConsoleHandler(IPlugin plugin)
         {
-            //Get the console handler method from the plugin instance
-            MethodInfo? handler = (from m in PluginType.GetMethods()
-                                   where m.GetCustomAttribute<ConsoleEventHandlerAttribute>() != null
-                                   select m)
-                                   .FirstOrDefault();
             //Get a delegate handler for the plugin
-            PluginConsoleHandler = handler?.CreateDelegate<ConsoleEventHandlerSignature>(Plugin);
+            return ManagedLibrary.GetMethodsWithAttribute<ConsoleEventHandlerAttribute, ConsoleEventHandlerSignature>(plugin)
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -97,18 +94,9 @@ namespace VNLib.Plugins.Runtime
         /// <param name="configData">The host configuration DOM</param>
         internal void InitConfig(ReadOnlySpan<byte> configData)
         {
-            //Get the console handler method from the plugin instance
-            MethodInfo? confHan = PluginType.GetMethods().Where(static m => m.GetCustomAttribute<ConfigurationInitalizerAttribute>() != null)
-                                  .FirstOrDefault();
-            //Get a delegate handler for the plugin
-            ConfigInitializer? configInit = confHan?.CreateDelegate<ConfigInitializer>(Plugin);
-            if (configInit == null)
-            {
-                return;
-            }          
-
-            //Invoke
-            configInit.Invoke(configData);
+            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitalizerAttribute, ConfigInitializer>(Plugin!)
+                .FirstOrDefault()
+                ?.Invoke(configData);
         }
         
         /// <summary>
@@ -118,15 +106,9 @@ namespace VNLib.Plugins.Runtime
         /// <param name="cliArgs">The current process's CLI args</param>
         internal void InitLog(string[] cliArgs)
         {
-            //Get the console handler method from the plugin instance
-            MethodInfo? logInit = (from m in PluginType.GetMethods()
-                                   where m.GetCustomAttribute<LogInitializerAttribute>() != null
-                                   select m)
-                                   .FirstOrDefault();
-            //Get a delegate handler for the plugin
-            LogInitializer? logFunc = logInit?.CreateDelegate<LogInitializer>(Plugin);
-            //Invoke
-            logFunc?.Invoke(cliArgs);
+            ManagedLibrary.GetMethodsWithAttribute<LogInitializerAttribute, LogInitializer>(Plugin!)
+                .FirstOrDefault()
+                ?.Invoke(cliArgs);
         }
 
         /// <summary>
