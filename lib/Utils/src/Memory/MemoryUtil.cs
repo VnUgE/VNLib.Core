@@ -604,7 +604,8 @@ namespace VNLib.Utils.Memory
         /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CopyStruct<T>(void* source, ref byte target) where T : unmanaged => CopyStruct((T*)source, ref target);
+        public static void CopyStruct<T>(void* source, ref byte target) where T : unmanaged 
+            => CopyStruct((T*)source, ref target);
 
         /// <summary>
         /// Copies the memory of the structure pointed to by the source pointer to the target 
