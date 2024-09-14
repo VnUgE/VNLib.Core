@@ -64,7 +64,11 @@ namespace VNLib.Utils.Memory
         /// </summary>
         public bool IsEmpty => Length == 0;
 
-        private VnString(SubSequence<char> sequence) => _stringSequence = sequence;
+        private VnString(IMemoryHandle<char>? handle, SubSequence<char> sequence)
+        {
+            Handle = handle;
+            _stringSequence = sequence;
+        }
 
         private VnString(IMemoryHandle<char> handle, nuint start, int length)
         {
@@ -155,15 +159,8 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static VnString ConsumeHandle(IMemoryHandle<char> handle, nuint start, int length)
         {
-            if (handle is null)
-            {
-                throw new ArgumentNullException(nameof(handle));
-            }
-
-            if (length < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(length));
-            }
+            ArgumentNullException.ThrowIfNull(handle);
+            ArgumentOutOfRangeException.ThrowIfNegative(length);
 
             //Check handle bounts
             MemoryUtil.CheckBounds(handle, start, (nuint)length);
@@ -217,37 +214,46 @@ namespace VNLib.Utils.Memory
                 try
                 {
                     int length = 0;
-                    //span ref to bin buffer
-                    Span<byte> buffer = binBuffer.Span;
+
                     //Run in checked context for overflows
                     checked
                     {
                         do
-                        {
-                            //read
-                            int read = stream.Read(buffer);
-                            //guard
+                        {                            
+                            int read = stream.Read(binBuffer.Span);
+                            
                             if (read <= 0)
                             {
                                 break;
                             }
+
                             //Slice into only the read data
-                            ReadOnlySpan<byte> readbytes = buffer[..read];
+                            ReadOnlySpan<byte> readbytes = binBuffer.AsSpan(0, read);
+
                             //get num chars
                             int numChars = encoding.GetCharCount(readbytes);
+
                             //Guard for overflow
                             if (((ulong)(numChars + length)) >= int.MaxValue)
                             {
                                 throw new OverflowException();
                             }
+                            
                             //Re-alloc buffer
                             charBuffer.ResizeIfSmaller(length + numChars);
+                            
                             //Decode and update position
-                            _= encoding.GetChars(readbytes, charBuffer.Span.Slice(length, numChars));
+                            _= encoding.GetChars(
+                                bytes: readbytes, 
+                                chars: charBuffer.AsSpan(length, numChars)
+                            );
+                            
                             //Update char count
                             length += numChars;
+
                         } while (true);
                     }
+
                     return ConsumeHandle(charBuffer, 0, length);
                 }
                 catch
@@ -330,11 +336,15 @@ namespace VNLib.Utils.Memory
                         charBuffer.ResizeIfSmaller(length + numChars);
 
                         //Decode and update position
-                        _ = encoding.GetChars(binBuffer.GetSpan()[..read], charBuffer.Span.Slice(length, numChars));
+                        _ = encoding.GetChars(
+                            bytes: binBuffer.GetSpan()[..read], 
+                            chars: charBuffer.AsSpan(length, numChars)
+                        );
 
                         //Update char count
                         length += numChars;
                     } while (true);
+
                     return ConsumeHandle(charBuffer, 0, length);
                 }
                 catch
@@ -355,7 +365,6 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         public char CharAt(int index)
         {
-            //Check
             Check();
 
             //Check bounds
@@ -377,18 +386,21 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public VnString Substring(int start, int count)
-        {
-            //Check
+        {           
             Check();
+
             ArgumentOutOfRangeException.ThrowIfNegative(start, nameof(start));
             ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start + count, Length, nameof(start));
 
-            //get sub-sequence slice for the current string
-            SubSequence<char> sub = _stringSequence.Slice((nuint)start, count);
-
-            //Create new string with offsets pointing to same internal referrence
-            return new VnString(sub);
+            /*
+             * Slice the string and do not pass the handle even if we have it because the new 
+             * instance does own the buffer
+             */
+            return new VnString(
+                handle: null,
+                _stringSequence.Slice((nuint)start, count)
+            );
         }
         
         /// <summary>
@@ -418,12 +430,18 @@ namespace VNLib.Utils.Memory
         {
             get
             {
-                //get start
-                int start = range.Start.IsFromEnd ? Length - range.Start.Value : range.Start.Value;
-                //Get end
-                int end = range.End.IsFromEnd ? Length - range.End.Value : range.End.Value;
-                //Handle strings with no ending range
-                return (end >= start) ? Substring(start, (end - start)) : Substring(start);
+               
+                int start = range.Start.IsFromEnd 
+                    ? (Length - range.Start.Value) 
+                    : range.Start.Value;
+            
+                int end = range.End.IsFromEnd 
+                    ? (Length - range.End.Value) 
+                    : range.End.Value;
+               
+                return (end >= start) 
+                    ? Substring(start, (end - start)) 
+                    : Substring(start);
             }
         }
 #pragma warning restore IDE0057 // Use range operator
@@ -461,46 +479,84 @@ namespace VNLib.Utils.Memory
         public static explicit operator VnString(string value) => new (value);
         public static explicit operator VnString(ReadOnlySpan<char> value) => new (value);
         public static explicit operator VnString(char[] value) => new (value);
-        ///<inheritdoc/>
+        
+        /// <inheritdoc/>
+        /// <remarks>
+        /// NOTE: Avoid this overload if possible. If no explict overload is provided, 
+        /// it's assumed the datatype is not supported and will return false
+        /// </remarks>
         public override bool Equals(object? obj)
         {
-            if(obj is null)
-            {
-                return false;
-            }
             return obj switch
             {
-                VnString => Equals(obj as VnString), //Use operator overload
-                string => Equals(obj as string), //Use operator overload
-                char[] => Equals(obj as char[]), //Use operator overload
+                VnString => Equals(obj as VnString),
+                string => Equals(obj as string),
+                char[] => Equals(obj as char[]), 
                 _ => false,
             };
         }
+
         ///<inheritdoc/>
-        public bool Equals(VnString? other) => other is not null && Equals(other.AsSpan());
+        public bool Equals(ReadOnlySpan<char> other, StringComparison stringComparison = StringComparison.Ordinal)
+            => Length == other.Length && AsSpan().Equals(other, stringComparison);
+
         ///<inheritdoc/>
-        public bool Equals(VnString? other, StringComparison stringComparison) => other is not null && Equals(other.AsSpan(), stringComparison);
+        public bool Equals(VnString? other) 
+            => Equals(other, StringComparison.Ordinal);
+
         ///<inheritdoc/>
-        public bool Equals(string? other) => Equals(other.AsSpan());
+        public bool Equals(VnString? other, StringComparison stringComparison) 
+            => other is not null && Equals(other.AsSpan(), stringComparison);
+        
         ///<inheritdoc/>
-        public bool Equals(string? other, StringComparison stringComparison) => Equals(other.AsSpan(), stringComparison);
+        public bool Equals(string? other) 
+            => Equals(other, StringComparison.Ordinal);
+        
         ///<inheritdoc/>
-        public bool Equals(char[]? other) => Equals(other.AsSpan());
+        public bool Equals(string? other, StringComparison stringComparison) 
+            => Equals(other.AsSpan(), stringComparison);
+        
         ///<inheritdoc/>
-        public bool Equals(char[]? other, StringComparison stringComparison) => Equals(other.AsSpan(), stringComparison);
+        public bool Equals(char[]? other) 
+            => Equals(other, StringComparison.Ordinal);
+        
         ///<inheritdoc/>
-        public bool Equals(ReadOnlySpan<char> other, StringComparison stringComparison = StringComparison.Ordinal) => Length == other.Length && AsSpan().Equals(other, stringComparison);
+        public bool Equals(char[]? other, StringComparison stringComparison) 
+            => Equals(other.AsSpan(), stringComparison);
+
         ///<inheritdoc/>
-        public bool Equals(in SubSequence<char> other) => Length == other.Size && AsSpan().SequenceEqual(other.Span);
+        public bool Equals(in SubSequence<char> other)
+            => Equals(in other, StringComparison.Ordinal);
+
         ///<inheritdoc/>
-        public int CompareTo(string? other) => AsSpan().CompareTo(other, StringComparison.Ordinal);
+        public bool Equals(in SubSequence<char> other, StringComparison stringComparison)
+           => Length == other.Size && Equals(other.Span, stringComparison);
+
+        ///<inheritdoc/>
+        public int CompareTo(string? other) 
+            => CompareTo(other, StringComparison.Ordinal);
+
+        ///<inheritdoc/>
+        ///<exception cref="ArgumentNullException"></exception>
+        public int CompareTo(string? other, StringComparison stringComparison)
+        {
+            ArgumentNullException.ThrowIfNull(other);
+            return CompareTo(other.AsSpan(), stringComparison);
+        }
+
         ///<inheritdoc/>
         ///<exception cref="ArgumentNullException"></exception>
         public int CompareTo(VnString? other)
         {
             ArgumentNullException.ThrowIfNull(other);
-            return AsSpan().CompareTo(other.AsSpan(), StringComparison.Ordinal);
+            return CompareTo(other.AsSpan(), StringComparison.Ordinal);
         }
+
+        public int CompareTo(ReadOnlySpan<char> other)
+          => AsSpan().CompareTo(other, StringComparison.Ordinal);
+
+        public int CompareTo(ReadOnlySpan<char> other, StringComparison comparison) 
+            => AsSpan().CompareTo(other, comparison);
 
         /// <summary>
         /// Gets a hashcode for the underyling string by using the .NET <see cref="string.GetHashCode()"/>
@@ -512,7 +568,8 @@ namespace VNLib.Utils.Memory
         /// a character span etc
         /// </remarks>
         /// <exception cref="ObjectDisposedException"></exception>
-        public override int GetHashCode() => GetHashCode(StringComparison.Ordinal);
+        public override int GetHashCode() 
+            => GetHashCode(StringComparison.Ordinal);
 
         /// <summary>
         /// Gets a hashcode for the underyling string by using the .NET <see cref="string.GetHashCode()"/>
@@ -525,7 +582,8 @@ namespace VNLib.Utils.Memory
         /// a character span etc
         /// </remarks>
         /// <exception cref="ObjectDisposedException"></exception>
-        public int GetHashCode(StringComparison stringComparison) => string.GetHashCode(AsSpan(), stringComparison);
+        public int GetHashCode(StringComparison stringComparison) 
+            => string.GetHashCode(AsSpan(), stringComparison);
 
         ///<inheritdoc/>
         protected override void Free() => Handle?.Dispose();

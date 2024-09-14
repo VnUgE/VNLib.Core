@@ -47,8 +47,11 @@ namespace VNLib.Utils.IO.Tests
                 Assert.IsTrue(vms.CanWrite == true);
             }
 
+            //Handle should throw since the stream owns the handle and it gets dispoed
+            Assert.ThrowsException<ObjectDisposedException>(handle.ThrowIfClosed);
+
             //From existing data
-            ReadOnlySpan<byte> testSpan = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+            ReadOnlySpan<byte> testSpan = [1, 2, 3, 4, 5, 6, 7, 8];
             using (VnMemoryStream vms = new (privateHeap, testSpan))
             {
                 Assert.IsTrue(vms.Length == testSpan.Length);
@@ -125,19 +128,13 @@ namespace VNLib.Utils.IO.Tests
             ReadOnlyMemory<byte> memory = vms.AsMemory();
             Assert.AreEqual(memory.Length, testData.Length);
 
-            for (int i = 0; i < memory.Length; i++)
-            {
-                Assert.AreEqual(memory.Span[i], testData[i]);
-            }
+            Assert.IsTrue(memory.Span.SequenceEqual(testData));
 
             //Get the data as a byte array
             byte[] array = vms.ToArray();
             Assert.AreEqual(array.Length, testData.Length);
 
-            for (int i = 0; i < array.Length; i++)
-            {
-                Assert.AreEqual(array[i], testData[i]);
-            }
+            Assert.IsTrue(array.AsSpan().SequenceEqual(testData));
         }
     }
 }

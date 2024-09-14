@@ -59,13 +59,17 @@ namespace VNLib.Utils.Memory
         /// The number of elements remaining in the window
         /// </summary>
         public readonly int WindowSize => _size - _position;
-
        
         /// <summary>
         /// Advances the window position the specified number of elements
         /// </summary>
         /// <param name="count">The number of elements to advance the widnow position</param>
-        public void Advance(int count) => _position += count;
+        public void Advance(int count)
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(count, WindowSize);
+            
+            _position += count;
+        }
 
         /// <summary>
         /// Resets the sliding window to the begining of the buffer

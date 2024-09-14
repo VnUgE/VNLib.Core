@@ -62,9 +62,9 @@ namespace VNLib.Utils.Memory
             //Create a flags structure with defaults
             UnmanagedHeapDescriptor hFlags = new()
             {
-                CreationFlags = creationFlags,
-                Flags = flags,
-                HeapPointer = IntPtr.Zero
+                CreationFlags   = creationFlags,
+                Flags           = flags,
+                HeapPointer     = IntPtr.Zero
             };
 
             //Create the heap
@@ -117,15 +117,18 @@ namespace VNLib.Utils.Memory
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected override IntPtr AllocBlock(nuint elements, nuint size, bool zero) => MethodTable.Alloc(handle, elements, size, zero);
+        protected override IntPtr AllocBlock(nuint elements, nuint size, bool zero) 
+            => MethodTable.Alloc(handle, elements, size, zero);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected override IntPtr ReAllocBlock(IntPtr block, nuint elements, nuint size, bool zero) => MethodTable.Realloc(handle, block, elements, size, zero);
+        protected override IntPtr ReAllocBlock(IntPtr block, nuint elements, nuint size, bool zero) 
+            => MethodTable.Realloc(handle, block, elements, size, zero);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected override bool FreeBlock(IntPtr block) => MethodTable.Free(handle, block);
+        protected override bool FreeBlock(IntPtr block) 
+            => MethodTable.Free(handle, block);
 
         ///<inheritdoc/>
         protected override bool ReleaseHandle()
@@ -139,7 +142,7 @@ namespace VNLib.Utils.Memory
             //Cleanup the method table
             MethodTable = default;
 
-            Trace.WriteLine($"Successfully deestroyed user defined heap 0x{handle:x}");
+            Trace.WriteLine($"Successfully destroyed user defined heap 0x{handle:x}");
 
             return ret;
         }

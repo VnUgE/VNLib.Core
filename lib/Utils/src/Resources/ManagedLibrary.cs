@@ -263,7 +263,8 @@ namespace VNLib.Utils.Resources
         /// <param name="flags">The optional method binind flags</param>
         /// <returns>The delegate if found <see langword="null"/> otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static TDelegate? TryGetStaticMethod<TDelegate>(Type type, string methodName, BindingFlags flags = BindingFlags.Public) where TDelegate : Delegate
+        public static TDelegate? TryGetStaticMethod<TDelegate>(Type type, string methodName, BindingFlags flags = BindingFlags.Public) 
+            where TDelegate : Delegate
             => TryGetMethodInternal<TDelegate>(type, methodName, null, flags | BindingFlags.Static);
 
         /// <summary>
@@ -276,7 +277,8 @@ namespace VNLib.Utils.Resources
         /// <param name="flags">The optional method binind flags</param>
         /// <returns>The delegate if found <see langword="null"/> otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static TDelegate? TryGetStaticMethod<TDelegate, TType>(string methodName,BindingFlags flags = BindingFlags.Public) where TDelegate : Delegate 
+        public static TDelegate? TryGetStaticMethod<TDelegate, TType>(string methodName,BindingFlags flags = BindingFlags.Public) 
+            where TDelegate : Delegate 
             => TryGetMethodInternal<TDelegate>(typeof(TType), methodName, null, flags | BindingFlags.Static);
 
         private static TDelegate? TryGetMethodInternal<TDelegate>(Type type, string methodName, object? target, BindingFlags flags) where TDelegate : Delegate
@@ -292,6 +294,80 @@ namespace VNLib.Utils.Resources
             //get the named method and always add the static flag
             return type.GetMethod(methodName, flags, delegateArgs)
                 ?.CreateDelegate<TDelegate>(target);
+        }
+
+        /*
+         * NOTE: These functions cannot be optimized (condensed) any furhter. IE: static 
+         * and instance method searches. This is because the C# compiler will embed the 
+         * call to getType() of the object instead of loading reflection if possible 
+         * at runtime. This can cause the type to be undefined at runtime and will not 
+         * be able to find some members
+         */
+
+        /// <summary>
+        /// Gets an array of methods that have the specified attribute and match the 
+        /// delegate signature of the desired type, and returns them as an array of delegates.
+        /// </summary>
+        /// <typeparam name="TAttr">The function attribute type</typeparam>
+        /// <typeparam name="TFunc">The function delegate type</typeparam>
+        /// <param name="obj">The object instance to get the method delegates for</param>
+        /// <param name="flags">The method binding flags to search for</param>
+        /// <returns>An array of function with the desired attribute assigned, an empty array if no methods are found</returns>
+        public static TFunc[] GetMethodsWithAttribute<TAttr, TFunc>(object obj, BindingFlags flags = BindingFlags.Public | BindingFlags.Instance) 
+            where TFunc : Delegate
+            where TAttr : Attribute
+        {
+            ArgumentNullException.ThrowIfNull(obj);
+
+            //Get the delegate type
+            Type funcType = typeof(TFunc);
+
+            //Get the delegate method signature
+            Type[] delegateArgs = funcType.GetMethod("Invoke")!
+                .GetParameters()
+                .Select(static p => p.ParameterType)
+                .ToArray();
+
+            //Get the method with the attribute that matches the same signature as the delegate
+            return obj.GetType()
+                .GetMethods(flags)
+                .Where(static m => m.GetCustomAttribute(typeof(TAttr)) != null)
+                .Where(m => m.GetParameters().Select(static p => p.ParameterType).SequenceEqual(delegateArgs))
+                .Select(method => method.CreateDelegate<TFunc>(obj))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Gets an array of static methods that have the specified attribute and match the 
+        /// delegate signature of the desired type, and returns them as an array of delegates.
+        /// </summary>
+        /// <typeparam name="TAttr">The function attribute type</typeparam>
+        /// <typeparam name="TFunc">The function delegate type</typeparam>
+        /// <param name="classType">Type of the static class to get methods for</param>
+        /// <param name="flags">The method binding flags to search for</param>
+        /// <returns>An array of function with the desired attribute assigned, an empty array if no methods are found</returns>
+        public static TFunc[] GetStaticMethodsWithAttribute<TAttr, TFunc>(Type classType, BindingFlags flags = BindingFlags.Public | BindingFlags.Static)
+             where TFunc : Delegate
+             where TAttr : Attribute
+        {
+            ArgumentNullException.ThrowIfNull(classType);
+
+            //Get the delegate type
+            Type funcType = typeof(TFunc);
+
+            //Get the delegate method signature
+            Type[] delegateArgs = funcType.GetMethod("Invoke")!
+                .GetParameters()
+                .Select(static p => p.ParameterType)
+                .ToArray();
+
+            //Get the method with the attribute that matches the same signature as the delegate
+            return classType.GetType()
+                .GetMethods(flags)
+                .Where(static m => m.GetCustomAttribute(typeof(TAttr)) != null)
+                .Where(m => m.GetParameters().Select(static p => p.ParameterType).SequenceEqual(delegateArgs))
+                .Select(method => method.CreateDelegate<TFunc>(null))
+                .ToArray();
         }
     }
 }

@@ -3,6 +3,9 @@
     <RunConfiguration>
       <EnvironmentVariables>
         <VNLIB_SHARED_HEAP_DIAGNOSTICS>1</VNLIB_SHARED_HEAP_DIAGNOSTICS>
+        <TEST_RPMALLOC_LIB_PATH>../../../../../Utils.Memory/vnlib_rpmalloc/build/Debug/vnlib_rpmalloc.dll</TEST_RPMALLOC_LIB_PATH>
+        <TEST_MIMALLOC_LIB_PATH>../../../../../Utils.Memory/vnlib_mimalloc/build/Debug/vnlib_mimalloc.dll</TEST_MIMALLOC_LIB_PATH>
+        
       </EnvironmentVariables>
     </RunConfiguration>
 </RunSettings>

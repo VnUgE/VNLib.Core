@@ -1,20 +1,22 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using System;
+using System.Runtime.InteropServices;
 
 namespace VNLib.Utils.Memory.Tests
 {
     [TestClass()]
     public class NativeHeapTests
     {
-        const string RpMallocLibPath = "../../../../../Utils.Memory/vnlib_rpmalloc/build/Debug/vnlib_rpmalloc.dll";
-        const string MimallocLibPath = "../../../../../Utils.Memory/vnlib_mimalloc/build/Debug/vnlib_mimalloc.dll";
+        private static string? RpMallocLibPath => Environment.GetEnvironmentVariable("TEST_RPMALLOC_LIB_PATH");
+        
+        private static string? MimallocLibPath => Environment.GetEnvironmentVariable("TEST_MIMALLOC_LIB_PATH");
 
         [TestMethod()]
         public void LoadInTreeRpmallocTest()
         {
             //Try to load the shared heap
-            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories, HeapCreation.Shared, 0);
+            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath, DllImportSearchPath.SafeDirectories, HeapCreation.Shared, flags: 0);
 
             Assert.IsFalse(heap.IsInvalid);
 
@@ -36,7 +38,7 @@ namespace VNLib.Utils.Memory.Tests
         public void LoadInTreeMimallocTest()
         {
             //Try to load the shared heap
-            using NativeHeap heap = NativeHeap.LoadHeap(MimallocLibPath, System.Runtime.InteropServices.DllImportSearchPath.SafeDirectories, HeapCreation.Shared, 0);
+            using NativeHeap heap = NativeHeap.LoadHeap(MimallocLibPath, DllImportSearchPath.SafeDirectories, HeapCreation.Shared, flags: 0);
 
             Assert.IsFalse(heap.IsInvalid);
 

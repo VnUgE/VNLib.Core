@@ -150,20 +150,16 @@ namespace VNLib.Utils.Memory
         /// <returns>A memory structure over the buffer</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public Memory<T> AsMemory()
-        {
-            Check();
-            return new Memory<T>(Buffer, 0, InitSize);
-        }
+        public Memory<T> AsMemory() => AsMemory(start: 0, InitSize);
 
         /// <summary>
         /// Gets a memory structure around the internal buffer
         /// </summary>
-        /// <param name="count">The number of elements included in the result</param>
+        /// <param name="start">The number of elements included in the result</param>
         /// <returns>A memory structure over the buffer</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public Memory<T> AsMemory(int count) => AsMemory()[..count];
+        public Memory<T> AsMemory(int start) => AsMemory(start, InitSize - start);
 
         /// <summary>
         /// Gets a memory structure around the internal buffer
@@ -173,18 +169,20 @@ namespace VNLib.Utils.Memory
         /// <returns>A memory structure over the buffer</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public Memory<T> AsMemory(int start, int count) => AsMemory().Slice(start, count);
+        public Memory<T> AsMemory(int start, int count)
+        {
+            Check();
+            //Memory constructor will check for array bounds
+            return new(Buffer, start, count);
+        }
 
         /// <summary>
         /// Gets an array segment around the internal buffer
         /// </summary>
         /// <returns>The internal array segment</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        public ArraySegment<T> AsArraySegment()
-        {
-            Check();
-            return new ArraySegment<T>(Buffer, 0, InitSize);
-        }
+        public ArraySegment<T> AsArraySegment() => GetOffsetWrapper(0, InitSize);
+        
         
         /// <summary>
         /// Gets an array segment around the internal buffer
@@ -194,10 +192,8 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public ArraySegment<T> AsArraySegment(int start, int count)
         {
-            if(start< 0 || count < 0)
-            {
-                throw new ArgumentOutOfRangeException(start < 0 ? nameof(start) : nameof(count), "Cannot be less than zero");
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(start);
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
 
             MemoryUtil.CheckBounds(Buffer, (uint)start, (uint)count);
 

@@ -52,10 +52,7 @@ namespace VNLib.Utils.Extensions
         /// </remarks>
         public static void StoreRecord<TKey, T>(this IDictionary<TKey, T> store, TKey key, T record) where T : ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
+            ArgumentNullException.ThrowIfNull(store);
 
             T ?oldRecord = default;
             lock (store)
@@ -128,10 +125,7 @@ namespace VNLib.Utils.Extensions
         /// </remarks>
         public static ERRNO TryGetOrEvictRecord<TKey, T>(this IDictionary<TKey, T> store, TKey key, out T? value) where T : ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
+            ArgumentNullException.ThrowIfNull(store);
 
             value = default;
             //Cache current date time before entering the lock
@@ -194,10 +188,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>True if the record was found and evicted</returns>
         public static bool EvictRecord<TKey, T>(this IDictionary<TKey, T> store, TKey key) where T : ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
+            ArgumentNullException.ThrowIfNull(store);
 
             T? record = default;
             lock (store)
@@ -218,10 +209,8 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <typeparam name="TKey"></typeparam>
         /// <typeparam name="T"></typeparam>
-        public static void CollectRecords<TKey, T>(this IDictionary<TKey, T> store) where T : ICacheable
-        {
-            CollectRecords(store, DateTime.UtcNow);
-        }
+        public static void CollectRecords<TKey, T>(this IDictionary<TKey, T> store) where T : ICacheable 
+            => CollectRecords(store, DateTime.UtcNow);
 
         /// <summary>
         /// Evicts all expired records from the store
@@ -232,10 +221,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="validAfter">A time that specifies the time which expired records should be evicted</param>
         public static void CollectRecords<TKey, T>(this IDictionary<TKey, T> store, DateTime validAfter) where T : ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
+            ArgumentNullException.ThrowIfNull(store);
             //Build a query to get the keys that belong to the expired records
             IEnumerable<KeyValuePair<TKey, T>> expired = store.Where(s => s.Value.Expires < validAfter);
             //temp list for expired records
@@ -273,15 +259,8 @@ namespace VNLib.Utils.Extensions
         /// <param name="useCtx">A callback method that will be passed the record to use within an exclusive context</param>
         public static void UseRecord<TKey, T, TState>(this IDictionary<TKey, T> store, TKey key, TState state, Action<T, TState> useCtx) where T: ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
-
-            if (useCtx is null)
-            {
-                throw new ArgumentNullException(nameof(useCtx));
-            }
+            ArgumentNullException.ThrowIfNull(store);
+            ArgumentNullException.ThrowIfNull(useCtx);
 
             lock (store)
             {
@@ -303,15 +282,8 @@ namespace VNLib.Utils.Extensions
         /// <param name="useCtx">A callback method that will be passed the record to use within an exclusive context</param>
         public static void UseRecord<TKey, T>(this IDictionary<TKey, T> store, TKey key, Action<T> useCtx) where T : ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
-
-            if (useCtx is null)
-            {
-                throw new ArgumentNullException(nameof(useCtx));
-            }
+            ArgumentNullException.ThrowIfNull(store);
+            ArgumentNullException.ThrowIfNull(useCtx);
 
             lock (store)
             {
@@ -335,17 +307,15 @@ namespace VNLib.Utils.Extensions
         /// <param name="state">A user-token type state parameter to pass to the use callback method</param>
         /// <param name="useCtx">A callback method that will be passed the record to use within an exclusive context</param>
         /// <remarks>If the record is found, but is expired, the record is evicted from the store. The callback is never invoked</remarks>
-        public static void UseIfValid<TKey, T, TState>(this IDictionary<TKey, T> store, TKey key, TState state, Action<T, TState> useCtx) where T : ICacheable
+        public static void UseIfValid<TKey, T, TState>(
+            this IDictionary<TKey, T> store, 
+            TKey key, 
+            TState state, 
+            Action<T, TState> useCtx
+        ) where T : ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
-
-            if (useCtx is null)
-            {
-                throw new ArgumentNullException(nameof(useCtx));
-            }
+            ArgumentNullException.ThrowIfNull(store);
+            ArgumentNullException.ThrowIfNull(useCtx);
 
             DateTime now = DateTime.UtcNow;
             T? record;
@@ -376,15 +346,8 @@ namespace VNLib.Utils.Extensions
         /// <remarks>If the record is found, but is expired, the record is evicted from the store. The callback is never invoked</remarks>
         public static void UseIfValid<TKey, T>(this IDictionary<TKey, T> store, TKey key, Action<T> useCtx) where T : ICacheable
         {
-            if (store is null)
-            {
-                throw new ArgumentNullException(nameof(store));
-            }
-
-            if (useCtx is null)
-            {
-                throw new ArgumentNullException(nameof(useCtx));
-            }
+            ArgumentNullException.ThrowIfNull(store);
+            ArgumentNullException.ThrowIfNull(useCtx);
 
             DateTime now = DateTime.UtcNow;
             T? record;

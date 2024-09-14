@@ -39,7 +39,8 @@ namespace VNLib.Utils.Native
         ///<inheritdoc/>
         public override bool IsInvalid => handle == IntPtr.Zero;
 
-        private SafeLibraryHandle(IntPtr libHandle, bool ownsHandle) : base(IntPtr.Zero, ownsHandle) => SetHandle(libHandle);
+        private SafeLibraryHandle(IntPtr libHandle, bool ownsHandle) : base(IntPtr.Zero, ownsHandle) 
+            => SetHandle(libHandle);
 
         /// <summary>
         /// Loads a native function pointer from the library of the specified name and 

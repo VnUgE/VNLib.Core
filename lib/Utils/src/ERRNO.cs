@@ -30,8 +30,12 @@ namespace VNLib.Utils
     /// <summary>
     /// Implements a C style integer error code type. Size is platform dependent
     /// </summary>
+    /// <remarks>
+    /// Creates a new <see cref="ERRNO"/> from the specified error value
+    /// </remarks>
+    /// <param name="errno">The value of the error to represent</param>
     [StructLayout(LayoutKind.Sequential)]
-    public readonly struct ERRNO : IEquatable<ERRNO>, ISpanFormattable, IFormattable
+    public readonly struct ERRNO(nint errno) : IEquatable<ERRNO>, ISpanFormattable, IFormattable
     {
         /// <summary>
         /// Represents a successfull error code (true)
@@ -43,13 +47,7 @@ namespace VNLib.Utils
         /// </summary>
         public static readonly ERRNO E_FAIL = false;
         
-        private readonly nint ErrorCode;
-
-        /// <summary>
-        /// Creates a new <see cref="ERRNO"/> from the specified error value
-        /// </summary>
-        /// <param name="errno">The value of the error to represent</param>
-        public ERRNO(nint errno) => ErrorCode = errno;
+        private readonly nint ErrorCode = errno;
 
         /// <summary>
         /// Creates a new <see cref="ERRNO"/> from an <see cref="int"/> error code. null = 0 = false
@@ -130,13 +128,14 @@ namespace VNLib.Utils
             }
             return false;
         }
+#pragma warning disable CA1305 // Specify IFormatProvider
 
         /// <summary>
         /// The integer error value of the current instance in radix 10
         /// </summary>
         /// <returns>The radix 10 formatted error code</returns>
-        public readonly override string ToString() => ErrorCode.ToString();
 
+        public override readonly string ToString() => ErrorCode.ToString();
         /// <summary>
         /// Formats the internal nint error code as a string in specified format
         /// </summary>
@@ -144,11 +143,15 @@ namespace VNLib.Utils
         /// <returns>The formatted error code</returns>
         public readonly string ToString(string format) => ErrorCode.ToString(format);
 
-        ///<inheritdoc/>
-        public readonly bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) => ErrorCode.TryFormat(destination, out charsWritten, format, provider);
+#pragma warning restore CA1305 // Specify IFormatProvider
 
         ///<inheritdoc/>
-        public readonly string ToString(string? format, IFormatProvider? formatProvider) => ErrorCode.ToString(format, formatProvider);
+        public readonly bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) 
+            => ErrorCode.TryFormat(destination, out charsWritten, format, provider);
+
+        ///<inheritdoc/>
+        public readonly string ToString(string? format, IFormatProvider? formatProvider) 
+            => ErrorCode.ToString(format, formatProvider);
 
         public static ERRNO operator +(ERRNO err, int add) => new(err.ErrorCode + add);
         public static ERRNO operator +(ERRNO err, nint add) => new(err.ErrorCode + add);

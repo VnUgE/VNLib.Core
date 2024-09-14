@@ -416,8 +416,12 @@ namespace VNLib.Plugins.Essentials
                 //set last modified time as the files last write time
                 entity.Server.LastModified(fileLastModified);
 
+
                 //Open the file handle directly, reading will always be sequentially read and async
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
                 DirectFileStream dfs = DirectFileStream.Open(filename);
+#pragma warning restore CA2000 // Dispose objects before losing scope
 
                 long endOffset = checked((long)entity.Server.Range.End);
                 long startOffset = checked((long)entity.Server.Range.Start);

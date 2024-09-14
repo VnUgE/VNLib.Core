@@ -58,12 +58,13 @@ namespace VNLib.Utils.Memory
         {
             ArgumentNullException.ThrowIfNull(block);
             ArgumentOutOfRangeException.ThrowIfNegative(size);
-            Size = size;
-            Handle = block;
-            _offset = offset;           
 
             //Check handle bounds 
             MemoryUtil.CheckBounds(block, offset, (uint)size);
+
+            Size = size;
+            Handle = block;
+            _offset = offset;
         }      
 
         /// <summary>

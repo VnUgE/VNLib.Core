@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -33,39 +34,54 @@ namespace VNLib.Utils.Memory.Tests
             //TODO verify the heap type by loading a dynamic heap dll
         }
 
-        [TestMethod()]
-        public void UnsafeZeroMemoryTest()
+        private static bool AllZero<T>(Span<T> span) where T : struct
+            => AllZero((ReadOnlySpan<T>)span);
+
+        private static bool AllZero<T>(ReadOnlySpan<T> span)
+            where T : struct
         {
-            //Get random data buffer as a readonly span
-            ReadOnlyMemory<byte> buffer = RandomNumberGenerator.GetBytes(1024);
+            ReadOnlySpan<byte> asBytes = MemoryMarshal.Cast<T, byte>(span);
 
-            //confirm buffer is not all zero
-            Assert.IsFalse(AllZero(buffer.Span));
-
-            //Zero readonly memory
-            MemoryUtil.UnsafeZeroMemory(buffer);
-
-            //Confirm all zero
-            Assert.IsTrue(AllZero(buffer.Span));
-        }
-
-        private static bool AllZero(ReadOnlySpan<byte> span)
-        {
-            for (int i = 0; i < span.Length; i++)
+            for (int i = 0; i < asBytes.Length; i++)
             {
-                if (span[i] != 0)
+                if (asBytes[i] != 0)
                 {
                     return false;
                 }
             }
+
             return true;
         }
 
         [TestMethod()]
-        public void UnsafeZeroMemoryTest1()
+        public void UnsafeZeroMemoryTest()
         {
-            //Get random data buffer as a readonly span
-            ReadOnlySpan<byte> buffer = RandomNumberGenerator.GetBytes(1024);
+            TestZeroWithDataType<byte>();
+            TestZeroWithDataType<sbyte>();
+            TestZeroWithDataType<short>();
+            TestZeroWithDataType<ushort>();
+            TestZeroWithDataType<int>();
+            TestZeroWithDataType<uint>();
+            TestZeroWithDataType<long>();
+            TestZeroWithDataType<ulong>();
+            TestZeroWithDataType<float>();
+            TestZeroWithDataType<double>();
+            TestZeroWithDataType<decimal>();
+            TestZeroWithDataType<char>();
+            TestZeroWithDataType<bool>();
+            TestZeroWithDataType<nint>();
+            TestZeroWithDataType<nuint>();
+            TestZeroWithDataType<TestStruct>();
+        }
+
+
+        private static void TestZeroWithDataType<T>()
+            where T : struct
+        {
+            Trace.WriteLine($"Testing unsafe zero with data type {typeof(T).Name}");
+
+            //Get a random buffer that is known to not be all zeros of a given data type
+            ReadOnlySpan<T> buffer = MemoryMarshal.Cast<byte, T>(RandomNumberGenerator.GetBytes(1024));
 
             //confirm buffer is not all zero
             Assert.IsFalse(AllZero(buffer));
@@ -545,7 +561,7 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsTrue(byteSize == (nuint)Environment.SystemPageSize);
             }
 
-            using(IMemoryHandle<byte> safeByteBuffer = MemoryUtil.SafeAllocNearestPage(TEST_1, false))
+            using (IMemoryHandle<byte> safeByteBuffer = MemoryUtil.SafeAllocNearestPage(TEST_1, false))
             {
                 nuint byteSize = MemoryUtil.ByteSize(safeByteBuffer);
 
@@ -712,7 +728,7 @@ namespace VNLib.Utils.Memory.Tests
 
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(ReadOnlyMemory<byte>.Empty, 0, null, 0, 1));
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(ReadOnlySpan<byte>.Empty, 0, null, 0, 1));
-           
+
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray((IMemoryHandle<byte>)null, 0, testArray, 0, 1));
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(testHandle, 0, null, 0, 1));
 
@@ -736,7 +752,7 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(testHandle, 0, Array.Empty<byte>(), 0, 1));
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.CopyArray(Array.Empty<byte>(), 0, Array.Empty<byte>(), 0, 1));
-           
+
 
 
             /*
@@ -826,10 +842,10 @@ namespace VNLib.Utils.Memory.Tests
             MemoryUtil.CopyArray(testArray, 0, testHandle, 0, 0);
             MemoryUtil.CopyArray(testArray, 0, [], 0, 0);
 
-             /*
-              * Test negative values for span/memory overloads that 
-              * accept integers
-              */
+            /*
+             * Test negative values for span/memory overloads that 
+             * accept integers
+             */
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, -1, testMem2, 0, 16));
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testHandle, 0, testMem2, -1, 16));
@@ -844,6 +860,50 @@ namespace VNLib.Utils.Memory.Tests
 
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem.Span, -1, testHandle, 0, 16));
             Assert.ThrowsException<ArgumentOutOfRangeException>(() => MemoryUtil.Copy(testMem.Span, 0, testHandle, 0, -1));
+        }
+
+        [TestMethod]
+        public unsafe void ByteSizeTest()
+        {
+            Assert.AreEqual(
+                MemoryUtil.ByteCount<byte>(16),
+                actual: 16
+            );
+
+            Assert.AreEqual(
+                MemoryUtil.ByteCount<int>(16),
+                actual: 16 * sizeof(int)
+             );
+
+            Assert.AreEqual(
+               MemoryUtil.ByteCount<long>(16),
+               actual: 16 * sizeof(long)
+            );
+
+            Assert.AreEqual(
+                MemoryUtil.ByteCount<float>(16),
+                actual: 16 * sizeof(float)
+            );
+
+            Assert.AreEqual(
+                MemoryUtil.ByteCount<double>(16),
+                actual: 16 * sizeof(double)
+            );
+
+            Assert.AreEqual(
+                MemoryUtil.ByteCount<nint>(16),
+                actual: 16 * sizeof(nint)
+            );
+
+            Assert.AreEqual(
+                MemoryUtil.ByteCount<TestStruct>(16),
+                actual: 16 * sizeof(TestStruct)
+            );
+
+            Assert.AreEqual(
+                MemoryUtil.ByteCount<TestStruct>(0),
+                actual: 0
+            );
         }
     }
 }

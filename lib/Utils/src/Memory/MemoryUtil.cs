@@ -155,7 +155,8 @@ namespace VNLib.Utils.Memory
         /// <returns>An <see cref="IUnmangedHeap"/> for the current process</returns>
         /// <exception cref="SystemException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
-        public static IUnmangedHeap InitializeNewHeapForProcess(bool globalZero = false) => InitHeapInternal(false, false, globalZero);
+        public static IUnmangedHeap InitializeNewHeapForProcess(bool globalZero = false) 
+            => InitHeapInternal(false, false, globalZero);
 
         private static IUnmangedHeap InitHeapInternal(bool isShared, bool enableStats, bool globalZero)
         {
@@ -228,6 +229,19 @@ namespace VNLib.Utils.Memory
 
         #region Zero
 
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        private static void ZeroByRef<T>(ref T src, uint elements)
+        {
+            Debug.Assert(Unsafe.IsNullRef(ref src) == false, "Null reference passed to ZeroByRef");
+
+            //Call init block on bytes
+            Unsafe.InitBlock(
+                ref Refs.AsByte(ref src, 0),
+                value: 0,
+                byteCount: ByteCount<T>(elements)
+            );
+        }
+
         /// <summary>
         /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
@@ -241,11 +255,10 @@ namespace VNLib.Utils.Memory
                 return;
             }
 
-            //Calls memset
             ZeroByRef(
-                ref Refs.AsByte(block, 0), 
-                (uint)block.Length
-            );
+               ref MemoryMarshal.GetReference(block),  //Get typed reference
+               (uint)block.Length  //block must be a positive value
+           );
         }
 
         /// <summary>
@@ -260,28 +273,18 @@ namespace VNLib.Utils.Memory
             {
                 return;
             }
-            
-            uint byteSize = ByteCount<T>((uint)block.Length);
 
             //Pin memory and get pointer
             using MemoryHandle handle = block.Pin();
+
             //Calls memset
-            Unsafe.InitBlock(handle.Pointer, 0, byteSize);
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-        private static void ZeroByRef<T>(ref T src, uint elements)
-        {
-            Debug.Assert(Unsafe.IsNullRef(ref src) == false, "Null reference passed to ZeroByRef");
-
-            //Call init block on bytes
             Unsafe.InitBlock(
-                ref Refs.AsByte(ref src, 0), 
-                0, 
-                ByteCount<T>(elements)
+                startAddress: handle.Pointer, 
+                value: 0, 
+                byteCount: ByteCount<T>((uint)block.Length)
             );
         }
-
+      
         /*
          * Initializing a non-readonly span/memory as of .NET 6.0 is a reference 
          * reintpretation, essentially a pointer cast, so there is little/no cost 
@@ -294,7 +297,8 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The unmanaged</typeparam>
         /// <param name="block">The block of memory to initialize</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void InitializeBlock<T>(Span<T> block) where T : struct => UnsafeZeroMemory<T>(block);
+        public static void InitializeBlock<T>(Span<T> block) where T : struct 
+            => UnsafeZeroMemory<T>(block);
 
         /// <summary>
         /// Initializes a block of memory with zeros 
@@ -302,7 +306,8 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The unmanaged</typeparam>
         /// <param name="block">The block of memory to initialize</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void InitializeBlock<T>(Memory<T> block) where T : struct => UnsafeZeroMemory<T>(block);
+        public static void InitializeBlock<T>(Memory<T> block) where T : struct 
+            => UnsafeZeroMemory<T>(block);
 
         /// <summary>
         /// Initializes the entire array with zeros 
@@ -398,7 +403,8 @@ namespace VNLib.Utils.Memory
         /// <param name="block">A pointer to the block of memory to zero</param>
         /// <param name="itemCount">The number of elements in the block to zero</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void InitializeBlock<T>(IntPtr block, int itemCount) where T : unmanaged => InitializeBlock((T*)block, itemCount);
+        public static void InitializeBlock<T>(IntPtr block, int itemCount) where T : unmanaged 
+            => InitializeBlock((T*)block, itemCount);
 
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
@@ -434,7 +440,8 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="structPtr">The pointer to the allocated structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(void* structPtr) where T: unmanaged => ZeroStruct((T*)structPtr);
+        public static void ZeroStruct<T>(void* structPtr) where T: unmanaged 
+            => ZeroStruct((T*)structPtr);
 
         /// <summary>
         /// Zeroes a block of memory pointing to the structure
@@ -442,7 +449,8 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="block">The pointer to the allocated structure</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ZeroStruct<T>(IntPtr block) where T : unmanaged => ZeroStruct<T>(block.ToPointer());
+        public static void ZeroStruct<T>(IntPtr block) where T : unmanaged 
+            => ZeroStruct<T>(block.ToPointer());
 
 
         #endregion
@@ -462,10 +470,11 @@ namespace VNLib.Utils.Memory
             ThrowIfNullRef(in source, nameof(target));
             ThrowIfNullRef(ref target, nameof(target));
 
-            //Recover byte reference of target struct
-            ref byte dst = ref Unsafe.As<T, byte>(ref target);
-
-            Unsafe.CopyBlockUnaligned(ref dst, in source, (uint)sizeof(T));
+            Unsafe.CopyBlockUnaligned(
+                destination: ref Unsafe.As<T, byte>(ref target),    //Recover byte reference of target struct
+                in source,
+                byteCount: ByteCount<T>(1u)
+            );
         }
 
         /// <summary>
@@ -485,11 +494,12 @@ namespace VNLib.Utils.Memory
             ThrowIfNullRef(in source, nameof(source));
             ThrowIfNullRef(in target, nameof(target));
 
-            //Recover byte reference to struct
-            ref byte src = ref Unsafe.As<T, byte>(ref Unsafe.AsRef(in source));
-
             //Memmove
-            Unsafe.CopyBlockUnaligned(ref target, ref src, (uint)sizeof(T));
+            Unsafe.CopyBlockUnaligned(
+                ref target, 
+                in Unsafe.As<T, byte>(ref Unsafe.AsRef(in source)),     //Recover byte reference to struct
+                byteCount: ByteCount<T>(1u)
+            );
         }
 
 
@@ -594,7 +604,8 @@ namespace VNLib.Utils.Memory
         /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CopyStruct<T>(void* source, ref byte target) where T : unmanaged => CopyStruct((T*)source, ref target);
+        public static void CopyStruct<T>(void* source, ref byte target) where T : unmanaged 
+            => CopyStruct((T*)source, ref target);
 
         /// <summary>
         /// Copies the memory of the structure pointed to by the source pointer to the target 
@@ -660,7 +671,8 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CopyStruct<T>(void* source, Span<byte> target) where T : unmanaged => CopyStruct((T*)source, target);
+        public static void CopyStruct<T>(void* source, Span<byte> target) where T : unmanaged 
+            => CopyStruct((T*)source, target);
 
         /// <summary>
         /// Copies the memory of the structure pointed to by the source pointer to the target 
@@ -675,7 +687,8 @@ namespace VNLib.Utils.Memory
         /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CopyStruct<T>(IntPtr source, ref byte target) where T : unmanaged => CopyStruct(ref GetRef<T>(source), ref target);
+        public static void CopyStruct<T>(IntPtr source, ref byte target) where T : unmanaged 
+            => CopyStruct(ref GetRef<T>(source), ref target);
         
 
         /// <summary>
@@ -694,7 +707,7 @@ namespace VNLib.Utils.Memory
             Unsafe.CopyBlockUnaligned(
                 ref Refs.AsByte(ref target, 0), 
                 in Refs.AsByteR(in source, 0), 
-                (uint)sizeof(T)
+                byteCount: ByteCount<T>(1u)
             );
         }
 
@@ -711,7 +724,11 @@ namespace VNLib.Utils.Memory
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(target);
 
-            Unsafe.CopyBlockUnaligned(target, source, (uint)sizeof(T));
+            Unsafe.CopyBlockUnaligned(
+                destination: target, 
+                source, 
+                byteCount: ByteCount<T>(1u)
+            );
         }
 
 
@@ -735,7 +752,7 @@ namespace VNLib.Utils.Memory
                 return;
             }
 
-            //Check bounds
+            //Check bounds (will verify that count is a positive integer)
             CheckBounds(source, sourceOffset, count);
             CheckBounds(dest, destOffset, (uint)count);
            
@@ -1151,7 +1168,7 @@ namespace VNLib.Utils.Memory
         public static nuint ByteSize<T>(IMemoryHandle<T> handle)
         {
             ArgumentNullException.ThrowIfNull(handle);
-            return checked(handle.Length * (nuint)Unsafe.SizeOf<T>());
+            return ByteCount<T>(handle.Length);
         }
 
         /// <summary>
@@ -1162,7 +1179,8 @@ namespace VNLib.Utils.Memory
         /// <returns>The number of bytes pointed to by the handle</returns>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nuint ByteSize<T>(in UnsafeMemoryHandle<T> handle) where T : unmanaged => checked(handle.Length * (nuint)sizeof(T));
+        public static nuint ByteSize<T>(in UnsafeMemoryHandle<T> handle) where T : unmanaged
+            => ByteCount<T>(handle.Length);
 
         /// <summary>
         /// Gets the byte multiple of the length parameter
@@ -1172,7 +1190,8 @@ namespace VNLib.Utils.Memory
         /// <returns>The byte multiple of the number of elments</returns>
         /// <exception cref="OverflowException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nuint ByteCount<T>(nuint elementCount) => checked(elementCount * (nuint)Unsafe.SizeOf<T>());
+        public static nuint ByteCount<T>(nuint elementCount) 
+            => checked(elementCount * (nuint)Unsafe.SizeOf<T>());
 
         /// <summary>
         /// Gets the byte multiple of the length parameter
@@ -1182,7 +1201,8 @@ namespace VNLib.Utils.Memory
         /// <returns>The byte multiple of the number of elments</returns>
         /// <exception cref="OverflowException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ByteCount<T>(uint elementCount) => checked(elementCount * (uint)Unsafe.SizeOf<T>());
+        public static uint ByteCount<T>(uint elementCount) 
+            => checked(elementCount * (uint)Unsafe.SizeOf<T>());
 
         /// <summary>
         /// Gets the byte multiple of the length parameter. NOTE: Does not verify negative values
@@ -1192,7 +1212,8 @@ namespace VNLib.Utils.Memory
         /// <returns>The byte multiple of the number of elments</returns>
         /// <exception cref="OverflowException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static nint ByteCount<T>(nint elementCount) => checked(elementCount * Unsafe.SizeOf<T>());
+        public static nint ByteCount<T>(nint elementCount) 
+            => checked(elementCount * Unsafe.SizeOf<T>());
 
         /// <summary>
         /// Gets the byte multiple of the length parameter. NOTE: Does not verify negative values
@@ -1202,7 +1223,8 @@ namespace VNLib.Utils.Memory
         /// <returns>The byte multiple of the number of elments</returns>
         /// <exception cref="OverflowException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ByteCount<T>(int elementCount) => checked(elementCount * Unsafe.SizeOf<T>());
+        public static int ByteCount<T>(int elementCount) 
+            => checked(elementCount * Unsafe.SizeOf<T>());
 
         /// <summary>
         /// Checks if the offset/count paramters for the given memory handle 
@@ -1243,12 +1265,8 @@ namespace VNLib.Utils.Memory
         /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckBounds<T>(Span<T> block, int offset, int count)
-        {
-            ArgumentOutOfRangeException.ThrowIfNegative(offset);
-            ArgumentOutOfRangeException.ThrowIfNegative(count);
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, block.Length, nameof(count));
-        }
+        public static void CheckBounds<T>(Span<T> block, int offset, int count) 
+            => CheckBounds((ReadOnlySpan<T>)block, offset, count);
 
         /// <summary>
         /// Checks if the offset/count paramters for the given block
@@ -1277,12 +1295,8 @@ namespace VNLib.Utils.Memory
         /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void CheckBounds<T>(Memory<T> block, int offset, int count)
-        {
-            ArgumentOutOfRangeException.ThrowIfNegative(offset);
-            ArgumentOutOfRangeException.ThrowIfNegative(count);
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, block.Length, nameof(count));
-        }
+        public static void CheckBounds<T>(Memory<T> block, int offset, int count) 
+            => CheckBounds((ReadOnlyMemory<T>)block, offset, count);
 
         /// <summary>
         /// Checks if the offset/count paramters for the given block
@@ -1406,7 +1420,8 @@ namespace VNLib.Utils.Memory
         /// <param name="size">The size of the sequence</param>
         /// <returns>The span pointing to the memory at the supplied addres</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> GetSpan<T>(IntPtr address, int size) => new(address.ToPointer(), size);
+        public static Span<T> GetSpan<T>(IntPtr address, int size) 
+            => new(address.ToPointer(), size);
 
         /// <summary>
         /// Gets a <see cref="Span{T}"/> over the block of memory pointed to by the supplied handle.
@@ -1417,7 +1432,8 @@ namespace VNLib.Utils.Memory
         /// <param name="size">The size of the span (the size of the block)</param>
         /// <returns>A span over the block of memory pointed to by the handle of the specified size</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> GetSpan<T>(ref readonly MemoryHandle handle, int size) => new(handle.Pointer, size);
+        public static Span<T> GetSpan<T>(ref readonly MemoryHandle handle, int size) 
+            => new(handle.Pointer, size);
         
         /// <summary>
         /// Gets a <see cref="Span{T}"/> over the block of memory pointed to by the supplied handle.
@@ -1427,7 +1443,8 @@ namespace VNLib.Utils.Memory
         /// <param name="size">The size of the span (the size of the block)</param>
         /// <returns>A span over the block of memory pointed to by the handle of the specified size</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> GetSpan<T>(MemoryHandle handle, int size) => new(handle.Pointer, size);
+        public static Span<T> GetSpan<T>(MemoryHandle handle, int size) 
+            => new(handle.Pointer, size);
 
         /// <summary>
         /// Recovers a reference to the supplied pointer
@@ -1436,7 +1453,8 @@ namespace VNLib.Utils.Memory
         /// <param name="address">The base address to cast to a reference</param>
         /// <returns>The reference to the supplied address</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ref T GetRef<T>(IntPtr address) => ref Unsafe.AsRef<T>(address.ToPointer());
+        public static ref T GetRef<T>(IntPtr address) 
+            => ref Unsafe.AsRef<T>(address.ToPointer());
 
         /// <summary>
         /// Recovers a reference to the supplied pointer
@@ -1458,7 +1476,8 @@ namespace VNLib.Utils.Memory
         /// <param name="handle">A reference to the handle to get the intpr for</param>
         /// <returns>A managed pointer from the handle</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static IntPtr GetIntptr(ref readonly MemoryHandle handle) => new(handle.Pointer);
+        public static IntPtr GetIntptr(ref readonly MemoryHandle handle) 
+            => new(handle.Pointer);
 
         /// <summary>
         /// Rounds the requested byte size up to the nearest page
