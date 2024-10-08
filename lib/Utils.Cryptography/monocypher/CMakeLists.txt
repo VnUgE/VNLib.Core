@@ -25,7 +25,7 @@ add_library(${CMAKE_PROJECT_NAME}_static STATIC ${VNLIB_MONOCYPHER_SOURCES} ${HE
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
-	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME _vnmonocypher)
+	set_target_properties(${CMAKE_PROJECT_NAME} ${CMAKE_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME vn_monocypher)
 endif()
 
 #Setup the compiler options 

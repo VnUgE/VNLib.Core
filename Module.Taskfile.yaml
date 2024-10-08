@@ -14,6 +14,15 @@ vars:
   MS_ARGS: '/p:RunAnalyzersDuringBuild=false /p:UseCommonOutputDirectory=true /p:BuildInParallel=true /p:MultiProcessorCompilation=true /p:ErrorOnDuplicatePublishOutputFiles=false'
   PACK_OUT: '{{ .OUTPUT_DIR }}/{{ .HEAD_SHA }}/pkg'
 
+  # the directories where native projects exist and need to be built
+  # (compress must come after rpmalloc because it's a dep)
+  NATIVE_LIB_DIRS: '
+    lib/Utils.Memory/vnlib_rpmalloc
+    lib/Utils.Memory/vnlib_mimalloc
+    lib/Utils.Cryptography/monocypher
+    lib/Utils.Cryptography/argon2
+    lib/Net.Compression/vnlib_compress'
+
 tasks:
 
   default:
@@ -59,22 +68,32 @@ tasks:
   test:
     desc: "Runs managed tests against the entire solution and all loaded test projects"
     vars:
-      RPMALLOC_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Memory/vnlib_rpmalloc/build/Debug/vnlib_rpmalloc'
-      MIMALLOC_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Memory/vnlib_mimalloc/build/Debug/vnlib_mimalloc'
+      NATIVE_BUILD_PATH: 'build/{{ OS }}/{{ if eq OS "windows"}}Debug/{{end}}'
+      LIB_PREFIX: '{{ if eq OS "windows"}}vnlib{{else}}libvn{{end}}'
+      #these are native library paths produced when the child modules are built
+      RPMALLOC_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Memory/vnlib_rpmalloc/{{ .NATIVE_BUILD_PATH }}{{ .LIB_PREFIX }}_rpmalloc'
+      MIMALLOC_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Memory/vnlib_mimalloc/{{ .NATIVE_BUILD_PATH}}{{ .LIB_PREFIX }}_mimalloc'
+      VNCOMPRESS_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Net.Compression/vnlib_compress/{{ .NATIVE_BUILD_PATH }}{{ .LIB_PREFIX }}_compress'
+      MONOCYPHER_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Cryptography/monocypher/{{ .NATIVE_BUILD_PATH }}{{ .LIB_PREFIX }}_monocypher'
+      ARGON2_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Cryptography/argon2/{{ .NATIVE_BUILD_PATH }}argon2'
     cmds:
      - cmd: echo "Ensure you have run 'task dev-init' before running tests to build native libraries"
        silent: true
      - cmd: dotnet test
         {{ .CLI_ARGS }}
+        --configuration debug
         --verbosity normal
-        --framework {{ .FRAMEWORK | default "net8.0" }}
+        --framework {{ .FRAMEWORK | default "net8.0" }}        
         --environment VNLIB_SHARED_HEAP_DIAGNOSTICS="1"
         --environment TEST_RPMALLOC_LIB_PATH="{{ .RPMALLOC_LIB_PATH }}"
         --environment TEST_MIMALLOC_LIB_PATH="{{ .MIMALLOC_LIB_PATH }}"
-  
+        --environment TEST_COMPRESS_LIB_PATH="{{ .VNCOMPRESS_LIB_PATH }}"
+        --environment VNLIB_MONOCYPHER_DLL_PATH="{{ .MONOCYPHER_LIB_PATH }}"
+        --environment VNLIB_ARGON2_DLL_PATH="{{ .ARGON2_LIB_PATH }}"
 
 #called by build pipeline to clean module
   clean:
+    desc: "Used by vnbuild to clean the entire module"
     ignore_error: true
     cmds:
     #clean solution
@@ -84,15 +103,25 @@ tasks:
   dev-init:
     desc: 'Configures the module for local development'
     cmds:
-    #build native libs for development
-     - cd lib/Utils.Memory/vnlib_rpmalloc && task dev-init
-     - cd lib/Utils.Memory/vnlib_mimalloc && task dev-init
-     - cd lib/Utils.Cryptography/monocypher && task build
-     - cd lib/Utils.Cryptography/argon2 && task build
-     - cd lib/Net.Compression/vnlib_compress && task build 
-     - cmd: echo "dev init complete"
+     #build native libs for development
+     - for: { var: NATIVE_LIB_DIRS }
+       cmd: cd '{{ .ITEM }}' && task dev-init
+
+     - cmd: dotnet restore
+
+     - cmd: echo "Module developer initialization complete"
        silent: true
-    
+
+  run-dev-init:
+    internal: true
+    cmds:
+     - cmd: cd '{{ .ITEM }}' && task dev-init
+
+  clean-native:
+    desc: 'Cleans the native libraries for the module'
+    cmds:
+     - for: { var: NATIVE_LIB_DIRS }
+       cmd: cd {{ .ITEM }} && task clean    
 
 #Internal tasks
   build_debug:

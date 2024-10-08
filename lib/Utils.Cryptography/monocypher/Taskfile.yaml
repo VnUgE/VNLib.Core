@@ -12,6 +12,8 @@ vars:
   MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
   PROJECT_NAME: 'vnlib_monocypher'
   MODULE_NAME: 'vnlib.core'
+  BUILD_DIR: 'build/{{ OS }}'
+  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
 
 tasks:
 
@@ -20,15 +22,23 @@ tasks:
     cmds:
       #build with defaults
       - task: build
-      - cmd: echo "Your vnlib_monocypher dll file can be found in '{{.USER_WORKING_DIR}}/build'"
+      - cmd: echo "Your {{ .PROJECT_NAME }} dll file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
         silent: true
   
   build:
     cmds:
-     #init cmake build
-     - cmake -B./build 
-     - cmake --build build/ --config Debug
-     - cmake --build build/ --config Release 
+     - cmd: echo Building {{ .PROJECT_NAME }} in {{ .BUILD_TYPE }} mode
+       silent: true
+
+     - cmake {{ .CLI_ARGS }}
+       -B./{{ .BUILD_DIR }} 
+       -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}       
+
+     #compile     
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config Debug
+       platforms: [ windows ]   #debug builds only work on Windows 
+
+     - cmake --build {{ .BUILD_DIR }}/ --config Release 
  
   postbuild_success:
     vars:
@@ -43,22 +53,22 @@ tasks:
     #get licenses for debug
     - task: licenses
       vars: 
-        TARGET: './build/Debug'
+        TARGET: '{{ .BUILD_DIR }}/Debug'
 
     - task: licenses
       vars:
-        TARGET: './build/Release'
+        TARGET: './{{ .BUILD_DIR }}/Release'
    
 
     #static debug lib
-    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
+    - cd {{ .BUILD_DIR }}/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
     #dynamic debug lib
-    - cd build/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
+    - cd {{ .BUILD_DIR }}/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
     
     #release static lib
-    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
+    - cd {{ .BUILD_DIR }}/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
     #release dll
-    - cd build/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+    - cd {{ .BUILD_DIR }}/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
 
     #source code
     - task: pack_source
@@ -78,8 +88,17 @@ tasks:
      #pack monocypher source code and create the archive
      - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czf 'bin/src.tgz' ."
 
+  dev-init:
+    desc: 'Configures the project for local development'
+    cmds:
+     - task: build
+       vars: { BUILD_TYPE: Debug }
+
+     - cmd: echo "dev init complete"
+       silent: true
+
   clean:
     ignore_error: true
-    cmds: 
-     - cmd: powershell -Command "Remove-Item -Recurse './bin'"
-     - cmd: powershell -Command "Remove-Item -Recurse './build'"
+    cmds:
+     - for: [ bin/, build/ ]
+       cmd: powershell rm -Recurse -Force '{{ .ITEM }}'

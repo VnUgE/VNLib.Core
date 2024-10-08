@@ -5,14 +5,7 @@ namespace VNLib.Hashing.Tests
     [TestClass()]
     public class VnArgon2Tests
     {
-        private static string LocalArgon2Lib = "../../../../../Utils.Cryptography/argon2/build/Debug/Argon2";
-
-        [TestInitialize]
-        public void InitDefaultLibPath()
-        {
-            Environment.SetEnvironmentVariable(VnArgon2.ARGON2_LIB_ENVIRONMENT_VAR_NAME, LocalArgon2Lib);
-        }
-
+        
         [TestMethod]
         public void LoadLibraryTest()
         {
