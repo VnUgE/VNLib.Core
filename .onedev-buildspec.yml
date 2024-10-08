@@ -75,7 +75,7 @@ jobs:
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
   - !BranchUpdateTrigger
-    branches: '** -master'
+    branches: develop
   jobDependencies:
   - jobName: Staging Tests
     requireSuccessful: true
