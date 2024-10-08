@@ -1,9 +1,9 @@
-version: 33
+version: 35
 jobs:
 - name: Repo Sync Push
   steps:
   - !PushRepository
-    name: Github sync push
+    name: Github push sync
     remoteUrl: https://github.com/VnUgE/VNLib.Core.git
     userName: VnUgE
     passwordSecret: git-access-token
@@ -21,6 +21,64 @@ jobs:
     projects: VNLib.Core
   - !BranchUpdateTrigger
     projects: VNLib.Core
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: Staging Tests
+  steps:
+  - !CheckoutStep
+    name: banch checkout
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: Initalize dependencies
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |
+        task -t .\Module.Taskfile.yaml dev-init
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: Run unit tests
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |
+        task -t .\Module.Taskfile.yaml test
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !BranchUpdateTrigger
+    branches: '** -master'
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: Test build
+  steps:
+  - !CheckoutStep
+    name: clone
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    checkoutPath: '@project_name@/'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: VNBuild Build
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |
+        vnbuild build -S
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !BranchUpdateTrigger
+    branches: '** -master'
+  jobDependencies:
+  - jobName: Staging Tests
+    requireSuccessful: true
   retryCondition: never
   maxRetries: 3
   retryDelay: 30

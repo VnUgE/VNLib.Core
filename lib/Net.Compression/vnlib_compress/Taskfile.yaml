@@ -12,6 +12,7 @@ vars:
   PROJECT_NAME: 'vnlib_compress'
   RPMALLOC_SRC_DIR: '../../Utils.Memory/vnlib_rpmalloc'    
   BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
+  BUILD_DIR: 'build/{{ OS }}'
 
 tasks:
 
@@ -21,35 +22,45 @@ tasks:
      - cmd: echo "Building {{ .PROJECT_NAME }}"
        silent: true
      
-     - cmake -Bbuild/ {{ .CLI_ARGS }}
-       '-DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}'
+     - cmd: cmake {{ .CLI_ARGS }}
+         -B{{ .BUILD_DIR }}/
+         -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
      
-     - cmake --build build/ --config Release    
+     - cmake --build {{ .BUILD_DIR }}/ --config Release    
 
   #called by ci pipline to build the winx64 project
   build:
-   desc: 'DO NOT USE. This is an internal task'
-   platforms: [ windows ]    
+   desc: 'DO NOT USE. This is an internal task'  
 
    cmds:
       #the CI pipline may have issues reading modules if the third-party dir is not cleaned every time a build runs, only an issue after build
      - defer: { task: clean-third-party }
- 
+     
      #build the local rpmalloc library for linking
      - task: build_rpmalloc
        vars: { RPMALLOC_ARGS: '-DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}' }
 
-     #configure the build with rpmalloc since we know the source must be local during CI
-     - cmake -B./build {{ .CLI_ARGS }} 
-       '-DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}'
-       '-DCI_PRECOMPILE=ON'
-       '-DNATIVE_HEAP_NAME=vnlib_rpmalloc_static'
-       '-DNATIVE_HEAP_SRC={{ .RPMALLOC_SRC_DIR }}'
-       '-DNATIVE_HEAP_INCLUDES={{ .RPMALLOC_SRC_DIR }}'
+     #build the project
+     - task: build-internal
+       vars: { CLI_ARGS: '{{ .CLI_ARGS }}' }
+  
+  build-internal:
+    internal: true
+    cmds:
+
+     #configure the build with vnlib_rpmalloc since we know the source must be local during CI
+     - cmake {{ .CLI_ARGS }} 
+       -B{{ .BUILD_DIR }}
+       -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
+       -DCI_PRECOMPILE=ON
+       -DNATIVE_HEAP_NAME={{ if eq OS "windows" }}vnlib_rpmalloc{{else}}libvn_rpmalloc.a{{end}}
+       -DNATIVE_HEAP_SRC={{ .RPMALLOC_SRC_DIR }}
+       -DNATIVE_HEAP_BIN={{ .RPMALLOC_SRC_DIR }}/{{ .BUILD_DIR }}
+       -DNATIVE_HEAP_INCLUDES={{ .RPMALLOC_SRC_DIR }}
      
      #build for platform, since Windows, build in both modes
-     - cmake --build build/ --config debug
-     - cmake --build build/ --config release
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config debug
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config release
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
@@ -93,9 +104,9 @@ tasks:
     internal: true
     deps:
       - task: embed
-        vars: { TARGET: './build/{{ .BUILD_MODE }}' }
+        vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}' }
     cmds:
-      - cmd: cd build/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
+      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
 
  #add embeded resources to the binary output for distribution
   embed:
@@ -126,20 +137,29 @@ tasks:
      - cmd: powershell rm LICENSE 
 
 
+  dev-init:
+    desc: 'Configures the project for local development'
+    cmds:
+     - task: build-internal
+       vars: { BUILD_TYPE: Debug }
+  
+     - cmd: echo "dev init complete"
+       silent: true
+
   #Remove the output dirs on clean
   clean:
-    desc: 'Cleans any build artifcats and output directories'
+    desc: 'Cleans any build artifacts and output directories'
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell rm -Recurse '{{ .ITEM }}' -Force
+       cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
     
   clean-third-party:
     internal: true
     ignore_error: true
     cmds:
-    - cmd: powershell rm -Recurse -Force 'build/_deps/'
+    - cmd: powershell rm -Recurse -Force '{{ .BUILD_DIR }}/_deps/'
       platforms: [ windows ]
-    - cmd: rm -rf 'build/_deps/'
+    - cmd: rm -rf '{{ .BUILD_DIR }}/_deps/'
       platforms: [ linux, darwin ]
        

@@ -11,6 +11,8 @@ version: '3'
 vars:
   PROJECT_NAME: 'Argon2'
   MODULE_NAME: 'vnlib.core'
+  BUILD_DIR: 'build/{{ OS }}'
+  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
 
 tasks:
 
@@ -19,15 +21,21 @@ tasks:
     cmds:
       #build with defaults
       - task: build
-      - cmd: echo "Your Argon2 library file can be found in '{{ .USER_WORKING_DIR }}/build'"
+      - cmd: echo "Your {{ .PROJECT_NAME }} dll file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
         silent: true
   
   build:
     cmds:
-     #init cmake build with greedy enabled
-     - cmake -B./build 
-     - cmake --build build/ --config debug
-     - cmake --build build/ --config release 
+     - cmd: echo Building {{ .PROJECT_NAME }} in {{ .BUILD_TYPE }} mode
+       silent: true
+
+     - cmake {{ .CLI_ARGS }}
+       -B./{{ .BUILD_DIR }} 
+       -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}       
+
+     #compile     
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config Debug
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config Release 
 
  
   postbuild_success:
@@ -61,9 +69,9 @@ tasks:
     internal: true
     deps:
       - task: embed
-        vars: { TARGET: './build/{{ .BUILD_MODE }}' }
+        vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}' }
     cmds:
-      - cmd: cd build/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
+      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
 
   #add embeded resources to the binary output for distribution
   embed:
@@ -95,8 +103,17 @@ tasks:
      #just pack up current directory, excluding build, bin, and git directories
      - tar {{ .EXCLUDES }} -czf 'bin/src.tgz' {{ .INCLUDES }}
 
+  dev-init:
+    desc: 'Configures the project for local development'
+    cmds:
+     - task: build
+       vars: { BUILD_TYPE: Debug }
+
+     - cmd: echo "dev init complete"
+       silent: true
+
   clean:
     ignore_error: true
-    cmds: 
+    cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell -Command "Remove-Item -Recurse '{{ .ITEM }}'"
+       cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
