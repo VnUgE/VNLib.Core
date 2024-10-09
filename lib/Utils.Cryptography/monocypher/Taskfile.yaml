@@ -10,10 +10,12 @@ version: '3'
 
 vars:
   MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
-  PROJECT_NAME: 'vnlib_monocypher'
-  MODULE_NAME: 'vnlib.core'
+  PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_monocypher" }}'
+  MODULE_NAME: '{{ .MODULE_NAME | default "vnlib.core" }}'
   BUILD_DIR: 'build/{{ OS }}'
   BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
+  ARTIFACT_OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
 
 tasks:
 
@@ -26,6 +28,7 @@ tasks:
         silent: true
   
   build:
+    desc: 'DO NOT USE! This function is used internally during automated builds.'
     cmds:
      - cmd: echo Building {{ .PROJECT_NAME }} in {{ .BUILD_TYPE }} mode
        silent: true
@@ -39,54 +42,64 @@ tasks:
        platforms: [ windows ]   #debug builds only work on Windows 
 
      - cmake --build {{ .BUILD_DIR }}/ --config Release 
- 
+  
   postbuild_success:
-    vars:
-      #required files to include in tar
-      TAR_FILES: "license.txt readme.txt"
-    
-    cmds:
+    desc: 'DO NOT USE! This function is used internally during automated builds.'
+    cmds:  
       #make bin dir
-    - cmd: powershell -Command "New-Item -Type Directory -Force -Path './bin'"
-      ignore_error: true
+      - cmd: powershell mkdir -Force '{{ .ARTIFACT_OUT_DIR }}'
+        ignore_error: true
 
-    #get licenses for debug
-    - task: licenses
-      vars: 
-        TARGET: '{{ .BUILD_DIR }}/Debug'
+      - task: pack_parallel
 
-    - task: licenses
-      vars:
-        TARGET: './{{ .BUILD_DIR }}/Release'
+  pack_parallel:    
+    internal: true
+    vars:
+      REL_TAR_FILES: 
+        license.txt 
+        readme.txt
+        '{{ .PROJECT_NAME }}_static.lib'
+        '{{ .PROJECT_NAME }}.dll'
+
+      DEBUG_TAR_FILES:
+        license.txt 
+        readme.txt
+        '{{ .PROJECT_NAME }}_static.lib'
+        '{{ .PROJECT_NAME }}.dll'
+        '{{ .PROJECT_NAME }}.pdb'
+    
+    deps:
+      - task: pack_source
+      - task: pack-artifacats
+        vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .DEBUG_TAR_FILES }}' }
+      - task: pack-artifacats
+        vars: { BUILD_MODE: 'release', TAR_FILES: '{{ .REL_TAR_FILES }}' }
    
 
-    #static debug lib
-    - cd {{ .BUILD_DIR }}/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}} {{.PROJECT_NAME}}_static.pdb
-    #dynamic debug lib
-    - cd {{ .BUILD_DIR }}/Debug && tar -czf '../../bin/msvc-x64-debug-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}} {{.PROJECT_NAME}}.pdb
-    
-    #release static lib
-    - cd {{ .BUILD_DIR }}/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}-static.tgz' {{.PROJECT_NAME}}_static.lib {{.TAR_FILES}}
-    #release dll
-    - cd {{ .BUILD_DIR }}/Release && tar -czf '../../bin/msvc-x64-release-{{.PROJECT_NAME}}.tgz' {{.PROJECT_NAME}}.dll {{.TAR_FILES}}
+  pack-artifacats:
+    internal: true
+    cmds:
+      - task: licenses
+        vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}' }
 
-    #source code
-    - task: pack_source
+      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} 
+         && tar -czf '{{ .ARTIFACT_OUT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
 
   licenses:
+    internal: true
     cmds:
      #add monocypher license to binary output (wrong on purpose see source code)
-     - powershell -Command "Copy-Item -Path vendor/LICENCE.md -Destination '{{.TARGET}}/license.md'"
+     - cmd: powershell cp 'vendor/LICENCE.md' '{{ .TARGET }}/license.md'
      #add my license file
-     - powershell -Command "Copy-Item -Path license -Destination '{{.TARGET}}/license.txt'"
+     - cmd: powershell cp 'license' '{{ .TARGET }}/license.txt'
      #add readme file
-     - powershell -Command "Copy-Item -Path build.readme.txt -Destination '{{.TARGET}}/readme.txt'"
-  
+     - cmd: powershell cp 'build.readme.txt' '{{ .TARGET }}/readme.txt'
+
   pack_source:
-    dir: '{{.USER_WORKING_DIR}}'
+    internal: true
     cmds:
      #pack monocypher source code and create the archive
-     - powershell -Command "tar --exclude build/* --exclude bin/* --exclude .git/* -czf 'bin/src.tgz' ."
+     - powershell "tar --exclude build/* --exclude bin/* --exclude .git/* -czf '{{ .ARTIFACT_OUT_DIR }}/src.tgz' ."
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -98,7 +111,8 @@ tasks:
        silent: true
 
   clean:
+    desc: 'Cleans any build artifacts and output directories'
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
+       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{ else }}rm -rf{{ end }} "{{ .ITEM }}"'

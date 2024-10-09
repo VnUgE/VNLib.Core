@@ -9,10 +9,11 @@
 version: '3'
 
 vars:
-  PROJECT_NAME: 'Argon2'
-  MODULE_NAME: 'vnlib.core'
+  PROJECT_NAME: '{{ .PROJECT_NAME | default "argon2" }}'
+  MODULE_NAME: '{{ .MODULE_NAME | default "vnlib.core" }}'
   BUILD_DIR: 'build/{{ OS }}'
   BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
 
 tasks:
 
@@ -41,7 +42,7 @@ tasks:
   postbuild_success:
     cmds:
       #make bin dir
-    - cmd: powershell mkdir -Force 'bin/'
+    - cmd: powershell mkdir -Force '{{ .BINARY_DIR }}'
       ignore_error: true
     
     - task: parallel_postbuild
@@ -67,11 +68,13 @@ tasks:
   #packs up the binary artifacts for distribution
   pack_artifacts:
     internal: true
+    vars:
+      OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
     deps:
       - task: embed
         vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}' }
     cmds:
-      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
+      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '{{ .OUT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
 
   #add embeded resources to the binary output for distribution
   embed:
@@ -101,7 +104,7 @@ tasks:
 
     cmds:
      #just pack up current directory, excluding build, bin, and git directories
-     - tar {{ .EXCLUDES }} -czf 'bin/src.tgz' {{ .INCLUDES }}
+     - tar {{ .EXCLUDES }} -czf '{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -116,4 +119,4 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
+       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'

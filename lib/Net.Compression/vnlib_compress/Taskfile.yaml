@@ -9,10 +9,11 @@
 version: '3'
 
 vars:
-  PROJECT_NAME: 'vnlib_compress'
+  PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_compress" }}'
   RPMALLOC_SRC_DIR: '../../Utils.Memory/vnlib_rpmalloc'    
   BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   BUILD_DIR: 'build/{{ OS }}'
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
 
 tasks:
 
@@ -65,7 +66,7 @@ tasks:
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
     cmds:
-     - cmd: powershell mkdir -Force 'bin/'
+     - cmd: powershell mkdir -Force '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
      - task: pack_parallel   
 
   build_rpmalloc:
@@ -106,7 +107,7 @@ tasks:
       - task: embed
         vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}' }
     cmds:
-      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '../../bin/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
+      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '{{ .BINARY_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
 
  #add embeded resources to the binary output for distribution
   embed:
@@ -121,6 +122,7 @@ tasks:
   pack_source:
     internal: true
     vars:
+      OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
       EXCLUDES:
         
       INCLUDES:
@@ -132,7 +134,7 @@ tasks:
     cmds:
      - powershell cp ../LICENSE 'LICENSE' -Force
      #just pack up current directory, excluding build, bin, and git directories
-     - tar {{ .EXCLUDES }} -czf 'bin/src.tgz' {{ .INCLUDES }} 
+     - tar {{ .EXCLUDES }} -czf '{{ .OUT_DIR }}/src.tgz' {{ .INCLUDES }} 
 
      - cmd: powershell rm LICENSE 
 
@@ -152,7 +154,7 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
+       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
     
   clean-third-party:
     internal: true
