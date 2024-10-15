@@ -61,9 +61,6 @@ tasks:
     cmds:
      #git archive in the module directory
      - git archive --format {{ .ARCHIVE_FILE_FORMAT }} --output {{ .ARCHIVE_FILE_NAME }} HEAD
-     #push packages to the sleet feed (feed path is vnbuild global)
-     - sleet push "{{ .PACK_OUT }}/debug/" --source debug --config "{{ .SLEET_CONFIG_PATH }}" --force
-     - sleet push "{{ .PACK_OUT }}/release/" --source release --config "{{ .SLEET_CONFIG_PATH }}" --force
 
   test:
     desc: "Runs managed tests against the entire solution and all loaded test projects"
