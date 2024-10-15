@@ -103,11 +103,13 @@ tasks:
   #packs up the binary artifacts for distribution
   pack_artifacts:
     internal: true
+    vars:
+      ARCHIVE_PATH: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     deps:
       - task: embed
         vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}' }
     cmds:
-      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '{{ .BINARY_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
+      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
 
  #add embeded resources to the binary output for distribution
   embed:

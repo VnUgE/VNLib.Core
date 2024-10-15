@@ -115,7 +115,7 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
+       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm{{end}} "{{ .ITEM }}"'
 
   #called by module for initializing the project, it's not internal but hidden
   dev-init:

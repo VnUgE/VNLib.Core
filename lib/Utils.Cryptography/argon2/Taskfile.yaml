@@ -55,13 +55,13 @@ tasks:
         license.txt 
         readme.txt 
         argon2.h 
-        '{{ .PROJECT_NAME }}.dll'
+        argon2.dll
 
     deps:
      - task: pack_source
   
      - task: pack_artifacts
-       vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .BIN_FILES }} {{ .PROJECT_NAME }}.pdb' }  
+       vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .BIN_FILES }} argon2.pdb' }  
      - task: pack_artifacts
        vars: { BUILD_MODE: 'release', TAR_FILES: '{{ .BIN_FILES }}' }
 

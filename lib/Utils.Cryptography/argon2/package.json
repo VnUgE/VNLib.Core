@@ -1,5 +1,5 @@
 {
-  "name": "phc-winner-argon2",
+  "name": "argon2",
   "version": "0.0.0",
   "output_dir": "bin",
   "author": "Vaughn Nugent",
