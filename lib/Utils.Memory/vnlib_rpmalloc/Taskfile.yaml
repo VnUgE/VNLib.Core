@@ -10,8 +10,11 @@ version: '3'
 
 vars:
   DEP_NAME: 'rpmalloc'
-  PROJECT_NAME: 'vnlib_{{ .DEP_NAME }}'
+  PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_{{ .DEP_NAME }}" }}'
+  BUILD_DIR: 'build/{{ OS }}'
   ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
+  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       
+  ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       #default to greedy allocator build
 
 tasks:
 
@@ -20,11 +23,9 @@ tasks:
     cmds:
      #init cmake build with greedy enabled
      - task: build-internal
-       vars: 
-         BUILD_TYPE: "Release"
-         CLI_ARGS: "-DENABLE_GREEDY=1 {{ .CLI_ARGS }}"
-     
-     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/build'"
+       vars: { CLI_ARGS: "-DENABLE_GREEDY={{ .ENABLE_GREEDY }} {{ .CLI_ARGS }}" }
+       
+     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
        silent: true
 
   debug:
@@ -32,23 +33,29 @@ tasks:
      - task: build-internal
        vars: 
          BUILD_TYPE: "debug"
-         CLI_ARGS: "-DENABLE_GREEDY=1 {{ .CLI_ARGS }}"
+         CLI_ARGS: "-DENABLE_GREEDY={{ .ENABLE_GREEDY }} {{ .CLI_ARGS }}"
 
   build:
     desc: 'DO NOT USE! This function is used internally during releases.'
     cmds:
      #init cmake build with greedy enabled
-     - cmake -B./build -DENABLE_GREEDY=1 {{ .CLI_ARGS }} 
-     - cmake --build build/ --config debug
-     - cmake --build build/ --config release
+     - cmake -B{{ .BUILD_DIR }} -DENABLE_GREEDY={{ .ENABLE_GREEDY }} {{ .CLI_ARGS }} 
+
+     - cmake --build {{ .BUILD_DIR }}/ --config debug
+     - cmake --build {{ .BUILD_DIR }}/ --config release
 
   build-internal:
     internal: true
     cmds:      
       #build with defaults
       #init cmake build with greedy enabled
-      - cmake -Bbuild/ -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }} {{ .CLI_ARGS }}
-      - cmake --build build/ --config {{ .BUILD_TYPE }}
+      - cmake {{ .CLI_ARGS }}
+        -B{{ .BUILD_DIR }}/
+        -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
+      
+      - cmake 
+        --build {{ .BUILD_DIR }}/ 
+        --config {{ .BUILD_TYPE }}
 
   postbuild_success:
     cmds:
@@ -73,10 +80,11 @@ tasks:
     internal: true
     deps:
      - task: pack_resources
-       vars: { TARGET: './build/{{ .BUILD_TYPE }}' }
+       vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_TYPE }}' }
     cmds:
-    - cmd: cd build/{{ .BUILD_TYPE }} && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-{{ .BUILD_TYPE }}-{{ .PROJECT_NAME }}.tgz' .
-  
+    - cmd: "cd {{ .BUILD_DIR }}/{{ .BUILD_TYPE }} 
+        && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-{{ .BUILD_TYPE }}-{{ .PROJECT_NAME }}.tgz' ."
+
   pack_resources:
     internal: true
     cmds:
@@ -103,10 +111,11 @@ tasks:
      - tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}  
 
   clean:
+    desc: 'Cleans any build artifacts and output directories'
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: powershell rm -Recurse -Force '{{.ITEM}}'
+       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm{{end}} "{{ .ITEM }}"'
 
   #called by module for initializing the project, it's not internal but hidden
   dev-init:

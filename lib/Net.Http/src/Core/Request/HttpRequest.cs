@@ -123,7 +123,7 @@ namespace VNLib.Net.Http.Core
         private void FreeUploadBuffers()
         {
             //Dispose all initialized files, should be much faster than using Array.Clear();
-            for (int i = 0; i < _uploads.Length; i++)
+            for (int i = 0; i < maxUploads; i++)
             {
                 _uploads[i].Free();
                 _uploads[i] = default;
@@ -136,7 +136,7 @@ namespace VNLib.Net.Http.Core
         /// Checks if another upload can be added to the request
         /// </summary>
         /// <returns>A value indicating if another file upload can be added to the array</returns>
-        public bool CanAddUpload() => _state.UploadCount < _uploads.Length;
+        public bool CanAddUpload() => _state.UploadCount < maxUploads;
 
         /// <summary>
         /// Attempts to obtain a reference to the next available 

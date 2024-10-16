@@ -82,7 +82,7 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="data">The data sequence to append to the buffer</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public void Append<TClass>(ReadOnlySpan<T> data) where TClass : class, T
+        public void Append<TClass>(scoped ReadOnlySpan<T> data) where TClass : class, T
         {
             //Make sure the current window is large enough to buffer the new string
             ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(Remaining));
@@ -101,18 +101,18 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="TStruct"></typeparam>
         /// <param name="data">The data sequence to append to the buffer</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public void Append<TStruct>(ReadOnlySpan<TStruct> data) where TStruct : struct, T
+        public void Append<TStruct>(scoped ReadOnlySpan<TStruct> data) where TStruct : struct, T
         {
             //Make sure the current window is large enough to buffer the new string
             ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(Remaining));
 
             //write data to window
             MemoryUtil.Memmove(
-                in MemoryMarshal.GetReference(data),
-                0, 
-                ref Unsafe.As<T, TStruct>(ref _basePtr),   //Reinterpret the ref to the local scope type, 
-                (nuint)Written,
-                (nuint)data.Length    
+                src: in MemoryMarshal.GetReference(data),
+                srcOffset: 0, 
+                dst: ref Unsafe.As<T, TStruct>(ref _basePtr),   //Reinterpret the ref to the local scope type, 
+                dstOffset: (nuint)Written,
+                elementCount: (nuint)data.Length    
             );
 
             //update char position
@@ -127,18 +127,18 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="TStruct"></typeparam>
         /// <param name="data">The data sequence to append to the buffer</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public void AppendSmall<TStruct>(ReadOnlySpan<TStruct> data) where TStruct : struct, T
+        public void AppendSmall<TStruct>(scoped ReadOnlySpan<TStruct> data) where TStruct : struct, T
         {
             //Make sure the current window is large enough to buffer the new string
             ArgumentOutOfRangeException.ThrowIfGreaterThan(data.Length, RemainingSize, nameof(Remaining));
 
             //write data to window
             MemoryUtil.SmallMemmove(
-                in MemoryMarshal.GetReference(data),
-                0,
-                ref Unsafe.As<T, TStruct>(ref _basePtr),   //Reinterpret the ref to the local scope type, 
-                (nuint)Written,
-                (ushort)data.Length
+                src: in MemoryMarshal.GetReference(data),
+                srcOffset: 0,
+                dst: ref Unsafe.As<T, TStruct>(ref _basePtr),   //Reinterpret the ref to the local scope type, 
+                dstOffset: (nuint)Written,
+                elementCount: (ushort)data.Length
             );
 
             //update char position

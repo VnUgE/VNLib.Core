@@ -20,13 +20,13 @@ namespace VNLib.Net.Compression.Tests
     [TestClass()]
     public class CompressorManagerTests
     {
-        const string LIB_PATH = @"../../../../vnlib_compress/build/Debug/vnlib_compress.dll";
+        private static string? NativeCompressPath => Environment.GetEnvironmentVariable("TEST_COMPRESS_LIB_PATH");
 
         [TestMethod]
         public void NativeLibApiTest()
         {
             //Load library
-            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, DllImportSearchPath.SafeDirectories);
+            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(NativeCompressPath, DllImportSearchPath.SafeDirectories);
 
             LibTestComp cp = new(lib, CompressionLevel.Fastest);
 
@@ -71,7 +71,7 @@ namespace VNLib.Net.Compression.Tests
             PrintSystemInformation();
 
             //Load native library
-            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(LIB_PATH, DllImportSearchPath.SafeDirectories);
+            using NativeCompressionLib lib = NativeCompressionLib.LoadLibrary(NativeCompressPath, DllImportSearchPath.SafeDirectories);
 
             //Huge array of random data to compress
             byte[] testData = RandomNumberGenerator.GetBytes(10 * 1024 * 1024);
@@ -188,7 +188,7 @@ namespace VNLib.Net.Compression.Tests
                 writer.WriteStartObject("vnlib.net.compression");
 
                 writer.WriteNumber("level", 1);
-                writer.WriteString("lib_path", LIB_PATH);
+                writer.WriteString("lib_path", NativeCompressPath);
 
                 writer.WriteEndObject();
                 writer.WriteEndObject();

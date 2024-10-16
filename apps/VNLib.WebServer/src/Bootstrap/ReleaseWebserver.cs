@@ -166,7 +166,7 @@ namespace VNLib.WebServer.Bootstrap
                     MaxOpenConnections              = gConf.MaxConnections,                    
                     MaxUploadsPerRequest            = gConf.MaxUploadsPerRequest,
                     SendTimeout                     = gConf.SendTimeoutMs,
-                    ServerLog                       = logger.AppLog,
+                    ServerLog                       = logger.SysLog,
                     MemoryPool                      = memPool,
 
                     RequestDebugLog                 = procArgs.LogHttp ? logger.AppLog : null,

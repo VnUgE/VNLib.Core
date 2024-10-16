@@ -145,6 +145,9 @@ namespace VNLib.Net.Messaging.FBM.Server
             }
             finally
             {
+                //Free buffer when session closes
+                MemoryManger.FreeBuffer(memHandle);
+
                 session.CancelSession();
                 await queueWorker.ConfigureAwait(false);
             }

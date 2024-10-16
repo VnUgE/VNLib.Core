@@ -2,7 +2,6 @@
 <RunSettings>
     <RunConfiguration>
       <EnvironmentVariables>
-        <VNLIB_MONOCYPHER_DLL_PATH>../../../../../Utils.Cryptography/monocypher/build/Debug/vnlib_monocypher.dll</VNLIB_MONOCYPHER_DLL_PATH>
       </EnvironmentVariables>
     </RunConfiguration>
 </RunSettings>

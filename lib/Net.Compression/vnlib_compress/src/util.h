@@ -67,7 +67,7 @@
 		ERRNO result = heapFree(heapGetSharedHeapHandle(), ptr);
 
 		/* track failed free results */
-		DEBUG_ASSERT(result > 0);
+		DEBUG_ASSERT(result != 0);
 	}
 
 #else
