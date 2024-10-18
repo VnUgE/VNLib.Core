@@ -37,8 +37,6 @@ tasks:
      - git reset --hard  #clean up any local changes
      - git remote update
      - git pull origin {{ .BRANCH_NAME }} --verify-signatures 
-     #re-write semver after hard reset
-     - dotnet-gitversion.exe /updateprojectfiles
 
 #called by build pipeline to build module
   build:
@@ -49,6 +47,9 @@ tasks:
     cmds:
      - cmd: echo "building module {{ .MODULE_NAME }}" 
        silent: true
+
+     #re-write semver after hard reset
+     - cmd: dotnet-gitversion.exe /updateprojectfiles
 
      #build debug mode first
      - task: build_debug
