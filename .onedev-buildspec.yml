@@ -71,6 +71,7 @@ jobs:
     interpreter: !DefaultInterpreter
       commands: |
         vnbuild build -S
+        vnbuild publish
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
