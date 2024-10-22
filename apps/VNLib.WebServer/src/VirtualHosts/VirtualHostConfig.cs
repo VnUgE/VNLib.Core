@@ -29,6 +29,7 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
+using VNLib.Net.Http;
 using VNLib.Plugins.Essentials;
 using VNLib.Plugins.Essentials.ServiceStack.Construction;
 
@@ -71,6 +72,11 @@ namespace VNLib.WebServer
         /// codes.
         /// </summary>
         public FrozenDictionary<HttpStatusCode, FileCache> FailureFiles { get; init; } = new Dictionary<HttpStatusCode, FileCache>().ToFrozenDictionary();
+
+        /// <summary>
+        /// Contains a mapping of file extensions to http cache header strings
+        /// </summary>
+        public FrozenDictionary<ContentType, string> FileCacheHeaders { get; init; } = new Dictionary<ContentType, string>().ToFrozenDictionary();
 
         /// <summary>
         /// Allows config to specify contant additional headers

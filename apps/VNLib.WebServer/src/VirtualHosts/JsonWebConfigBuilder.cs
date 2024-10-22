@@ -33,6 +33,7 @@ using System.Text.RegularExpressions;
 
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
+using VNLib.Net.Http;
 
 using VNLib.WebServer.Config;
 using VNLib.WebServer.Config.Model;
@@ -69,6 +70,7 @@ namespace VNLib.WebServer
                 Hostnames               = GetHostnames(VhConfig),
                 Transports              = GetInterfaces(VhConfig),
                 BlackList               = GetIpBlacklist(VhConfig),
+                FileCacheHeaders        = GetFileCacheHeaders(VhConfig)
             };
         }
 
@@ -273,6 +275,39 @@ namespace VNLib.WebServer
                     //Create the special dictionary
                     .ToDictionary(static k => k.Key, static k => k.Value, StringComparer.OrdinalIgnoreCase)
                     .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static FrozenDictionary<ContentType, string> GetFileCacheHeaders(VirtualHostServerConfig conf)
+        {
+            //Users can still set this value to null
+            if(conf.FileHttpCacheMaxAge is null)
+            {
+                return new Dictionary<ContentType, string>()
+                    .ToFrozenDictionary();
+            }
+
+            return conf.FileHttpCacheMaxAge
+                .Select(kv =>
+                {
+                    var (k, v) = kv;
+
+                    Validate.Assert(k[0] == '.', $"File extension must start with a '.' character for {k}");
+                    Validate.EnsureRange(v, 0, int.MaxValue, $"Cache time for {k}");
+
+                    //If a value of 0 is set, then we set the cache to no-cache, otherwise public
+                    CacheType type = v == 0
+                        ? (CacheType.NoCache | CacheType.NoStore)
+                        : CacheType.Public;
+
+                    return new KeyValuePair<ContentType, string>(
+                        HttpHelpers.GetContentTypeFromFile(k),
+                        HttpHelpers.GetCacheString(type, v)
+                    );
+                })
+                .ToFrozenDictionary(
+                    static val => val.Key, 
+                    static val => val.Value
+                );
         }
 
 

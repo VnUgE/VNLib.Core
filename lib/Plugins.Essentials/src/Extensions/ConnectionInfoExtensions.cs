@@ -227,7 +227,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static bool IsCrossSite(this IConnectionInfo server)
         {
             return string.Equals("cross-site", server.Headers[SEC_HEADER_SITE], StringComparison.OrdinalIgnoreCase) 
-                || (server.Origin != null && ! string.Equals(server.RequestUri.DnsSafeHost, server.Origin.DnsSafeHost, StringComparison.Ordinal));
+                || (server.Origin != null && !string.Equals(server.RequestUri.DnsSafeHost, server.Origin.DnsSafeHost, StringComparison.Ordinal));
         }
 
         /// <summary>

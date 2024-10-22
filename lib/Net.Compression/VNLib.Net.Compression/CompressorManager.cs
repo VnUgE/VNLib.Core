@@ -52,7 +52,7 @@ namespace VNLib.Net.Compression
     /// </summary>
     public sealed class CompressorManager : IHttpCompressorManager
     {
-        const string NATIVE_LIB_NAME = "vnlib_compress.dll";
+        const string NATIVE_LIB_NAME = "vnlib_compress";
 
         private LibraryWrapper? _nativeLib;
         private CompressionLevel _compLevel;
