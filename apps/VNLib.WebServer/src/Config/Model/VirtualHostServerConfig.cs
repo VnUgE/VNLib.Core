@@ -94,5 +94,8 @@ namespace VNLib.WebServer.Config.Model
 
         [JsonPropertyName("max_execution_time_ms")]
         public int MaxExecutionTimeMs { get; set; } = 20000;
+
+        [JsonPropertyName("file_http_max_age")]
+        public Dictionary<string, int> FileHttpCacheMaxAge { get; set; } = [];
     }
 }

@@ -46,6 +46,7 @@ namespace VNLib.WebServer
      
         private readonly string DefaultCacheString = HttpHelpers.GetCacheString(CacheType.Public, (int)config.CacheDefault.TotalSeconds);
 
+        ///<inheritdoc/>
         public bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent ev)
         {
             //Make sure the connection accepts html
@@ -58,6 +59,7 @@ namespace VNLib.WebServer
             return false;
         }
 
+        ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public string TranslateResourcePath(string requestPath)
         {
@@ -116,10 +118,9 @@ namespace VNLib.WebServer
             return sb.ToString();
         }
 
-        public void PreProcessEntityAsync(HttpEntity entity, out FileProcessArgs args)
-        {
-            args = FileProcessArgs.Continue;
-        }
+        ///<inheritdoc/>
+        public void PreProcessEntityAsync(HttpEntity entity, out FileProcessArgs args) 
+            => args = FileProcessArgs.Continue;
 
         public void PostProcessFile(HttpEntity entity, ref FileProcessArgs chosenRoutine)
         {
@@ -204,6 +205,13 @@ namespace VNLib.WebServer
             //If request issued no cache request, set nocache headers
             if (!entity.Server.NoCache())
             {
+                //Fetch the cache header from user's selection
+                if(config.FileCacheHeaders.TryGetValue(ct, out string? cacheHeader))
+                {
+                    entity.Server.Headers[HttpResponseHeader.CacheControl] = cacheHeader;
+                    return;
+                }
+
                 //Otherwise set caching based on the file extension type
                 switch (ct)
                 {

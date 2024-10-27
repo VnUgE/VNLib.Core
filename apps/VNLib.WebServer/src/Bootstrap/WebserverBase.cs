@@ -179,7 +179,7 @@ namespace VNLib.WebServer.Bootstrap
                 //Print interfaces
                
                 string[] interfaces = host.Transports
-                    .Select(i =>$" - {i.Address}:{i.Port} TLS: {i.Ssl}, Client cert: {i.ClientCertRequired}, OS Ciphers: {i.UseOsCiphers}")
+                    .Select(i =>$" - {i.Address}:{i.Port} TLS={i.Ssl}, Client cert={i.ClientCertRequired}, OS Ciphers={i.UseOsCiphers}")
                     .ToArray();
 
                 sb.AppendLine(" Interfaces:");
@@ -191,9 +191,10 @@ namespace VNLib.WebServer.Bootstrap
                 sb.AppendFormat(" - Blacklist: {bl}\n", host.BlackList);
                 sb.AppendFormat(" - Path filter: {filter}\n", host.PathFilter);
                 sb.AppendFormat(" - Cache default time: {cache}\n", host.CacheDefault);
-                sb.AppendFormat(" - Cached error files: {files}\n", host.FailureFiles.Select(static p => (int)p.Key));
+                sb.AppendFormat(" - Cached error files: {files}\n", host.FailureFiles?.Select(static p => (int)p.Key));
                 sb.AppendFormat(" - Downstream servers: {dsServers}\n", host.DownStreamServers);
-                sb.AppendFormat(" - Middlewares loaded {mw}\n", host.CustomMiddleware.Count);
+                sb.AppendFormat(" - Middlewares loaded: {mw}\n", host.CustomMiddleware.Count);
+                sb.AppendFormat(" - Http cache: {httpcache}", host.FileCacheHeaders?.Select(static kv => kv.Key));
                 sb.AppendLine();
 
                 sb.Flush();

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -138,6 +138,20 @@ namespace VNLib.Net.Compression
                 lib.Dispose();
                 throw;
             }
+        }
+
+
+        /// <summary>
+        /// Loads the default native compression library defined by 
+        /// process environment variables
+        /// </summary>
+        /// <returns>A new <see cref="LibraryWrapper"/> library handle</returns>
+        public static LibraryWrapper LoadDefault()
+        {
+            string? libPath = Environment.GetEnvironmentVariable(NativeCompressionLib.SharedLibFilePathEnv)
+                ?? NativeCompressionLib.SharedLibDefaultName;
+
+            return LoadLibrary(libPath, DllImportSearchPath.SafeDirectories);
         }
 
         /// <summary>

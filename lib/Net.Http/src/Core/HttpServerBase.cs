@@ -181,6 +181,11 @@ namespace VNLib.Net.Http
                 }
             }
 
+            if(conf.MaxUploadsPerRequest < 0)
+            {
+                throw new ArgumentException("MaxUploadsPerRequest cannot be less than 0", nameof(conf));
+            }
+
             if (conf.CompressionLimit < 0)
             {
                 throw new ArgumentException("CompressionLimit cannot be less than 0, set to 0 to disable response compression", nameof(conf));
