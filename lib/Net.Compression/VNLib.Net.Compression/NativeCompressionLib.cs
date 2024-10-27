@@ -38,6 +38,16 @@ namespace VNLib.Net.Compression
     /// </summary>
     public sealed class NativeCompressionLib : VnDisposeable, INativeCompressionLib
     {
+        /// <summary>
+        /// The default environment variable name for the library file path
+        /// </summary>
+        public const string SharedLibFilePathEnv = "VNLIB_COMPRESS_DLL_PATH";
+
+        /// <summary>
+        /// The default library name
+        /// </summary>
+        public const string SharedLibDefaultName = "vnlib_compress";
+
         private readonly LibraryWrapper _library;
 
         private NativeCompressionLib(LibraryWrapper nativeLib) => _library = nativeLib;
@@ -54,6 +64,17 @@ namespace VNLib.Net.Compression
         public static NativeCompressionLib LoadLibrary(string libPath, DllImportSearchPath searchPath)
         {
             LibraryWrapper wrapper = LibraryWrapper.LoadLibrary(libPath, searchPath);
+            return new NativeCompressionLib(wrapper);
+        }
+
+        /// <summary>
+        /// Loads the default native compression library defined by 
+        /// process environment variables
+        /// </summary>
+        /// <returns>A new <see cref="NativeCompressionLib"/> library handle</returns>
+        public static NativeCompressionLib LoadDefault()
+        {
+            LibraryWrapper wrapper = LibraryWrapper.LoadDefault();
             return new NativeCompressionLib(wrapper);
         }
 

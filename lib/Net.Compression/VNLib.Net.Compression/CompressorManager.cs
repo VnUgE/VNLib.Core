@@ -51,11 +51,10 @@ namespace VNLib.Net.Compression
     /// A compressor manager that implements the IHttpCompressorManager interface, for runtime loading.
     /// </summary>
     public sealed class CompressorManager : IHttpCompressorManager
-    {
-        const string NATIVE_LIB_NAME = "vnlib_compress";
+    {       
 
         private LibraryWrapper? _nativeLib;
-        private CompressionLevel _compLevel;
+        private CompressionLevel _compLevel =  CompressionLevel.Fastest;
 
         /// <summary>
         /// Called by the VNLib.Webserver during startup to initiialize the compressor.
@@ -63,41 +62,47 @@ namespace VNLib.Net.Compression
         /// <param name="log">The application log provider</param>
         /// <param name="config">The json configuration element</param>
         public void OnLoad(ILogProvider? log, JsonElement? config)
-        {
-            _compLevel = CompressionLevel.Fastest;
-            string libPath = NATIVE_LIB_NAME;
-
-            if(config.HasValue)
+        {          
+            //Get the compression element
+            if (config.HasValue && config.Value.TryGetProperty("vnlib.net.compression", out JsonElement compEl))
             {
-                //Get the compression element
-                if(config.Value.TryGetProperty("vnlib.net.compression", out JsonElement compEl))
+                //Try to get the user specified compression level
+                if (compEl.TryGetProperty("level", out JsonElement lEl))
                 {
-                    //Try to get the user specified compression level
-                    if(compEl.TryGetProperty("level", out JsonElement lEl))
-                    {
-                        _compLevel = (CompressionLevel)lEl.GetUInt16();
-                    }
-
-                    //Allow the user to specify the path to the native library
-                    if(compEl.TryGetProperty("lib_path", out JsonElement libEl))
-                    {
-                        libPath = libEl.GetString() ?? NATIVE_LIB_NAME;
-                    }
+                    _compLevel = (CompressionLevel)lEl.GetUInt16();
                 }
+
+                //Allow the user to specify the path to the native library
+                if (compEl.TryGetProperty("lib_path", out JsonElement libEl) 
+                    && libEl.ValueKind == JsonValueKind.String)
+                {
+                    string libPath = libEl.GetString()!;
+
+                    log?.Debug("Attempting to load native compression library from: {lib}", libPath);
+
+                    _nativeLib = LibraryWrapper.LoadLibrary(libPath, DllImportSearchPath.SafeDirectories);
+
+                    log?.Debug("Loaded native compression library with compression level {l}", _compLevel.ToString());
+
+                    return;
+                }
+
+                log?.Debug("'lib_path' was not specified in compression config, falling back to default paths");
             }
 
-            log?.Debug("Attempting to load native compression library from: {lib}", libPath);
+            //Fall back system environment variables
 
-            //Load the native library
-            _nativeLib = LibraryWrapper.LoadLibrary(libPath, DllImportSearchPath.SafeDirectories);
+            log?.Debug("Attempting to load the default native compression library");
 
-            log?.Debug("Loaded native compression library with compression level {l}", _compLevel.ToString());
+            _nativeLib = LibraryWrapper.LoadDefault();
+
+            log?.Debug("Loaded default native compression library with compression level {l}", _compLevel.ToString());
         }
 
         ///<inheritdoc/>
         public CompressionMethod GetSupportedMethods()
         {
-            if(_nativeLib == null)
+            if(_nativeLib is null)
             {
                 throw new InvalidOperationException("The native library has not been loaded yet.");
             }
@@ -159,7 +164,7 @@ namespace VNLib.Net.Compression
         }
 
         ///<inheritdoc/>
-        public CompressionResult CompressBlock(object compressorState, ReadOnlyMemory<byte> input, Memory<byte> output)
+        public CompressionResult CompressBlock(object compressorState, ReadOnlyMemory<byte> input, Memory<byte> output) 
         {
             DebugThrowIfNull(compressorState, nameof(compressorState));
             Compressor compressor = Unsafe.As<Compressor>(compressorState);
