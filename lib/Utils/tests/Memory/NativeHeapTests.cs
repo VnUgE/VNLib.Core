@@ -16,7 +16,7 @@ namespace VNLib.Utils.Memory.Tests
         public void LoadInTreeRpmallocTest()
         {
             //Try to load the shared heap
-            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath, DllImportSearchPath.SafeDirectories, HeapCreation.Shared, flags: 0);
+            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath!, DllImportSearchPath.SafeDirectories, HeapCreation.Shared, flags: 0);
 
             Assert.IsFalse(heap.IsInvalid);
 
@@ -38,7 +38,7 @@ namespace VNLib.Utils.Memory.Tests
         public void LoadInTreeMimallocTest()
         {
             //Try to load the shared heap
-            using NativeHeap heap = NativeHeap.LoadHeap(MimallocLibPath, DllImportSearchPath.SafeDirectories, HeapCreation.Shared, flags: 0);
+            using NativeHeap heap = NativeHeap.LoadHeap(MimallocLibPath!, DllImportSearchPath.SafeDirectories, HeapCreation.Shared, flags: 0);
 
             Assert.IsFalse(heap.IsInvalid);
 
