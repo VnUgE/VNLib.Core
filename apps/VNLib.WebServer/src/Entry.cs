@@ -81,7 +81,9 @@ Starting...
             IServerConfig? config = LoadConfig(procArgs);
             if (config is null)
             {
-                logBuilder.AppLogConfig.CreateLogger().Error("No configuration file was found");
+                logBuilder.AppLogConfig
+                    .CreateLogger()
+                    .Fatal("Failed to load configuration data. Cannot continue");
                 return -1;
             }
 
@@ -221,7 +223,7 @@ Starting...
     A high-performance, cross-platform, single process, reference webserver built on the .NET 8.0 Core runtime.
 
     Option flags:
-        --config         <path>     - Specifies the path to the configuration file (relative or absolute)
+        --config         <path>     - Specifies the path to the configuration file (relative or absolute) use '--' to read from stdin
         --input-off                 - Disables the STDIN listener, no runtime commands will be processed
         --inline-scheduler          - Enables inline scheduling for TCP transport IO processing (not available when using TLS)
         --no-plugins                - Disables loading of dynamic plugins
@@ -241,7 +243,7 @@ Starting...
         -vv                         - Enables very verbose logging (attaches listeners for app-domain events and logs them to the output)
 
     Your configuration file must be a JSON or YAML encoded file and be readable to the process. You may consider keeping it in a safe 
-    location outside the application and only readable to this process.
+    location outside the application and only readable to this process. The file must have a valid extension of .json or .yaml/.yml.
 
     You should disable hot-reload for production environments, for security and performance reasons.
 
@@ -275,7 +277,15 @@ Starting...
             //Get the config path or default config
             string configPath = args.GetArgument("--config") ?? Path.Combine(EXE_DIR.FullName, DEFAULT_CONFIG_PATH);
 
-            return JsonServerConfig.FromFile(configPath);
+            //Allow reading from stdin
+            if(configPath == "--")
+            {
+                return JsonServerConfig.FromStdin();
+            }
+            else
+            {
+                return JsonServerConfig.FromFile(configPath);
+            }
         }
 
         private static WebserverBase GetWebserver(ServerLogger logger, IServerConfig config, ProcessArguments procArgs)
