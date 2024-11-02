@@ -286,14 +286,14 @@ namespace VNLib.Hashing
             //Setup context
             Argon2Context ctx = new()
             {
-                version = Argon2Version.Argon2DefaultVersion,
-                t_cost = costParams.TimeCost,
-                m_cost = costParams.MemoryCost,
-                threads = costParams.Parallelism,
-                lanes = costParams.Parallelism,
-                flags = ARGON2_DEFAULT_FLAGS,
-                allocate_cbk = null,
-                free_cbk = null,
+                version         = Argon2Version.Argon2DefaultVersion,
+                t_cost          = costParams.TimeCost,
+                m_cost          = costParams.MemoryCost,
+                threads         = costParams.Parallelism,
+                lanes           = costParams.Parallelism,
+                flags           = ARGON2_DEFAULT_FLAGS,
+                allocate_cbk    = null,
+                free_cbk        = null,
             };
 
             fixed (byte* pSecret = secret, pPass = password, pSalt = salt, pRawHash = rawHashOutput)

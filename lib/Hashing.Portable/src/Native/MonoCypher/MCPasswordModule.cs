@@ -103,9 +103,8 @@ namespace VNLib.Hashing.Native.MonoCypher
          */
 
         private static void CalcWorkAreaSize(Argon2Context* ctx, out uint elements, out uint alignment)
-        {
-            ulong mCost = ctx->m_cost;
-            ulong size = mCost * MC_BLOCK_MULTIPLIER;
+        {           
+            ulong size = ctx->m_cost * MC_BLOCK_MULTIPLIER;
 
             //Calculate element size after alignment
             elements = checked((uint)(size / MC_ARGON2_WA_MEM_ALIGNMENT));
@@ -129,7 +128,8 @@ namespace VNLib.Hashing.Native.MonoCypher
                 throw new ArgumentException("Password buffer is null or empty");
             }
 
-            if (context->salt == null || context->saltlen == 0)
+            //Salt may be null if saltlen is 0
+            if (context->salt == null && context->saltlen != 0)
             {
                 throw new ArgumentException("Salt buffer is null or empty");
             }

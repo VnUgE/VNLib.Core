@@ -28,7 +28,6 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Runtime.CompilerServices;
 
-using VNLib.Hashing;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
@@ -45,12 +44,7 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// </summary>
     public static partial class AccountUtil
     {
-
-        /// <summary>
-        /// The size in bytes of the random passwords generated when invoking the 
-        /// </summary>
-        public const int RANDOM_PASS_SIZE = 240;
-     
+        
         /// <summary>
         /// The origin string of a local user account. This value will be set if an
         /// account is created through the VNLib.Plugins.Essentials.Accounts library
@@ -92,13 +86,22 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="cancellation">A token to cancel the validation</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
-        public static async Task<ERRNO> ValidatePasswordAsync(this IUserManager manager, IUser user, string password, PassValidateFlags flags, CancellationToken cancellation)
+        public static async Task<ERRNO> ValidatePasswordAsync(
+            this IUserManager manager, 
+            IUser user, 
+            string password, 
+            PassValidateFlags flags, 
+            CancellationToken cancellation
+        )
         {
             ArgumentNullException.ThrowIfNull(user);
             ArgumentNullException.ThrowIfNull(manager);
 
             using PrivateString ps = PrivateString.ToPrivateString(password, false);
-            return await manager.ValidatePasswordAsync(user, ps, flags, cancellation).ConfigureAwait(false);
+            
+            return await manager
+                .ValidatePasswordAsync(user, ps, flags, cancellation)
+                .ConfigureAwait(false);
         }
 
         /// <summary>
@@ -108,16 +111,54 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="manager"></param>
         /// <param name="user">The user account to update the password of</param>
         /// <param name="password">The new password to set</param>
-        /// <exception cref="ArgumentNullException"></exception>
         /// <param name="cancellation">A token to cancel the operation</param>
+        /// <exception cref="ArgumentNullException"></exception>
         /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
-        public static async Task<ERRNO> UpdatePasswordAsync(this IUserManager manager, IUser user, string password, CancellationToken cancellation = default)
+        [Obsolete("Will be removed in future releases, use overload that accepts hashing provider")]
+        public static async Task<ERRNO> UpdatePasswordAsync(
+            this IUserManager manager, 
+            IUser user, 
+            string password, 
+            CancellationToken cancellation = default
+        )
         {
             ArgumentNullException.ThrowIfNull(user);
             ArgumentNullException.ThrowIfNull(manager);
 
             using PrivateString ps = PrivateString.ToPrivateString(password, false);
-            return await manager.UpdatePasswordAsync(user, ps, cancellation).ConfigureAwait(false);
+            
+            return await manager
+                .UpdatePasswordAsync(user, ps, cancellation)
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Updates a password associated with the specified user. If the update fails, the transaction
+        /// is rolled back.
+        /// </summary>
+        /// <param name="manager"></param>
+        /// <param name="user">The user account to update the password of</param>
+        /// <param name="password">The new password to set</param>
+        /// <param name="hashingProvider">The optional password hashing provider used to hash the new password</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
+        public static async Task<ERRNO> UpdatePasswordAsync(
+            this IUserManager manager, 
+            IUser user, 
+            string password, 
+            IPasswordHashingProvider? hashingProvider,
+            CancellationToken cancellation = default
+        )
+        {
+            ArgumentNullException.ThrowIfNull(user);
+            ArgumentNullException.ThrowIfNull(manager);
+
+            using PrivateString ps = PrivateString.ToPrivateString(password, false);
+
+            return await manager
+                .UpdatePasswordAsync(user, ps, hashingProvider, cancellation)
+                .ConfigureAwait(false);
         }
 
         /// <summary>
@@ -146,36 +187,6 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="origin">Value of the account origin</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void SetAccountOrigin(this IUser ud, string origin) => ud[ACC_ORIGIN_ENTRY] = origin;
-
-        /// <summary>
-        /// Generates a cryptographically secure random password, then hashes it 
-        /// and returns the hash of the new password
-        /// </summary>
-        /// <param name="hashing"></param>
-        /// <param name="size">The size (in bytes) of the new random password</param>
-        /// <returns>A <see cref="PrivateString"/> that contains the new password hash</returns>
-        public static PrivateString GetRandomPassword(this IPasswordHashingProvider hashing, int size = RANDOM_PASS_SIZE)
-        {
-            ArgumentNullException.ThrowIfNull(hashing);
-
-            //Get random bytes
-            using UnsafeMemoryHandle<byte> randBuffer = MemoryUtil.UnsafeAlloc(size);
-            try
-            {
-                Span<byte> span = randBuffer.AsSpan(0, size);
-
-                //Generate random password
-                RandomHash.GetRandomBytes(span);
-
-                //hash the password
-                return hashing.Hash(span);
-            }
-            finally
-            {
-                //Zero the block and return to pool
-                MemoryUtil.InitializeBlock(ref randBuffer.GetReference(), size);
-            }
-        }
 
         /// <summary>
         /// Verifies a password against its previously encoded hash.
