@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -29,9 +29,14 @@ namespace VNLib.Utils
     /// <summary>
     /// Represents a field of 64 bits that can be set or cleared using unsigned or signed masks
     /// </summary>
-    public class BitField
+    /// <remarks>
+    /// Creates a new <see cref="BitField"/> initialized to the specified value
+    /// </remarks>
+    /// <param name="initial">Initial value</param>
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public class BitField(ulong initial)
     {
-        private ulong Field;
+        private ulong Field = initial;
 
         /// <summary>
         /// The readonly value of the <see cref="BitField"/>
@@ -39,50 +44,20 @@ namespace VNLib.Utils
         public ulong Value => Field;
 
         /// <summary>
-        /// Creates a new <see cref="BitField"/> initialized to the specified value
-        /// </summary>
-        /// <param name="initial">Initial value</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BitField(ulong initial) => Field = initial;
-
-        /// <summary>
-        /// Creates a new <see cref="BitField"/> initialized to the specified value
-        /// </summary>
-        /// <param name="initial">Initial value</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BitField(long initial) => Field = unchecked((ulong)initial);
-
-        /// <summary>
         /// Determines if the specified flag is set
         /// </summary>
         /// <param name="mask">The mask to compare against the field value</param>
         /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsSet(ulong mask) => (Field & mask) != 0;
+        public bool IsSet(ulong mask) => IsSet(Field, mask);
 
         /// <summary>
-        /// Determines if the specified flag is set
+        /// Sets the values of the given mask to the internal field
         /// </summary>
         /// <param name="mask">The mask to compare against the field value</param>
         /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsSet(long mask) => (Field & unchecked((ulong)mask)) != 0;
-
-        /// <summary>
-        /// Determines if the specified flag is set
-        /// </summary>
-        /// <param name="mask">The mask to compare against the field value</param>
-        /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set(ulong mask) => Field |= mask;
-
-        /// <summary>
-        /// Determines if the specified flag is set
-        /// </summary>
-        /// <param name="mask">The mask to compare against the field value</param>
-        /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set(long mask) => Field |= unchecked((ulong)mask);
+        public void Set(ulong mask) => Set(ref Field, mask);
 
         /// <summary>
         /// Sets or clears a flag(s) indentified by a mask based on the value
@@ -107,19 +82,38 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="mask">The mask used to clear the given flag</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Clear(ulong mask) => Field &= ~mask;
-
-        /// <summary>
-        /// Clears the flag identified by the specified mask
-        /// </summary>
-        /// <param name="mask">The mask used to clear the given flag</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Clear(long mask) => Field &= ~unchecked((ulong)mask);
+        public void Clear(ulong mask) => Clear(ref Field, mask);
 
         /// <summary>
         /// Clears all flags by setting the <see cref="Field"/> property value to 0
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearAll() => Field = 0;
+
+        /// <summary>
+        /// Sets a mask within the specified field
+        /// </summary>
+        /// <param name="field">A reference to the field to set the mask of</param>
+        /// <param name="mask">The mask to compare against the field value</param>
+        /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Set(ref ulong field, ulong mask) => field |= mask;
+
+        /// <summary>
+        /// Determines if the specified flag is set
+        /// </summary>
+        /// <param name="field">A reference to the field to check the mask of</param>
+        /// <param name="mask">The mask to compare against the field value</param>
+        /// <returns>True if the flag(s) is currently set, false if flag is not set</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsSet(ulong field, ulong mask) => (field & mask) != 0;
+
+        /// <summary>
+        /// Clears the flag identified by the specified mask
+        /// </summary>
+        /// <param name="field">A ref to the field to clear the mask for</param>
+        /// <param name="mask">The mask used to clear the given flag</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Clear(ref ulong field, ulong mask) => field &= ~mask;
     }
 }

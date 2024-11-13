@@ -723,7 +723,11 @@ namespace VNLib.Utils.Memory.Tests
             /*
              * Test null reference checks
              */
+
+#pragma warning disable CS8625, CS8600 // Cannot convert null literal to non-nullable reference type.
+
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy((IMemoryHandle<byte>)null, 0, testHandle, 0, 1));
+
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(testHandle, 0, (IMemoryHandle<byte>)null, 0, 1));
 
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.Copy(ReadOnlyMemory<byte>.Empty, 0, null, 0, 1));
@@ -734,6 +738,8 @@ namespace VNLib.Utils.Memory.Tests
 
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(null, 0, testHandle, 0, 1));
             Assert.ThrowsException<ArgumentNullException>(() => MemoryUtil.CopyArray(testArray, 0, (byte[])null, 0, 1));
+
+#pragma warning restore CS8625, CS8600 // Cannot convert null literal to non-nullable reference type.
 
 
             /*

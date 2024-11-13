@@ -86,9 +86,9 @@ namespace VNLib.Plugins.Essentials.Accounts
         {
             return new Argon2CostParams
             {
-                MemoryCost = _config.MemoryCost,
-                TimeCost = _config.TimeCost,
-                Parallelism = _config.Parallelism
+                MemoryCost      = _config.MemoryCost,
+                TimeCost        = _config.TimeCost,
+                Parallelism     = _config.Parallelism
             };
         }
         
@@ -300,7 +300,12 @@ namespace VNLib.Plugins.Essentials.Accounts
             using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage(minBufferSize, true);
 
             //Segment the buffer
-            HashBufferSegments segments = new(buffer.Span, _secret.BufferSize, _config.SaltLen, (int)_config.HashLen);
+            HashBufferSegments segments = new(
+                buffer.Span, 
+                secretSize: _secret.BufferSize, 
+                saltSize: _config.SaltLen, 
+                hashSize: (int)_config.HashLen
+            );
 
             //Fill the buffer with random bytes
             RandomHash.GetRandomBytes(segments.SaltBuffer);
@@ -311,7 +316,13 @@ namespace VNLib.Plugins.Essentials.Accounts
                 ERRNO count = _secret.GetSecret(segments.SecretBuffer);
 
                 //Hash the password in binary and write the secret to the binary buffer
-                _argon2.Hash2id(password, segments.SaltBuffer, segments.SecretBuffer[..(int)count], segments.HashBuffer, in costParams);
+                _argon2.Hash2id(
+                    password, 
+                    salt: segments.SaltBuffer,
+                    secret: segments.SecretBuffer[..(int)count], 
+                    rawHashOutput: segments.HashBuffer, 
+                    costParams: in costParams
+                );
 
                 //Hash size is the desired hash size
                 return new((int)_config.HashLen);

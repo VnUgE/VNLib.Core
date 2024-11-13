@@ -59,7 +59,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                 //Reset and init the output stream
                 writer.Reset(buffer);
             
-                JsonSerializer.Serialize(writer, value, options);
+                JsonSerializer.Serialize(writer, value, type, options);
            
                 writer.Flush();
 
@@ -87,7 +87,6 @@ namespace VNLib.Plugins.Essentials.Extensions
             finally
             {
                 writer.Reset();
-                ;
             }
         }
     }

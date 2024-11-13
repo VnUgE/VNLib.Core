@@ -61,6 +61,7 @@ void       _mi_warning_message(const char* fmt, ...);
 void       _mi_verbose_message(const char* fmt, ...);
 void       _mi_trace_message(const char* fmt, ...);
 void       _mi_options_init(void);
+long       _mi_option_get_fast(mi_option_t option);
 void       _mi_error_message(int err, const char* fmt, ...);
 
 // random.c
@@ -76,6 +77,11 @@ static inline uintptr_t _mi_random_shuffle(uintptr_t x);
 // init.c
 extern mi_decl_cache_align mi_stats_t       _mi_stats_main;
 extern mi_decl_cache_align const mi_page_t  _mi_page_empty;
+void       _mi_process_load(void);
+void mi_cdecl _mi_process_done(void);
+bool       _mi_is_redirected(void);
+bool       _mi_allocator_init(const char** message);
+void       _mi_allocator_done(void);
 bool       _mi_is_main_thread(void);
 size_t     _mi_current_thread_count(void);
 bool       _mi_preloading(void);           // true while the C runtime is not initialized yet
@@ -321,6 +327,7 @@ static inline uintptr_t _mi_align_up(uintptr_t sz, size_t alignment) {
     return (((sz + mask)/alignment)*alignment);
   }
 }
+
 
 // Align a pointer upwards
 static inline void* mi_align_up_ptr(void* p, size_t alignment) {
@@ -593,6 +600,15 @@ static inline void mi_page_set_has_aligned(mi_page_t* page, bool has_aligned) {
   page->flags.x.has_aligned = has_aligned;
 }
 
+#if MI_DEBUG_GUARDED
+static inline bool mi_page_has_guarded(const mi_page_t* page) {
+  return page->flags.x.has_guarded;
+}
+
+static inline void mi_page_set_has_guarded(mi_page_t* page, bool has_guarded) {
+  page->flags.x.has_guarded = has_guarded;
+}
+#endif
 
 /* -------------------------------------------------------------------
 Encoding/Decoding the free list next pointers
@@ -649,6 +665,16 @@ static inline void* mi_ptr_decode(const void* null, const mi_encoded_t x, const 
 static inline mi_encoded_t mi_ptr_encode(const void* null, const void* p, const uintptr_t* keys) {
   uintptr_t x = (uintptr_t)(p==NULL ? null : p);
   return mi_rotl(x ^ keys[1], keys[0]) + keys[0];
+}
+
+static inline uint32_t mi_ptr_encode_canary(const void* null, const void* p, const uintptr_t* keys) {
+  const uint32_t x = (uint32_t)(mi_ptr_encode(null,p,keys));
+  // make the lowest byte 0 to prevent spurious read overflows which could be a security issue (issue #951)
+  #ifdef MI_BIG_ENDIAN
+  return (x & 0x00FFFFFF);
+  #else
+  return (x & 0xFFFFFF00);
+  #endif
 }
 
 static inline mi_block_t* mi_block_nextx( const void* null, const mi_block_t* block, const uintptr_t* keys ) {
@@ -731,7 +757,7 @@ static inline mi_memid_t _mi_memid_create_os(bool committed, bool is_zero, bool 
 
 static inline uintptr_t _mi_random_shuffle(uintptr_t x) {
   if (x==0) { x = 17; }   // ensure we don't get stuck in generating zeros
-#if (MI_INTPTR_SIZE==8)
+#if (MI_INTPTR_SIZE>=8)
   // by Sebastiano Vigna, see: <http://xoshiro.di.unimi.it/splitmix64.c>
   x ^= x >> 30;
   x *= 0xbf58476d1ce4e5b9UL;

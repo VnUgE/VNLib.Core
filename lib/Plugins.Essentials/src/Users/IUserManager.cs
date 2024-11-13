@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -87,7 +87,27 @@ namespace VNLib.Plugins.Essentials.Users
         /// <exception cref="UserExistsException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="UserCreationFailedException"></exception>
+        [Obsolete("Use overload that accepts hashing provider")]
         Task<IUser> CreateUserAsync(IUserCreationRequest creation, string? userId, CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Creates a new user account in the store as per the request. The user-id field is optional, 
+        /// and if set to null or empty, will be generated automatically by the store.
+        /// </summary>
+        /// <param name="userId">An optional user id to force</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <param name="creation">The account email address</param>
+        /// <param name="hashProvider">The optional hashing provider used to hash the raw password before storing in the database</param>
+        /// <returns>An object representing a user's account if successful, null otherwise</returns>
+        /// <exception cref="UserExistsException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="UserCreationFailedException"></exception>
+        Task<IUser> CreateUserAsync(
+            IUserCreationRequest creation, 
+            string? userId, 
+            IPasswordHashingProvider? hashProvider, 
+            CancellationToken cancellation = default
+        );
 
         /// <summary>
         /// Validates a password associated with the specified user
@@ -97,7 +117,27 @@ namespace VNLib.Plugins.Essentials.Users
         /// <param name="flags">Validation flags</param>
         /// <param name="cancellation">A token to cancel the validation</param>
         /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
-        Task<ERRNO> ValidatePasswordAsync(IUser user, PrivateString password, PassValidateFlags flags, CancellationToken cancellation = default);
+        Task<ERRNO> ValidatePasswordAsync(
+            IUser user, 
+            PrivateString password, 
+            PassValidateFlags flags, 
+            CancellationToken cancellation = default
+        );
+
+        /// <summary>
+        /// Validates a password associated with the specified user
+        /// </summary>
+        /// <param name="user">The user to validate the password against</param>
+        /// <param name="password">The password to test against the user</param>
+        /// <param name="hashProvider">The optional password hashing provider used to hash passwords for the recovered password</param>
+        /// <param name="cancellation">A token to cancel the validation</param>
+        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
+        Task<ERRNO> ValidatePasswordAsync(
+            IUser user, 
+            PrivateString password, 
+            IPasswordHashingProvider? hashProvider, 
+            CancellationToken cancellation = default
+        );
 
         /// <summary>
         /// An operation that will attempt to recover a user's password if possible. Not all user
@@ -122,6 +162,23 @@ namespace VNLib.Plugins.Essentials.Users
         /// <param name="newPass">The new password to set</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
+        [Obsolete("Use overload that accepts password hashing provider")]
         Task<ERRNO> UpdatePasswordAsync(IUser user, PrivateString newPass, CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Updates a password associated with the specified user. If the update fails, the transaction
+        /// is rolled back.
+        /// </summary>
+        /// <param name="user">The user account to update the password of</param>
+        /// <param name="newPass">The new password to set</param>
+        /// <param name="hashProvider">The optional password hashing provider used to hash passwords for the recovered password</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
+        Task<ERRNO> UpdatePasswordAsync(
+            IUser user, 
+            PrivateString newPass, 
+            IPasswordHashingProvider? hashProvider, 
+            CancellationToken cancellation = default
+        );
     }
 }

@@ -141,7 +141,7 @@ namespace VNLib.Hashing
         /// <returns>The number of bytes written to the buffer, false if the hash could not be computed</returns>
         /// <exception cref="ArgumentException"></exception>
         public static ERRNO ComputeHash(ReadOnlySpan<char> data, Span<byte> output, HashAlg type) 
-            => ComputeHashInternal(type, data, output);
+            => ComputeHashInternal(type, data, output, default);
 
         /// <summary>
         /// Uses the UTF8 character encoding to encode the string, then 
@@ -152,7 +152,7 @@ namespace VNLib.Hashing
         /// <returns>The number of bytes written to the buffer, false if the hash could not be computed</returns>
         /// <exception cref="ArgumentException"></exception>
         public static byte[] ComputeHash(ReadOnlySpan<char> data, HashAlg type) 
-            => ComputeHashInternal(type, data);
+            => ComputeHashInternal(type, data, default);
 
         /// <summary>
         /// Hashes the data parameter to the output buffer using the specified algorithm type
@@ -163,7 +163,7 @@ namespace VNLib.Hashing
         /// <returns>The number of bytes written to the buffer, <see cref="ERRNO.E_FAIL"/> if the hash could not be computed</returns>
         /// <exception cref="ArgumentException"></exception>
         public static ERRNO ComputeHash(ReadOnlySpan<byte> data, Span<byte> output, HashAlg type) 
-            => ComputeHashInternal(type, data, output);
+            => ComputeHashInternal(type, data, output, default);
 
         /// <summary>
         /// Hashes the data parameter to the output buffer using the specified algorithm type
@@ -173,7 +173,7 @@ namespace VNLib.Hashing
         /// <returns>A byte array that contains the hash of the data buffer</returns>
         /// <exception cref="ArgumentException"></exception>
         public static byte[] ComputeHash(ReadOnlySpan<byte> data, HashAlg type) 
-            => ComputeHashInternal(type, data);
+            => ComputeHashInternal(type, data, default);
 
         /// <summary>
         /// Hashes the data parameter to the output buffer using the specified algorithm type
@@ -186,7 +186,7 @@ namespace VNLib.Hashing
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="CryptographicException"></exception>
         public static string ComputeHash(ReadOnlySpan<byte> data, HashAlg type, HashEncodingMode mode)
-            => ComputeHashInternal(type, data, mode);
+            => ComputeHashInternal(type, data, mode, default);
 
         /// <summary>
         /// Uses the UTF8 character encoding to encode the string, then computes the hash and encodes 
@@ -200,7 +200,7 @@ namespace VNLib.Hashing
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="CryptographicException"></exception>
         public static string ComputeHash(ReadOnlySpan<char> data, HashAlg type, HashEncodingMode mode)
-            => ComputeHashInternal(type, data, mode);
+            => ComputeHashInternal(type, data, mode, default);
 
         /// <summary>
         /// Computes the HMAC of the specified character buffer using the specified key and 
@@ -281,7 +281,7 @@ namespace VNLib.Hashing
         #region internal
 
 
-        private static byte[] ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, ReadOnlySpan<byte> key = default)
+        private static byte[] ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, ReadOnlySpan<byte> key)
         {
             //Alloc output buffer
             byte[] output = new byte[GetHashSize(alg)];
@@ -293,7 +293,7 @@ namespace VNLib.Hashing
             return output;
         }
 
-        private static ERRNO ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, Span<byte> output, ReadOnlySpan<byte> key = default)
+        private static ERRNO ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, Span<byte> output, ReadOnlySpan<byte> key)
         {
             int byteCount = CharEncoding.GetByteCount(data);
             //Alloc buffer
@@ -304,7 +304,7 @@ namespace VNLib.Hashing
             return ComputeHashInternal(alg, binbuf.Span[..byteCount], output, key);
         }
 
-        private static string ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, HashEncodingMode mode, ReadOnlySpan<byte> key = default)
+        private static string ComputeHashInternal(HashAlg alg, ReadOnlySpan<char> data, HashEncodingMode mode, ReadOnlySpan<byte> key)
         {
             //Alloc stack buffer to store hash output
             Span<byte> hashBuffer = stackalloc byte[GetHashSize(alg)];
@@ -326,7 +326,7 @@ namespace VNLib.Hashing
             };
         }
 
-        private static string ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, HashEncodingMode mode, ReadOnlySpan<byte> key = default) 
+        private static string ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, HashEncodingMode mode, ReadOnlySpan<byte> key) 
         {
             //Alloc stack buffer to store hash output
             Span<byte> hashBuffer = stackalloc byte[GetHashSize(alg)];
@@ -349,7 +349,7 @@ namespace VNLib.Hashing
         }
 
         
-        private static byte[] ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key = default)
+        private static byte[] ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key)
         {
             //Alloc output buffer
             byte[] output = new byte[GetHashSize(alg)];
@@ -362,7 +362,7 @@ namespace VNLib.Hashing
         }
 
 
-        private static ERRNO ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key = default)
+        private static ERRNO ComputeHashInternal(HashAlg alg, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key)
         {
             return alg switch
             {
@@ -378,7 +378,7 @@ namespace VNLib.Hashing
                 _ => throw new ArgumentException("Invalid hash algorithm", nameof(alg))
             };
 
-            static ERRNO computeHashInternal<T>(ref readonly T algorithm, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key = default)
+            static ERRNO computeHashInternal<T>(ref readonly T algorithm, ReadOnlySpan<byte> data, Span<byte> buffer, ReadOnlySpan<byte> key)
                where T : IHashAlgorithm
             {
                 //hash the buffer or hmac if key is not empty
