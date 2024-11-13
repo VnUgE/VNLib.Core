@@ -167,12 +167,23 @@
   //Global secrets object, used by the host and pluings for a specialized secrets
   "secrets": {
 
-  }
+  },
 
   //global or local configuration to define custom password hashing requirements instead of defaults
-  /*
-  "passwords": {
 
+  "passwords": {
+    "custom_assembly": null, //A custom assembly path
+
+    //Optionally specify parameters, or use defaults. If defined, you must specify all parameters
+    //Not all Argon2 native libraries support these options
+    "disabled_argon2_options": {
+      "memory_cost": 65536,
+      "iterations": 4,
+      "parallelism": 4,
+      "salt_length": 16,
+      "hash_length": 32
+    },
+
+    "argon2_lib_path": null, //A custom path to the Argon2 native library, otherwise the default library is loaded
   }
-  */
 }
