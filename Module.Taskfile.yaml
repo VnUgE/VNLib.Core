@@ -11,13 +11,12 @@
 version: '3'
 
 vars:  
+  ARCHIVE_FILE_NAME: '{{ .ARCHIVE_FILE_NAME | default "archive.tgz" }}'
   MS_ARGS: 
     /p:RunAnalyzersDuringBuild=false
     /p:BuildInParallel=true 
     /p:MultiProcessorCompilation=true 
     /p:ErrorOnDuplicatePublishOutputFiles=false
-  
-  PACK_OUT: '{{ .OUTPUT_DIR }}/{{ .HEAD_SHA }}/pkg'
 
   # the directories where native projects exist and need to be built
   # (compress must come after rpmalloc because it's a dep)
@@ -33,8 +32,7 @@ tasks:
   default:
     desc: 'Builds the managed libraries in this module for development'
     cmds:
-      - cmd: dotnet build -c debug {{ .MS_ARGS }}
- 
+     - cmd: dotnet build -c debug {{ .MS_ARGS }} 
 
 #called by build pipeline to sync repo
   update:
@@ -47,11 +45,13 @@ tasks:
   build:
     desc: "Used by vnbuild to build the entire module at CI time"
     vars:
+      PACK_OUT: '{{ .OUTPUT_DIR }}/{{ .HEAD_SHA }}/pkg'
       INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
       MS_ARGS: '
-       {{ .MS_ARGS }} 
-       /p:IntermediateOutputPath="{{ .INT_DIR }}"
-       /p:UseCommonOutputDirectory=true'
+        {{ .MS_ARGS }} 
+        --nologo
+        /p:UseCommonOutputDirectory=true 
+        /p:IntermediateOutputPath="{{ .INT_DIR }}"'
     cmds:
      - cmd: echo "building module {{ .MODULE_NAME }}" 
        silent: true
@@ -59,17 +59,26 @@ tasks:
      #re-write semver after hard reset
      - cmd: dotnet-gitversion.exe /updateprojectfiles
 
-     - task: build_internal
-       vars: { CONFIG: 'debug', MS_ARGS: '{{ .MS_ARGS }}'}
+    #build debug mode first
+     - cmd: dotnet publish -c debug {{ .MS_ARGS }}
+     - cmd: dotnet publish -c release {{ .MS_ARGS }}
 
-     - task: build_internal
-       vars: { CONFIG: 'release', MS_ARGS: '{{ .MS_ARGS }}'}
+     # ONLY Pack release config with debug symbols
+     # pack can be run without build or restore because the previous commands build it
+     - cmd: dotnet pack 
+        --no-build 
+        --no-restore
+        --include-symbols
+        --configuration release
+        --output "{{ .PACK_OUT }}/release/" 
+        -p:PackageVersion={{ .BUILD_VERSION }}
+        {{ .MS_ARGS }}
 
   publish:
     desc: "Used by vnbuild to prepare the packages for build servers"      
     cmds:
      #git archive in the module directory
-     - git archive --format {{ .ARCHIVE_FILE_FORMAT }} --output {{ .ARCHIVE_FILE_NAME }} HEAD
+     - cmd: git archive --format {{ .ARCHIVE_FILE_FORMAT }} --output {{ .ARCHIVE_FILE_NAME }} HEAD
 
   test:
     desc: "Runs managed tests against the entire solution and all loaded test projects"
@@ -104,7 +113,7 @@ tasks:
     cmds:
     #clean solution
      - cmd: dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
-     - cmd: powershell -Command "rm {{ .ARCHIVE_FILE_NAME }} --Force" 
+     - cmd: powershell rm '{{ .ARCHIVE_FILE_NAME }}' --Force 
 
   dev-init:
     desc: 'Configures the module for local development'
@@ -127,12 +136,6 @@ tasks:
     desc: 'Cleans the native libraries for the module'
     cmds:
      - for: { var: NATIVE_LIB_DIRS }
-       cmd: cd {{ .ITEM }} && task clean    
+       cmd: cd {{ .ITEM }} && task clean
 
-#Internal tasks
-  build_internal:
-    internal: true
-    cmds:
-     - cmd: dotnet publish -c {{ .CONFIG }} {{ .MS_ARGS }}
-     - cmd: dotnet pack -c debug {{ .MS_ARGS }} -o "{{ .PACK_OUT }}/{{ .CONFIG }}/" -p:PackageVersion={{ .BUILD_VERSION }}
     
