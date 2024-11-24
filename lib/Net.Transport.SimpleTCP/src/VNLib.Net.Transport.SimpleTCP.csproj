@@ -8,11 +8,7 @@
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
-
-  <PropertyGroup>
-    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
-  </PropertyGroup>
-
+  
   <PropertyGroup>
     <PackageId>VNLib.Net.Transport.SimpleTCP</PackageId>
     <Product>VNLib Simple Transport Library</Product>

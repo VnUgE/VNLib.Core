@@ -35,7 +35,9 @@ using VNLib.Plugins.Essentials;
 using VNLib.Plugins.Essentials.Extensions;
 using VNLib.Plugins.Essentials.ServiceStack.Construction;
 
-namespace VNLib.WebServer
+using VNLib.WebServer.Config;
+
+namespace VNLib.WebServer.VirtualHosts
 {
 
     internal sealed class VirtualHostHooks(VirtualHostConfig config) : IVirtualHostHooks
@@ -43,7 +45,7 @@ namespace VNLib.WebServer
         private const int FILE_PATH_BUILDER_BUFFER_SIZE = 4096;
 
         private static readonly string CultreInfo = CultureInfo.InstalledUICulture.Name;
-     
+
         private readonly string DefaultCacheString = HttpHelpers.GetCacheString(CacheType.Public, (int)config.CacheDefault.TotalSeconds);
 
         ///<inheritdoc/>
@@ -74,11 +76,11 @@ namespace VNLib.WebServer
              * It is safe to assume the path is a local path, (not absolute) so 
              * it should not contain an illegal FS scheme
              */
-          
+
             requestPath = config.PathFilter?.Replace(requestPath, string.Empty) ?? requestPath;
-          
+
             using UnsafeMemoryHandle<char> charBuffer = MemoryUtil.UnsafeAlloc<char>(FILE_PATH_BUILDER_BUFFER_SIZE);
-          
+
             ForwardOnlyWriter<char> sb = new(charBuffer.Span);
 
             //Start with the root filename
@@ -105,7 +107,7 @@ namespace VNLib.WebServer
             {
                 sb.Replace("\\", "/");
             }
-            
+
             /*
              * DEFAULT: If no file extension is listed or, is not a / separator, then 
              * add a .html extension
@@ -114,12 +116,12 @@ namespace VNLib.WebServer
             {
                 sb.AppendSmall(".html");
             }
-            
+
             return sb.ToString();
         }
 
         ///<inheritdoc/>
-        public void PreProcessEntityAsync(HttpEntity entity, out FileProcessArgs args) 
+        public void PreProcessEntityAsync(HttpEntity entity, out FileProcessArgs args)
             => args = FileProcessArgs.Continue;
 
         public void PostProcessFile(HttpEntity entity, ref FileProcessArgs chosenRoutine)
@@ -206,7 +208,7 @@ namespace VNLib.WebServer
             if (!entity.Server.NoCache())
             {
                 //Fetch the cache header from user's selection
-                if(config.FileCacheHeaders.TryGetValue(ct, out string? cacheHeader))
+                if (config.FileCacheHeaders.TryGetValue(ct, out string? cacheHeader))
                 {
                     entity.Server.Headers[HttpResponseHeader.CacheControl] = cacheHeader;
                     return;

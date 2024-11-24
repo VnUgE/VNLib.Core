@@ -25,8 +25,9 @@
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
+using VNLib.WebServer.VirtualHosts;
 
-namespace VNLib.WebServer
+namespace VNLib.WebServer.Config
 {
     /// <summary>
     /// Contains constants for internal/special headers by their name
@@ -62,7 +63,7 @@ namespace VNLib.WebServer
         public static void TrySetSpecialHeader(this VirtualHostConfig config, IConnectionInfo server, string headerName)
         {
             //Try to get the special header value, 
-            if(config.SpecialHeaders.TryGetValue(headerName, out string? headerValue))
+            if (config.SpecialHeaders.TryGetValue(headerName, out string? headerValue))
             {
                 server.Headers.Append(headerName, headerValue);
             }

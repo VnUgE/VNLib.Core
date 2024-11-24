@@ -36,6 +36,7 @@ using VNLib.Plugins.Essentials.ServiceStack.Construction;
 
 using VNLib.WebServer.Config;
 using VNLib.WebServer.Transport;
+using VNLib.WebServer.VirtualHosts;
 using VNLib.WebServer.RuntimeLoading;
 
 namespace VNLib.WebServer.Bootstrap

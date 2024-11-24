@@ -35,7 +35,7 @@ using VNLib.Plugins.Essentials.ServiceStack.Construction;
 
 using VNLib.WebServer.Config.Model;
 
-namespace VNLib.WebServer
+namespace VNLib.WebServer.VirtualHosts
 {
     /// <summary>
     /// Implementation of <see cref="IEpProcessingOptions"/>

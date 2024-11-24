@@ -75,7 +75,7 @@ namespace VNLib.WebServer.Transport
              */
 
             //Create tcp server 
-            TcpServer server = new (config, CreateCustomPipeOptions(in config, false));
+            TcpServer server = new (config, CreateCustomPipeOptions(in config, inlineScheduler: false));
             //Return provider
             return new SslTcpTransportProvider(server, ssl);
         }
@@ -154,7 +154,7 @@ namespace VNLib.WebServer.Transport
                     ITcpConnectionDescriptor descriptor = await _listener.AcceptConnectionAsync(cancellation);
 
                     //Create ssl stream and auth
-                    SslStream stream = new(descriptor.GetStream(), false);
+                    SslStream stream = new(descriptor.GetStream(), leaveInnerStreamOpen: false);
 
                     try
                     {
@@ -166,14 +166,14 @@ namespace VNLib.WebServer.Transport
                     {
                         Server.Config.Log.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
                         
-                        await _listener.CloseConnectionAsync(descriptor, true);
+                        await _listener.CloseConnectionAsync(descriptor, reuse: true);
                         await stream.DisposeAsync();
                         
                         //continue listening loop
                     }
                     catch
                     {
-                        await _listener.CloseConnectionAsync(descriptor, true);
+                        await _listener.CloseConnectionAsync(descriptor, reuse: true);
                         await stream.DisposeAsync();
                         throw;
                     }

@@ -19,10 +19,6 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Description>A high performance, reference .NET 8 web/http server using VNLib.Core, with the VNLib.Plugins.Essentials web framework</Description>

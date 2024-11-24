@@ -22,7 +22,7 @@
 * along with VNLib.WebServer. If not, see http://www.gnu.org/licenses/.
 */
 
-namespace VNLib.WebServer
+namespace VNLib.WebServer.VirtualHosts
 {
     internal interface IVirtualHostConfigBuilder
     {
