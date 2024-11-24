@@ -38,8 +38,8 @@ using VNLib.Net.Http;
 using VNLib.WebServer.Config;
 using VNLib.WebServer.Config.Model;
 
-namespace VNLib.WebServer
-{   
+namespace VNLib.WebServer.VirtualHosts
+{
 
     internal sealed partial class JsonWebConfigBuilder(VirtualHostServerConfig VhConfig, ILogProvider logger) 
         : IVirtualHostConfigBuilder

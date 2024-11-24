@@ -10,10 +10,6 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins.PluginBase</PackageId>

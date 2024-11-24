@@ -11,11 +11,7 @@
     <!--Enable dynamic loading because it's dynamically loaded by servers-->
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
-
-  <PropertyGroup>
-    <AnalysisLevel Condition="'$(BuildingInsideVisualStudio)' == true">latest-all</AnalysisLevel>
-  </PropertyGroup>
-
+  
   <PropertyGroup>
     <PackageId>VNLib.Net.Compression</PackageId>
     <Authors>Vaughn Nugent</Authors>

@@ -36,6 +36,7 @@ using VNLib.Net.Transport.Tcp;
 using VNLib.WebServer.Config;
 using VNLib.WebServer.RuntimeLoading;
 using VNLib.WebServer.Config.Model;
+using VNLib.WebServer.VirtualHosts;
 
 using VNLib.Plugins.Essentials.ServiceStack;
 using VNLib.Plugins.Essentials.ServiceStack.Construction;

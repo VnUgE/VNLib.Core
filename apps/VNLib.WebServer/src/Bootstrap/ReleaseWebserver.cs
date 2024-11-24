@@ -39,6 +39,7 @@ using VNLib.WebServer.Plugins;
 using VNLib.WebServer.Compression;
 using VNLib.WebServer.Middlewares;
 using VNLib.WebServer.RuntimeLoading;
+using VNLib.WebServer.VirtualHosts;
 using static VNLib.WebServer.Entry;
 
 namespace VNLib.WebServer.Bootstrap
@@ -54,7 +55,7 @@ namespace VNLib.WebServer.Bootstrap
         : WebserverBase(logger, config, procArgs)
     {
 
-        const string PLUGIN_DATA_TEMPLATE =
+        private const string PLUGIN_DATA_TEMPLATE =
 @"
 ----------------------------------
  |      Plugin configuration:
@@ -76,7 +77,7 @@ namespace VNLib.WebServer.Bootstrap
                 return null;
             }
 
-            JsonElement confEl = config.GetDocumentRoot();           
+            JsonElement confEl = config.GetDocumentRoot();
 
             if (!confEl.TryGetProperty(PLUGINS_CONFIG_PROP_NAME, out JsonElement plCfg))
             {
@@ -110,7 +111,7 @@ namespace VNLib.WebServer.Bootstrap
             {
                 pluginBuilder.WithLocalJsonConfig(confEl);
             }
-            
+
             if (conf.HotReload)
             {
                 Validate.EnsureRange(conf.ReloadDelaySec, 1, 120);
@@ -130,9 +131,9 @@ namespace VNLib.WebServer.Bootstrap
             {
                 logger.AppLog.Warn("Plugin hot-reload is not recommended for production deployments!");
             }
-           
+
             return pluginBuilder;
-        }       
+        }
 
         ///<inheritdoc/>
         protected override HttpConfig GetHttpConfig()

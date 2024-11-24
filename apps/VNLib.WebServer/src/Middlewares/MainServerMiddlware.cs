@@ -32,6 +32,9 @@ using VNLib.Plugins.Essentials;
 using VNLib.Plugins.Essentials.Extensions;
 using VNLib.Plugins.Essentials.Middleware;
 
+using VNLib.WebServer.Config;
+using VNLib.WebServer.VirtualHosts;
+
 namespace VNLib.WebServer.Middlewares
 {
 
