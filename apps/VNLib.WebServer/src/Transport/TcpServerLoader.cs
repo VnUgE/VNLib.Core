@@ -47,8 +47,7 @@ namespace VNLib.WebServer.Transport
     {
         const int CacheQuotaDefault = 0;    //Disable cache quota by default, allows unlimited cache
 
-        const string TransportLogTemplate = 
-@"Interface (TCP/IP): {iface} RX: {rx} TX: {tx} TLS: {tls} threads: {threads} max-cons: {max} Keepalive: {keepalive}";
+        const string TransportLogTemplate = @"Interface (TCP/IP): {iface} RX: {rx} TX: {tx} TLS: {tls} threads: {threads} max-cons: {max} Backlog: {blog} Keepalive: {keepalive}";
 
         private readonly LazyInitializer<TcpConfigJson> _conf = new(() =>
         {
@@ -62,8 +61,8 @@ namespace VNLib.WebServer.Transport
             return new TcpConfigJson();
         });
 
-        private readonly bool UseInlineScheduler        = args.HasArgument("--inline-scheduler");
         private readonly string? ThreadCountArg         = args.GetArgument("-t") ?? args.GetArgument("--threads");
+        private readonly bool UseInlineScheduler        = args.HasArgument("--inline-scheduler");
         private readonly bool EnableTransportLogging    = args.HasArgument("--log-transport");
         private readonly bool NoReuseSocket             = args.HasArgument("--no-reuse-socket");
         private readonly bool ReuseAddress              = args.HasArgument("--reuse-address");
