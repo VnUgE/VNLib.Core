@@ -34,7 +34,6 @@ using Serilog;
 
 using VNLib.Utils;
 using VNLib.Utils.Logging;
-using VNLib.Utils.Extensions;
 using VNLib.Plugins.Attributes;
 
 namespace VNLib.Plugins
@@ -75,12 +74,12 @@ namespace VNLib.Plugins
         /// <summary>
         /// The logging instance
         /// </summary>
-        public ILogProvider Log { get; private set; }
+        public ILogProvider Log { get; private set; } = new VLogProvider(new());
 
         /// <summary>
         /// If passed by the host application, the configuration file of the host application and plugin
         /// </summary>
-        protected JsonDocument Configuration { get; private set; }
+        protected JsonDocument Configuration { get; private set; } = JsonDocument.Parse("{}");
 
         /// <summary>
         /// The configuration data from the host application
@@ -109,7 +108,7 @@ namespace VNLib.Plugins
         /// <summary>
         /// Arguments passed to the plugin by the host application
         /// </summary>
-        public ArgumentList HostArgs { get; private set; }
+        public ArgumentList HostArgs { get; private set; } = new ArgumentList([]);
 
         /// <summary>
         /// The host application may invoke this method when the assembly is loaded and this plugin is constructed to pass
@@ -125,8 +124,7 @@ namespace VNLib.Plugins
 
             //reader for the config value
             Utf8JsonReader reader = new(config);
-            
-            //Parse the config
+           
             Configuration = JsonDocument.ParseValue(ref reader);
         }
        
@@ -138,121 +136,81 @@ namespace VNLib.Plugins
         [LogInitializer]
         public virtual void InitLog(string[] cmdArgs)
         {
-            HostArgs = new(cmdArgs);
-            //Open new logger config
+            HostArgs = new(cmdArgs as IEnumerable<string>);
+
             LoggerConfiguration logConfig = new();
-            //Check for verbose
+
             if (HostArgs.HasArgument("-v") || HostArgs.HasArgument("--verbose"))
             {
                 logConfig.MinimumLevel.Verbose();
             }
-            //Check for debug mode
             else if (HostArgs.HasArgument("-d") || HostArgs.HasArgument("--debug"))
             {
                 logConfig.MinimumLevel.Debug();
             }
-            //Default to information
             else
             {
                 logConfig.MinimumLevel.Information();
             }
 
-            //Init console log
-            InitConsoleLog(logConfig);
-
-            //Init file log
-            InitFileLog(logConfig);
-
-            //Open logger
-            Log = new VLogProvider(logConfig);
-        }
-
-        private void InitConsoleLog(LoggerConfiguration logConfig)
-        {
             //If silent arg is not specified, open log to console
             if (!(HostArgs.HasArgument("--silent") || HostArgs.HasArgument("-s")))
             {
-                _ = logConfig.WriteTo.Console(outputTemplate: LogTemplate, formatProvider:null);
+                _ = logConfig.WriteTo.Console(outputTemplate: LogTemplate, formatProvider: null);
             }
-        }
 
-        private void InitFileLog(LoggerConfiguration logConfig)
-        {
-            string filePath = null;
-            string template = null;
-
-            TimeSpan flushInterval = TimeSpan.FromSeconds(10);
-            
-            int retainedLogs = 31;
-            //Default to 500mb log file size
-            int fileSizeLimit = 500 * 1000 * 1024;
-            RollingInterval interval = RollingInterval.Infinite;
-
-            /*
-             * Try to get login configuration from the plugin configuration, otherwise fall
-             * back to the application logger
-             */
-            if (PluginConfig.TryGetProperty("log", out JsonElement logEl) ||
-                HostConfig.TryGetProperty("app_log", out logEl)
+            //Try to init the file logger if plugin config is specified
+            if (PluginConfig.TryGetProperty("log", out JsonElement pluginLogConf))
+            {
+                InitFileLog(pluginLogConf, logConfig);
+            }
+            //Otherwise piggyback off the host application log config
+            else if (
+                HostConfig.TryGetProperty("logs", out JsonElement hostLogEl)
+                && hostLogEl.TryGetProperty("app_log", out pluginLogConf)
             )
             {
-                //User may want to disable plugin logging
-                if (logEl.TryGetProperty("disabled", out JsonElement disEl) && disEl.GetBoolean())
-                {
-                    return;
-                }
-
-                IReadOnlyDictionary<string, JsonElement> conf = logEl.EnumerateObject().ToDictionary(static s => s.Name, static s => s.Value);
-
-                filePath = conf.GetPropString("path");
-                template = conf.GetPropString("template");
-
-                if (conf.TryGetValue("flush_sec", out JsonElement flushEl))
-                {
-                    flushInterval = flushEl.GetTimeSpan(TimeParseType.Seconds);
-                }
-
-                if (conf.TryGetValue("retained_files", out JsonElement retainedEl))
-                {
-                    retainedLogs = retainedEl.GetInt32();
-                }
-
-                if (conf.TryGetValue("file_size_limit", out JsonElement sizeEl))
-                {
-                    fileSizeLimit = sizeEl.GetInt32();
-                }
-
-                if (conf.TryGetValue("interval", out JsonElement intervalEl))
-                {
-                    interval = Enum.Parse<RollingInterval>(intervalEl.GetString()!, true);
-                }
-
-                /*
-                 * If the user specified a log file path, replace the name of the log file with the 
-                 * plugin name, leave the directory and file extension the same
-                 */
-                if(filePath != null)
-                {                   
-                    string appLogName = Path.GetFileNameWithoutExtension(filePath);
-
-                    filePath = filePath.Replace(appLogName, PluginName, StringComparison.Ordinal);
-                }
-
-                //Default to exe dir if not set
-                filePath ??= Path.Combine(Environment.CurrentDirectory, $"{PluginName}.txt");
-                template ??= LogTemplate;
-
-                //Configure the log file writer
-                logConfig.WriteTo.File(filePath,
-                    buffered: true,
-                    retainedFileCountLimit: retainedLogs,
-                    formatProvider: null,
-                    fileSizeLimitBytes: fileSizeLimit,
-                    rollingInterval: interval,
-                    outputTemplate: template,
-                    flushToDiskInterval: flushInterval
-                );
+                InitFileLog(pluginLogConf, logConfig);
             }
+
+            Log = new VLogProvider(logConfig);
+        }
+
+        private void InitFileLog(JsonElement logEl, LoggerConfiguration logConfig)
+        {
+            FileLogConfigJson conf = logEl.Deserialize<FileLogConfigJson>()!;
+
+            //User may want to disable plugin logging
+            if (!conf.Enabled)
+            {
+                return;
+            }
+
+            /*
+             * If the app-log specified a file path, then write to the same directory 
+             * as the app-log file, but with the plugin name instead
+             */
+            if (conf.Path != null)
+            {
+                string appLogName = Path.GetFileNameWithoutExtension(conf.Path);
+
+                conf.Path = conf.Path.Replace(appLogName, PluginName, StringComparison.Ordinal);
+            }
+
+            //Default to exe dir if not set
+            conf.Path ??= Path.Combine(Environment.CurrentDirectory, $"{PluginName}.txt");
+            conf.Template ??= LogTemplate;
+
+            //Configure the log file writer
+            logConfig.WriteTo.File(conf.Path,
+                buffered: true,
+                retainedFileCountLimit: conf.RetainedFiles,
+                formatProvider: null,
+                fileSizeLimitBytes: conf.FileSizeLimit,
+                rollingInterval: Enum.Parse<RollingInterval>(conf.Interval, ignoreCase: true),
+                outputTemplate: conf.Template,
+                flushToDiskInterval: TimeSpan.FromSeconds(conf.FlushIntervalSeconds)
+            );
         }
 
         /// <summary>
@@ -286,8 +244,6 @@ namespace VNLib.Plugins
         {
             //Setup empty log if not specified
             Log ??= new VLogProvider(new());
-            //Default logger before loading
-            Configuration ??= JsonDocument.Parse("{}");
             try
             {
                 //Try to load the plugin and cleanup since the plugin failed to load
@@ -310,13 +266,10 @@ namespace VNLib.Plugins
         {
             try 
             {
-                //Cancel the token
                 Cts.Cancel();
                 
-                //Call unload impl
                 OnUnLoad();
 
-                //Wait for bg tasks
                 WaitForTasks();
             }
             finally
@@ -326,14 +279,13 @@ namespace VNLib.Plugins
         }
 
         private void CleanupPlugin()
-        {
-            //Dispose the config document
+        {            
             Configuration?.Dispose();
-            //dispose the log
+          
             (Log as IDisposable)?.Dispose();
-            //Remove any services
+            
             _services.Clear();
-            //empty deffered array
+           
             DeferredTasks.Clear();
         }
 

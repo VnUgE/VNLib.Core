@@ -101,7 +101,7 @@ namespace VNLib.WebServer.RuntimeLoading
                 return;
             }
 
-            LogConfig? conf = el.Deserialize<LogConfig>();
+            LogConfig? conf = el.DeserializeElement<LogConfig>();
 
             if(conf == null || !conf.Enabled)
             {

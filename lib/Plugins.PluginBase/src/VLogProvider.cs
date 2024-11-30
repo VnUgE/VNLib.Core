@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.PluginBase
@@ -38,15 +38,13 @@ namespace VNLib.Plugins
     /// <summary>
     /// Provides a concrete <see cref="ILogProvider"/> instance for writing events to a <see cref="Log"/> sink
     /// </summary>
-    public class VLogProvider : VnDisposeable, ILogProvider
+    /// <remarks>
+    /// Creates a new <see cref="ILogger"/> from the specified <see cref="LoggerConfiguration"/>
+    /// </remarks>
+    /// <param name="config">Configuration to generate the logger from</param>
+    public class VLogProvider(LoggerConfiguration config) : VnDisposeable, ILogProvider
     {
-        private readonly Logger LogCore;
-
-        /// <summary>
-        /// Creates a new <see cref="ILogger"/> from the specified <see cref="LoggerConfiguration"/>
-        /// </summary>
-        /// <param name="config">Configuration to generate the logger from</param>
-        public VLogProvider(LoggerConfiguration config) => LogCore = config.CreateLogger();
+        private readonly Logger LogCore = config.CreateLogger();
 
         ///<inheritdoc/>
         public void Flush() {}
@@ -56,26 +54,24 @@ namespace VNLib.Plugins
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsEnabled(LogLevel level) => LogCore.IsEnabled((LogEventLevel)level);
+        public bool IsEnabled(LogLevel level) 
+            => LogCore.IsEnabled((LogEventLevel)level);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(LogLevel level, string value)
-        {
-            LogCore.Write((LogEventLevel)level, value);
-        }
+        public void Write(LogLevel level, string value) 
+            => LogCore.Write((LogEventLevel)level, value);
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(LogLevel level, Exception exception, string value = "")
-        {
-            LogCore.Write((LogEventLevel)level, exception, value);
-        }
+        public void Write(LogLevel level, Exception exception, string value = "") 
+            => LogCore.Write((LogEventLevel)level, exception, value);
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(LogLevel level, string value, params object[] args)
-        {
-            LogCore.Write((LogEventLevel)level, value, args);
-        }
+        public void Write(LogLevel level, string value, params object?[] args) 
+            => LogCore.Write((LogEventLevel)level, value, args);
+        
         ///<inheritdoc/>
         public void Write(LogLevel level, string value, params ValueType[] args)
         {
@@ -85,11 +81,9 @@ namespace VNLib.Plugins
                 LogCore.Write((LogEventLevel)level, value, args.Select(static s => (object)s).ToArray());
             }
         }
+
         ///<inheritdoc/>
-        protected override void Free()
-        {
-            LogCore.Dispose();
-        }
+        protected override void Free() => LogCore.Dispose();
 
     }
 }
