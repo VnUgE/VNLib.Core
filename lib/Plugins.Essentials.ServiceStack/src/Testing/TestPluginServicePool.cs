@@ -41,6 +41,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Testing
     {
         private readonly List<TestService> _services = [];
 
+        /// <summary>
+        /// The number of services in the pool
+        /// </summary>
+        public int Count => _services.Count;
+
         ///<inheritdoc/>
         public void ExportService(Type serviceType, object service, ExportFlags flags = ExportFlags.None)
             => _services.Add(new(serviceType, service, flags));

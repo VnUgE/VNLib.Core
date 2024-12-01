@@ -29,6 +29,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Text.Json;
 
 using VNLib.Utils.IO;
@@ -185,6 +186,17 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Testing
         }
 
         /// <summary>
+        /// Unloads the plugin and releases all resources
+        /// </summary>
+        /// <param name="delayMilliseconds">The number of milliseconds to wait before unloading the plugin</param>
+        /// <returns>The current instance</returns>
+        public TestPluginLoader<T> Unload(int delayMilliseconds)
+        {
+            Thread.Sleep(delayMilliseconds);
+            return Unload();
+        }
+
+        /// <summary>
         /// Disposes of the plugin if it implements <see cref="IDisposable"/>
         /// </summary>
         /// <returns>The current instance</returns>
@@ -210,7 +222,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Testing
             using JsonDocument hostDocument = JsonDocument.Parse(hostConfig, jdo);
             using JsonDocument pluginDocument = JsonDocument.Parse(pluginConfig, jdo);
 
-            //Merge the documents
+            //Merge the documents the same as the plugin base expects
             using JsonDocument merged = hostDocument.Merge(pluginDocument, "host", "plugin");
             using Utf8JsonWriter writer = new(output);
 
