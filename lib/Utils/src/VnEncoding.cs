@@ -71,7 +71,7 @@ namespace VNLib.Utils
                 //encode
                 int size = encoding.GetBytes(data, handle.Span);
                 //Consume the handle into a new vnmemstream and return it
-                return VnMemoryStream.ConsumeHandle(handle, size, true);
+                return VnMemoryStream.ConsumeHandle(handle, size, readOnly: true);
             }
             catch
             {
@@ -571,6 +571,7 @@ namespace VNLib.Utils
             int outPos = 0, len = utf8Bytes.Length;
             ReadOnlySpan<byte> lookupTable = HexToUtf8Pos.AsSpan();
 
+            //Speed up hot path if no allowed chars are specified
             if (allowedChars.IsEmpty)
             {
                 for (int i = 0; i < len; i++)
@@ -765,7 +766,9 @@ namespace VNLib.Utils
             Base64FormattingOptions options = Base64FormattingOptions.None
         )
         {
-            return Convert.TryToBase64Chars(buffer, base64, out int charsWritten, options) ? charsWritten : ERRNO.E_FAIL;
+            return Convert.TryToBase64Chars(buffer, base64, out int charsWritten, options) 
+                ? charsWritten 
+                : ERRNO.E_FAIL;
         }
        
 
@@ -852,14 +855,14 @@ namespace VNLib.Utils
         /// <returns>The size of the <paramref name="base64"/> buffer</returns>
         public static ERRNO Base64ToUrlSafe(ReadOnlySpan<byte> base64, Span<byte> base64Url)
         {
-            ArgumentOutOfRangeException.ThrowIfLessThan(base64.Length, base64Url.Length, nameof(base64));
+            ArgumentOutOfRangeException.ThrowIfLessThan(base64Url.Length, base64.Length, nameof(base64));
 
             //Aligned copy to the output buffer
             MemoryUtil.Memmove(
                 ref MemoryMarshal.GetReference(base64Url),
-                0,
+                srcOffset: 0,
                 ref MemoryMarshal.GetReference(base64),
-                0,
+                dstOffset: 0,
                 (nuint)base64Url.Length
             );
 
@@ -884,9 +887,9 @@ namespace VNLib.Utils
             //Aligned copy to the output buffer
             MemoryUtil.Memmove(
                 ref MemoryMarshal.GetReference(base64Url),
-                0,
+                srcOffset: 0,
                 ref MemoryMarshal.GetReference(base64),
-                0,
+                dstOffset: 0,
                 (nuint)base64Url.Length
             );
 
@@ -977,7 +980,7 @@ namespace VNLib.Utils
         )
         {
             //Conver to base64
-            OperationStatus status = Base64.EncodeToUtf8(rawData, buffer, out _, out int written, true);
+            OperationStatus status = Base64.EncodeToUtf8(rawData, buffer, out _, out int written, isFinalBlock: true);
 
             //Check for invalid states
             Debug.Assert(status != OperationStatus.DestinationTooSmall, "Buffer allocation was too small for the conversion");

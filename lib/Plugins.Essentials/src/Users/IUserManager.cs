@@ -88,7 +88,18 @@ namespace VNLib.Plugins.Essentials.Users
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="UserCreationFailedException"></exception>
         [Obsolete("Use overload that accepts hashing provider")]
-        Task<IUser> CreateUserAsync(IUserCreationRequest creation, string? userId, CancellationToken cancellation = default);
+        public virtual Task<IUser> CreateUserAsync(IUserCreationRequest creation, string? userId, CancellationToken cancellation = default)
+        {
+            ArgumentNullException.ThrowIfNull(creation);
+
+            return CreateUserAsync(
+                creation,
+                userId,
+                //Pass null if password is not meant to be hashed
+                creation.UseRawPassword ? null : GetHashProvider(),
+                cancellation
+            );
+        }
 
         /// <summary>
         /// Creates a new user account in the store as per the request. The user-id field is optional, 
@@ -117,12 +128,21 @@ namespace VNLib.Plugins.Essentials.Users
         /// <param name="flags">Validation flags</param>
         /// <param name="cancellation">A token to cancel the validation</param>
         /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
-        Task<ERRNO> ValidatePasswordAsync(
+        public virtual Task<ERRNO> ValidatePasswordAsync(
             IUser user, 
             PrivateString password, 
             PassValidateFlags flags, 
             CancellationToken cancellation = default
-        );
+        )
+        {
+            return ValidatePasswordAsync(
+                user,
+                password,
+                //No hashing provider if the user requested a bypass
+                (flags & PassValidateFlags.BypassHashing) > 0 ? null : GetHashProvider(),
+                cancellation
+            );
+        }
 
         /// <summary>
         /// Validates a password associated with the specified user
@@ -160,17 +180,6 @@ namespace VNLib.Plugins.Essentials.Users
         /// </summary>
         /// <param name="user">The user account to update the password of</param>
         /// <param name="newPass">The new password to set</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
-        [Obsolete("Use overload that accepts password hashing provider")]
-        Task<ERRNO> UpdatePasswordAsync(IUser user, PrivateString newPass, CancellationToken cancellation = default);
-
-        /// <summary>
-        /// Updates a password associated with the specified user. If the update fails, the transaction
-        /// is rolled back.
-        /// </summary>
-        /// <param name="user">The user account to update the password of</param>
-        /// <param name="newPass">The new password to set</param>
         /// <param name="hashProvider">The optional password hashing provider used to hash passwords for the recovered password</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
@@ -180,5 +189,29 @@ namespace VNLib.Plugins.Essentials.Users
             IPasswordHashingProvider? hashProvider, 
             CancellationToken cancellation = default
         );
+
+        /// <summary>
+        /// Updates a password associated with the specified user. If the update fails, the transaction
+        /// is rolled back.
+        /// </summary>
+        /// <param name="user">The user account to update the password of</param>
+        /// <param name="newPass">The new password to set</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
+        [Obsolete("Use overload that accepts password hashing provider")]
+        public virtual Task<ERRNO> UpdatePasswordAsync(IUser user, PrivateString newPass, CancellationToken cancellation = default)
+        {
+            /*
+             * Added backward compatability for obsolete methods. The default 
+             * condition is to use the default password hashing provider.
+             */
+
+            return UpdatePasswordAsync(
+                user,
+                newPass,
+                GetHashProvider(),
+                cancellation
+            );
+        }
     }
 }

@@ -42,8 +42,6 @@ using VNLib.Plugins.Essentials.Extensions;
 using VNLib.Plugins.Essentials.Endpoints;
 using VNLib.Plugins.Essentials.Middleware;
 
-#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
-
 namespace VNLib.Plugins.Essentials
 {
 
