@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -31,21 +31,15 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// <summary>
     /// Allows tracking of failed login attempts and lockout of accounts
     /// </summary>
-    public class FailedLoginLockout
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="FailedLoginLockout"/> class.
+    /// </remarks>
+    /// <param name="maxCounts">The max number of failed login attempts before a lockout occurs</param>
+    /// <param name="maxTimeout">The max duration for a lockout to last</param>
+    public class FailedLoginLockout(uint maxCounts, TimeSpan maxTimeout)
     {
-        private readonly uint _maxCounts;
-        private readonly TimeSpan _duration;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="FailedLoginLockout"/> class.
-        /// </summary>
-        /// <param name="maxCounts">The max number of failed login attempts before a lockout occurs</param>
-        /// <param name="maxTimeout">The max duration for a lockout to last</param>
-        public FailedLoginLockout(uint maxCounts, TimeSpan maxTimeout)
-        {
-            _maxCounts = maxCounts;
-            _duration = maxTimeout;
-        }
+        private readonly uint _maxCounts = maxCounts;
+        private readonly TimeSpan _duration = maxTimeout;
 
         /// <summary>
         /// Increments the lockout counter for the supplied user. If the lockout count

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -35,8 +35,12 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// </summary>
     public static class UserExtensions
     {
-        
-        private const string PROFILE_ENTRY = "__.prof";
+
+        /// <summary>
+        /// The key within the user object that is well-known to 
+        /// store the user's profile data.
+        /// </summary>
+        public const string ProfileDataKey = "__.prof";
 
         /// <summary>
         /// Stores the user's profile to their entry. 
@@ -52,23 +56,16 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Clear entry if its null
             if (profile == null)
             {
-                ud[PROFILE_ENTRY] = null!;
+                ud[ProfileDataKey] = null!;
                 return;
             }
+
             //Dont store duplicate values
             profile.Created = null;
             profile.EmailAddress = null;
-            ud.SetObject(PROFILE_ENTRY, profile);
-        }
 
-        /// <summary>
-        /// Stores the serialized string user's profile to their entry.
-        /// <br/>
-        /// NOTE: No data validation checks are performed
-        /// </summary>
-        /// <param name="ud"></param>
-        /// <param name="jsonProfile">The JSON serialized "raw" profile data</param>
-        public static void SetProfile(this IUser ud, string jsonProfile) => ud[PROFILE_ENTRY] = jsonProfile;
+            UserEncodedData.Encode(ud, ProfileDataKey, profile);
+        }
 
         /// <summary>
         /// Recovers the user's stored profile
@@ -79,8 +76,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static AccountData? GetProfile(this IUser ud)
         {
             //Recover profile data, or create new empty profile data
-            AccountData? ad = ud.GetObject<AccountData>(PROFILE_ENTRY);
-            if (ad == null)
+            AccountData? ad = UserEncodedData.Decode<AccountData>(ud, ProfileDataKey);
+            if (ad is null)
             {
                 return null;
             }

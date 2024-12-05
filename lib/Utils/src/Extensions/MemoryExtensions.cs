@@ -463,7 +463,13 @@ namespace VNLib.Utils.Extensions
         {
             MemoryHandle<T> handle = Alloc<T>(heap, initialData.Length);
            
-            MemoryUtil.Copy(initialData, 0, handle, 0, initialData.Length);
+            MemoryUtil.Copy(
+                source: initialData, 
+                sourceOffset: 0, 
+                dest: handle, 
+                destOffset: 0, 
+                initialData.Length
+            );
 
             return handle;
         }
@@ -482,7 +488,13 @@ namespace VNLib.Utils.Extensions
         {
             MemoryHandle<T> handle = Alloc<T>(heap, initialData.Length);
           
-            MemoryUtil.Copy(initialData, 0, handle, 0, initialData.Length);
+            MemoryUtil.Copy(
+                source: initialData, 
+                sourceOffset: 0, 
+                dest: handle, 
+                destOffset: 0, 
+                initialData.Length
+            );
 
             return handle;
         }
@@ -799,33 +811,6 @@ namespace VNLib.Utils.Extensions
             ref T asRef = ref handle.GetOffsetRef((nuint)start);
             return MemoryMarshal.CreateSpan(ref asRef, count);
         }
-
-        /// <summary>
-        /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="handle"></param>
-        /// <param name="start">Intial offset into the handle</param>
-        /// <returns>The sub-sequence of the current handle</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("Functions are included directly on the type now")]
-        public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start) where T: unmanaged 
-            => handle.Span[start..];
-
-        /// <summary>
-        /// Creates a new sub-sequence over the target handle. (allows for convient sub span)
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="handle"></param>
-        /// <param name="start">Intial offset into the handle</param>
-        /// <param name="count">The number of elements within the new sequence</param>
-        /// <returns>The sub-sequence of the current handle</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("Functions are included directly on the type now")]
-        public static Span<T> AsSpan<T>(this in UnsafeMemoryHandle<T> handle, int start, int count) where T : unmanaged 
-            => handle.Span.Slice(start, count);
 
         /// <summary>
         /// Raises an <see cref="ObjectDisposedException"/> if the current handle 
