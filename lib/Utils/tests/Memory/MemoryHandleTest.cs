@@ -113,7 +113,7 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsException<ObjectDisposedException>(() => _ = handle.Base);
             Assert.ThrowsException<ObjectDisposedException>(() => handle.Resize(10));
             Assert.ThrowsException<ObjectDisposedException>(() => _ = handle.GetOffset(10));
-            Assert.ThrowsException<ObjectDisposedException>(() => handle.ThrowIfClosed());
+            Assert.ThrowsException<ObjectDisposedException>(handle.ThrowIfClosed);
         }
 
         [TestMethod]
