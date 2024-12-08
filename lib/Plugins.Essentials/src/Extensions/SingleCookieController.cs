@@ -66,7 +66,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Optionally clears the cookie (does not force)
         /// </summary>
         /// <param name="entity">The entity to clear the cookie for</param>
-        public void ExpireCookie(IHttpEvent entity) => ExpireCookie(entity, false);
+        public void ExpireCookie(IHttpEvent entity) => ExpireCookie(entity, force: false);
 
         ///<inheritdoc/>
         public void ExpireCookie(IHttpEvent entity, bool force)
@@ -86,7 +86,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         public void SetCookie(IHttpEvent entity, string value)
         {
             ArgumentNullException.ThrowIfNull(entity);
-            SetCookieInternal(entity, value, true);
+            SetCookieInternal(entity, value, force: true);
         }
 
         private void SetCookieInternal(IHttpEvent entity, string value, bool force)
@@ -94,16 +94,24 @@ namespace VNLib.Plugins.Essentials.Extensions
             //Only set cooke if already exists or force is true
             if (entity.Server.RequestCookies.ContainsKey(Name) || force)
             {
+                CookieSameSite ss = SameSite;
+
+                //If connection is cross-site, samesite must not be set
+                if (entity.Server.IsCrossSite() && SameSite != CookieSameSite.None)
+                {
+                    ss = CookieSameSite.None;
+                }
+                
                 HttpResponseCookie cookie = new(Name)
                 {
-                    Value = value,
-                    Domain = Domain,
-                    Path = Path,
+                    Value       = value,
+                    Domain      = Domain,
+                    Path        = Path,
                     //Only set max-age if cookie has a value, otherwise set to zero to expire
-                    MaxAge = string.IsNullOrWhiteSpace(value) ? TimeSpan.Zero : ValidFor,
-                    IsSession = ValidFor == TimeSpan.MaxValue,
-                    SameSite = SameSite,
-                    HttpOnly = HttpOnly,
+                    MaxAge      = string.IsNullOrWhiteSpace(value) ? TimeSpan.Zero : ValidFor,
+                    IsSession   = ValidFor == TimeSpan.MaxValue,
+                    SameSite    = ss,
+                    HttpOnly    = HttpOnly,
 
                     //Secure is required on cross origin requests
                     Secure = Secure | entity.Server.CrossOrigin,
