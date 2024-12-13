@@ -86,7 +86,8 @@ const mi_page_t _mi_page_empty = {
   MI_STAT_COUNT_NULL(), \
   { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
   { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
-  { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } \
+  { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, \
+  { 0, 0 } \
   MI_STAT_COUNT_END_NULL()
 
 // --------------------------------------------------------
@@ -111,6 +112,9 @@ mi_decl_cache_align const mi_heap_t _mi_heap_empty = {
   NULL,             // next
   false,            // can reclaim
   0,                // tag
+  #if MI_GUARDED
+  0, 0, 0, 0, 1,    // count is 1 so we never write to it (see `internal.h:mi_heap_malloc_use_guarded`)
+  #endif
   MI_SMALL_PAGES_EMPTY,
   MI_PAGE_QUEUES_EMPTY
 };
@@ -132,9 +136,8 @@ static mi_decl_cache_align mi_tld_t tld_main = {
   &_mi_heap_main, &_mi_heap_main,
   { { NULL, NULL }, {NULL ,NULL}, {NULL ,NULL, 0},
     0, 0, 0, 0, 0, &mi_subproc_default,
-    &tld_main.stats, &tld_main.os
+    &tld_main.stats
   }, // segments
-  { 0, &tld_main.stats },  // os
   { MI_STATS_NULL }       // stats
 };
 
@@ -151,6 +154,9 @@ mi_decl_cache_align mi_heap_t _mi_heap_main = {
   NULL,             // next heap
   false,            // can reclaim
   0,                // tag
+  #if MI_GUARDED
+  0, 0, 0, 0, 0,
+  #endif
   MI_SMALL_PAGES_EMPTY,
   MI_PAGE_QUEUES_EMPTY
 };
@@ -158,6 +164,45 @@ mi_decl_cache_align mi_heap_t _mi_heap_main = {
 bool _mi_process_is_initialized = false;  // set to `true` in `mi_process_init`.
 
 mi_stats_t _mi_stats_main = { MI_STATS_NULL };
+
+#if MI_GUARDED
+mi_decl_export void mi_heap_guarded_set_sample_rate(mi_heap_t* heap, size_t sample_rate, size_t seed) {
+  heap->guarded_sample_seed = seed;
+  if (heap->guarded_sample_seed == 0) { 
+    heap->guarded_sample_seed = _mi_heap_random_next(heap); 
+  }
+  heap->guarded_sample_rate  = sample_rate;
+  if (heap->guarded_sample_rate >= 1) {
+    heap->guarded_sample_seed = heap->guarded_sample_seed % heap->guarded_sample_rate;
+  }
+  heap->guarded_sample_count = heap->guarded_sample_seed;  // count down samples
+}
+
+mi_decl_export void mi_heap_guarded_set_size_bound(mi_heap_t* heap, size_t min, size_t max) {
+  heap->guarded_size_min = min;
+  heap->guarded_size_max = (min > max ? min : max);
+}
+
+void _mi_heap_guarded_init(mi_heap_t* heap) {
+  mi_heap_guarded_set_sample_rate(heap,
+    (size_t)mi_option_get_clamp(mi_option_guarded_sample_rate, 0, LONG_MAX),
+    (size_t)mi_option_get(mi_option_guarded_sample_seed));
+  mi_heap_guarded_set_size_bound(heap, 
+    (size_t)mi_option_get_clamp(mi_option_guarded_min, 0, LONG_MAX),
+    (size_t)mi_option_get_clamp(mi_option_guarded_max, 0, LONG_MAX) );  
+}
+#else
+mi_decl_export void mi_heap_guarded_set_sample_rate(mi_heap_t* heap, size_t sample_rate, size_t seed) {
+  MI_UNUSED(heap); MI_UNUSED(sample_rate); MI_UNUSED(seed);
+}
+
+mi_decl_export void mi_heap_guarded_set_size_bound(mi_heap_t* heap, size_t min, size_t max) {
+  MI_UNUSED(heap); MI_UNUSED(min); MI_UNUSED(max);
+}
+void _mi_heap_guarded_init(mi_heap_t* heap) {
+  MI_UNUSED(heap);
+}
+#endif
 
 
 static void mi_heap_main_init(void) {
@@ -174,6 +219,7 @@ static void mi_heap_main_init(void) {
     _mi_heap_main.keys[1] = _mi_heap_random_next(&_mi_heap_main);
     mi_lock_init(&mi_subproc_default.abandoned_os_lock);
     mi_lock_init(&mi_subproc_default.abandoned_os_visit_lock);
+    _mi_heap_guarded_init(&_mi_heap_main);
   }
 }
 
@@ -273,10 +319,10 @@ static mi_thread_data_t* mi_thread_data_zalloc(void) {
   // if that fails, allocate as meta data
   if (td == NULL) {
     mi_memid_t memid;
-    td = (mi_thread_data_t*)_mi_os_alloc(sizeof(mi_thread_data_t), &memid, &_mi_stats_main);
+    td = (mi_thread_data_t*)_mi_os_alloc(sizeof(mi_thread_data_t), &memid);
     if (td == NULL) {
       // if this fails, try once more. (issue #257)
-      td = (mi_thread_data_t*)_mi_os_alloc(sizeof(mi_thread_data_t), &memid, &_mi_stats_main);
+      td = (mi_thread_data_t*)_mi_os_alloc(sizeof(mi_thread_data_t), &memid);
       if (td == NULL) {
         // really out of memory
         _mi_error_message(ENOMEM, "unable to allocate thread local heap metadata (%zu bytes)\n", sizeof(mi_thread_data_t));
@@ -306,7 +352,7 @@ static void mi_thread_data_free( mi_thread_data_t* tdfree ) {
     }
   }
   // if that fails, just free it directly
-  _mi_os_free(tdfree, sizeof(mi_thread_data_t), tdfree->memid, &_mi_stats_main);
+  _mi_os_free(tdfree, sizeof(mi_thread_data_t), tdfree->memid);
 }
 
 void _mi_thread_data_collect(void) {
@@ -316,7 +362,7 @@ void _mi_thread_data_collect(void) {
     if (td != NULL) {
       td = mi_atomic_exchange_ptr_acq_rel(mi_thread_data_t, &td_cache[i], NULL);
       if (td != NULL) {
-        _mi_os_free(td, sizeof(mi_thread_data_t), td->memid, &_mi_stats_main);
+        _mi_os_free(td, sizeof(mi_thread_data_t), td->memid);
       }
     }
   }
@@ -352,9 +398,7 @@ void _mi_tld_init(mi_tld_t* tld, mi_heap_t* bheap) {
   tld->heap_backing = bheap;
   tld->heaps = NULL;
   tld->segments.subproc = &mi_subproc_default;
-  tld->segments.stats = &tld->stats;
-  tld->segments.os = &tld->os;
-  tld->os.stats = &tld->stats;
+  tld->segments.stats = &tld->stats;  
 }
 
 // Free the thread local default heap (called from `mi_thread_done`)
@@ -543,16 +587,19 @@ void _mi_process_load(void) {
 #if defined(_WIN32) && (defined(_M_IX86) || defined(_M_X64))
 #include <intrin.h>
 mi_decl_cache_align bool _mi_cpu_has_fsrm = false;
+mi_decl_cache_align bool _mi_cpu_has_erms = false;
 
 static void mi_detect_cpu_features(void) {
-  // FSRM for fast rep movsb support (AMD Zen3+ (~2020) or Intel Ice Lake+ (~2017))
+  // FSRM for fast short rep movsb/stosb support (AMD Zen3+ (~2020) or Intel Ice Lake+ (~2017))
+  // EMRS for fast enhanced rep movsb/stosb support
   int32_t cpu_info[4];
   __cpuid(cpu_info, 7);
   _mi_cpu_has_fsrm = ((cpu_info[3] & (1 << 4)) != 0); // bit 4 of EDX : see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features>
+  _mi_cpu_has_erms = ((cpu_info[2] & (1 << 9)) != 0); // bit 9 of ECX : see <https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features>
 }
 #else
 static void mi_detect_cpu_features(void) {
-  // nothing
+  // nothing 
 }
 #endif
 
@@ -635,7 +682,7 @@ void mi_cdecl _mi_process_done(void) {
   if (mi_option_is_enabled(mi_option_destroy_on_exit)) {
     mi_collect(true /* force */);
     _mi_heap_unsafe_destroy_all();     // forcefully release all memory held by all heaps (of this thread only!)
-    _mi_arena_unsafe_destroy_all(& _mi_heap_main_get()->tld->stats);
+    _mi_arena_unsafe_destroy_all();
   }
 
   if (mi_option_is_enabled(mi_option_show_stats) || mi_option_is_enabled(mi_option_verbose)) {

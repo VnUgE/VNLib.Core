@@ -10,8 +10,9 @@ version: '3'
 
 vars:
   DEP_NAME: 'rpmalloc'
-  PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_{{ .DEP_NAME }}" }}'
+  PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_rpmalloc" }}'
   BUILD_DIR: 'build/{{ OS }}'
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
   BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       
   ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       #default to greedy allocator build
@@ -22,40 +23,57 @@ tasks:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
      #init cmake build with greedy enabled
-     - task: build-internal
-       vars: { CLI_ARGS: "-DENABLE_GREEDY={{ .ENABLE_GREEDY }} {{ .CLI_ARGS }}" }
+     - task: cmake-configure
+       vars: 
+         #explicitly pass args so they can be overriden
+         CMAKE_ARGS: "{{ .CMAKE_ARGS }}"
+         BUILD_TYPE: "{{ .BUILD_TYPE }}"
+         BUILD_DIR: "{{ .BUILD_DIR }}"
+
+     - task: cmake-compile
+       vars: { BUILD_TYPE: "debug" }
        
      - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
        silent: true
 
   debug:
     cmds:
-     - task: build-internal
-       vars: 
-         BUILD_TYPE: "debug"
-         CLI_ARGS: "-DENABLE_GREEDY={{ .ENABLE_GREEDY }} {{ .CLI_ARGS }}"
+     - task: default
+       vars: { BUILD_TYPE: "debug" }
 
   build:
     desc: 'DO NOT USE! This function is used internally during releases.'
     cmds:
      #init cmake build with greedy enabled
-     - cmake -B{{ .BUILD_DIR }} -DENABLE_GREEDY={{ .ENABLE_GREEDY }} {{ .CLI_ARGS }} 
+     - task: cmake-configure
+       vars: { CMAKE_ARGS: '{{ .CLI_ARGS }} -G "Visual Studio 17 2022" -A x64' }
 
-     - cmake --build {{ .BUILD_DIR }}/ --config debug
-     - cmake --build {{ .BUILD_DIR }}/ --config release
+     - task: cmake-compile
+       vars: { BUILD_TYPE: "debug" }
+     - task: cmake-compile
+       vars: { BUILD_TYPE: "release" }  
 
-  build-internal:
+  cmake-configure:
     internal: true
+    requires: { BUILD_DIR, BUILD_TYPE, CMAKE_ARGS }
     cmds:      
       #build with defaults
       #init cmake build with greedy enabled
-      - cmake {{ .CLI_ARGS }}
-        -B{{ .BUILD_DIR }}/
-        -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
-      
-      - cmake 
-        --build {{ .BUILD_DIR }}/ 
-        --config {{ .BUILD_TYPE }}
+      - cmd: cmake 
+         -S .
+         -B{{ .BUILD_DIR }}/
+         -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
+         -DENABLE_GREEDY={{ .ENABLE_GREEDY }}
+         {{ .CMAKE_ARGS }}
+         {{ .CLI_ARGS }}
+
+  cmake-compile:
+    internal: true
+    requires: { BUILD_DIR, BUILD_TYPE }
+    cmds:
+      - cmd: cmake 
+         --build {{ .BUILD_DIR }}/ 
+         --config {{ .BUILD_TYPE }}
 
   postbuild_success:
     cmds:
@@ -78,20 +96,21 @@ tasks:
   #packs binary artifacts for distribution
   pack_artifacts:
     internal: true
-    deps:
+    requires: { BUILD_DIR, BUILD_TYPE }
+    cmds:
      - task: pack_resources
        vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_TYPE }}' }
-    cmds:
-    - cmd: "cd {{ .BUILD_DIR }}/{{ .BUILD_TYPE }} 
+     - cmd: "cd {{ .BUILD_DIR }}/{{ .BUILD_TYPE }} 
         && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-{{ .BUILD_TYPE }}-{{ .PROJECT_NAME }}.tgz' ."
 
   pack_resources:
     internal: true
+    requires: { TARGET }
     cmds:
-     - powershell cp NativeHeapApi.h '{{ .TARGET }}/'
-     - powershell cp vendor/license '{{ .TARGET }}/{{ .DEP_NAME }}_license.txt'
-     - powershell cp license '{{ .TARGET }}/license.txt'
-     - powershell cp build.readme.txt '{{ .TARGET }}/readme.txt'
+     - cmd: powershell cp NativeHeapApi.h '{{ .TARGET }}/'
+     - cmd: powershell cp vendor/license '{{ .TARGET }}/{{ .DEP_NAME }}_license.txt'
+     - cmd: powershell cp license '{{ .TARGET }}/license.txt'
+     - cmd: powershell cp build.readme.txt '{{ .TARGET }}/readme.txt'
   
   pack_source:
     internal: true
@@ -108,7 +127,7 @@ tasks:
 
     cmds:
       #tar up the source
-     - tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}  
+     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}  
 
   clean:
     desc: 'Cleans any build artifacts and output directories'
