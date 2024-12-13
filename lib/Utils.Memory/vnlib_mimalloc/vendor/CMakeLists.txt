@@ -14,6 +14,7 @@ option(MI_TRACK_VALGRIND    "Compile with Valgrind support (adds a small overhea
 option(MI_TRACK_ASAN        "Compile with address sanitizer support (adds a small overhead)" OFF)
 option(MI_TRACK_ETW         "Compile with Windows event tracing (ETW) support (adds a small overhead)" OFF)
 option(MI_USE_CXX           "Use the C++ compiler to compile the library (instead of the C compiler)" OFF)
+option(MI_OPT_ARCH          "Only for optimized builds: turn on architecture specific optimizations (for arm64: '-march=armv8.1-a' (2016))" ON)
 option(MI_SEE_ASM           "Generate assembly files" OFF)
 option(MI_OSX_INTERPOSE     "Use interpose to override standard malloc on macOS" ON)
 option(MI_OSX_ZONE          "Use malloc zone to override standard malloc on macOS" ON)
@@ -26,7 +27,7 @@ option(MI_BUILD_OBJECT      "Build object library" ON)
 option(MI_BUILD_TESTS       "Build test executables" ON)
 option(MI_DEBUG_TSAN        "Build with thread sanitizer (needs clang)" OFF)
 option(MI_DEBUG_UBSAN       "Build with undefined-behavior sanitizer (needs clang++)" OFF)
-option(MI_DEBUG_GUARDED     "Build with guard pages behind certain object allocations (implies MI_NO_PADDING=ON)" OFF)
+option(MI_GUARDED           "Build with guard pages behind certain object allocations (implies MI_NO_PADDING=ON)" OFF)
 option(MI_SKIP_COLLECT_ON_EXIT "Skip collecting memory on program exit" OFF)
 option(MI_NO_PADDING        "Force no use of padding even in DEBUG mode etc." OFF)
 option(MI_INSTALL_TOPLEVEL  "Install directly into $CMAKE_INSTALL_PREFIX instead of PREFIX/lib/mimalloc-version" OFF)
@@ -73,16 +74,16 @@ else()
 endif()
 
 # -----------------------------------------------------------------------------
-# Convenience: set default build type depending on the build directory
+# Convenience: set default build type and compiler depending on the build directory
 # -----------------------------------------------------------------------------
 
 message(STATUS "")
 if (NOT CMAKE_BUILD_TYPE)
-  if ("${CMAKE_BINARY_DIR}" MATCHES ".*(D|d)ebug$" OR  MI_DEBUG_FULL)
-    message(STATUS "No build type selected, default to: Debug")
+  if ("${CMAKE_BINARY_DIR}" MATCHES ".*((D|d)ebug|asan|tsan|ubsan|valgrind)$" OR MI_DEBUG_FULL)
+    message(STATUS "No build type selected, default to 'Debug'")
     set(CMAKE_BUILD_TYPE "Debug")
   else()
-    message(STATUS "No build type selected, default to: Release")
+    message(STATUS "No build type selected, default to 'Release'")
     set(CMAKE_BUILD_TYPE "Release")
   endif()
 endif()
@@ -91,7 +92,6 @@ if("${CMAKE_BINARY_DIR}" MATCHES ".*(S|s)ecure$")
   message(STATUS "Default to secure build")
   set(MI_SECURE "ON")
 endif()
-
 
 # -----------------------------------------------------------------------------
 # Process options
@@ -110,6 +110,14 @@ endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "MSVC|Intel")
   set(MI_USE_CXX "ON")
+endif()
+
+if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo")
+  if (NOT MI_OPT_ARCH)
+    message(STATUS "Architecture specific optimizations are disabled (MI_OPT_ARCH=OFF)")
+  endif()
+else()
+  set(MI_OPT_ARCH OFF)
 endif()
 
 if(MI_OVERRIDE)
@@ -207,9 +215,9 @@ if(MI_TRACK_ETW)
   endif()
 endif()
 
-if(MI_DEBUG_GUARDED)
-  message(STATUS "Compile guard pages behind certain object allocations (MI_DEBUG_GUARDED=ON)")
-  list(APPEND mi_defines MI_DEBUG_GUARDED=1)
+if(MI_GUARDED)
+  message(STATUS "Compile guard pages behind certain object allocations (MI_GUARDED=ON)")
+  list(APPEND mi_defines MI_GUARDED=1)
   if(NOT MI_NO_PADDING)
     message(STATUS "  Disabling padding due to guard pages (MI_NO_PADDING=ON)")
     set(MI_NO_PADDING ON)
@@ -319,16 +327,32 @@ if(MI_WIN_USE_FLS)
   list(APPEND mi_defines MI_WIN_USE_FLS=1)
 endif()
 
+# Determine architecture
+set(MI_OPT_ARCH_FLAGS "")
+set(MI_ARCH "unknown")
+if(APPLE)
+  list(FIND CMAKE_OSX_ARCHITECTURES "x86_64" x64_index)
+  list(FIND CMAKE_OSX_ARCHITECTURES "arm64" arm64_index)
+  if(x64_index GREATER_EQUAL 0)
+    set(MI_ARCH "x64")
+  elseif(arm64_index GREATER_EQUAL 0)
+    set(MI_ARCH "arm64")
+  endif()
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_GENERATOR_PLATFORM STREQUAL "x64")
+  set(MI_ARCH "x64")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64" OR CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+  set(MI_ARCH "arm64")
+endif()
 
- # Check /proc/cpuinfo for an SV39 MMU and define a constant if one is
- # found. We will want to skip the aligned hinting in that case. Issue #939, #949
- if (EXISTS /proc/cpuinfo)
-   file(STRINGS /proc/cpuinfo mi_sv39_mmu REGEX "^mmu[ \t]+:[ \t]+sv39$")
-   if (mi_sv39_mmu)
-     MESSAGE( STATUS "Disable aligned hints (SV39 MMU detected)" )
-     list(APPEND mi_defines MI_NO_ALIGNED_HINT=1)
-   endif()
- endif()
+# Check /proc/cpuinfo for an SV39 MMU and limit the virtual address bits.
+# (this will skip the aligned hinting in that case. Issue #939, #949)
+if (EXISTS /proc/cpuinfo)
+  file(STRINGS /proc/cpuinfo mi_sv39_mmu REGEX "^mmu[ \t]+:[ \t]+sv39$")
+  if (mi_sv39_mmu)
+    MESSAGE( STATUS "Set virtual address bits to 39 (SV39 MMU detected)" )
+    list(APPEND mi_defines MI_DEFAULT_VIRTUAL_ADDRESS_BITS=39)
+  endif()
+endif()
 
 # On Haiku use `-DCMAKE_INSTALL_PREFIX` instead, issue #788
 # if(CMAKE_SYSTEM_NAME MATCHES "Haiku")
@@ -367,14 +391,29 @@ if(CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang|GNU|Intel" AND NOT CMAKE_SYSTEM
   if(MI_OVERRIDE)
     list(APPEND mi_cflags -fno-builtin-malloc)
   endif()
+  if(MI_OPT_ARCH)
+    if(MI_ARCH STREQUAL "arm64")
+      set(MI_OPT_ARCH_FLAGS "-march=armv8.1-a")         # fast atomics
+    endif()
+  endif()
 endif()
 
 if (MSVC AND MSVC_VERSION GREATER_EQUAL 1914)
   list(APPEND mi_cflags /Zc:__cplusplus)
+  if(MI_OPT_ARCH)
+    if(MI_ARCH STREQUAL "arm64")
+      set(MI_OPT_ARCH_FLAGS "/arch:armv8.1")           # fast atomics
+    endif()
+  endif()
 endif()
 
 if(MINGW)
   add_definitions(-D_WIN32_WINNT=0x600)
+endif()
+
+if(MI_OPT_ARCH_FLAGS)
+  list(APPEND mi_cflags ${MI_OPT_ARCH_FLAGS})
+  message(STATUS "Architecture specific optimization is enabled (with ${MI_OPT_ARCH_FLAGS}) (MI_OPT_ARCH=ON)")
 endif()
 
 # extra needed libraries
