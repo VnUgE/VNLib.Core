@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -33,15 +33,23 @@ namespace VNLib.Plugins
         /// </summary>
         [JsonPropertyName("token")]
         public string? Token { get; set; }
+
         /// <summary>
         /// The result of the REST operation to send to client
         /// </summary>
         [JsonPropertyName("result")]
         public object? Result { get; set; }
+
         /// <summary>
         /// A status flag/result of the REST operation
         /// </summary>
         [JsonPropertyName("success")]
         public bool Success { get; set; }
+
+        /// <summary>
+        /// A collection of error messages to send to clients
+        /// </summary>
+        [JsonPropertyName("errors")]
+        public object? Errors { get; set; }
     }
 }
