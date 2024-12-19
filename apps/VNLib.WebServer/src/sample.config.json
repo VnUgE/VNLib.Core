@@ -117,7 +117,7 @@
 
       // controls http cache headers if desired
       "file_http_max_age": {
-        ".html": 0      //All html files will have no-cache, no-store header sent
+        ".html": 0,      //All html files will have no-cache, no-store header sent
         ".css": 864000, //
         ".js": 864000, //all .js files will have a max-age of 10 days   
       },
