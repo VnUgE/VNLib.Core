@@ -26,7 +26,7 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
-    internal sealed class TcpConfigJson
+    internal sealed class TcpConfigJson : IJsonOnDeserialized
     {
         [JsonPropertyName("keepalive_sec")]
         public int TcpKeepAliveTime { get; set; } = 4;
@@ -60,7 +60,7 @@ namespace VNLib.WebServer.Config.Model
         public int TcpRecvBufferSize { get; set; } = 625 * 1024;
 
 
-        public void ValidateConfig()
+        public void OnDeserialized()
         {
             Validate.EnsureRange(TcpKeepAliveTime, 0, 60);
             Validate.EnsureRange(KeepaliveInterval, 0, 60);

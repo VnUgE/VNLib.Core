@@ -26,7 +26,6 @@ using System;
 using System.Data;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Collections.Generic;
 
 using VNLib.Utils.Logging;
@@ -77,24 +76,18 @@ namespace VNLib.WebServer.Bootstrap
                 return null;
             }
 
-            JsonElement confEl = config.GetDocumentRoot();
-
-            if (!confEl.TryGetProperty(PLUGINS_CONFIG_PROP_NAME, out JsonElement plCfg))
+            ServerPluginConfig? conf = config.GetConfigProperty<ServerPluginConfig>(PLUGINS_CONFIG_PROP_NAME);
+            if (conf is null)
             {
                 logger.AppLog.Debug("No plugin configuration found");
                 return null;
             }
-
-            ServerPluginConfig? conf = plCfg.DeserializeElement<ServerPluginConfig>();
-            Validate.EnsureNotNull(conf, "Your plugin configuration object is null or malformatted");
 
             if (!conf.Enabled)
             {
                 logger.AppLog.Information("Plugin loading disabled via configuration flag");
                 return null;
             }
-
-            Validate.EnsureNotNull(conf.Path, "If plugins are enabled, you must specify a directory to load them from");
 
             //Init new plugin stack builder
             PluginStackBuilder pluginBuilder = PluginStackBuilder.Create()
@@ -105,11 +98,14 @@ namespace VNLib.WebServer.Bootstrap
             //Setup plugin config data
             if (!string.IsNullOrWhiteSpace(conf.ConfigDir))
             {
-                pluginBuilder.WithJsonConfigDir(confEl, new(conf.ConfigDir));
+                pluginBuilder.WithJsonConfigDir(
+                    hostConfig: config.GetDocumentRoot(), 
+                    configDir: new (conf.ConfigDir)
+                );
             }
             else
             {
-                pluginBuilder.WithLocalJsonConfig(confEl);
+                pluginBuilder.WithLocalJsonConfig(config.GetDocumentRoot());
             }
 
             if (conf.HotReload)
@@ -138,14 +134,10 @@ namespace VNLib.WebServer.Bootstrap
         ///<inheritdoc/>
         protected override HttpConfig GetHttpConfig()
         {
-            JsonElement rootEl = config.GetDocumentRoot();
-
             try
             {
-                HttpGlobalConfig? gConf = rootEl.GetProperty("http").DeserializeElement<HttpGlobalConfig>();
+                HttpGlobalConfig? gConf = config.GetConfigProperty<HttpGlobalConfig>("http");
                 Validate.EnsureNotNull(gConf, "Missing required HTTP configuration variables");
-
-                gConf.ValidateConfig();
 
                 //Attempt to load the compressor manager, if null, compression is disabled
                 IHttpCompressorManager? compressorManager = HttpCompressor.LoadOrDefaultCompressor(procArgs, gConf.Compression, config, logger.AppLog);
@@ -175,12 +167,12 @@ namespace VNLib.WebServer.Bootstrap
                     //Buffer config update
                     BufferConfig = new()
                     {
-                        RequestHeaderBufferSize = gConf.HeaderBufSize,
-                        ResponseHeaderBufferSize = gConf.ResponseHeaderBufSize,
-                        FormDataBufferSize = gConf.MultipartMaxBufSize,
+                        RequestHeaderBufferSize     = gConf.HeaderBufSize,
+                        ResponseHeaderBufferSize    = gConf.ResponseHeaderBufSize,
+                        FormDataBufferSize          = gConf.MultipartMaxBufSize,
 
                         //Align response buffer size with transport buffer to avoid excessive copy
-                        ResponseBufferSize = TcpConfig.TcpTxBufferSize, 
+                        ResponseBufferSize          = TcpConfig.TcpTxBufferSize, 
 
                         /*
                          * Chunk buffers are written to the transport when they are fully accumulated. These buffers
@@ -298,32 +290,20 @@ namespace VNLib.WebServer.Bootstrap
 
         private VirtualHostServerConfig[] GetVirtualHosts()
         {
-            JsonElement rootEl = config.GetDocumentRoot();
             ILogProvider log = logger.AppLog;
 
-            if (!rootEl.TryGetProperty("virtual_hosts", out _))
+            VirtualHostServerConfig[]? hosts = config.GetConfigProperty<VirtualHostServerConfig[]>("virtual_hosts");
+            if (hosts is null)
             {
                 log.Warn("No virtual hosts array was defined. Continuing without hosts");
                 return [];
             }
 
-            return rootEl.GetProperty("virtual_hosts")
-                .EnumerateArray()
-                .Select(GetVhConfig)
+            //Only get enabled hosts
+            return hosts
+                .Where(static conf => conf != null)
+                .Where(static conf => conf.Enabled)
                 .ToArray();
-
-
-            static VirtualHostServerConfig GetVhConfig(JsonElement rootEl)
-            {
-                VirtualHostServerConfig? conf = rootEl.DeserializeElement<VirtualHostServerConfig>();
-
-                Validate.EnsureNotNull(conf, "Empty virtual host configuration, check your virtual hosts array for an empty element");
-                Validate.EnsureNotNull(conf.DirPath, "A virtual host was defined without a root directory property: 'dirPath'");
-                Validate.EnsureNotNull(conf.Hostnames, "A virtual host was defined without a hostname property: 'hostnames'");
-                Validate.EnsureNotNull(conf.Interfaces, "An interface configuration is required for every virtual host");
-
-                return conf;
-            }
         }
     }
 }

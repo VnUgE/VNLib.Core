@@ -88,7 +88,7 @@ Starting...
             }
 
             //Build logs from config
-            logBuilder.BuildFromConfig(config.GetDocumentRoot());
+            logBuilder.BuildFromConfig(config);
 
             //Create the logger
             using ServerLogger logger = logBuilder.GetLogger();

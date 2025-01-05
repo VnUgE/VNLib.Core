@@ -24,7 +24,6 @@
 
 using System;
 using System.IO;
-using System.Text.Json;
 
 using Serilog;
 
@@ -49,14 +48,10 @@ namespace VNLib.WebServer.RuntimeLoading
             return this;
         }
 
-        public ServerLogBuilder BuildFromConfig(JsonElement logEl)
+        public ServerLogBuilder BuildFromConfig(IServerConfig config)
         {
-            if(logEl.TryGetProperty("logs", out logEl))
-            {
-                InitSingleLog(logEl, "app_log", "Application", AppLogConfig);
-                InitSingleLog(logEl, "sys_log", "System", SysLogConfig);
-            }
-            
+            InitSingleLog(config, "logs::app_log", "Application", AppLogConfig);
+            InitSingleLog(config, "logs::sys_log", "System", SysLogConfig);
             return this;
         }
 
@@ -94,16 +89,10 @@ namespace VNLib.WebServer.RuntimeLoading
             }
         }
 
-        private static void InitSingleLog(JsonElement el, string elPath, string logName, LoggerConfiguration logConfig)
+        private static void InitSingleLog(IServerConfig config, string elPath, string logName, LoggerConfiguration logConfig)
         {
-            if(!el.TryGetProperty(elPath, out el))
-            {
-                return;
-            }
-
-            LogConfig? conf = el.DeserializeElement<LogConfig>();
-
-            if(conf == null || !conf.Enabled)
+            LogConfig? conf = config.GetConfigProperty<LogConfig>(elPath);
+            if(conf is null || !conf.Enabled)
             {
                 return;
             }
@@ -112,11 +101,6 @@ namespace VNLib.WebServer.RuntimeLoading
             conf.Path ??= Path.Combine(Environment.CurrentDirectory, $"{elPath}.txt");
            
             conf.Template ??= $"{{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}} [{{Level:u3}}] {logName} {{Message:lj}}{{NewLine}}{{Exception}}";
-
-            Validate.EnsureNotNull(conf.Interval, "You must not set a null rolling log interval");
-            Validate.EnsureRange(conf.FlushIntervalSeconds, 1, 6000, "flush_sec");
-            Validate.EnsureRange(conf.RetainedFiles, 1, 100, "retained_files");
-            Validate.EnsureRange(conf.FileSizeLimit, 100, 1000000000, "file_size_limit");
 
             //Configure the log file writer
             logConfig.WriteTo.File(

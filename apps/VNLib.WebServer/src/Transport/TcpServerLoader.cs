@@ -24,7 +24,6 @@
 
 using System;
 using System.Linq;
-using System.Text.Json;
 using System.Net.Sockets;
 using System.Collections.Generic;
 
@@ -51,14 +50,7 @@ namespace VNLib.WebServer.Transport
 
         private readonly LazyInitializer<TcpConfigJson> _conf = new(() =>
         {
-            JsonElement rootElement = hostConfig.GetDocumentRoot();
-
-            if (rootElement.TryGetProperty(Entry.TCP_CONF_PROP_NAME, out JsonElement tcpEl))
-            {
-                return tcpEl.DeserializeElement<TcpConfigJson>()!;
-            }
-
-            return new TcpConfigJson();
+            return hostConfig.GetConfigProperty<TcpConfigJson>(Entry.TCP_CONF_PROP_NAME) ?? new TcpConfigJson();
         });
 
         private readonly string? ThreadCountArg         = args.GetArgument("-t") ?? args.GetArgument("--threads");
@@ -164,7 +156,6 @@ namespace VNLib.WebServer.Transport
             }
 
             TcpConfigJson baseConfig = _conf.Instance;
-            baseConfig.ValidateConfig();
            
             TCPConfig tcpConf = new()
             {

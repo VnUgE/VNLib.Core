@@ -33,9 +33,46 @@ using VNLib.Utils.IO;
 
 namespace VNLib.WebServer.Config
 {
+
     internal sealed class JsonServerConfig(JsonDocument doc) : IServerConfig
     {
+        private static readonly JsonSerializerOptions _ops = new()
+        {
+            AllowTrailingCommas = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+        };
+
+        ///<inheritdoc/>
         public JsonElement GetDocumentRoot() => doc.RootElement;
+
+        ///<inheritdoc/>
+        public T? GetConfigProperty<T>(string key)
+        {
+            JsonElement current = doc.RootElement;
+
+            //Loop through the namespace properties to find nested json objects
+            foreach (string name in key.Split("::"))
+            {
+                switch (current.ValueKind)
+                {
+                    //If the current element is an object, try to get a nested property
+                    case JsonValueKind.Object:
+                        if (current.TryGetProperty(name, out JsonElement value))
+                        {
+                            current = value;
+                        }
+                        else
+                        {
+                            return default;
+                        }
+                        break;
+                    default:
+                        return current.Deserialize<T>(_ops);
+                }
+            }
+
+            return current.Deserialize<T>(_ops);
+        }
 
         public static JsonServerConfig? FromFile(string filename)
         {
@@ -131,6 +168,7 @@ namespace VNLib.WebServer.Config
 
             return null;
         }
+
 
         public class NumberTypeResolver : INodeTypeResolver
         {

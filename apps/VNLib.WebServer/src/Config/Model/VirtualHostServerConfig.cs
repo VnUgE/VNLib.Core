@@ -29,8 +29,11 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
-    internal sealed class VirtualHostServerConfig
+    internal sealed class VirtualHostServerConfig : IJsonOnDeserialized
     {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
         [JsonPropertyName("trace")]
         public bool RequestTrace { get; set; } = false;
 
@@ -97,5 +100,17 @@ namespace VNLib.WebServer.Config.Model
 
         [JsonPropertyName("file_http_max_age")]
         public Dictionary<string, int> FileHttpCacheMaxAge { get; set; } = [];
+
+        public void OnDeserialized()
+        {
+            if(!Enabled)
+            {
+                return;
+            }
+
+            Validate.EnsureNotNull(DirPath, "A virtual host was defined without a root directory property: 'dirPath'");
+            Validate.EnsureNotNull(Hostnames, "A virtual host was defined without a hostname property: 'hostnames'");
+            Validate.EnsureNotNull(Interfaces, "An interface configuration is required for every virtual host");
+        }
     }
 }

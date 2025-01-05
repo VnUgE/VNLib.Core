@@ -26,7 +26,7 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
-    internal class HttpGlobalConfig
+    internal class HttpGlobalConfig : IJsonOnDeserialized
     {
 
         [JsonPropertyName("default_version")]
@@ -109,7 +109,7 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("compression")]
         public HttpCompressorConfig? Compression { get; set; } = new();
 
-        public void ValidateConfig()
+        public void OnDeserialized()
         {
             Validate.EnsureNotNull(DefaultHttpVersion, "Default HTTP version is required");
 
@@ -130,8 +130,6 @@ namespace VNLib.WebServer.Config.Model
 
             //Validate compression config
             Validate.EnsureNotNull(Compression, "Compression configuration should not be set to null. Comment to enable defaults");
-            Validate.EnsureRange(Compression.CompressionMax, -1, long.MaxValue);
-            Validate.EnsureRange(Compression.CompressionMin, -1, int.MaxValue);
         }
     }
 }

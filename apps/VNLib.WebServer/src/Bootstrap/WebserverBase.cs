@@ -83,8 +83,6 @@ namespace VNLib.WebServer.Bootstrap
         {
             bool loadPluginsConcurrently = !procArgs.HasArgument("--sequential-load");
 
-            JsonElement conf = config.GetDocumentRoot();
-
             HttpConfig http = GetHttpConfig();
 
             VirtualHostConfig[] virtualHosts = GetAllVirtualHosts();
