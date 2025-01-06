@@ -54,6 +54,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// Adds a single pre-configured virtual host to the domain 
         /// </summary>
         /// <param name="config">The pre-configured virtual host configuration</param>
+        /// <param name="userState">An optional user state object to pass to event handler callbacks</param>
         /// <returns>The current instance</returns>
         IServiceGroupBuilder WithVirtualHost(VirtualHostConfiguration config, object? userState);
     }

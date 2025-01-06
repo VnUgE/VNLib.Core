@@ -286,6 +286,8 @@ namespace VNLib.Net.Transport.Tcp
             {
                 (args as IDisposable)!.Dispose();
             }
+
+            Config.Log.Debug("Listener for {socket} destroyed", Config.LocalEndPoint);
         }
     }
 }
