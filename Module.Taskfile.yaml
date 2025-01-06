@@ -96,6 +96,7 @@ tasks:
        silent: true
      - cmd: dotnet test
         {{ .CLI_ARGS }}
+        --logger "console;verbosity=detailed"
         --configuration debug
         --verbosity normal
         --framework {{ .FRAMEWORK | default "net8.0" }}        
