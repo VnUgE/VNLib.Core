@@ -99,7 +99,7 @@ tasks:
         --logger "console;verbosity=detailed"
         --configuration debug
         --verbosity normal
-        --framework {{ .FRAMEWORK | default "net8.0" }}        
+        --framework {{ .TARGET_FRAMEWORK | default "net8.0" }}        
         --environment VNLIB_SHARED_HEAP_DIAGNOSTICS="1"
         --environment TEST_RPMALLOC_LIB_PATH="{{ .RPMALLOC_LIB_PATH }}"
         --environment TEST_MIMALLOC_LIB_PATH="{{ .MIMALLOC_LIB_PATH }}"
