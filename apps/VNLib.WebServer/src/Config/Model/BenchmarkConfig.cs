@@ -27,7 +27,7 @@ using System.Text.Json.Serialization;
 namespace VNLib.WebServer.Config.Model
 {
 
-    internal sealed class BenchmarkConfig
+    internal sealed class BenchmarkConfig : IJsonOnDeserialized
     {
 
         [JsonPropertyName("enabled")]
@@ -39,5 +39,14 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("random")]
         public bool Random { get; set; }
 
+        public void OnDeserialized()
+        {
+            if(!Enabled)
+            {
+                return;
+            }
+
+            Validate.EnsureRange(Size, 1, int.MaxValue);
+        }
     }
 }

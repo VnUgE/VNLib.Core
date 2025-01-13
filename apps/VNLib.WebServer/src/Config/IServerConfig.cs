@@ -30,5 +30,7 @@ namespace VNLib.WebServer.Config
     internal interface IServerConfig
     {
         JsonElement GetDocumentRoot();
+
+        T? GetConfigProperty<T>(string key);
     }
 }

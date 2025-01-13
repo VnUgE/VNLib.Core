@@ -26,7 +26,7 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
-    internal sealed class LogConfig
+    internal sealed class LogConfig : IJsonOnDeserialized
     {
         [JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = false;
@@ -48,5 +48,18 @@ namespace VNLib.WebServer.Config.Model
 
         [JsonPropertyName("interval")]
         public string Interval { get; set; } = "infinite";
+
+        public void OnDeserialized()
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Validate.EnsureNotNull(Interval, "You must not set a null rolling log interval");
+            Validate.EnsureRange(FlushIntervalSeconds, 1, 6000, "flush_sec");
+            Validate.EnsureRange(RetainedFiles, 1, 100, "retained_files");
+            Validate.EnsureRange(FileSizeLimit, 100, 1000000000, "file_size_limit");
+        }
     }
 }

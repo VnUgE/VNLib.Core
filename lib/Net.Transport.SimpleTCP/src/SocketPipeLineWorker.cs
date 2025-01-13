@@ -168,9 +168,8 @@ namespace VNLib.Net.Transport.Tcp
                      */
 
                     //Get enumerator to write memory segments
-                   enumerator = _sendReadRes.Buffer.GetEnumerator();
-
-                    //Begin enumerator
+                    enumerator = _sendReadRes.Buffer.GetEnumerator();
+                   
                     while (enumerator.MoveNext())
                     {
 

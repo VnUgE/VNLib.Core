@@ -55,7 +55,7 @@ namespace VNLib.WebServer
             => LogCore.Write((LogEventLevel)level, exception, value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(LogLevel level, string value, params object[] args) 
+        public void Write(LogLevel level, string value, params object?[] args) 
             => LogCore.Write((LogEventLevel)level, value, args);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

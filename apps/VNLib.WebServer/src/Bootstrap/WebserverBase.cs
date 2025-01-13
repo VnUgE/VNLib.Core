@@ -24,7 +24,6 @@
 
 using System;
 using System.Linq;
-using System.Text.Json;
 using System.Diagnostics;
 
 using VNLib.Net.Http;
@@ -82,8 +81,6 @@ namespace VNLib.WebServer.Bootstrap
         protected virtual HttpServiceStack ConfiugreServiceStack()
         {
             bool loadPluginsConcurrently = !procArgs.HasArgument("--sequential-load");
-
-            JsonElement conf = config.GetDocumentRoot();
 
             HttpConfig http = GetHttpConfig();
 

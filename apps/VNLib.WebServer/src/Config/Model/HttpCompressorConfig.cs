@@ -26,11 +26,8 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
-    internal sealed class HttpCompressorConfig
+    internal sealed class HttpCompressorConfig : IJsonOnDeserialized
     {
-        [JsonPropertyName("assembly")]
-        public string? AssemblyPath { get; set; }
-
         /// <summary>
         /// If this compressor is enabled. The default is true, to use built-in
         /// compressors.
@@ -38,10 +35,24 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("enabled")]
         public bool Enabled { get; set; } = true;
 
+        [JsonPropertyName("assembly")]
+        public string? AssemblyPath { get; set; }
+
         [JsonPropertyName("max_size")]
         public long CompressionMax { get; set; } = 104857600;       //100MB
 
         [JsonPropertyName("min_size")]
         public int CompressionMin { get; set; } = 256;
+
+        public void OnDeserialized()
+        {
+            if(!Enabled)
+            {
+                return;
+            }
+           
+            Validate.EnsureRange(CompressionMax, -1, long.MaxValue);
+            Validate.EnsureRange(CompressionMin, -1, int.MaxValue);
+        }
     }
 }

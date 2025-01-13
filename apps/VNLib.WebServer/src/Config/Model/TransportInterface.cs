@@ -29,7 +29,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
 
 using VNLib.Utils.Memory;
-using VNLib.Utils.Resources;
 
 namespace VNLib.WebServer.Config.Model
 {
