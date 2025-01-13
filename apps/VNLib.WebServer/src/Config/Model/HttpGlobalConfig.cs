@@ -128,6 +128,8 @@ namespace VNLib.WebServer.Config.Model
             Validate.EnsureRange(ResponseHeaderBufSize, 0, int.MaxValue);
             Validate.EnsureRange(MultipartMaxBufSize, 0, int.MaxValue);
 
+            Validate.Assert(MaxEntitySize <= 0 || MaxUploadsPerRequest != 0, "Max uploads per request must be greater than 0 if max entity size is set");
+
             //Validate compression config
             Validate.EnsureNotNull(Compression, "Compression configuration should not be set to null. Comment to enable defaults");
         }

@@ -245,6 +245,11 @@ namespace VNLib.Net.Http
             {
                 throw new ArgumentException("SendTimeout cannot be less than 1 millisecond", nameof(conf));
             }
+
+            if(conf.MaxUploadSize > 0 && conf.MaxUploadsPerRequest == 0)
+            {
+                throw new ArgumentException("MaxUploadsPerRequest must be greater than 0 when MaxUploadSize is set", nameof(conf));
+            }
         }
 
         private static ListenerState[] MapListeners(HttpTransportBinding[] bindings)
