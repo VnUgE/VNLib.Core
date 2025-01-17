@@ -168,8 +168,8 @@ mi_stats_t _mi_stats_main = { MI_STATS_NULL };
 #if MI_GUARDED
 mi_decl_export void mi_heap_guarded_set_sample_rate(mi_heap_t* heap, size_t sample_rate, size_t seed) {
   heap->guarded_sample_seed = seed;
-  if (heap->guarded_sample_seed == 0) { 
-    heap->guarded_sample_seed = _mi_heap_random_next(heap); 
+  if (heap->guarded_sample_seed == 0) {
+    heap->guarded_sample_seed = _mi_heap_random_next(heap);
   }
   heap->guarded_sample_rate  = sample_rate;
   if (heap->guarded_sample_rate >= 1) {
@@ -187,9 +187,9 @@ void _mi_heap_guarded_init(mi_heap_t* heap) {
   mi_heap_guarded_set_sample_rate(heap,
     (size_t)mi_option_get_clamp(mi_option_guarded_sample_rate, 0, LONG_MAX),
     (size_t)mi_option_get(mi_option_guarded_sample_seed));
-  mi_heap_guarded_set_size_bound(heap, 
+  mi_heap_guarded_set_size_bound(heap,
     (size_t)mi_option_get_clamp(mi_option_guarded_min, 0, LONG_MAX),
-    (size_t)mi_option_get_clamp(mi_option_guarded_max, 0, LONG_MAX) );  
+    (size_t)mi_option_get_clamp(mi_option_guarded_max, 0, LONG_MAX) );
 }
 #else
 mi_decl_export void mi_heap_guarded_set_sample_rate(mi_heap_t* heap, size_t sample_rate, size_t seed) {
@@ -257,11 +257,10 @@ void mi_subproc_delete(mi_subproc_id_t subproc_id) {
   mi_subproc_t* subproc = _mi_subproc_from_id(subproc_id);
   // check if there are no abandoned segments still..
   bool safe_to_delete = false;
-  if (mi_lock_acquire(&subproc->abandoned_os_lock)) {
+  mi_lock(&subproc->abandoned_os_lock) {
     if (subproc->abandoned_os_list == NULL) {
       safe_to_delete = true;
     }
-    mi_lock_release(&subproc->abandoned_os_lock);
   }
   if (!safe_to_delete) return;
   // safe to release
@@ -398,7 +397,7 @@ void _mi_tld_init(mi_tld_t* tld, mi_heap_t* bheap) {
   tld->heap_backing = bheap;
   tld->heaps = NULL;
   tld->segments.subproc = &mi_subproc_default;
-  tld->segments.stats = &tld->stats;  
+  tld->segments.stats = &tld->stats;
 }
 
 // Free the thread local default heap (called from `mi_thread_done`)
@@ -599,7 +598,7 @@ static void mi_detect_cpu_features(void) {
 }
 #else
 static void mi_detect_cpu_features(void) {
-  // nothing 
+  // nothing
 }
 #endif
 
@@ -664,15 +663,20 @@ void mi_cdecl _mi_process_done(void) {
   if (process_done) return;
   process_done = true;
 
+  // get the default heap so we don't need to acces thread locals anymore
+  mi_heap_t* heap = mi_prim_get_default_heap();  // use prim to not initialize any heap
+  mi_assert_internal(heap != NULL);
+
   // release any thread specific resources and ensure _mi_thread_done is called on all but the main thread
   _mi_prim_thread_done_auto_done();
+
 
   #ifndef MI_SKIP_COLLECT_ON_EXIT
     #if (MI_DEBUG || !defined(MI_SHARED_LIB))
     // free all memory if possible on process exit. This is not needed for a stand-alone process
     // but should be done if mimalloc is statically linked into another shared library which
     // is repeatedly loaded/unloaded, see issue #281.
-    mi_collect(true /* force */ );
+    mi_heap_collect(heap, true /* force */ );
     #endif
   #endif
 
@@ -680,9 +684,10 @@ void mi_cdecl _mi_process_done(void) {
   // since after process_done there might still be other code running that calls `free` (like at_exit routines,
   // or C-runtime termination code.
   if (mi_option_is_enabled(mi_option_destroy_on_exit)) {
-    mi_collect(true /* force */);
-    _mi_heap_unsafe_destroy_all();     // forcefully release all memory held by all heaps (of this thread only!)
+    mi_heap_collect(heap, true /* force */);
+    _mi_heap_unsafe_destroy_all(heap);     // forcefully release all memory held by all heaps (of this thread only!)
     _mi_arena_unsafe_destroy_all();
+    _mi_segment_map_unsafe_destroy();
   }
 
   if (mi_option_is_enabled(mi_option_show_stats) || mi_option_is_enabled(mi_option_verbose)) {

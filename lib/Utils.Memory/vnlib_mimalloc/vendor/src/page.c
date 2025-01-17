@@ -411,7 +411,7 @@ void _mi_page_force_abandon(mi_page_t* page) {
 
   // ensure this page is no longer in the heap delayed free list
   _mi_heap_delayed_free_all(heap);
-  // We can still access the page meta-info even if it is freed as we ensure 
+  // We can still access the page meta-info even if it is freed as we ensure
   // in `mi_segment_force_abandon` that the segment is not freed (yet)
   if (page->capacity == 0) return; // it may have been freed now
 
@@ -732,7 +732,7 @@ static void mi_page_init(mi_heap_t* heap, mi_page_t* page, size_t block_size, mi
 -------------------------------------------------------------*/
 
 // search for a best next page to use for at most N pages (often cut short if immediate blocks are available)
-#define MI_MAX_CANDIDATE_SEARCH  (8)
+#define MI_MAX_CANDIDATE_SEARCH  (4)
 
 // is the page not yet used up to its reserved space?
 static bool mi_page_is_expandable(const mi_page_t* page) {
@@ -783,7 +783,8 @@ static mi_page_t* mi_page_queue_find_free_ex(mi_heap_t* heap, mi_page_queue_t* p
         page_candidate = page;
         candidate_count = 0;
       }
-      else if (/* !mi_page_is_expandable(page) && */ page->used >= page_candidate->used) {
+      // prefer to reuse fuller pages (in the hope the less used page gets freed)
+      else if (page->used >= page_candidate->used && !mi_page_is_mostly_used(page) && !mi_page_is_expandable(page)) {
         page_candidate = page;
       }
       // if we find a non-expandable candidate, or searched for N pages, return with the best candidate
@@ -989,14 +990,20 @@ void* _mi_malloc_generic(mi_heap_t* heap, size_t size, bool zero, size_t huge_al
   mi_assert_internal(mi_page_block_size(page) >= size);
 
   // and try again, this time succeeding! (i.e. this should never recurse through _mi_page_malloc)
+  void* p;
   if mi_unlikely(zero && mi_page_is_huge(page)) {
     // note: we cannot call _mi_page_malloc with zeroing for huge blocks; we zero it afterwards in that case.
-    void* p = _mi_page_malloc(heap, page, size);
+    p = _mi_page_malloc(heap, page, size);
     mi_assert_internal(p != NULL);
     _mi_memzero_aligned(p, mi_page_usable_block_size(page));
-    return p;
   }
   else {
-    return _mi_page_malloc_zero(heap, page, size, zero);
+    p = _mi_page_malloc_zero(heap, page, size, zero);
+    mi_assert_internal(p != NULL);
   }
+  // move singleton pages to the full queue
+  if (page->reserved == page->used) {
+    mi_page_to_full(page, mi_page_queue_of(page));
+  }
+  return p;
 }
