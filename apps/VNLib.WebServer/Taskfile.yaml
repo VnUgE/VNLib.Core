@@ -14,11 +14,10 @@ tasks:
 
   default:
     desc: 'Builds the VNLib.WebServer project with defaults'
-    dir: '{{ .USER_WORKING_DIR }}/src'
     vars:
       CONFIGURATION: '{{ .CONFIGURATION | default "release" }}'
     cmds:
-     - cmd: dotnet build -c {{ .CONFIGURATION }} {{ .MS_ARGS }} {{ .CLI_ARGS }}
+     - cmd: cd src/ && dotnet build -c {{ .CONFIGURATION }} {{ .MS_ARGS }} {{ .CLI_ARGS }}
 
   build-debug:
     desc: 'Builds the VNLib.WebServer project in debug mode'
