@@ -60,9 +60,9 @@
       "interfaces": [
         {
           "address": "0.0.0.0",
-          "port": 8080,
+          "port": 7258,
 
-          "ssl": true,                                //Enables TLS for this interface for this host specifically
+          "ssl": false,                                //Enables TLS for this interface for this host specifically
           "certificate": "/path/to/cert.pfx|pem",     //Cert may be pem or pfx (include private key in pfx, or include private key in a pem file)
           "private_key": "/path/to/private_key.pem",  //A pem encoded private key, REQUIRED if using a PEM certificate, may be encrypted with a password
           "password": "plain-text-password",          //An optional password for the ssl private key
