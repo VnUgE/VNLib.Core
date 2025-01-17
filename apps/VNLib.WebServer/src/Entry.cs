@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -184,8 +184,28 @@ Starting...
 
                 logger.AppLog.Information("Main thread waiting for exit signal, press ctrl + c to exit");
 
+#if DEBUG
+                /*
+                 * In debug mode, the caller can specify the --dev-test flag to prevent the main thread from blocking
+                 * and allow the process to exit immediately after starting the server. 
+                 * 
+                 * The exit code can be used to determine if the server started successfully or not
+                 * 
+                 * The delay gives some time for listener threads to start and bind before exiting
+                 */
+                if (procArgs.HasArgument("--dev-test"))
+                {
+                    logger.AppLog.Information("Dev-test mode enabled, exiting immediately");
+                    ShutdownEvent.WaitOne(200);
+                }
+                else
+                {
+                    ShutdownEvent.WaitOne();
+                }
+#else
                 //Wait for user signal to exit
                 ShutdownEvent.WaitOne();
+#endif
 
                 logger.AppLog.Information("Stopping service stack");
 
@@ -218,7 +238,7 @@ Starting...
         {
             const string TEMPLATE =
 @$"
-    VNLib.Webserver Copyright (C) 2024 Vaughn Nugent
+    VNLib.Webserver Copyright (C) 2025 Vaughn Nugent
 
     A high-performance, cross-platform, single process, reference webserver built on the .NET 8.0 Core runtime.
 

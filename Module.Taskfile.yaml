@@ -107,6 +107,8 @@ tasks:
         --environment VNLIB_MONOCYPHER_DLL_PATH="{{ .MONOCYPHER_LIB_PATH }}"
         --environment VNLIB_ARGON2_DLL_PATH="{{ .ARGON2_LIB_PATH }}"
 
+     - cmd: cd apps/VNLib.WebServer && task test
+
 #called by build pipeline to clean module
   clean:
     desc: "Used by vnbuild to clean the entire module"

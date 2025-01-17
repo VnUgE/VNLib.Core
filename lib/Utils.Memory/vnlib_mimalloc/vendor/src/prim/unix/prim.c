@@ -27,6 +27,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #include <sys/mman.h>  // mmap
 #include <unistd.h>    // sysconf
 #include <fcntl.h>     // open, close, read, access
+#include <stdlib.h>    // getenv, arc4random_buf
 
 #if defined(__linux__)
   #include <features.h>
@@ -247,7 +248,7 @@ static int unix_mmap_fd(void) {
   #if defined(VM_MAKE_TAG)
   // macOS: tracking anonymous page with a specific ID. (All up to 98 are taken officially but LLVM sanitizers had taken 99)
   int os_tag = (int)mi_option_get(mi_option_os_tag);
-  if (os_tag < 100 || os_tag > 255) { os_tag = 100; }
+  if (os_tag < 100 || os_tag > 255) { os_tag = 254; }
   return VM_MAKE_TAG(os_tag);
   #else
   return -1;
@@ -271,7 +272,7 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
   protect_flags |= PROT_MAX(PROT_READ | PROT_WRITE); // BSD
   #endif
   // huge page allocation
-  if ((large_only || _mi_os_use_large_page(size, try_alignment)) && allow_large) {
+  if (allow_large && (large_only || (_mi_os_use_large_page(size, try_alignment) && mi_option_get(mi_option_allow_large_os_pages) == 1))) {
     static _Atomic(size_t) large_page_try_ok; // = 0;
     size_t try_ok = mi_atomic_load_acquire(&large_page_try_ok);
     if (!large_only && try_ok > 0) {
@@ -292,7 +293,7 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
       #endif
       #ifdef MAP_HUGE_1GB
       static bool mi_huge_pages_available = true;
-      if ((size % MI_GiB) == 0 && mi_huge_pages_available) {
+      if (large_only && (size % MI_GiB) == 0 && mi_huge_pages_available) {
         lflags |= MAP_HUGE_1GB;
       }
       else
@@ -312,7 +313,9 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
         #ifdef MAP_HUGE_1GB
         if (p == NULL && (lflags & MAP_HUGE_1GB) == MAP_HUGE_1GB) {
           mi_huge_pages_available = false; // don't try huge 1GiB pages again
-          _mi_warning_message("unable to allocate huge (1GiB) page, trying large (2MiB) pages instead (errno: %i)\n", errno);
+          if (large_only) {
+            _mi_warning_message("unable to allocate huge (1GiB) page, trying large (2MiB) pages instead (errno: %i)\n", errno);
+          }
           lflags = ((lflags & ~MAP_HUGE_1GB) | MAP_HUGE_2MB);
           p = unix_mmap_prim(addr, size, try_alignment, protect_flags, lflags, lfd);
         }
@@ -770,7 +773,7 @@ bool _mi_prim_getenv(const char* name, char* result, size_t result_size) {
 #include <CommonCrypto/CommonRandom.h>
 
 bool _mi_prim_random_buf(void* buf, size_t buf_len) {
-  // We prefere CCRandomGenerateBytes as it returns an error code while arc4random_buf
+  // We prefer CCRandomGenerateBytes as it returns an error code while arc4random_buf
   // may fail silently on macOS. See PR #390, and <https://opensource.apple.com/source/Libc/Libc-1439.40.11/gen/FreeBSD/arc4random.c.auto.html>
   return (CCRandomGenerateBytes(buf, buf_len) == kCCSuccess);
 }
@@ -780,7 +783,6 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
       defined(__sun) || \
       (defined(__APPLE__) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7))
 
-#include <stdlib.h>
 bool _mi_prim_random_buf(void* buf, size_t buf_len) {
   arc4random_buf(buf, buf_len);
   return true;

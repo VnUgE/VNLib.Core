@@ -195,9 +195,9 @@ typedef int32_t  mi_ssize_t;
 
 // The max object size are checked to not waste more than 12.5% internally over the page sizes.
 // (Except for large pages since huge objects are allocated in 4MiB chunks)
-#define MI_SMALL_OBJ_SIZE_MAX             (MI_SMALL_PAGE_SIZE/4)   // 16KiB
-#define MI_MEDIUM_OBJ_SIZE_MAX            (MI_MEDIUM_PAGE_SIZE/4)  // 128KiB
-#define MI_LARGE_OBJ_SIZE_MAX             (MI_LARGE_PAGE_SIZE/2)   // 2MiB
+#define MI_SMALL_OBJ_SIZE_MAX             (MI_SMALL_PAGE_SIZE/8)   // 8 KiB
+#define MI_MEDIUM_OBJ_SIZE_MAX            (MI_MEDIUM_PAGE_SIZE/8)  // 64 KiB
+#define MI_LARGE_OBJ_SIZE_MAX             (MI_LARGE_PAGE_SIZE/4)   // 1 MiB
 #define MI_LARGE_OBJ_WSIZE_MAX            (MI_LARGE_OBJ_SIZE_MAX/MI_INTPTR_SIZE)
 
 // Maximum number of size classes. (spaced exponentially in 12.5% increments)
@@ -245,7 +245,7 @@ typedef enum mi_delayed_e {
   MI_USE_DELAYED_FREE   = 0, // push on the owning heap thread delayed list
   MI_DELAYED_FREEING    = 1, // temporary: another thread is accessing the owning heap
   MI_NO_DELAYED_FREE    = 2, // optimize: push on page local thread free queue if another block is already in the heap thread delayed free list
-  MI_NEVER_DELAYED_FREE = 3  // sticky: used for abondoned pages without a owning heap; this only resets on page reclaim
+  MI_NEVER_DELAYED_FREE = 3  // sticky: used for abandoned pages without a owning heap; this only resets on page reclaim
 } mi_delayed_t;
 
 
@@ -352,7 +352,7 @@ typedef enum mi_page_kind_e {
   MI_PAGE_MEDIUM,   // medium blocks go into 512KiB pages inside a segment
   MI_PAGE_LARGE,    // larger blocks go into a single page spanning a whole segment
   MI_PAGE_HUGE      // a huge page is a single page in a segment of variable size (but still 2MiB aligned)
-                    // used for blocks `> MI_LARGE_OBJ_SIZE_MAX` or an aligment `> MI_BLOCK_ALIGNMENT_MAX`.
+                    // used for blocks `> MI_LARGE_OBJ_SIZE_MAX` or an alignment `> MI_BLOCK_ALIGNMENT_MAX`.
 } mi_page_kind_t;
 
 
@@ -377,7 +377,7 @@ static inline bool mi_memkind_is_os(mi_memkind_t memkind) {
 
 typedef struct mi_memid_os_info {
   void*         base;               // actual base address of the block (used for offset aligned allocations)
-  size_t        alignment;          // alignment at allocation
+  size_t        size;               // full allocation size
 } mi_memid_os_info_t;
 
 typedef struct mi_memid_arena_info {
@@ -609,18 +609,27 @@ typedef struct mi_stats_s {
 } mi_stats_t;
 
 
+// add to stat keeping track of the peak
 void _mi_stat_increase(mi_stat_count_t* stat, size_t amount);
 void _mi_stat_decrease(mi_stat_count_t* stat, size_t amount);
+// adjust stat in special cases to compensate for double counting
+void _mi_stat_adjust_increase(mi_stat_count_t* stat, size_t amount);
+void _mi_stat_adjust_decrease(mi_stat_count_t* stat, size_t amount);
+// counters can just be increased
 void _mi_stat_counter_increase(mi_stat_counter_t* stat, size_t amount);
 
 #if (MI_STAT)
 #define mi_stat_increase(stat,amount)         _mi_stat_increase( &(stat), amount)
 #define mi_stat_decrease(stat,amount)         _mi_stat_decrease( &(stat), amount)
 #define mi_stat_counter_increase(stat,amount) _mi_stat_counter_increase( &(stat), amount)
+#define mi_stat_adjust_increase(stat,amount)  _mi_stat_adjust_increase( &(stat), amount)
+#define mi_stat_adjust_decrease(stat,amount)  _mi_stat_adjust_decrease( &(stat), amount)
 #else
-#define mi_stat_increase(stat,amount)         (void)0
-#define mi_stat_decrease(stat,amount)         (void)0
-#define mi_stat_counter_increase(stat,amount) (void)0
+#define mi_stat_increase(stat,amount)         ((void)0)
+#define mi_stat_decrease(stat,amount)         ((void)0)
+#define mi_stat_counter_increase(stat,amount) ((void)0)
+#define mi_stat_adjuct_increase(stat,amount)  ((void)0)
+#define mi_stat_adjust_decrease(stat,amount)  ((void)0)
 #endif
 
 #define mi_heap_stat_counter_increase(heap,stat,amount)  mi_stat_counter_increase( (heap)->tld->stats.stat, amount)

@@ -50,7 +50,7 @@ typedef NTSTATUS (__stdcall *PNtAllocateVirtualMemoryEx)(HANDLE, PVOID*, SIZE_T*
 static PVirtualAlloc2 pVirtualAlloc2 = NULL;
 static PNtAllocateVirtualMemoryEx pNtAllocateVirtualMemoryEx = NULL;
 
-// Similarly, GetNumaProcesorNodeEx is only supported since Windows 7
+// Similarly, GetNumaProcessorNodeEx is only supported since Windows 7
 typedef struct MI_PROCESSOR_NUMBER_S { WORD Group; BYTE Number; BYTE Reserved; } MI_PROCESSOR_NUMBER;
 
 typedef VOID (__stdcall *PGetCurrentProcessorNumberEx)(MI_PROCESSOR_NUMBER* ProcNumber);
@@ -127,7 +127,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config )
   ULONGLONG memInKiB = 0;
   if (GetPhysicallyInstalledSystemMemory(&memInKiB)) {
     if (memInKiB > 0 && memInKiB < (SIZE_MAX / MI_KiB)) {
-      config->physical_memory = memInKiB * MI_KiB;
+      config->physical_memory = (size_t)memInKiB * MI_KiB;
     }
   }
   // get the VirtualAlloc2 function
@@ -173,7 +173,7 @@ int _mi_prim_free(void* addr, size_t size ) {
     // In mi_os_mem_alloc_aligned the fallback path may have returned a pointer inside
     // the memory region returned by VirtualAlloc; in that case we need to free using
     // the start of the region.
-    MEMORY_BASIC_INFORMATION info = { 0 };
+    MEMORY_BASIC_INFORMATION info; _mi_memzero_var(info);
     VirtualQuery(addr, &info, sizeof(info));
     if (info.AllocationBase < addr && ((uint8_t*)addr - (uint8_t*)info.AllocationBase) < (ptrdiff_t)MI_SEGMENT_SIZE) {
       errcode = 0;
@@ -622,6 +622,11 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
 static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
   MI_UNUSED(reserved);
   MI_UNUSED(module);
+  #if MI_TLS_SLOT >= 2
+  if ((reason==DLL_PROCESS_ATTACH || reason==DLL_THREAD_ATTACH) && mi_prim_get_default_heap() == NULL) {
+    _mi_heap_set_default_direct((mi_heap_t*)&_mi_heap_empty);
+  }
+  #endif
   if (reason==DLL_PROCESS_ATTACH) {
     _mi_process_load();
   }
@@ -630,7 +635,7 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
   }
   else if (reason==DLL_THREAD_DETACH && !_mi_is_redirected()) {
     _mi_thread_done(NULL);
-  }
+  }    
 }
 
 
@@ -783,6 +788,11 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
   #endif
   mi_decl_export void _mi_redirect_entry(DWORD reason) {
     // called on redirection; careful as this may be called before DllMain
+    #if MI_TLS_SLOT >= 2
+    if ((reason==DLL_PROCESS_ATTACH || reason==DLL_THREAD_ATTACH) && mi_prim_get_default_heap() == NULL) {
+      _mi_heap_set_default_direct((mi_heap_t*)&_mi_heap_empty);
+    }
+    #endif
     if (reason == DLL_PROCESS_ATTACH) {
       mi_redirected = true;
     }

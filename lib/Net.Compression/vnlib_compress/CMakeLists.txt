@@ -41,7 +41,7 @@ if(ENABLE_BROTLI)
 	FetchContent_Declare(
 	  lib_brotli
 	  GIT_REPOSITORY		https://github.com/google/brotli.git
-	  GIT_TAG				91d96d3d9353bcb47d5a6607859e51fb7e7a28f7
+	  GIT_TAG				67d78bc41db1a0d03f2e763497748f2f69946627
 	  GIT_PROGRESS			TRUE
 	)
 
@@ -67,7 +67,7 @@ if(ENABLE_ZLIB)
 	FetchContent_Declare(
 	  lib_cf_zlib
 	  GIT_REPOSITORY		https://github.com/cloudflare/zlib.git
-	  GIT_TAG				872e5fb3cf88bb281e19a8327b3ea0889cc34773
+	  GIT_TAG				e8626ac81fa87f9150a34aedc9045a32e88e0310
 	  GIT_PROGRESS			TRUE
 	)
 

@@ -4,16 +4,64 @@ version: '3'
 
 vars:
   BINARY_DIR: 'bin'
-  INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
-  MS_ARGS: '/p:RunAnalyzersDuringBuild=false /p:IntermediateOutputPath="{{ .INT_DIR }}" /p:UseCommonOutputDirectory=true /p:BuildInParallel=true /p:MultiProcessorCompilation=true /p:ErrorOnDuplicatePublishOutputFiles=false'
+  MS_ARGS: 
+    /p:RunAnalyzersDuringBuild=false
+    /p:BuildInParallel=true 
+    /p:MultiProcessorCompilation=true 
+    /p:ErrorOnDuplicatePublishOutputFiles=false
 
 tasks:
 
+  default:
+    desc: 'Builds the VNLib.WebServer project with defaults'
+    vars:
+      CONFIGURATION: '{{ .CONFIGURATION | default "release" }}'
+    cmds:
+     - cmd: cd src/ && dotnet build -c {{ .CONFIGURATION }} {{ .MS_ARGS }} {{ .CLI_ARGS }}
+
+  build-debug:
+    desc: 'Builds the VNLib.WebServer project in debug mode'
+    cmds:
+     - task: default
+       vars: { CONFIGURATION: 'debug' }
+
+  test:
+    desc: 'Runs tests for the VNLib.WebServer project'
+    dir: '{{ .USER_WORKING_DIR }}/src'
+    vars:
+      CONFIG_FILE: 'sample.config.json'
+    cmds:
+      - cmd: echo "Running tests for VNLib.WebServer"
+        silent: true
+
+      - cmd: task build-debug
+
+      #test help command exits successfully
+      - cmd: cd 'bin/debug/net8.0' && dotnet VNLib.WebServer.dll --help
+  
+      #test sample config
+      - cmd: cd 'bin/debug/net8.0' &&
+         dotnet VNLib.WebServer.dll 
+         --verbose 
+         --input-off 
+         --no-plugins 
+         --config {{ .CONFIG_FILE }}
+         --dev-test
+
+      - cmd: echo "VNLib.WebServer tests completed successfully"
+        silent: true
+
   #called by build pipeline to build module
   build:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
+      MS_ARGS: '
+        {{ .MS_ARGS }} 
+        --nologo
+        /p:UseCommonOutputDirectory=true 
+        /p:IntermediateOutputPath="{{ .INT_DIR }}"'
     cmds:
-
      #managed source supports arm32 unmanaged does not
     - for: [ win-x64, linux-x64, osx-x64, linux-arm64, linux-arm ]
       cmd: powershell -Command 'dotnet publish -c debug -r {{ .ITEM }} {{ .BUILD_FLAGS }} --sc false {{ .MS_ARGS }}' 
@@ -30,9 +78,7 @@ tasks:
     dir: '{{ .USER_WORKING_DIR }}'
     vars:
       RELEASE_DIR: "{{ .BINARY_DIR }}/release/{{ .TARGET_FRAMEWORK }}"
-
     cmds:
-
      - cmd: powershell mkdir {{ .BINARY_DIR }} -Force
 
      #remove uncessary files from the release dir
@@ -105,7 +151,7 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     ignore_error: true
     cmds:
-     - dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
+     - cmd: dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
 
      - for: [ bin/, obj/ ]
        cmd: powershell Remove-Item -Recurse -Force '{{.USER_WORKING_DIR}}/{{.ITEM}}'

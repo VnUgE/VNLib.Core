@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
-Copyright (c) 2018-2023, Microsoft Research, Daan Leijen
+Copyright (c) 2018-2024, Microsoft Research, Daan Leijen
 This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
@@ -119,14 +119,13 @@ void _mi_prim_thread_associate_default_heap(mi_heap_t* heap);
 
 
 
+
+
 //-------------------------------------------------------------------
-// Thread id: `_mi_prim_thread_id()`
-//
-// Getting the thread id should be performant as it is called in the
-// fast path of `_mi_free` and we specialize for various platforms as
-// inlined definitions. Regular code should call `init.c:_mi_thread_id()`.
-// We only require _mi_prim_thread_id() to return a unique id
-// for each thread (unequal to zero).
+// Access to TLS (thread local storage) slots.
+// We need fast access to both a unique thread id (in `free.c:mi_free`) and
+// to a thread-local heap pointer (in `alloc.c:mi_malloc`). 
+// To achieve this we use specialized code for various platforms.
 //-------------------------------------------------------------------
 
 // On some libc + platform combinations we can directly access a thread-local storage (TLS) slot.
@@ -145,7 +144,7 @@ void _mi_prim_thread_associate_default_heap(mi_heap_t* heap);
         || (defined(__OpenBSD__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__))) \
       )
 
-#define MI_HAS_TLS_SLOT
+#define MI_HAS_TLS_SLOT    1
 
 static inline void* mi_prim_tls_slot(size_t slot) mi_attr_noexcept {
   void* res;
@@ -206,13 +205,58 @@ static inline void mi_prim_tls_slot_set(size_t slot, void* value) mi_attr_noexce
   #endif
 }
 
+#elif _WIN32 && MI_WIN_USE_FIXED_TLS && !defined(MI_WIN_USE_FLS)
+
+// On windows we can store the thread-local heap at a fixed TLS slot to avoid
+// thread-local initialization checks in the fast path. This uses a fixed location
+// in the TCB though (last user-reserved slot by default) which may clash with other applications.
+
+#define MI_HAS_TLS_SLOT      2              // 2 = we can reliably initialize the slot (saving a test on each malloc)
+
+#if MI_WIN_USE_FIXED_TLS > 1
+#define MI_TLS_SLOT     (MI_WIN_USE_FIXED_TLS)
+#elif MI_SIZE_SIZE == 4
+#define MI_TLS_SLOT     (0x710)             // Last user-reserved slot <https://en.wikipedia.org/wiki/Win32_Thread_Information_Block>
+// #define MI_TLS_SLOT  (0xF0C)             // Last TlsSlot (might clash with other app reserved slot)
+#else
+#define MI_TLS_SLOT     (0x888)             // Last user-reserved slot <https://en.wikipedia.org/wiki/Win32_Thread_Information_Block>
+// #define MI_TLS_SLOT  (0x1678)            // Last TlsSlot (might clash with other app reserved slot)
 #endif
+
+static inline void* mi_prim_tls_slot(size_t slot) mi_attr_noexcept {
+  #if (_M_X64 || _M_AMD64) && !defined(_M_ARM64EC)
+  return (void*)__readgsqword((unsigned long)slot);   // direct load at offset from gs
+  #elif _M_IX86 && !defined(_M_ARM64EC)
+  return (void*)__readfsdword((unsigned long)slot);   // direct load at offset from fs
+  #else
+  return ((void**)NtCurrentTeb())[slot / sizeof(void*)];
+  #endif
+}
+static inline void mi_prim_tls_slot_set(size_t slot, void* value) mi_attr_noexcept {
+  ((void**)NtCurrentTeb())[slot / sizeof(void*)] = value;
+}
+
+#endif
+
+
+
+//-------------------------------------------------------------------
+// Get a fast unique thread id.
+//
+// Getting the thread id should be performant as it is called in the
+// fast path of `_mi_free` and we specialize for various platforms as
+// inlined definitions. Regular code should call `init.c:_mi_thread_id()`.
+// We only require _mi_prim_thread_id() to return a unique id
+// for each thread (unequal to zero).
+//-------------------------------------------------------------------
+
 
 // Do we have __builtin_thread_pointer? This would be the preferred way to get a unique thread id
 // but unfortunately, it seems we cannot test for this reliably at this time (see issue #883)
 // Nevertheless, it seems needed on older graviton platforms (see issue #851).
 // For now, we only enable this for specific platforms.
 #if !defined(__APPLE__)  /* on apple (M1) the wrong register is read (tpidr_el0 instead of tpidrro_el0) so fall back to TLS slot assembly (<https://github.com/microsoft/mimalloc/issues/343#issuecomment-763272369>)*/ \
+    && !defined(__CYGWIN__) \
     && !defined(MI_LIBC_MUSL) \
     && (!defined(__clang_major__) || __clang_major__ >= 14)  /* older clang versions emit bad code; fall back to using the TLS slot (<https://lore.kernel.org/linux-arm-kernel/202110280952.352F66D8@keescook/T/>) */
   #if    (defined(__GNUC__) && (__GNUC__ >= 7)  && defined(__aarch64__)) /* aarch64 for older gcc versions (issue #851) */ \
@@ -251,7 +295,7 @@ static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
   return (uintptr_t)__builtin_thread_pointer();
 }
 
-#elif defined(MI_HAS_TLS_SLOT)
+#elif MI_HAS_TLS_SLOT
 
 static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
   #if defined(__BIONIC__)
@@ -278,7 +322,8 @@ static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
 
 
 /* ----------------------------------------------------------------------------------------
-The thread local default heap: `_mi_prim_get_default_heap()`
+Get the thread local default heap: `_mi_prim_get_default_heap()`
+
 This is inlined here as it is on the fast path for allocation functions.
 
 On most platforms (Windows, Linux, FreeBSD, NetBSD, etc), this just returns a
@@ -315,19 +360,21 @@ static inline mi_heap_t* mi_prim_get_default_heap(void);
 #endif
 
 
-#if defined(MI_TLS_SLOT)
+#if MI_TLS_SLOT
 # if !defined(MI_HAS_TLS_SLOT)
 #  error "trying to use a TLS slot for the default heap, but the mi_prim_tls_slot primitives are not defined"
 # endif
 
 static inline mi_heap_t* mi_prim_get_default_heap(void) {
   mi_heap_t* heap = (mi_heap_t*)mi_prim_tls_slot(MI_TLS_SLOT);
+  #if MI_HAS_TLS_SLOT == 1   // check if the TLS slot is initialized
   if mi_unlikely(heap == NULL) {
     #ifdef __GNUC__
     __asm(""); // prevent conditional load of the address of _mi_heap_empty
     #endif
     heap = (mi_heap_t*)&_mi_heap_empty;
   }
+  #endif
   return heap;
 }
 
@@ -367,9 +414,6 @@ static inline mi_heap_t* mi_prim_get_default_heap(void) {
 }
 
 #endif  // mi_prim_get_default_heap()
-
-
-
 
 
 #endif  // MIMALLOC_PRIM_H
