@@ -108,7 +108,7 @@ namespace VNLib.Net.Http.Core
             Transport = new();
 
             //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
-            Buffers = new(server.Config.BufferConfig, _compressor != null);
+            Buffers = new(in server.BufferConfig, _compressor != null);
          
             Request = new (Transport, server.Config.MaxUploadsPerRequest);
            
@@ -202,7 +202,10 @@ namespace VNLib.Net.Http.Core
             _ctx = ctx;
 
             //Alloc buffers during context init incase exception occurs in user-code
-            Buffers.AllocateBuffer(ParentServer.Config.MemoryPool);
+            Buffers.AllocateBuffer(
+                allocator: ParentServer.Config.MemoryPool, 
+                config: in ParentServer.BufferConfig
+            );
 
             //Init new connection
             Transport.OnNewConnection(ctx.ConnectionStream);
@@ -255,7 +258,7 @@ namespace VNLib.Net.Http.Core
             Response.OnRelease();
            
             //Free buffers
-            Buffers.FreeAll(ParentServer.Config.BufferConfig.ZeroBuffersOnDisconnect);
+            Buffers.FreeAll();
 
             return true;
         }

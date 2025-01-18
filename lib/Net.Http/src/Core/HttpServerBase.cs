@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -93,6 +93,7 @@ namespace VNLib.Net.Http
         private readonly ListenerState[] Transports;
 
         private readonly HttpConfig _config;
+        private readonly HttpBufferConfig _bufferConfig;
 
         #region caches
         /// <summary>
@@ -122,7 +123,11 @@ namespace VNLib.Net.Http
         /// </summary>
         internal readonly CompressionMethod SupportedCompressionMethods;
 
-        private CancellationTokenSource? StopToken;
+        /// <summary>
+        /// Gets the buffer configuration for the server
+        /// </summary>
+        internal ref readonly HttpBufferConfig BufferConfig => ref _bufferConfig;
+
 
         /// <summary>
         /// Creates a new <see cref="HttpServer"/> with the specified configration copy (using struct).
@@ -137,6 +142,7 @@ namespace VNLib.Net.Http
             ValidateConfig(in config);
 
             _config = config;
+            _bufferConfig = config.BufferConfig;
             
             //Compile and store the timeout keepalive header
             KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
@@ -291,10 +297,10 @@ namespace VNLib.Net.Http
         /// <exception cref="InvalidOperationException"></exception>
         public Task Start(CancellationToken cancellationToken)
         {
-            StopToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            CancellationTokenSource stopToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             
             //Start servers with the new token source before listening for connections
-            Array.ForEach(Transports, p => p.OriginServer.Start(StopToken.Token));
+            Array.ForEach(Transports, p => p.OriginServer.Start(stopToken.Token));
 
             //Listen to connections on all transports async
             IEnumerable<Task> runTasks = Transports.Select(ListenAsync);
@@ -303,13 +309,13 @@ namespace VNLib.Net.Http
             return Task.WhenAll(runTasks);
 
             //Defer listening tasks to the task scheduler to avoid blocking this thread
-            Task ListenAsync(ListenerState tp) => Task.Run(() => ListenWorkerDoWork(tp), cancellationToken);
+            Task ListenAsync(ListenerState tp) => Task.Run(() => ListenWorkerDoWork(tp, stopToken), cancellationToken);
         }
 
         /*
          * A worker task that listens for connections from the transport
          */
-        private async Task ListenWorkerDoWork(ListenerState state)
+        private async Task ListenWorkerDoWork(ListenerState state, CancellationTokenSource stopToken)
         {
             state.Running = true;
 
@@ -332,10 +338,11 @@ namespace VNLib.Net.Http
                 try
                 {
                     //Listen for new connection 
-                    ITransportContext ctx = await state.OriginServer.AcceptAsync(StopToken!.Token);
+                    ITransportContext ctx = await state.OriginServer.AcceptAsync(stopToken.Token);
 
                     //Try to dispatch the received event
-                    _ = DataReceivedAsync(state, ctx).ConfigureAwait(false);
+                    _ = DataReceivedAsync(state, stopToken, ctx)
+                        .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {

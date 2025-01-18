@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -40,10 +40,10 @@ using VNLib.Utils.Memory;
 namespace VNLib.Net.Http.Core.Buffering
 {
 
-    internal sealed class ContextLockedBufferManager(in HttpBufferConfig config, bool chunkingEnabled) : IHttpBufferManager
+    internal sealed class ContextLockedBufferManager(ref readonly HttpBufferConfig config, bool chunkingEnabled) : IHttpBufferManager
     {
-        private readonly HttpBufferConfig Config = config;
         private readonly bool _chunkingEnabled = chunkingEnabled;
+        private readonly bool _zeroOnFree = config.ZeroBuffersOnDisconnect;
         private readonly int TotalBufferSize = ComputeTotalBufferSize(in config, chunkingEnabled);
 
         private readonly HeaderAccumulatorBuffer _requestHeaderBuffer = new(config.RequestHeaderBufferSize);
@@ -54,7 +54,7 @@ namespace VNLib.Net.Http.Core.Buffering
         private HttpBufferSegments<byte> _segments;
 
         ///<inheritdoc/>
-        public void AllocateBuffer(IHttpMemoryPool allocator)
+        public void AllocateBuffer(IHttpMemoryPool allocator, ref readonly HttpBufferConfig config)
         {
             Debug.Assert(_handle == null, "Memory Leak: new http buffer alloacted when an existing buffer was not freed.");
 
@@ -66,8 +66,8 @@ namespace VNLib.Net.Http.Core.Buffering
                 Memory<byte> full = _handle.Memory;
 
                 //Header parse buffer is a special case as it will be double the size due to the char buffer
-                int headerParseBufferSize = GetMaxHeaderBufferSize(in Config);                
-                int responseAndFormDataSize = ComputeResponseAndFormDataBuffer(in Config);
+                int headerParseBufferSize = GetMaxHeaderBufferSize(in config);                
+                int responseAndFormDataSize = ComputeResponseAndFormDataBuffer(in config);
 
                 //Shared header buffer
                 _segments.HeaderAccumulator = GetNextSegment(ref full, headerParseBufferSize);
@@ -78,7 +78,7 @@ namespace VNLib.Net.Http.Core.Buffering
                  * stored if chunking is enabled.
                  */
                 _segments.ChunkedResponseAccumulator = _chunkingEnabled 
-                    ? GetNextSegment(ref full, Config.ChunkedResponseAccumulatorSize) 
+                    ? GetNextSegment(ref full, config.ChunkedResponseAccumulatorSize) 
                     : default;
                
 
@@ -114,9 +114,9 @@ namespace VNLib.Net.Http.Core.Buffering
         }
 
         ///<inheritdoc/>
-        public void FreeAll(bool zero)
+        public void FreeAll()
         {
-            if (zero)
+            if (_zeroOnFree)
             {
                 MemoryUtil.InitializeBlock(_handle!.Memory);
             }

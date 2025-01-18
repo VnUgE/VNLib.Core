@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -37,6 +37,7 @@ using VNLib.Utils.Extensions;
 using VNLib.Net.Http.Core;
 using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.PerfCounter;
+using VNLib.Net.Http.Core.Request;
 
 namespace VNLib.Net.Http
 {
@@ -46,7 +47,11 @@ namespace VNLib.Net.Http
         private int OpenConnectionCount;
 
         //Event handler method for processing incoming data events
-        private async Task DataReceivedAsync(ListenerState listenState, ITransportContext transportContext)
+        private async Task DataReceivedAsync(
+            ListenerState listenState,
+            CancellationTokenSource stopToken,
+            ITransportContext transportContext
+        )
         {
             Interlocked.Increment(ref OpenConnectionCount);
            
@@ -71,7 +76,7 @@ namespace VNLib.Net.Http
                 do
                 {
                     //Attempt to buffer a new (or keepalive) connection async
-                    await context.BufferTransportAsync(StopToken!.Token);
+                    await context.BufferTransportAsync(stopToken.Token);
 
                     //Return read timeout to active connection timeout after data is received
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
@@ -119,7 +124,8 @@ namespace VNLib.Net.Http
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
                     //Listen on the alternate protocol
-                    await ap.RunAsync(apWrapper, StopToken!.Token).ConfigureAwait(false);
+                    await ap.RunAsync(apWrapper, stopToken.Token)
+                        .ConfigureAwait(false);
                 }
             }
             //Catch wrapped socket exceptions

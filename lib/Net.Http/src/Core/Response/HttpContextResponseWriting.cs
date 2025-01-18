@@ -28,6 +28,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 
 using VNLib.Net.Http.Core.Response;
+using VNLib.Net.Http.Core.Request;
 
 namespace VNLib.Net.Http.Core
 {
