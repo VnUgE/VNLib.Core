@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -64,32 +64,32 @@ namespace VNLib.Plugins.Essentials
         /// The name of a default file to search for within a directory if no file is specified (index.html).
         /// This array should be ordered.
         /// </summary>
-        public IReadOnlyCollection<string> DefaultFiles { get; init; } = [];
+        public IReadOnlyCollection<string> DefaultFiles => Options.DefaultFiles;
 
         /// <summary>
         /// File extensions that are denied from being read from the filesystem
         /// </summary>
-        public FrozenSet<string> ExcludedExtensions { get; init; } = FrozenSet<string>.Empty;
+        public FrozenSet<string> ExcludedExtensions { get; } = Options.ExcludedExtensions.ToFrozenSet();
 
         /// <summary>
         /// File attributes that must be matched for the file to be accessed
         /// </summary>
-        public FileAttributes AllowedAttributes { get; init; }
+        public FileAttributes AllowedAttributes => Options.AllowedAttributes;
 
         /// <summary>
         /// Files that match any attribute flag set will be denied
         /// </summary>
-        public FileAttributes DissallowedAttributes { get; init; }
+        public FileAttributes DissallowedAttributes => Options.DissallowedAttributes;
 
         /// <summary>
         /// A table of known downstream servers/ports that can be trusted to proxy connections
         /// </summary>
-        public FrozenSet<IPAddress> DownStreamServers { get; init; } = FrozenSet<IPAddress>.Empty;
+        public FrozenSet<IPAddress> DownStreamServers { get; } = Options.DownStreamServers.ToFrozenSet();
 
         /// <summary>
         /// A <see cref="TimeSpan"/> for how long a connection may remain open before all operations are cancelled
         /// </summary>
-        public TimeSpan ExecutionTimeout { get; init; } = TimeSpan.Zero;
+        public TimeSpan ExecutionTimeout => Options.ExecutionTimeout;
 
         /// <summary>
         /// Enables or disables the use of the file path cache. If set to zero , the cache will be disabled,

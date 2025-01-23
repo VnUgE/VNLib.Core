@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -120,15 +120,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                             Options: configuration
                         )
                         {
-                            AllowedAttributes = configuration.AllowedAttributes,
-                            DissallowedAttributes = configuration.DissallowedAttributes,
-                            DefaultFiles = configuration.DefaultFiles,
-                            ExecutionTimeout = configuration.ExecutionTimeout,
                             FilePathCacheMaxAge = configuration.FilePathCacheMaxAge,
-
-                            //Frozen sets are required for the event processor, for performance reasons
-                            DownStreamServers = configuration.DownStreamServers.ToFrozenSet(),
-                            ExcludedExtensions = configuration.ExcludedExtensions.ToFrozenSet(),
                         };
 
                         //Add all pre-configured middleware to the chain
@@ -148,8 +140,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                     //Create new config instance and add to list
                     VirtualHostConfiguration config = new()
                     {
-                        EventHooks = hooks,
-                        RootDir = rootDirectory,
+                        RootDir     = rootDirectory,
+                        EventHooks  = hooks,
                         LogProvider = logger
                     };
                     Configs.Add(config);

@@ -39,6 +39,8 @@
   //Collection of objects to define hosts+interfaces to build server listeners from
   "virtual_hosts": [
     {
+      //A flag that enables or disables this virtual host
+      "enabled": true,
 
       //The directory path for files served by this endpoint
       "path": "path/to/website/root",
@@ -62,7 +64,7 @@
           "address": "0.0.0.0",
           "port": 7258,
 
-          "ssl": false,                                //Enables TLS for this interface for this host specifically
+          "ssl": false,                               //Enables TLS for this interface for this host specifically
           "certificate": "/path/to/cert.pfx|pem",     //Cert may be pem or pfx (include private key in pfx, or include private key in a pem file)
           "private_key": "/path/to/private_key.pem",  //A pem encoded private key, REQUIRED if using a PEM certificate, may be encrypted with a password
           "password": "plain-text-password",          //An optional password for the ssl private key
@@ -118,8 +120,8 @@
       // controls http cache headers if desired
       "file_http_max_age": {
         ".html": 0,      //All html files will have no-cache, no-store header sent
-        ".css": 864000, //
-        ".js": 864000, //all .js files will have a max-age of 10 days   
+        ".css": 864000,  //
+        ".js": 864000,   //all .js files will have a max-age of 10 days   
       },
 
       //Maxium ammount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned

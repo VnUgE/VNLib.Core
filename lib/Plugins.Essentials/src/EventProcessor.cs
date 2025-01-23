@@ -175,7 +175,7 @@ namespace VNLib.Plugins.Essentials
             HttpEntity entity = new(httpEvent, this);
 
             //Set ambient processor context
-            _currentProcessor.Value = this;           
+            _currentProcessor.Value = this; 
 
             try
             {
