@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -34,7 +34,7 @@ using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Request
 {
 
     internal static class HttpRequestExtensions
@@ -61,17 +61,17 @@ namespace VNLib.Net.Http.Core
             {
                 return CompressionMethod.None;
             }
-            else if (serverSupported.HasFlag(CompressionMethod.Gzip) 
+            else if (serverSupported.HasFlag(CompressionMethod.Gzip)
                 && acceptEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
             {
                 return CompressionMethod.Gzip;
             }
-            else if (serverSupported.HasFlag(CompressionMethod.Deflate) 
+            else if (serverSupported.HasFlag(CompressionMethod.Deflate)
                 && acceptEncoding.Contains("deflate", StringComparison.OrdinalIgnoreCase))
             {
                 return CompressionMethod.Deflate;
             }
-            else if (serverSupported.HasFlag(CompressionMethod.Brotli) 
+            else if (serverSupported.HasFlag(CompressionMethod.Brotli)
                 && acceptEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
             {
                 return CompressionMethod.Brotli;
@@ -81,7 +81,7 @@ namespace VNLib.Net.Http.Core
                 return CompressionMethod.None;
             }
         }
-    
+
 
         /// <summary>
         /// Tests the connection's origin header against the location URL by authority. 
@@ -91,7 +91,7 @@ namespace VNLib.Net.Http.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCrossOrigin(this HttpRequest Request)
         {
-            if(Request.State.Origin is null)
+            if (Request.State.Origin is null)
             {
                 return false;
             }
@@ -154,7 +154,7 @@ namespace VNLib.Net.Http.Core
                     {
                         //Alloc the form data character buffer, this will need to grow if the form data is larger than the buffer
                         using IResizeableMemoryHandle<char> urlbody = AllocFdBuffer(context);
-                      
+
                         int chars = await BufferInputStreamAsChars(request.InputStream, urlbody, GetFdBuffer(context), info.Encoding);
 
                         //Get the body as a span, and split the 'string' at the & character
@@ -170,9 +170,9 @@ namespace VNLib.Net.Http.Core
                         {
                             break;
                         }
-                     
+
                         using IResizeableMemoryHandle<char> formBody = AllocFdBuffer(context);
-                     
+
                         int chars = await BufferInputStreamAsChars(request.InputStream, formBody, GetFdBuffer(context), info.Encoding);
 
                         //Split the body as a span at the boundries
@@ -187,16 +187,16 @@ namespace VNLib.Net.Http.Core
                     request.AddFileUpload(new(request.InputStream, DisposeStream: false, request.State.ContentType, FileName: null));
                     break;
             }
-           
+
 
             static IResizeableMemoryHandle<char> AllocFdBuffer(HttpContext context)
             {
                 //Gets the max form data buffer size to help calculate the initial char buffer size
-                int maxBufferSize = context.ParentServer.Config.BufferConfig.FormDataBufferSize;
+                int maxBufferSize = context.ParentServer.BufferConfig.FormDataBufferSize;
 
                 //Calculate a largest available buffer to read the entire stream or up to the maximum buffer size
                 int buffersize = (int)Math.Min(context.Request.InputStream.Length, maxBufferSize);
-            
+
                 return context.ParentServer.Config.MemoryPool.AllocFormDataBuffer<char>(buffersize);
             }
 
@@ -216,9 +216,9 @@ namespace VNLib.Net.Http.Core
          * all of it into memory.
          */
         private static async ValueTask<int> BufferInputStreamAsChars(
-            Stream stream, 
-            IResizeableMemoryHandle<char> charBuffer, 
-            Memory<byte> binBuffer, 
+            Stream stream,
+            IResizeableMemoryHandle<char> charBuffer,
+            Memory<byte> binBuffer,
             Encoding encoding
         )
         {
@@ -239,16 +239,16 @@ namespace VNLib.Net.Http.Core
 
                 //Re-alloc buffer and guard for overflow
                 charBuffer.ResizeIfSmaller(checked(numChars + charsRead));
-               
+
                 _ = encoding.GetChars(
-                    bytes: binBuffer.Span[..read], 
+                    bytes: binBuffer.Span[..read],
                     chars: charBuffer.Span.Slice(charsRead, numChars)
                 );
-              
+
                 charsRead += numChars;
 
             } while (true);
-           
+
             return charsRead;
         }
 
@@ -322,10 +322,10 @@ namespace VNLib.Net.Http.Core
                 if (state.Request.CanAddUpload())
                 {
                     UploadFromString(
-                        data: reader.Window.TrimCRLF(), 
-                        context: state, 
-                        filename: FileName, 
-                        contentType: ctHeaderVal, 
+                        data: reader.Window.TrimCRLF(),
+                        context: state,
+                        filename: FileName,
+                        contentType: ctHeaderVal,
                         upload: ref state.Request.AddFileUpload()
                     );
                 }
@@ -350,35 +350,32 @@ namespace VNLib.Net.Http.Core
         /// <param name="upload">A reference to the file upload to assign</param>
         /// <returns>The <see cref="FileUpload"/> container</returns>
         private static void UploadFromString(
-            ReadOnlySpan<char> data, 
-            HttpContext context, 
-            string filename, 
-            ContentType contentType, 
+            ReadOnlySpan<char> data,
+            HttpContext context,
+            string filename,
+            ContentType contentType,
             ref FileUpload upload
         )
         {
             IHttpContextInformation info = context;
             IHttpMemoryPool pool = context.ParentServer.Config.MemoryPool;
 
-            //get number of bytes 
             int bytes = info.Encoding.GetByteCount(data);
 
-            //get a buffer from the HTTP heap
             IResizeableMemoryHandle<byte> buffHandle = pool.AllocFormDataBuffer<byte>(bytes);
             try
             {
                 //Convert back to binary
                 bytes = info.Encoding.GetBytes(data, buffHandle.Span);
 
-                //Create a new memory stream encapsulating the file data
-                VnMemoryStream vms = VnMemoryStream.FromHandle(buffHandle, true, bytes, true);
+                //Readonly stream to buffer encoded data
+                VnMemoryStream vms = VnMemoryStream.FromHandle(buffHandle, ownsHandle: true, bytes, readOnly: true);
 
                 //Create new upload wrapper that owns the stream
-                upload = new(vms, true, contentType, filename);
+                upload = new(vms, DisposeStream: true, contentType, filename);
             }
             catch
             {
-                //Make sure the hanle gets disposed if there is an error
                 buffHandle.Dispose();
                 throw;
             }
@@ -412,7 +409,6 @@ namespace VNLib.Net.Http.Core
                 ReadOnlySpan<char> key = queryArgument.SliceBeforeParam('=');
                 ReadOnlySpan<char> value = queryArgument.SliceAfterParam('=');
 
-                //Insert into dict
                 Request.QueryArgs[key.ToString()] = value.ToString();
             }
 

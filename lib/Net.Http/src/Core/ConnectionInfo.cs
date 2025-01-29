@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -26,10 +26,9 @@ using System;
 using System.Net;
 using System.Text;
 using System.Collections.Generic;
+using VNLib.Net.Http.Core.Request;
 
-using VNLib.Net.Http.Core;
-
-namespace VNLib.Net.Http
+namespace VNLib.Net.Http.Core
 {
     ///<inheritdoc/>
     internal sealed class ConnectionInfo : IConnectionInfo
@@ -88,7 +87,7 @@ namespace VNLib.Net.Http
         public IReadOnlyCollection<string> Accept => Context.Request.Accept;
 
         ///<inheritdoc/>
-        public ref readonly TransportSecurityInfo? GetTransportSecurityInfo() => ref Context.GetSecurityInfo(); 
+        public ref readonly TransportSecurityInfo? GetTransportSecurityInfo() => ref Context.GetSecurityInfo();
 
         ///<inheritdoc/>
         public void SetCookie(in HttpResponseCookie cookie)

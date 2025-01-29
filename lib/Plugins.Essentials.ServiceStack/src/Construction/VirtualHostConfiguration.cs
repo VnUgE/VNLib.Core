@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -63,7 +63,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// This array should be ordered.
         /// <para>Default: empty set</para>
         /// </summary>
-        public IReadOnlyCollection<string> DefaultFiles { get; set; } = Array.Empty<string>();
+        public IReadOnlyCollection<string> DefaultFiles { get; set; } = [];
 
         /// <summary>
         /// File extensions that are denied from being read from the filesystem
@@ -103,7 +103,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <summary>
         /// A set of custom middleware to add to virtual host middleware pipeline
         /// </summary>
-        public ICollection<IHttpMiddleware> CustomMiddleware { get; } = new List<IHttpMiddleware>();
+        public ICollection<IHttpMiddleware> CustomMiddleware { get; } = [];
 
         /// <summary>
         /// A <see cref="TimeSpan"/> for how long a file path may be cached before being revalidated. Setting to 

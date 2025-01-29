@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -76,12 +76,12 @@ namespace VNLib.Net.Http.Core.Buffering
         /// Alloctes internal buffers from the given <see cref="IHttpMemoryPool"/>
         /// </summary>
         /// <param name="allocator">The pool to allocate memory from</param>
-        void AllocateBuffer(IHttpMemoryPool allocator);
+        /// <param name="config">A reference to the buffer configuration used to allocate buffers</param>
+        void AllocateBuffer(IHttpMemoryPool allocator, ref readonly HttpBufferConfig config);
 
         /// <summary>
         /// Frees all internal buffers
         /// </summary>
-        /// <param name="zeroAll">A value that indicates if the buffer should be zeored before it's returned to the pool</param>
-        void FreeAll(bool zeroAll);
+        void FreeAll();
     }
 }
