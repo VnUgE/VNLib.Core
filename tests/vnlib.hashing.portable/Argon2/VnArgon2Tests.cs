@@ -39,6 +39,14 @@ namespace VNLib.Hashing.Tests
                 hashLen: HashSize
             );
 
+            string passHashNoSec = lib.Hash2id(
+                password: RawPass,
+                salt: Convert.FromHexString(SaltHex),
+                secret: default,
+                costParams: in a2Params,
+                hashLen: HashSize
+            );
+
             Console.WriteLine(passHash);
         }
     }
