@@ -3,12 +3,15 @@
 version: '3'
 
 vars:
-  BINARY_DIR: 'bin'
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
+  TARGET_FRAMEWORK: '{{ .TARGET_FRAMEWORK | default "net8.0" }}'
   MS_ARGS: 
     /p:RunAnalyzersDuringBuild=false
     /p:BuildInParallel=true 
     /p:MultiProcessorCompilation=true 
     /p:ErrorOnDuplicatePublishOutputFiles=false
+
+  TARGET_ARCHES: [ "linux-x64", "win-x64", "osx-x64", "win-arm64", "linux-arm", "linux-arm64", "osx-arm64" ]
 
 tasks:
 
@@ -29,7 +32,7 @@ tasks:
     desc: 'Runs tests for the VNLib.WebServer project'
     dir: '{{ .USER_WORKING_DIR }}/src'
     vars:
-      CONFIG_FILE: 'sample.config.json'
+      CONFIG_FILE: '{{ .CONFIG_FILE | default "sample.config.json" }}'
     cmds:
       - cmd: echo "Running tests for VNLib.WebServer"
         silent: true
@@ -55,20 +58,22 @@ tasks:
   build:
     dir: '{{ .USER_WORKING_DIR }}'
     vars:
-      INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
+      INT_DIR: '{{ .SCRATCH_DIR | default "." }}/obj/{{ .MODULE_NAME }}/'
       MS_ARGS: '
-        {{ .MS_ARGS }} 
+        {{ .BUILD_FLAGS }}
         --nologo
+        --sc false
+        {{ .MS_ARGS }} 
         /p:UseCommonOutputDirectory=true 
         /p:IntermediateOutputPath="{{ .INT_DIR }}"'
     cmds:
      #managed source supports arm32 unmanaged does not
-    - for: [ win-x64, linux-x64, osx-x64, linux-arm64, linux-arm ]
-      cmd: powershell -Command 'dotnet publish -c debug -r {{ .ITEM }} {{ .BUILD_FLAGS }} --sc false {{ .MS_ARGS }}' 
+    - for: { var: TARGET_ARCHES }
+      cmd: dotnet publish -c debug -r {{ .ITEM }} {{ .MS_ARGS }} 
     
     #build release mode after all debug builds
-    - for: [ win-x64, linux-x64, osx-x64, linux-arm64, linux-arm ]
-      cmd: powershell -Command 'dotnet publish -c release -r {{ .ITEM }} {{ .BUILD_FLAGS }} --sc false {{ .MS_ARGS }}'
+    - for: { var: TARGET_ARCHES }
+      cmd: dotnet publish -c release -r {{ .ITEM }} {{ .MS_ARGS }}
 
     #package as a tool
     #- dotnet pack -c debug {{.MS_ARGS}} -o "{{.PACK_OUT}}/debug/" -p:PackageVersion={{.BUILD_VERSION}}  
@@ -91,27 +96,13 @@ tasks:
     deps:
      - task: pack_source
   
-     - task: postbuild 
-       vars: { BUILD_MODE: 'debug', TARGET_OS: linux-x64 }
-     - task: postbuild
-       vars: { BUILD_MODE: 'debug', TARGET_OS: linux-arm }
-     - task: postbuild
-       vars: { BUILD_MODE: 'debug', TARGET_OS: linux-arm64 }
-     - task: postbuild
-       vars: { BUILD_MODE: 'debug', TARGET_OS: win-x64 }
-     - task: postbuild
-       vars: { BUILD_MODE: 'debug', TARGET_OS: osx-x64 }
+     - for: { var: TARGET_ARCHES }
+       task: postbuild
+       vars: { BUILD_MODE: 'debug', TARGET_OS: '{{ .ITEM }}' }
 
-     - task: postbuild
-       vars: { BUILD_MODE: 'release', TARGET_OS: linux-x64 }
-     - task: postbuild
-       vars: { BUILD_MODE: 'release', TARGET_OS: linux-arm }
-     - task: postbuild
-       vars: { BUILD_MODE: 'release', TARGET_OS: linux-arm64 }
-     - task: postbuild
-       vars: { BUILD_MODE: 'release', TARGET_OS: win-x64 }
-     - task: postbuild
-       vars: { BUILD_MODE: 'release', TARGET_OS: osx-x64 }
+     - for: { var: TARGET_ARCHES }
+       task: postbuild
+       vars: { BUILD_MODE: 'release', TARGET_OS: '{{ .ITEM }}' }
 
   postbuild:
     internal: true
@@ -148,11 +139,11 @@ tasks:
 
     #Remove the output dirs on clean
   clean:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: '{{ .USER_WORKING_DIR }}'
     ignore_error: true
     cmds:
      - cmd: dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
 
      - for: [ bin/, obj/ ]
-       cmd: powershell Remove-Item -Recurse -Force '{{.USER_WORKING_DIR}}/{{.ITEM}}'
+       cmd: powershell Remove-Item -Recurse -Force '{{ .USER_WORKING_DIR }}/{{ .ITEM }}'
 
