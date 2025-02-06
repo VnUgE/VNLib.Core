@@ -1,5 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+using VNLib.Hashing.Native.MonoCypher;
+using VNLib.Utils.Memory;
+
 namespace VNLib.Hashing.Tests
 {
     [TestClass()]
@@ -16,6 +19,19 @@ namespace VNLib.Hashing.Tests
         [TestMethod]
         public void Argon2IdHashTest()
         {
+            TestArgon2Lib(VnArgon2.GetOrLoadSharedLib());
+        }
+
+        [TestMethod]
+        public void MonocypherArgon2Test()
+        {
+            Assert.IsTrue(MonoCypherLibrary.CanLoadDefaultLibrary());
+
+            TestArgon2Lib(MonoCypherLibrary.Shared.Argon2CreateLibrary(MemoryUtil.Shared));
+        }
+
+        private static void TestArgon2Lib(IArgon2Library library)
+        {
             const string RawPass = "HelloWorld1!*";
             const string SaltHex = "de7cdb9d59828ac9";
             const string PepperHex = "13fe89892162d477";
@@ -29,9 +45,7 @@ namespace VNLib.Hashing.Tests
                 TimeCost = 2,
             };
 
-            IArgon2Library lib = VnArgon2.GetOrLoadSharedLib();
-
-            string passHash = lib.Hash2id(
+            string passHash = library.Hash2id(
                 password: RawPass,
                 salt: Convert.FromHexString(SaltHex),
                 secret: Convert.FromHexString(PepperHex),
