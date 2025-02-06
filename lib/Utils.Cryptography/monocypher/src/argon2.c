@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * vnlib_monocypher is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published
@@ -33,25 +33,34 @@ VNLIB_EXPORT uint32_t VNLIB_CC Argon2CalcWorkAreaSize(const argon2Ctx* context)
 
 VNLIB_EXPORT argon2_error_codes VNLIB_CC Argon2ComputeHash(const argon2Ctx* context, void* workArea)
 {
-	crypto_argon2_config config;
-	crypto_argon2_inputs inputs;
-	crypto_argon2_extras extras;
-
 	if (!context || !workArea)
 	{
 		return ERR_INVALID_PTR;
 	}
 
-	config.algorithm = context->version;
-	config.nb_blocks = context->m_cost;	
-	config.nb_passes = context->t_cost;
-	config.nb_lanes = context->threads;	
+	crypto_argon2_config config = 
+	{
+		.algorithm = context->version,
+		.nb_blocks = context->m_cost,
+		.nb_passes = context->t_cost,
+		.nb_lanes = context->threads
+	};
 
-	inputs.pass_size = context->pwdlen;
-	inputs.pass = context->pwd;
+	crypto_argon2_inputs inputs =
+	{
+		.pass		= context->pwd,
+		.pass_size	= context->pwdlen,
+		.salt		= context->salt,
+		.salt_size	= context->saltlen
+	};
 
-	inputs.salt_size = context->saltlen;
-	inputs.salt = context->salt;
+	crypto_argon2_extras extras =
+	{
+		.ad			= context->ad,
+		.ad_size	= context->adlen,
+		.key		= context->secret,
+		.key_size	= context->secretlen
+	};
 
 	/* must specify a password input */
 	if (inputs.pass_size < 1)
@@ -75,12 +84,6 @@ VNLIB_EXPORT argon2_error_codes VNLIB_CC Argon2ComputeHash(const argon2Ctx* cont
 		return ARGON2_SALT_PTR_MISMATCH;
 	}
 
-	extras.ad = context->ad;
-	extras.ad_size = context->adlen;
-
-	extras.key = context->secret;
-	extras.key_size = context->secretlen;
-
 	//If key is set, verify a valid pointer
 	if (extras.key_size > 0 && !extras.key)
 	{
@@ -98,7 +101,14 @@ VNLIB_EXPORT argon2_error_codes VNLIB_CC Argon2ComputeHash(const argon2Ctx* cont
 	}
 
 	/* invoke lib function */
-	crypto_argon2(context->out, context->outlen, workArea, config, inputs, extras);
+	crypto_argon2(
+		context->out, 
+		context->outlen, 
+		workArea, 
+		config, 
+		inputs, 
+		extras
+	);
 
 	return ARGON2_OK;
 }
