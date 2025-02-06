@@ -55,7 +55,7 @@
 CC           ?= gcc -std=c99
 CFLAGS       ?= -pedantic -Wall -Wextra -O3 -march=native
 DESTDIR      ?=
-PREFIX       ?= /usr/local
+PREFIX       ?= usr/local
 LIBDIR       ?= $(PREFIX)/lib
 INCLUDEDIR   ?= $(PREFIX)/include
 PKGCONFIGDIR ?= $(LIBDIR)/pkgconfig
@@ -65,12 +65,12 @@ SONAME        = libmonocypher.so.4
 .PHONY: all library static-library dynamic-library  \
         install install-lib install-pc install-doc  \
         check test tis-ci ctgrind                   \
-        clean uninstall dist
+        clean uninstall
 
 ##################
 ## Main targets ##
 ##################
-all  : library doc/man3/intro.3monocypher
+all  : library
 check: test
 
 test: test.out
@@ -83,7 +83,7 @@ ctgrind: ctgrind.out
 	valgrind ./ctgrind.out
 
 clean:
-	rm -rf lib/ doc/html/ doc/man3/
+	rm -rf lib/
 	rm -f *.out
 
 #############
@@ -92,28 +92,28 @@ clean:
 install: install-lib install-pc install-doc
 
 install-lib: library
-	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-	mkdir -p $(DESTDIR)$(LIBDIR)
-	cp -P lib/libmonocypher.a lib/libmonocypher.so* $(DESTDIR)$(LIBDIR)
-	cp -P src/monocypher.h                          $(DESTDIR)$(INCLUDEDIR)
-	cp -P src/optional/monocypher-ed25519.h         $(DESTDIR)$(INCLUDEDIR)
+	mkdir -p $(DESTDIR)/$(INCLUDEDIR)
+	mkdir -p $(DESTDIR)/$(LIBDIR)
+	cp -P lib/libmonocypher.a lib/libmonocypher.so* $(DESTDIR)/$(LIBDIR)
+	cp -P src/monocypher.h                          $(DESTDIR)/$(INCLUDEDIR)
+	cp -P src/optional/monocypher-ed25519.h         $(DESTDIR)/$(INCLUDEDIR)
 
 install-pc: monocypher.pc
-	mkdir -p $(DESTDIR)$(PKGCONFIGDIR)
+	mkdir -p $(DESTDIR)/$(PKGCONFIGDIR)
 	sed "s|PREFIX|$(PREFIX)|"  monocypher.pc \
-	    > $(DESTDIR)$(PKGCONFIGDIR)/monocypher.pc
+	    > $(DESTDIR)/$(PKGCONFIGDIR)/monocypher.pc
 
-install-doc: doc/man3/intro.3monocypher
-	mkdir -p $(DESTDIR)$(MANDIR)
-	cp -PR doc/man3/*.3monocypher $(DESTDIR)$(MANDIR)
+install-doc:
+	mkdir -p $(DESTDIR)/$(MANDIR)
+	cp -PR doc/man3/*.3monocypher $(DESTDIR)/$(MANDIR)
 
 uninstall:
-	rm -f $(DESTDIR)$(LIBDIR)/libmonocypher.a
-	rm -f $(DESTDIR)$(LIBDIR)/libmonocypher.so*
-	rm -f $(DESTDIR)$(INCLUDEDIR)/monocypher.h
-	rm -f $(DESTDIR)$(INCLUDEDIR)/monocypher-ed25519.h
-	rm -f $(DESTDIR)$(PKGCONFIGDIR)/monocypher.pc
-	rm -f $(DESTDIR)$(MANDIR)/*.3monocypher
+	rm -f $(DESTDIR)/$(LIBDIR)/libmonocypher.a
+	rm -f $(DESTDIR)/$(LIBDIR)/libmonocypher.so*
+	rm -f $(DESTDIR)/$(INCLUDEDIR)/monocypher.h
+	rm -f $(DESTDIR)/$(INCLUDEDIR)/monocypher-ed25519.h
+	rm -f $(DESTDIR)/$(PKGCONFIGDIR)/monocypher.pc
+	rm -f $(DESTDIR)/$(MANDIR)/*.3monocypher
 
 ##################
 ## Main library ##
@@ -178,34 +178,3 @@ tis-ci.out: lib/tis-ci.o $(TEST_OBJ)
 
 ctgrind.out: lib/ctgrind.o $(TEST_OBJ)
 	$(CC) $(CFLAGS) -o $@ lib/ctgrind.o $(TEST_OBJ)
-# Remove lines below for the tarball
-
-tests/vectors.h:
-	@echo ""
-	@echo "======================================================"
-	@echo " I cannot perform the tests without the test vectors."
-	@echo " You must generate them.  This requires Libsodium."
-	@echo " The following will generate the test vectors:"
-	@echo ""
-	@echo "     $ cd tests/gen"
-	@echo "     $ make"
-	@echo ""
-	@echo " Alternatively, you can grab an official release."
-	@echo " It will include the test vectors, so you won't"
-	@echo " need libsodium."
-	@echo "======================================================"
-	@echo ""
-	exit 1
-
-doc/man3/intro.3monocypher: \
-	doc/crypto_aead_lock.3monocypher     doc/crypto_argon2.3monocypher       \
-	doc/crypto_blake2b.3monocypher       doc/crypto_chacha20_djb.3monocypher \
-	doc/crypto_ed25519_sign.3monocypher  doc/crypto_eddsa_sign.3monocypher   \
-	doc/crypto_elligator_map.3monocypher doc/crypto_poly1305.3monocypher     \
-	doc/crypto_sha512.3monocypher        doc/crypto_verify16.3monocypher     \
-	doc/crypto_wipe.3monocypher          doc/crypto_x25519.3monocypher       \
-	doc/intro.3monocypher
-	doc/doc_gen.sh
-
-dist: tests/vectors.h
-	./dist.sh

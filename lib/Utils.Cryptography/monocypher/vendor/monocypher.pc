@@ -1,10 +1,10 @@
-prefix=PREFIX
+prefix=/PREFIX
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 
 Name: monocypher
-Version: __git__
+Version: 4.0.2
 Description: Easy to use, easy to deploy crypto library
 
 Libs: -L${libdir} -lmonocypher
