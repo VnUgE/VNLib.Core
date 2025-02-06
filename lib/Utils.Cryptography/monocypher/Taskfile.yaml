@@ -9,7 +9,6 @@
 version: '3'
 
 vars:
-  MS_ARGS: '/p:Platform=x64 /p:RunAnalyzersDuringBuild=false /p:BuildInParallel=true /p:MultiProcessorCompilation=true'
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_monocypher" }}'
   MODULE_NAME: '{{ .MODULE_NAME | default "vnlib.core" }}'
   BUILD_DIR: 'build/{{ OS }}'
@@ -24,7 +23,7 @@ tasks:
     cmds:
       #build with defaults
       - task: build
-      - cmd: echo "Your {{ .PROJECT_NAME }} dll file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
+      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'\033[0m"
         silent: true
   
   build:
@@ -32,16 +31,23 @@ tasks:
     cmds:
      - cmd: echo Building {{ .PROJECT_NAME }} in {{ .BUILD_TYPE }} mode
        silent: true
+     - task: build-internal
+      
 
-     - cmake {{ .CLI_ARGS }}
-       -B./{{ .BUILD_DIR }} 
-       -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}       
-
-     #compile     
-     - cmd: cmake --build {{ .BUILD_DIR }}/ --config Debug
-       platforms: [ windows ]   #debug builds only work on Windows 
-
-     - cmake --build {{ .BUILD_DIR }}/ --config Release 
+  build-internal:
+    internal: true
+    vars:
+      CMAKE_ARGS: '{{ .CLI_ARGS }}'
+    cmds:
+     #configure the build with vnlib_rpmalloc since we know the source must be local during CI
+     - cmd: cmake 
+        {{ .CMAKE_ARGS }} 
+        -B{{ .BUILD_DIR }}
+        -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
+     
+     #build for platform, since Windows, build in both modes
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config debug
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config release
   
   postbuild_success:
     desc: 'DO NOT USE! This function is used internally during automated builds.'
@@ -56,59 +62,88 @@ tasks:
     internal: true
     vars:
       REL_TAR_FILES: 
-        license.txt 
-        readme.txt
-        '{{ .PROJECT_NAME }}_static.lib'
-        '{{ .PROJECT_NAME }}.dll'
+        "{{ .PROJECT_NAME }}_static.lib
+        {{ .PROJECT_NAME }}.dll"
 
       DEBUG_TAR_FILES:
-        license.txt 
-        readme.txt
-        '{{ .PROJECT_NAME }}_static.lib'
-        '{{ .PROJECT_NAME }}.dll'
-        '{{ .PROJECT_NAME }}.pdb'
+        "{{ .PROJECT_NAME }}_static.lib
+        {{ .PROJECT_NAME }}.dll
+        {{ .PROJECT_NAME }}.pdb"
     
     deps:
       - task: pack_source
+  
       - task: pack-artifacats
         vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .DEBUG_TAR_FILES }}' }
+
       - task: pack-artifacats
         vars: { BUILD_MODE: 'release', TAR_FILES: '{{ .REL_TAR_FILES }}' }
    
 
   pack-artifacats:
     internal: true
+    vars:
+      ADD_FILES:
+        license.txt 
+        monocypher-license.md
+        readme.txt
+        argon2.h
+        blake2b.h
+        util.h
+        platform.h
+      TAR_FILES: "{{ .TAR_FILES }} {{ .ADD_FILES }}"
+      TARGET_DIR: '{{ .ARTIFACT_OUT_DIR }}/{{ .BUILD_MODE }}'
     cmds:
-      - task: licenses
-        vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}' }
 
-      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} 
+      #add header files
+      - for: [argon2.h, blake2b.h, util.h, platform.h]
+        cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}'
+
+      - cmd: powershell cp 'vendor/LICENCE.md' '{{ .TARGET_DIR }}/monocypher-license.md'
+      - cmd: powershell cp 'license' '{{ .TARGET_DIR }}/license.txt'
+      - cmd: powershell cp 'build.readme.txt' '{{ .TARGET_DIR }}/readme.txt'
+
+      - cmd: cd {{ .TARGET_DIR }}
          && tar -czf '{{ .ARTIFACT_OUT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
-
-  licenses:
-    internal: true
-    cmds:
-     #add monocypher license to binary output (wrong on purpose see source code)
-     - cmd: powershell cp 'vendor/LICENCE.md' '{{ .TARGET }}/license.md'
-     #add my license file
-     - cmd: powershell cp 'license' '{{ .TARGET }}/license.txt'
-     #add readme file
-     - cmd: powershell cp 'build.readme.txt' '{{ .TARGET }}/readme.txt'
-
+  
+ #packages source code for distribution
   pack_source:
     internal: true
+    vars:
+      EXCLUDES:       
+        
+      INCLUDES:
+        "src/*
+        vendor/*
+        readme.md
+        LICENSE
+        CMakeLists.txt
+        Taskfile.yaml
+        vnlib_monocypher.vcxitems"
+
     cmds:
-     #pack monocypher source code and create the archive
-     - powershell "tar --exclude build/* --exclude bin/* --exclude .git/* -czf '{{ .ARTIFACT_OUT_DIR }}/src.tgz' ."
+     #just pack up current directory, excluding build, bin, and git directories
+     - cmd: tar {{ .EXCLUDES }} -czf '{{ .ARTIFACT_OUT_DIR }}/src.tgz' {{ .INCLUDES }}
 
   dev-init:
     desc: 'Configures the project for local development'
     cmds:
-     - task: build
+     - task: build-internal
        vars: { BUILD_TYPE: Debug }
 
      - cmd: echo "dev init complete"
        silent: true
+
+  dev:
+    desc: Initilaizes the project and re-runs builds on file changes during development
+    watch: true
+    sources:
+     - src/*
+     - vendor/**/*
+     - CMakelists.txt  
+    cmds:
+     - task: build-internal
+       vars: { BUILD_TYPE: Debug }
 
   clean:
     desc: 'Cleans any build artifacts and output directories'
