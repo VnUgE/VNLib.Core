@@ -3,7 +3,7 @@
   <PropertyGroup Label="Globals">
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
-    <ItemsProjectGuid>{194aad38-05ab-4715-a367-190b3da78899}</ItemsProjectGuid>
+    <ItemsProjectGuid>{E99FDF2C-4F54-4C4D-9CEB-C2E2A401A953}</ItemsProjectGuid>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -19,10 +19,30 @@
     <Text Include="$(MSBuildThisFileDirectory)license.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)vnlib_rpmalloc.c" />
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" />
+    <None Include="$(MSBuildThisFileDirectory)package.json" />
+    <None Include="$(MSBuildThisFileDirectory)readme.md" />
+    <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\.editorconfig" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\AUTHORS.md" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\change-prefix.sh" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\CHANGELOG.md" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\LICENCE.md" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\makefile" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\monocypher.pc" />
+    <None Include="$(MSBuildThisFileDirectory)vendor\README.md" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)package.json" />
-    <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\argon2.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\blake2b.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\platform.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src\util.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)util.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)vendor\src\monocypher.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\argon2.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\blake2b.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)vendor\src\monocypher.c" />
   </ItemGroup>
 </Project>
