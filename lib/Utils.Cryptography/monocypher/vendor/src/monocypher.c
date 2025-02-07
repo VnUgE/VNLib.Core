@@ -879,10 +879,12 @@ void crypto_argon2(u8 *hash, u32 hash_size, void *work_area,
 					u64  z         = (window_size - 1) - y;
 					u64  ref       = (window_start + z) % lane_size;
 #if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable: 4242 4244)
+	#pragma warning(push)
+	#pragma warning(disable: 4242 4244)
 					u32  index     = lane * lane_size + (u32)ref;
-#pragma warning(pop)
+	#pragma warning(pop)
+#else
+					u32  index = lane * lane_size + (u32)ref;
 #endif
 					blk *reference = blocks + index;
 
