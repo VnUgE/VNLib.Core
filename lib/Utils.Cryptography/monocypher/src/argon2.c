@@ -90,6 +90,12 @@ VNLIB_EXPORT argon2_error_codes VNLIB_CC Argon2ComputeHash(const argon2Ctx* cont
 		return ARGON2_SECRET_PTR_MISMATCH;
 	}
 
+	//From monocypher.h #160
+	if (config.nb_blocks < (8 * config.nb_lanes))
+	{
+		return ARGON2_MEMORY_TOO_LITTLE;
+	}
+
 	if (context->outlen < 1)
 	{
 		return ARGON2_OUTPUT_TOO_SHORT;
