@@ -27,7 +27,7 @@ tasks:
          -B{{ .BUILD_DIR }}/
          -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
      
-     - cmake --build {{ .BUILD_DIR }}/ --config Release    
+     - cmd: cmake --build {{ .BUILD_DIR }}/ --config Release    
 
   #called by ci pipline to build the winx64 project
   build:
@@ -43,7 +43,6 @@ tasks:
 
      #build the project
      - task: build-internal
-       vars: { CLI_ARGS: '{{ .CLI_ARGS }}' }
   
   build-internal:
     internal: true
