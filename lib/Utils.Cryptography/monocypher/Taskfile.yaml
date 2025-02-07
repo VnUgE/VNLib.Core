@@ -20,10 +20,12 @@ tasks:
 
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    vars:
+      OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'
     cmds:
       #build with defaults
       - task: build
-      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'\033[0m"
+      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ osClean .OUT_DIR }}\033[0m"
         silent: true
   
   build:
