@@ -37,7 +37,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)src\blake2b.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\platform.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)src\util.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)util.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)vendor\src\monocypher.h" />
   </ItemGroup>
   <ItemGroup>

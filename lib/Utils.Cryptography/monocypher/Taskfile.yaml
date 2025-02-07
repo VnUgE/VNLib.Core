@@ -92,7 +92,7 @@ tasks:
         util.h
         platform.h
       TAR_FILES: "{{ .TAR_FILES }} {{ .ADD_FILES }}"
-      TARGET_DIR: '{{ .ARTIFACT_OUT_DIR }}/{{ .BUILD_MODE }}'
+      TARGET_DIR: '{{ .BUILD_DIR }}/{{ .BUILD_MODE }}'
     cmds:
 
       #add header files
@@ -100,7 +100,7 @@ tasks:
         cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}'
 
       - cmd: powershell cp 'vendor/LICENCE.md' '{{ .TARGET_DIR }}/monocypher-license.md'
-      - cmd: powershell cp 'license' '{{ .TARGET_DIR }}/license.txt'
+      - cmd: powershell cp 'LICENSE' '{{ .TARGET_DIR }}/license.txt'
       - cmd: powershell cp 'build.readme.txt' '{{ .TARGET_DIR }}/readme.txt'
 
       - cmd: cd {{ .TARGET_DIR }}
