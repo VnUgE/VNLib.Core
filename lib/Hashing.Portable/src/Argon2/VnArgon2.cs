@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -141,7 +141,7 @@ namespace VNLib.Hashing
             int passBytes = LocEncoding.GetByteCount(password);
             
             //Alloc memory for salt
-            using MemoryHandle<byte> buffer = PwHeap.Alloc<byte>(MemoryUtil.NearestPage(saltbytes + passBytes));
+            using MemoryHandle<byte> buffer = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, saltbytes + passBytes);
             
             Span<byte> saltBuffer = buffer.AsSpan(0, saltbytes);
             Span<byte> passBuffer = buffer.AsSpan(saltbytes, passBytes);
@@ -192,10 +192,10 @@ namespace VNLib.Hashing
             int passBytes = LocEncoding.GetByteCount(password);
             
             //Alloc memory for password, round to page size again
-            using MemoryHandle<byte> pwdHandle = PwHeap.Alloc<byte>(MemoryUtil.NearestPage(passBytes));
-            
+            using MemoryHandle<byte> pwdHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, passBytes);
+
             //Encode password, create a new span to make sure its proper size 
-            _ = LocEncoding.GetBytes(password, pwdHandle.Span);
+            passBytes = LocEncoding.GetBytes(password, pwdHandle.Span);
            
             string result = Hash2id(
                 lib: lib, 
@@ -242,7 +242,7 @@ namespace VNLib.Hashing
              * Alloc a buffer of the nearest page to help disguise password related 
              * allocations. Global zero is always set on PwHeap.
              */
-            using MemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(MemoryUtil.NearestPage(hashLen));
+            using MemoryHandle<byte> outputHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, hashLen);
 
             //Trim buffer to exact hash size as it will likely be larger due to page alignment
             Span<byte> outBuffer = outputHandle.AsSpan(0, checked((int)hashLen));
@@ -369,8 +369,8 @@ namespace VNLib.Hashing
              * Alloc binary buffer for decoding. Align it to the nearest page again
              * to help disguise the allocation purpose.
              */
-            nint nearestPage = MemoryUtil.NearestPage(passBase64BufSize + saltBase64BufSize + rawPassLen);
-            using MemoryHandle<byte> rawBufferHandle = PwHeap.Alloc<byte>(nearestPage);
+            int nearestPage = passBase64BufSize + saltBase64BufSize + rawPassLen;
+            using MemoryHandle<byte> rawBufferHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, nearestPage);
             
             //Split buffers
             Span<byte> saltBuf = rawBufferHandle.AsSpan(0, saltBase64BufSize);
@@ -446,7 +446,7 @@ namespace VNLib.Hashing
              * Alloc a buffer of the nearest page to help disguise password related 
              * allocations. Global zero is always set on PwHeap.
              */
-            using MemoryHandle<byte> outputHandle = PwHeap.Alloc<byte>(MemoryUtil.NearestPage(hashBytes.Length));
+            using MemoryHandle<byte> outputHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, hashBytes.Length);
 
             //Trim buffer to exact hash size as it will likely be larger due to page alignment
             Span<byte> outBuffer = outputHandle.AsSpan(0, hashBytes.Length);

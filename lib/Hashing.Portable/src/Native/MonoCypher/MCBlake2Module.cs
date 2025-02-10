@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -89,11 +89,10 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static IHashStream Blake2CreateStream(this MonoCypherLibrary library, byte hashSize, IUnmangedHeap? heap)
         {
-            _ = library ?? throw new ArgumentNullException(nameof(library));
-            if(hashSize == 0 || hashSize > MaxHashSize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(hashSize), $"The hash size must be between 1 and {MaxHashSize} inclusive");
-            }
+            ArgumentNullException.ThrowIfNull(library);
+            ArgumentOutOfRangeException.ThrowIfEqual(hashSize, 0);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(hashSize, MaxHashSize);
+            
             //Fall back to the shared heap if none is provided
             heap ??= MemoryUtil.Shared;
 
@@ -130,11 +129,11 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static IHmacStream Blake2CreateHmacStream(this MonoCypherLibrary library, byte hashSize, IUnmangedHeap? heap)
         {
-            _ = library ?? throw new ArgumentNullException(nameof(library));
-            if (hashSize == 0 || hashSize > MaxHashSize)
-            {
-                throw new ArgumentOutOfRangeException(nameof(hashSize), $"The hash size must be between 1 and {MaxHashSize} inclusive");
-            }
+            ArgumentNullException.ThrowIfNull(library);
+
+            ArgumentOutOfRangeException.ThrowIfEqual(hashSize, 0);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(hashSize, MaxHashSize);
+
             //Fall back to the shared heap if none is provided
             heap ??= MemoryUtil.Shared;
 
@@ -156,13 +155,8 @@ namespace VNLib.Hashing.Native.MonoCypher
         public static ERRNO Blake2ComputeHash(this MonoCypherLibrary library, ReadOnlySpan<byte> data, Span<byte> output)
         {
             ArgumentNullException.ThrowIfNull(library, nameof(library));
-         
-            if(output.Length > MaxHashSize)
-            {
-                return ERRNO.E_FAIL;
-            }
 
-            if(output.IsEmpty)
+            if (output.IsEmpty || output.Length > MaxHashSize)
             {
                 return ERRNO.E_FAIL;
             }
@@ -180,16 +174,18 @@ namespace VNLib.Hashing.Native.MonoCypher
             }
 
             //initialize the context for the stream with hmac key
-            fixed (byte* keyPtr = &MemoryMarshal.GetReference(data),
+            fixed (byte* 
+                keyPtr = &MemoryMarshal.GetReference(data),
                 hashPtr = &MemoryMarshal.GetReference(output)
-                )
+            )
             {
                 //Update with data
                 if(library.Functions.Blake2Update((IntPtr)ctx, keyPtr, (uint)data.Length) != 0)
                 {
                     return ERRNO.E_FAIL;
                 }
-                //Copy hash to output
+
+                //write the hash to output
                 if (library.Functions.Blake2Final((IntPtr)ctx, hashPtr, (uint)output.Length) != 0)
                 {
                     return ERRNO.E_FAIL;

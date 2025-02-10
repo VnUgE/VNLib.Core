@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -48,7 +48,8 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// the current process.
         /// </summary>
         /// <returns>true if the user enabled the default library, false otherwise</returns>
-        public static bool CanLoadDefaultLibrary() => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(MONOCYPHER_LIB_ENVIRONMENT_VAR_NAME)) == false;
+        public static bool CanLoadDefaultLibrary() 
+            => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(MONOCYPHER_LIB_ENVIRONMENT_VAR_NAME));
 
         private static readonly LazyInitializer<MonoCypherLibrary> _defaultLib = new (LoadDefaultLibraryInternal);
 
@@ -82,7 +83,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         public static MonoCypherLibrary LoadLibrary(string path, DllImportSearchPath searchPath)
         {
             SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(path, searchPath);
-            return new(lib, true);
+            return new(lib, ownsHandle: true);
         }
 
         private static MonoCypherLibrary LoadDefaultLibraryInternal()
@@ -93,7 +94,7 @@ namespace VNLib.Hashing.Native.MonoCypher
             Trace.WriteLine("Attempting to load global native MonoCypher library from: " + monoCypherLibPath, "MonoCypher");
 
             SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(monoCypherLibPath, DllImportSearchPath.SafeDirectories);
-            return new(lib, true);
+            return new(lib, ownsHandle: true);
         }
 
 
@@ -155,15 +156,15 @@ namespace VNLib.Hashing.Native.MonoCypher
         internal readonly struct FunctionTable
         {
             //Argon2 module
-            public readonly MCPasswordModule.Argon2Hash Argon2Hash { get; init; }
-            public readonly MCPasswordModule.Argon2CalcWorkArea Argon2CalcWorkArea { get; init; }
+            public required readonly MCPasswordModule.Argon2Hash Argon2Hash { get; init; }
+            public required readonly MCPasswordModule.Argon2CalcWorkArea Argon2CalcWorkArea { get; init; }
 
             //Blake2 module
-            public readonly MCBlake2Module.Blake2GetContextSize Blake2GetContextSize { get; init; }
-            public readonly MCBlake2Module.Blake2Init Blake2Init { get; init; }
-            public readonly MCBlake2Module.Blake2Update Blake2Update { get; init; }           
-            public readonly MCBlake2Module.Blake2Final Blake2Final { get; init; }
-            public readonly MCBlake2Module.Blake2GetHashSize Blake2GethashSize { get; init; }
+            public required readonly MCBlake2Module.Blake2GetContextSize Blake2GetContextSize { get; init; }
+            public required readonly MCBlake2Module.Blake2Init Blake2Init { get; init; }
+            public required readonly MCBlake2Module.Blake2Update Blake2Update { get; init; }           
+            public required readonly MCBlake2Module.Blake2Final Blake2Final { get; init; }
+            public required readonly MCBlake2Module.Blake2GetHashSize Blake2GethashSize { get; init; }
         }
     }
 }

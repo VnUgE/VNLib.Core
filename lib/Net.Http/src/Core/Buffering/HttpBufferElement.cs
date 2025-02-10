@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -50,7 +50,11 @@ namespace VNLib.Net.Http.Core.Buffering
             _handle = default;
         }
 
-        public void SetBuffer(Memory<byte> buffer) => _handle = new(buffer);
+        public void SetBuffer(Memory<byte> buffer)
+        {
+            Debug.Assert(_handle.Size == 0, "Buffer was not feed correctly");
+            _handle = new(buffer);
+        }
 
         ///<inheritdoc/>
         public int Size => _handle.Size;
@@ -63,6 +67,7 @@ namespace VNLib.Net.Http.Core.Buffering
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual ref byte DangerousGetBinRef(int offset)
         {
+            ArgumentOutOfRangeException.ThrowIfNegative(offset);
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, _handle.Size);
 
             //Add offset to ref

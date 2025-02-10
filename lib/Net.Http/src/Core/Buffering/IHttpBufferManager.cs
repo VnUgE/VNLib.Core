@@ -82,6 +82,7 @@ namespace VNLib.Net.Http.Core.Buffering
         /// <summary>
         /// Frees all internal buffers
         /// </summary>
-        void FreeAll();
+        /// <param name="allocator">The pool to free memory back to</param>
+        void FreeAll(IHttpMemoryPool allocator);
     }
 }
