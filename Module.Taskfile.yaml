@@ -96,6 +96,8 @@ tasks:
        silent: true
      - cmd: dotnet test
         {{ .CLI_ARGS }}
+        {{ .MS_ARGS }}
+        /p:NoWarn=CS1591
         --logger "console;verbosity=detailed"
         --configuration debug
         --verbosity normal
