@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -39,7 +39,11 @@ using VNLib.Net.Http.Core.Buffering;
 namespace VNLib.Net.Http.Core.Response
 {
 
-    internal sealed class HttpResponse(IHttpContextInformation ContextInfo, TransportManager transport, IHttpBufferManager manager) : IHttpLifeCycle
+    internal sealed class HttpResponse(
+        IHttpContextInformation ContextInfo, 
+        TransportManager transport, 
+        IHttpBufferManager manager
+    ) : IHttpLifeCycle
 #if DEBUG
         , IStringSerializeable
 #endif

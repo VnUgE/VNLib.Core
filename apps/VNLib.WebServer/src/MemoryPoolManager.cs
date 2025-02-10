@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -41,13 +41,15 @@ namespace VNLib.WebServer
         /// Gets an unmanaged memory pool provider for the TCP server to alloc buffers from
         /// </summary>
         /// <returns>The memory pool</returns>
-        public static MemoryPool<byte> GetTcpPool(bool zeroOnAlloc) => new HttpMemoryPool(zeroOnAlloc);
+        public static MemoryPool<byte> GetTcpPool(bool zeroOnAlloc, IUnmangedHeap heap) 
+            => new HttpMemoryPool(zeroOnAlloc, heap);
 
         /// <summary>
         /// Gets a memory pool provider for the HTTP server to alloc buffers from
         /// </summary>
         /// <returns>The http server memory pool</returns>
-        public static IHttpMemoryPool GetHttpPool(bool zeroOnAlloc) => new HttpMemoryPool(zeroOnAlloc);
+        public static IHttpMemoryPool GetHttpPool(bool zeroOnAlloc, IUnmangedHeap heap) 
+            => new HttpMemoryPool(zeroOnAlloc, heap);
 
         /*
          * Fun little umnanaged memory pool that allows for allocating blocks
@@ -56,36 +58,47 @@ namespace VNLib.WebServer
          * All blocks are allocated to the nearest page size
          */
 
-        internal sealed class HttpMemoryPool(bool zeroOnAlloc) : MemoryPool<byte>, IHttpMemoryPool
+        internal sealed class HttpMemoryPool(bool zeroOnAlloc, IUnmangedHeap heap) : MemoryPool<byte>, IHttpMemoryPool
         {
-            //Avoid the shared getter on every alloc call
-            private readonly IUnmangedHeap _heap = MemoryUtil.Shared;
-
             ///<inheritdoc/>
             public override int MaxBufferSize { get; } = int.MaxValue;
-
-            ///<inheritdoc/>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public IMemoryOwner<byte> AllocateBufferForContext(int bufferSize) => Rent(bufferSize);
+         
 
             ///<inheritdoc/>
             public IResizeableMemoryHandle<T> AllocFormDataBuffer<T>(int initialSize) where T : unmanaged
             {
-                return MemoryUtil.SafeAllocNearestPage<T>(_heap, initialSize, zeroOnAlloc);
+                return MemoryUtil.SafeAllocNearestPage<T>(heap, initialSize, zeroOnAlloc);
+            }
+
+            ///<inheritdoc/>
+            public IHttpContextBuffer AllocateBufferForContext(int bufferSize)
+            {
+                nint initSize = MemoryUtil.NearestPage(bufferSize);
+                return new UnsafeMemoryManager(heap, (nuint)initSize, zeroOnAlloc);
             }
 
             ///<inheritdoc/>
             public override IMemoryOwner<byte> Rent(int minBufferSize = -1)
             {
                 nint initSize = MemoryUtil.NearestPage(minBufferSize);
-                return new UnsafeMemoryManager(_heap, (nuint)initSize, zeroOnAlloc);
+                return new UnsafeMemoryManager(heap, (nuint)initSize, zeroOnAlloc);
+            }
+
+            ///<inheritdoc/>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void FreeBufferForContext(IHttpContextBuffer buffer)
+            {
+                if (buffer is IDisposable b)
+                {
+                    b.Dispose();
+                }
             }
 
             ///<inheritdoc/>
             protected override void Dispose(bool disposing)
             { }
 
-            sealed class UnsafeMemoryManager(IUnmangedHeap heap, nuint bufferSize, bool zero) : MemoryManager<byte>
+            private sealed class UnsafeMemoryManager(IUnmangedHeap heap, nuint bufferSize, bool zero) : MemoryManager<byte>, IHttpContextBuffer
             {
 
                 private nint _pointer = heap.Alloc(bufferSize, sizeof(byte), zero);

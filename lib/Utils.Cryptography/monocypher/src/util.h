@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * vnlib_monocypher is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published
@@ -19,13 +19,11 @@
 #ifndef VN_MONOCYPHER_UTIL_H
 #define VN_MONOCYPHER_UTIL_H
 
-#if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
-    #define _P_IS_WINDOWS
-#endif
+#include "platform.h"
 
 //Set api export calling convention (allow used to override)
 #ifndef VNLIB_CC
-    #ifdef _P_IS_WINDOWS
+    #ifdef _VN_IS_WINDOWS
         //STD for importing to other languages such as .NET
         #define VNLIB_CC __stdcall
     #else
@@ -35,33 +33,23 @@
 
 #ifndef VNLIB_EXPORT	//Allow users to disable the export/impoty macro if using source code directly
     #ifdef VNLIB_EXPORTING
-        #ifdef _P_IS_WINDOWS
+        #ifdef _VN_IS_WINDOWS
             #define VNLIB_EXPORT __declspec(dllexport)
         #else
             #define VNLIB_EXPORT __attribute__((visibility("default")))
         #endif // _NC_IS_WINDOWS
     #else
-        #ifdef _P_IS_WINDOWS
+        #ifdef _VN_IS_WINDOWS
             #define VNLIB_EXPORT __declspec(dllimport)
         #else
             #define VNLIB_EXPORT
-        #endif // _P_IS_WINDOWS
+        #endif // _VN_IS_WINDOWS
     #endif // !VNLIB_EXPORTING
 #endif // !VNLIB_EXPORT
 
-#ifndef _In_
-#define _In_
-#endif
 
 #define ERR_INVALID_PTR -1
 #define ERR_OUT_OF_MEMORY -2
-
-#define TRUE 1
-#define FALSE 0
-
-#ifndef NULL
-#define NULL 0
-#endif /* !NULL */
 
 #define VALIDATE_PTR(ptr) if (!ptr) return ERR_INVALID_PTR
 
