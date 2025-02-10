@@ -6,7 +6,7 @@ set(_PROJECT_NAME ${CMAKE_PROJECT_NAME})
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
 message(STATUS "Build type is '${build_type}'")
 
-#export header files to the main project
+#include all the source files in the src directory
 file(GLOB VNLIB_MONOCYPHER_SOURCES src/*)
 
 #add monocypher includes, there will only be one library
@@ -117,7 +117,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 			PRIVATE
 
 			-std=c99		#force c99 standard
-			-O3				#disable optimizations
+			-O3				#enable max optimizations
 			-Werror			#treat warnings as errors
 		)
 
