@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -28,6 +28,7 @@ using System.Linq;
 using System.Text;
 using System.Collections.Generic;
 
+using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 using VNLib.Net.Http;
 using VNLib.Plugins.Runtime;
@@ -142,7 +143,7 @@ namespace VNLib.WebServer.Bootstrap
                 //Attempt to load the compressor manager, if null, compression is disabled
                 IHttpCompressorManager? compressorManager = HttpCompressor.LoadOrDefaultCompressor(procArgs, gConf.Compression, config, logger.AppLog);
 
-                IHttpMemoryPool memPool = MemoryPoolManager.GetHttpPool(procArgs.ZeroAllocations);
+                IHttpMemoryPool memPool = MemoryPoolManager.GetHttpPool(procArgs.ZeroAllocations, MemoryUtil.Shared);
 
                 HttpConfig conf = new(Encoding.ASCII)
                 {

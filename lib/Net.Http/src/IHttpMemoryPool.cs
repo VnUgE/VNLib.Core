@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -22,12 +22,23 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.Buffers;
+using System;
 
 using VNLib.Utils.Memory;
 
 namespace VNLib.Net.Http
 {
+    /// <summary>
+    /// Represents a private buffer allocated for an http context
+    /// </summary>
+    public interface IHttpContextBuffer
+    {
+        /// <summary>
+        /// Gets the buffer memory segment
+        /// </summary>
+        Memory<byte> Memory { get; }
+    }
+
     /// <summary>
     /// Represents a single memory pool for the server that allocates buffers per http context.
     /// on new connections and frees them when the connection is closed.
@@ -39,7 +50,15 @@ namespace VNLib.Net.Http
         /// </summary>
         /// <param name="bufferSize">The minium size of the buffer required</param>
         /// <returns>A handle to the allocated buffer</returns>
-        IMemoryOwner<byte> AllocateBufferForContext(int bufferSize);
+        IHttpContextBuffer AllocateBufferForContext(int bufferSize);
+
+        /// <summary>
+        /// <para>
+        /// Free's a buffer previously allocated from a call to <see cref="AllocateBufferForContext(int)"/>
+        /// </para>
+        /// </summary>
+        /// <param name="buffer">A refernce to the buffer previously allocated</param>
+        void FreeBufferForContext(IHttpContextBuffer buffer);
 
         /// <summary>
         /// Allocates arbitrary form data related memory handles that are not tied to a specific http context.

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -27,6 +27,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Collections.Generic;
 
+using VNLib.Utils.Memory;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Resources;
 using VNLib.Net.Http;
@@ -171,7 +172,7 @@ namespace VNLib.WebServer.Transport
                 MaxRecvBufferData       = baseConfig.MaxRecvBufferData,
                 ReuseSocket             = !NoReuseSocket,                   //Default to always reuse socket if allowed
                 OnSocketCreated         = OnSocketConfiguring,
-                BufferPool              = MemoryPoolManager.GetTcpPool(args.ZeroAllocations)
+                BufferPool              = MemoryPoolManager.GetTcpPool(args.ZeroAllocations, MemoryUtil.Shared)
             };
 
             //Print warning message, since inline scheduler is an avanced feature

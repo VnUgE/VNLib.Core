@@ -32,7 +32,6 @@
  */
 
 using System;
-using System.Buffers;
 using System.Diagnostics;
 
 using VNLib.Utils.Memory;
@@ -50,71 +49,74 @@ namespace VNLib.Net.Http.Core.Buffering
         private readonly HeaderAccumulatorBuffer _responseHeaderBuffer = new(config.ResponseHeaderBufferSize);
         private readonly ChunkAccBuffer _chunkAccBuffer = new();       
 
-        private IMemoryOwner<byte>? _handle;
-        private HttpBufferSegments<byte> _segments;
+        private IHttpContextBuffer? _handle;
+        private Memory<byte> _responseAndFormDataBuffer;
 
         ///<inheritdoc/>
         public void AllocateBuffer(IHttpMemoryPool allocator, ref readonly HttpBufferConfig config)
         {
+            /*
+              * NOTE:
+              * If an exception is raised in the following code, it will raise to the 
+              * parent context call to allocate. An undefined state is fine becase
+              * the call to FreeAll is guaranteed to be called during all control flow
+              * as long as the exception is not caught.
+              * 
+              * So as long as the FreeAll hook cleans up properly everything should be 
+              * fine.
+              */
+
             Debug.Assert(_handle == null, "Memory Leak: new http buffer alloacted when an existing buffer was not freed.");
+            Debug.Assert(_responseAndFormDataBuffer.IsEmpty);
 
             //Alloc a single buffer for the entire context
             _handle = allocator.AllocateBufferForContext(TotalBufferSize);
 
-            try
-            {
-                Memory<byte> full = _handle.Memory;
+            Memory<byte> full = _handle.Memory;
 
-                //Header parse buffer is a special case as it will be double the size due to the char buffer
-                int headerParseBufferSize = GetMaxHeaderBufferSize(in config);                
-                int responseAndFormDataSize = ComputeResponseAndFormDataBuffer(in config);
+            //Header parse buffer is a special case as it will be double the size due to the char buffer
+            int headerParseBufferSize = GetMaxHeaderBufferSize(in config);
+            int responseAndFormDataSize = ComputeResponseAndFormDataBuffer(in config);
 
-                //Shared header buffer
-                _segments.HeaderAccumulator = GetNextSegment(ref full, headerParseBufferSize);
-                _segments.ResponseAndFormData = GetNextSegment(ref full, responseAndFormDataSize);
+            //Shared header buffer
+            Memory<byte> headerAccumulator = GetNextSegment(ref full, headerParseBufferSize);
+            _responseAndFormDataBuffer = GetNextSegment(ref full, responseAndFormDataSize);
 
-                /*
-                 * The chunk accumulator buffer cannot be shared. It is also only
-                 * stored if chunking is enabled.
-                 */
-                _segments.ChunkedResponseAccumulator = _chunkingEnabled 
-                    ? GetNextSegment(ref full, config.ChunkedResponseAccumulatorSize) 
+            /*
+             * The chunk accumulator buffer cannot be shared. It is also only
+             * stored if chunking is enabled.
+             */
+            Memory<byte> chunkedResponseAccumulator = _chunkingEnabled
+                    ? GetNextSegment(ref full, config.ChunkedResponseAccumulatorSize)
                     : default;
-               
 
-                /*
-                 * ************* WARNING ****************
-                 * 
-                 * Request header and response header buffers are shared 
-                 * because they are assumed to be used in a single threaded context
-                 * and control flow never allows them to be used at the same time.
-                 * 
-                 * The bin buffer size is determined by the buffer config so the 
-                 * user may still configure the buffer size for restriction, so we
-                 * just alloc the largerest of the two and use it for requests and 
-                 * responses.
-                 * 
-                 * Control flow may change and become unsafe in the future!
-                 */
+            /*
+             * ************* WARNING ****************
+             * 
+             * Request header and response header buffers are shared 
+             * because they are assumed to be used in a single threaded context
+             * and control flow never allows them to be used at the same time.
+             * 
+             * The bin buffer size is determined by the buffer config so the 
+             * user may still configure the buffer size for restriction, so we
+             * just alloc the largerest of the two and use it for requests and 
+             * responses.
+             * 
+             * Control flow may change and become unsafe in the future!
+             */
 
-                _requestHeaderBuffer.SetBuffer(_segments.HeaderAccumulator);
-                _responseHeaderBuffer.SetBuffer(_segments.HeaderAccumulator);
+            _requestHeaderBuffer.SetBuffer(headerAccumulator);
+            _responseHeaderBuffer.SetBuffer(headerAccumulator);
 
-                //Chunk buffer will be used at the same time as the response buffer and discard buffers
-                _chunkAccBuffer.SetBuffer(_segments.ChunkedResponseAccumulator);
-            }
-            catch
-            {
-                _segments = default;
-                //Free buffer on error
-                _handle.Dispose();
-                _handle = null;
-                throw;
-            }
+            /*
+             * Chunk buffer will be used at the same time as the 
+             * response buffer and discard buffers. 
+             */
+            _chunkAccBuffer.SetBuffer(chunkedResponseAccumulator);
         }
 
         ///<inheritdoc/>
-        public void FreeAll()
+        public void FreeAll(IHttpMemoryPool allocator)
         {
             if (_zeroOnFree)
             {
@@ -126,12 +128,11 @@ namespace VNLib.Net.Http.Core.Buffering
             _responseHeaderBuffer.FreeBuffer();
             _chunkAccBuffer.FreeBuffer();
 
-            //Clear segments
-            _segments = default;
-          
+            _responseAndFormDataBuffer = default;
+
             if (_handle != null)
             {
-                _handle.Dispose();
+                allocator.FreeBufferForContext(_handle);
                 _handle = null;
             }
         }
@@ -165,10 +166,10 @@ namespace VNLib.Net.Http.Core.Buffering
          */
 
         ///<inheritdoc/>
-        public Memory<byte> GetFormDataBuffer() => _segments.ResponseAndFormData;
+        public Memory<byte> GetFormDataBuffer() => _responseAndFormDataBuffer;
 
         ///<inheritdoc/>
-        public Memory<byte> GetResponseDataBuffer() => _segments.ResponseAndFormData;
+        public Memory<byte> GetResponseDataBuffer() => _responseAndFormDataBuffer;
 
         static Memory<byte> GetNextSegment(ref Memory<byte> buffer, int size)
         {
@@ -216,14 +217,6 @@ namespace VNLib.Net.Http.Core.Buffering
             return Math.Max(config.ResponseBufferSize, config.FormDataBufferSize);
         }
 
-
-        struct HttpBufferSegments<T>
-        {
-            public Memory<T> HeaderAccumulator;
-            public Memory<T> ChunkedResponseAccumulator;
-            public Memory<T> ResponseAndFormData;
-        }  
-      
 
         private sealed class HeaderAccumulatorBuffer(int binSize) : 
             SplitHttpBufferElement(binSize), IResponseHeaderAccBuffer, IHttpHeaderParseBuffer
