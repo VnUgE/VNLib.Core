@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -26,6 +26,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Buffers;
+using System.Diagnostics;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
@@ -50,7 +51,7 @@ namespace VNLib.Utils.Memory
         IComparable<VnString>, 
         IComparable<string>
     {
-        private readonly IMemoryHandle<char>? Handle;
+        private readonly IMemoryHandle<char>? _handle;
 
         private readonly SubSequence<char> _stringSequence;
 
@@ -66,13 +67,13 @@ namespace VNLib.Utils.Memory
 
         private VnString(IMemoryHandle<char>? handle, SubSequence<char> sequence)
         {
-            Handle = handle;
+            _handle = handle;
             _stringSequence = sequence;
         }
 
         private VnString(IMemoryHandle<char> handle, nuint start, int length)
         {
-            Handle = handle ?? throw new ArgumentNullException(nameof(handle));
+            _handle = handle ?? throw new ArgumentNullException(nameof(handle));
             //get sequence
             _stringSequence = handle.GetSubSequence(start, length);
         }
@@ -83,6 +84,8 @@ namespace VNLib.Utils.Memory
         public VnString()
         {
             //Default string sequence is empty and does not hold any memory
+            
+            Debug.Assert(Length == 0 && IsEmpty);
         }
         
         /// <summary>
@@ -99,10 +102,10 @@ namespace VNLib.Utils.Memory
             heap ??= MemoryUtil.Shared;
 
             //Create new handle and copy incoming data to it
-            Handle = heap.AllocAndCopy(data);
+            _handle = heap.AllocAndCopy(data);
             
             //Get subsequence over the whole copy of data
-            _stringSequence = Handle.GetSubSequence(0, data.Length);
+            _stringSequence = _handle.GetSubSequence(offset: 0, data.Length);
         }
 
         /// <summary>
@@ -136,7 +139,8 @@ namespace VNLib.Utils.Memory
             try
             {
                 //Write characters to character buffer
-                _ = encoding.GetChars(data, charBuffer.Span);
+                numChars = encoding.GetChars(data, charBuffer.Span);
+
                 //Consume the new handle
                 return ConsumeHandle(charBuffer, 0, numChars);
             }
@@ -241,9 +245,9 @@ namespace VNLib.Utils.Memory
                             
                             //Re-alloc buffer
                             charBuffer.ResizeIfSmaller(length + numChars);
-                            
+
                             //Decode and update position
-                            _= encoding.GetChars(
+                            numChars = encoding.GetChars(
                                 bytes: readbytes, 
                                 chars: charBuffer.AsSpan(length, numChars)
                             );
@@ -372,6 +376,7 @@ namespace VNLib.Utils.Memory
         }
 
 #pragma warning disable IDE0057 // Use range operator
+
         /// <summary>
         /// Creates a <see cref="VnString"/> that is a window within the current string,
         /// the referrence points to the same memory as the first instnace.
@@ -397,10 +402,16 @@ namespace VNLib.Utils.Memory
              * Slice the string and do not pass the handle even if we have it because the new 
              * instance does own the buffer
              */
-            return new VnString(
+            VnString str = new (
                 handle: null,
                 _stringSequence.Slice((nuint)start, count)
             );
+
+            //Sanity checks
+            Debug.Assert(str.Length == count);
+            Debug.Assert(str._handle == null);
+
+            return str;
         }
         
         /// <summary>
@@ -475,10 +486,34 @@ namespace VNLib.Utils.Memory
         public char this[int index] => CharAt(index);
 
         //Casting to a vnstring should be explicit so the caller doesnt misuse memory managment        
-        public static explicit operator ReadOnlySpan<char>(VnString? value) => Unsafe.IsNullRef(ref value) || value!.Disposed ? ReadOnlySpan<char>.Empty : value.AsSpan();       
-        public static explicit operator VnString(string value) => new (value);
-        public static explicit operator VnString(ReadOnlySpan<char> value) => new (value);
-        public static explicit operator VnString(char[] value) => new (value);
+
+        /// <summary>
+        /// Explicitly casts a <see cref="VnString"/> to a <see cref="ReadOnlySpan{T}"/>
+        /// </summary>
+        /// <param name="value">The <see cref="VnString"/> to cast to a <see cref="ReadOnlySpan{T}"/></param>
+        public static explicit operator ReadOnlySpan<char>(VnString? value)
+            => value is null || value.Disposed ? [] : value.AsSpan();
+
+        /// <summary>
+        /// Explicitly casts a <see cref="ReadOnlySpan{T}"/> to a <see cref="VnString"/>
+        /// </summary>
+        /// <param name="value">The character sequence to cast to a <see cref="VnString"/></param>
+        public static explicit operator VnString(ReadOnlySpan<char> value) 
+            => value.IsEmpty ? new VnString() : new VnString(value);
+
+        /// <summary>
+        /// Explicitly casts a <see cref="string"/> to a <see cref="VnString"/>
+        /// </summary>
+        /// <param name="value">The string to cast to a <see cref="VnString"/></param>
+        public static explicit operator VnString(string value)
+            => (VnString)value.AsSpan();
+
+        /// <summary>
+        /// Explicitly casts a character array to a <see cref="VnString"/>
+        /// </summary>
+        /// <param name="value">The character array to cast to a <see cref="VnString"/></param>
+        public static explicit operator VnString(char[] value) 
+            => (VnString)(ReadOnlySpan<char>)value.AsSpan();
         
         /// <inheritdoc/>
         /// <remarks>
@@ -586,7 +621,7 @@ namespace VNLib.Utils.Memory
             => string.GetHashCode(AsSpan(), stringComparison);
 
         ///<inheritdoc/>
-        protected override void Free() => Handle?.Dispose();
+        protected override void Free() => _handle?.Dispose();
 
         public static bool operator ==(VnString left, VnString right) => left is null ? right is not null : left.Equals(right, StringComparison.Ordinal);
 
