@@ -129,7 +129,8 @@ namespace VNLib.Net.Http.Core.Response
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
         ///<inheritdoc/>
-        public Task WriteEntityAsync(IDirectResponsWriter dest, Memory<byte> buffer) => WriteEntityAsync(dest, buffer, 0);
+        public Task WriteEntityAsync(IDirectResponsWriter dest, Memory<byte> buffer) 
+            => WriteEntityAsync(dest, buffer, blockSize: 0);
 
         ///<inheritdoc/>        
         public async Task WriteEntityAsync<TComp>(TComp compressor, IResponseDataWriter writer, Memory<byte> buffer) 
@@ -155,14 +156,14 @@ namespace VNLib.Net.Http.Core.Response
                 if (written == 0)
                 {
                     //final flush and exit
-                    await writer.FlushAsync(true);
+                    await writer.FlushAsync(isFinal: true);
                     break;
                 }
 
                 if (writer.Advance(written) == 0)
                 {
                     //Flush because accumulator is full
-                    await writer.FlushAsync(false);
+                    await writer.FlushAsync(isFinal: false);
                 }
 
             } while (true);

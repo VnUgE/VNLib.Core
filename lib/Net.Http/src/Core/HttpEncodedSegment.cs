@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -42,7 +42,7 @@ namespace VNLib.Net.Http.Core
     internal readonly record struct HttpEncodedSegment(byte[] Buffer, uint Offset, ushort Length)
     {
         /// <summary>
-        /// Validates the bounds of the array so calls to <see cref="DangerousCopyTo(Span{byte})"/>
+        /// Validates the bounds of the array so calls to <see cref="DangerousCopyTo(Span{byte}, int)"/>
         /// won't cause a buffer over/under run
         /// </summary>
         public readonly void Validate() => MemoryUtil.CheckBounds(Buffer, Offset, Length);

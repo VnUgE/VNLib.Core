@@ -117,6 +117,7 @@ tasks:
     #clean solution
      - cmd: dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
      - cmd: powershell rm '{{ .ARCHIVE_FILE_NAME }}' --Force 
+     - task: clean-native
 
   dev-init:
     desc: 'Configures the module for local development'

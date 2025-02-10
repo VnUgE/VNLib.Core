@@ -152,10 +152,10 @@ namespace VNLib.Net.Http.Core.Response
 
             //Copy encoded chunk size to the reserved segment
             MemoryUtil.SmallMemmove(
-                in MemoryMarshal.GetReference(chunkSizeBinBuffer), 
-                0, 
-                ref buffer.DangerousGetBinRef(reservedOffset), 
-                0, 
+                src: in MemoryMarshal.GetReference(chunkSizeBinBuffer), 
+                srcOffset: 0, 
+                dst: ref buffer.DangerousGetBinRef(reservedOffset),
+                dstOffset: 0, 
                 (ushort)totalChunkBufferBytes
             );
 
