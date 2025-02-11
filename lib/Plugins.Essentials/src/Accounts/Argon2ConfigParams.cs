@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,6 +23,8 @@
 */
 
 using System;
+
+using VNLib.Utils.Memory;
 
 namespace VNLib.Plugins.Essentials.Accounts
 {
@@ -62,5 +64,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// The Argon2 parallelism parameter (defaults to the number of logical processors)
         /// </summary>
         public uint Parallelism { get; init; } = (uint)Environment.ProcessorCount;
+
+        /// <summary>
+        /// Specifies the heap to allocate internal buffers from if necessary (defaults to <see cref="MemoryUtil.Shared"/>)
+        /// </summary>
+        public IUnmangedHeap BufferHeap { get; init; } = MemoryUtil.Shared;
     }
 }

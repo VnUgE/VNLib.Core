@@ -3,10 +3,10 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: PasswordHashing.cs 
+* File: Argon2HashProvider.cs 
 *
-* PasswordHashing.cs is part of VNLib.Plugins.Essentials which is part of the larger 
-* VNLib collection of libraries and utilities.
+* Argon2HashProvider.cs is part of VNLib.Plugins.Essentials which is part 
+* of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
@@ -46,15 +46,13 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// Provides a structured password hashing system implementing the <seealso cref="VnArgon2"/> library
     /// with fixed time comparison
     /// </summary>
-    public sealed class PasswordHashing : IPasswordHashingProvider
+    public sealed class Argon2HashProvider : IPasswordHashingProvider
     {
-        private const int STACK_MAX_BUFF_SIZE = 128;
-
         private readonly ISecretProvider? _secret;
         private readonly IArgon2Library _argon2;
         private readonly Argon2ConfigParams _config;
         
-        private PasswordHashing(IArgon2Library library, ISecretProvider? secret, in Argon2ConfigParams setup)
+        internal Argon2HashProvider(IArgon2Library library, ISecretProvider? secret, in Argon2ConfigParams setup)
         {
             //Store getter
             _argon2 = library ?? throw new ArgumentNullException(nameof(library));
@@ -63,13 +61,13 @@ namespace VNLib.Plugins.Essentials.Accounts
         }
 
         /// <summary>
-        /// Creates a new <see cref="PasswordHashing"/> instance using the specified library.
+        /// Creates a new <see cref="Argon2HashProvider"/> instance using the specified library.
         /// </summary>
         /// <param name="library">The library instance to use</param>
         /// <param name="secret">The password secret provider</param>
         /// <param name="setup">The configuration setup arguments</param>
         /// <returns>The instance of the library to use</returns>
-        public static PasswordHashing Create(IArgon2Library library, ISecretProvider? secret, in Argon2ConfigParams setup) 
+        public static Argon2HashProvider Create(IArgon2Library library, ISecretProvider? secret, in Argon2ConfigParams setup) 
             => new (library, secret, in setup);
 
         /// <summary>
@@ -80,7 +78,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="setup">The configuration setup arguments</param>
         /// <returns>The instance of the library to use</returns>
         /// <exception cref="DllNotFoundException"></exception>
-        public static PasswordHashing Create(ISecretProvider? secret, in Argon2ConfigParams setup) 
+        public static Argon2HashProvider Create(ISecretProvider? secret, in Argon2ConfigParams setup) 
             => Create(VnArgon2.GetOrLoadSharedLib(), secret, in setup);
 
         /// <summary>
@@ -89,7 +87,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="library">The library instance to use</param>
         /// <param name="setup">The configuration setup arguments</param>
         /// <returns>The instance of the library to use</returns>
-        public static PasswordHashing Create(IArgon2Library library, in Argon2ConfigParams setup)
+        public static Argon2HashProvider Create(IArgon2Library library, in Argon2ConfigParams setup)
             => Create(library, secret: null, in setup);
 
         /// <summary>
@@ -99,7 +97,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="setup">The configuration setup arguments</param>
         /// <returns>The instance of the library to use</returns>
         /// <exception cref="DllNotFoundException"></exception>
-        public static PasswordHashing Create(in Argon2ConfigParams setup)
+        public static Argon2HashProvider Create(in Argon2ConfigParams setup)
             => Create(secret: null, in setup);
 
         private Argon2CostParams GetCostParams()
@@ -131,22 +129,6 @@ namespace VNLib.Plugins.Essentials.Accounts
                     secret: default
                 );
             }
-            else if (_secret.BufferSize < STACK_MAX_BUFF_SIZE)
-            {
-                /*
-                 * Also always alloc fixed buffer size again to help 
-                 * be less obvious during process allocations
-                 */
-                Span<byte> secretBuffer = stackalloc byte[STACK_MAX_BUFF_SIZE];
-
-                ERRNO secretSize = _secret.GetSecret(secretBuffer);
-
-                return _argon2.Verify2id(
-                    rawPass: password,
-                    hash: passHash,
-                    secret: secretBuffer.Slice(0, secretSize)
-                );
-            }
             else
             {
                 //Alloc a heap buffer
@@ -173,24 +155,12 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <remarks>Uses fixed time comparison from <see cref="CryptographicOperations"/> class</remarks>
         public bool Verify(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> password)
         {
-            if (hash.Length < STACK_MAX_BUFF_SIZE)
-            {               
-                Span<byte> hashBuf = stackalloc byte[hash.Length];
-              
-                Hash(password, salt, hashBuf);
+            using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc<byte>(_config.BufferHeap, hash.Length, true);
 
-                //Compare the hashed password to the specified hash and return results
-                return CryptographicOperations.FixedTimeEquals(hash, hashBuf);
-            }
-            else
-            {
-                using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc(hash.Length, true);
-                
-                Hash(password, salt, hashBuf.Span);
+            Hash(password, salt, hashBuf.Span);
 
-                //Compare the hashed password to the specified hash and return results
-                return CryptographicOperations.FixedTimeEquals(hash, hashBuf.Span);
-            }
+            //Compare the hashed password to the specified hash and return results
+            return CryptographicOperations.FixedTimeEquals(hash, hashBuf.Span);
         }
         
         /// <inheritdoc/>
@@ -256,7 +226,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(_config.SaltLen + secBufferSize, true);
 
             //Split buffers
-            Span<byte> saltBuf = buffer.Span[.._config.SaltLen];
+            Span<byte> saltBuf = buffer.AsSpan(0, _config.SaltLen);
 
             /*
              * Salt is just crypographically secure random 
@@ -268,7 +238,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             {
                 Argon2CostParams costParams = GetCostParams();
 
-                Span<byte> secretBuf = buffer.Span[_config.SaltLen..];
+                Span<byte> secretBuf = buffer.AsSpan(_config.SaltLen);
 
                 Debug.Assert(secretBuf.Length >= secBufferSize);
 
@@ -348,6 +318,38 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
         }
 
+        ///<inheritdoc/>
+        ///<exception cref="VnArgon2Exception"></exception>
+        public ERRNO Hash(ReadOnlySpan<byte> password, Span<byte> hashOutput)
+        {
+            //Calc the min buffer size
+            int minBufferSize = _config.SaltLen + (int)_config.HashLen;
+
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage<byte>(_config.BufferHeap, minBufferSize, true);
+
+            Span<byte> saltBuffer = buffer.AsSpan(0, _config.SaltLen);
+            Span<byte> hashBuffer = buffer.AsSpan(_config.SaltLen, (int)_config.HashLen);
+
+            /*
+             * Salt is just secure random data.
+             */
+            RandomHash.GetRandomBytes(saltBuffer);
+
+            /*
+             * Unfortuantly calling the internal hash method will cost mutliple 
+             * allocations, but I care more about safety and correctness here 
+             * over performance.
+             */
+            Hash(
+                password: password,
+                salt: saltBuffer, 
+                hashOutput: hashBuffer
+            );
+
+            //Hash size is the desired hash size
+            return new((int)_config.HashLen);
+        }
+
         /// <summary>
         /// NOT SUPPORTED! Use <see cref="Verify(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>
         /// instead to specify the salt that was used to encypt the original password
@@ -357,133 +359,11 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <exception cref="NotSupportedException"></exception>
         public bool Verify(ReadOnlySpan<byte> passHash, ReadOnlySpan<byte> password) => throw new NotSupportedException();
 
-        ///<inheritdoc/>
-        ///<exception cref="VnArgon2Exception"></exception>
-        public ERRNO Hash(ReadOnlySpan<byte> password, Span<byte> hashOutput)
-        {
-            int secretSize = _secret is null ? 0 : _secret.BufferSize;
-
-            //Calc the min buffer size
-            int minBufferSize = _config.SaltLen + secretSize + (int)_config.HashLen;
-
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage(minBufferSize, true);
-
-            try
-            {
-                HashBufferSegments segments;
-
-                if (_secret is null)
-                {                    
-                    segments = new(
-                        buffer.Span,
-                        saltSize: _config.SaltLen,
-                        hashSize: (int)_config.HashLen
-                    );
-
-                    Debug.Assert(segments.SecretBuffer.Length == 0);
-                }
-                else
-                {                    
-                    segments = new(
-                        buffer.Span,
-                        secretSize: secretSize,
-                        saltSize: _config.SaltLen,
-                        hashSize: (int)_config.HashLen
-                    );
-
-                    Debug.Assert(segments.SecretBuffer.Length > 0);
-
-                    //recover the secret
-                    ERRNO count = _secret.GetSecret(segments.SecretBuffer);
-
-                    /*
-                     * If the actual secret size is less than the buffer size
-                     * then we need to adjust the segment size to match the actual
-                     * secret size
-                     */
-                    if (count < secretSize)
-                    {
-                        segments = new(
-                            buffer.Span,
-                            secretSize: (int)count,
-                            saltSize: _config.SaltLen,
-                            hashSize: (int)_config.HashLen
-                        );
-                    }
-
-                    Debug.Assert(segments.SecretBuffer.Length == count);
-                }
-
-                Argon2CostParams costParams = GetCostParams();
-
-                /*
-                 * Salt is just secure random data.
-                 */
-                RandomHash.GetRandomBytes(segments.SaltBuffer);
-
-                //Hash the password in binary
-                _argon2.Hash2id(
-                    password,
-                    salt: segments.SaltBuffer,
-                    secret: segments.SecretBuffer,
-                    rawHashOutput: segments.HashBuffer,
-                    costParams: in costParams
-                );
-
-                //Hash size is the desired hash size
-                return new((int)_config.HashLen);
-            }
-            finally
-            {
-                MemoryUtil.InitializeBlock(ref buffer.GetReference(), buffer.IntLength);
-            }
-
-        }
-
         /*
         * Always alloc page aligned to help keep block allocations 
         * a little less obvious. 
         */
         private UnsafeMemoryHandle<byte> AllocSecretBuffer() =>
-            _secret is null ? new() : MemoryUtil.UnsafeAllocNearestPage(_secret.BufferSize, true);
-
-        private readonly ref struct HashBufferSegments
-        {
-            public readonly Span<byte> SaltBuffer;
-
-            public readonly Span<byte> SecretBuffer;
-
-            public readonly Span<byte> HashBuffer;
-
-            public HashBufferSegments(Span<byte> buffer, int secretSize, int saltSize, int hashSize)
-            {
-                //Salt buffer is begining segment
-                SaltBuffer = buffer[..saltSize];
-
-                //Shift to end of salt buffer
-                buffer = buffer[saltSize..];
-
-                //Store secret buffer
-                SecretBuffer = buffer[..secretSize];
-
-                //Shift to end of secret buffer
-                buffer = buffer[secretSize..];
-
-                //Store remaining size as hash buffer
-                HashBuffer = buffer[..hashSize]; 
-            }
-
-            public HashBufferSegments(Span<byte> buffer, int saltSize, int hashSize)
-            {
-                //No secret to store
-                SecretBuffer = default;
-               
-                SaltBuffer = buffer[..saltSize];
-              
-                buffer = buffer[saltSize..];
-              
-                HashBuffer = buffer[..hashSize];
-            }
-        }
+            _secret is null ? new() : MemoryUtil.UnsafeAllocNearestPage<byte>(_config.BufferHeap, _secret.BufferSize, zero: true);
     }
 }
