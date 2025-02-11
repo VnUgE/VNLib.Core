@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -33,32 +33,29 @@ namespace VNLib.Net.Messaging.FBM.Server
     /// <summary>
     /// Reusable sliding window impl
     /// </summary>
-    internal sealed class HeaderDataAccumulator : ISlindingWindowBuffer<byte>
+    internal sealed class HeaderDataAccumulator(int bufferSize, IFBMMemoryManager memManager) 
+        : ISlindingWindowBuffer<byte>
     {
-        private readonly int _bufferSize;
-        private readonly IFBMMemoryManager _memManager;
-        private readonly IFBMMemoryHandle _handle;
-     
 
-        public HeaderDataAccumulator(int bufferSize, IFBMMemoryManager memManager)
-        {
-            _bufferSize = bufferSize;
-            _memManager = memManager;
-            _handle = memManager.InitHandle();
-        }
+        //Initlaizes a new handle but does not allocate usable memory yet
+        private readonly IFBMMemoryHandle _handle = memManager.InitHandle();
 
         ///<inheritdoc/>
         public int WindowStartPos { get; private set; }
+
         ///<inheritdoc/>
         public int WindowEndPos { get; private set; }
+
         ///<inheritdoc/>
         public Memory<byte> Buffer => _handle.GetMemory();
 
         ///<inheritdoc/>
-        public void Advance(int count) => WindowEndPos += count;
+        public void Advance(int count) 
+            => WindowEndPos += count;
         
         ///<inheritdoc/>
-        public void AdvanceStart(int count) => WindowEndPos += count;
+        public void AdvanceStart(int count) 
+            => WindowEndPos += count;
         
         ///<inheritdoc/>
         public void Reset()
@@ -70,13 +67,14 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <summary>
         /// Allocates the internal message buffer
         /// </summary>
-        public void Prepare() => _memManager.AllocBuffer(_handle, _bufferSize);
+        public void Prepare() 
+            => memManager.AllocBuffer(_handle, bufferSize);
 
         ///<inheritdoc/>
         public void Close()
         {
             Reset();
-            _memManager.FreeBuffer(_handle);
+            memManager.FreeBuffer(_handle);
         }
     }
     

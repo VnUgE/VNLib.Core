@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -45,7 +45,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetUserAgent(this ISession session) => session[USER_AGENT_ENTRY];
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetUserAgent(this ISession session, string userAgent) => session[USER_AGENT_ENTRY] = userAgent;
+        public static void SetUserAgent(this ISession session, string? userAgent) => session[USER_AGENT_ENTRY] = userAgent;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetOrigin(this ISession session) => session[ORIGIN_ENTRY];
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -55,8 +55,9 @@ namespace VNLib.Plugins.Essentials.Sessions
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetRefer(this ISession session) => session[REFER_ENTRY];
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetRefer(this ISession session, string refer) => session[REFER_ENTRY] = refer;
+        public static void SetRefer(this ISession session, string? refer) => session[REFER_ENTRY] = refer;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SslProtocols GetSecurityProtocol(this ISession session) => (SslProtocols)session.GetValueType<string, int>(SECURE_ENTRY);
@@ -66,6 +67,7 @@ namespace VNLib.Plugins.Essentials.Sessions
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCrossOrigin(this ISession session) => session[CROSS_ORIGIN] == bool.TrueString;
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void IsCrossOrigin(this ISession session, bool crossOrign) => session[CROSS_ORIGIN] = crossOrign.ToString();
 
@@ -74,7 +76,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// for lookup/comparison later
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="ci">The <see cref="ConnectionInfo"/> object containing connection details</param>
+        /// <param name="ci">The <see cref="IConnectionInfo"/> object containing connection details</param>
         public static void InitNewSession(this ISession session, IConnectionInfo ci)
         {
             session.IsCrossOrigin(ci.CrossOrigin);
