@@ -55,7 +55,7 @@ namespace VNLib.Utils.Memory
         /// <param name="heap"></param>
         /// <param name="elements">The size of the block (number of elements)</param>
         /// <param name="zero">A flag that zeros the allocated block before returned</param>
-        /// <returns>The unmanaged <see cref="MemoryHandle{T}"/></returns>
+        /// <returns>The unmanaged <see cref="UnsafeMemoryHandle{T}"/></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
@@ -77,14 +77,14 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Rents a new array and stores it as a resource within an <see cref="OpenResourceHandle{T}"/> to return the 
+        /// Rents a new array and stores it as a resource within an <see cref="UnsafeMemoryHandle{T}"/> to return the 
         /// array when work is completed
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="pool"></param>
         /// <param name="size">The minimum size array to allocate</param>
         /// <param name="zero">Should elements from 0 to size be set to default(T)</param>
-        /// <returns>A new <see cref="OpenResourceHandle{T}"/> encapsulating the rented array</returns>
+        /// <returns>A new <see cref="UnsafeMemoryHandle{T}"/> encapsulating the rented array</returns>
         public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(ArrayPool<T> pool, int size, bool zero = false) where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(pool);
@@ -293,9 +293,8 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Allocates a block of unmanaged, or pooled manaaged memory depending on
-        /// compilation flags and runtime unamanged allocators, rounded up to the 
-        /// neareset memory page.
+        /// Allocates a block of unmanaged memory from the specified heap rounded
+        /// to the nearest page for the desired number of elements of the specified type
         /// </summary>
         /// <typeparam name="T">The unamanged type to allocate</typeparam>
         /// <param name="elements">The number of elements of the type within the block</param>
@@ -327,6 +326,25 @@ namespace VNLib.Utils.Memory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static MemoryHandle<T> SafeAllocNearestPage<T>(IUnmangedHeap heap, nuint elements, bool zero = false) where T : unmanaged
           => SafeAlloc<T>(heap, elements: NearestPage<T>(elements), zero);
+
+        /// <summary>
+        /// Allocates a block of unmanaged memory from the specified heap rounded
+        /// to the nearest page for the desired number of elements of the specified type
+        /// </summary>
+        /// <typeparam name="T">The unamanged type to allocate</typeparam>
+        /// <param name="elements">The number of elements of the type within the block</param>
+        /// <param name="zero">Flag to zero elements during allocation before the method returns</param>
+        /// <param name="heap">The heap to allocate the block of memory from</param>
+        /// <returns>A handle to the block of memory</returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UnsafeMemoryHandle<T> UnsafeAllocNearestPage<T>(IUnmangedHeap heap, int elements, bool zero = false) where T : unmanaged
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(elements);
+
+            return UnsafeAlloc<T>(heap, elements: (int)NearestPage<T>(elements), zero);
+        }
 
         /// <summary>
         /// Allocates a structure of the specified type on the specified 
