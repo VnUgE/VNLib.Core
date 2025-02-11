@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -39,11 +39,13 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// </remarks>
     public class LoginMessage : PrivateStringManager, IClientSecInfo
     {
+
         /// <summary>
         /// A property 
         /// </summary>
         [JsonPropertyName("username")]
-        public string UserName { get; set; }
+        public string? UserName { get; set; }
+
         /// <summary>
         /// A protected string property that 
         /// may represent a user's password
@@ -54,6 +56,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             get => base[0];
             set => base[0] = value;
         }
+
         [JsonPropertyName("localtime")]
         public string Lt
         {
@@ -67,27 +70,31 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// </summary>
         [JsonIgnore]
         public DateTimeOffset LocalTime { get; set; }
+
         /// <summary>
         /// The clients specified local-language
         /// </summary>
         [JsonPropertyName("locallanguage")]
         public string? LocalLanguage { get; set; }
+
         /// <summary>
         /// The clients shared public key used for encryption, this property is not protected
         /// </summary>
         [JsonPropertyName("pubkey")]
-        public string ClientPublicKey { get; set; }
+        public string? ClientPublicKey { get; set; }
+
         /// <summary>
         /// The clients browser id if shared
         /// </summary>
         [JsonPropertyName("clientid")]
-        public string ClientId { get; set; }
+        public string? ClientId { get; set; }
 
         /// <summary>
         /// Initailzies a new <see cref="LoginMessage"/> and its parent <see cref="PrivateStringManager"/> 
         /// base
         /// </summary>
         public LoginMessage() : this(1) { }
+
         /// <summary>
         /// Allows for derrives classes to have multple protected
         /// string elements 
@@ -99,11 +106,22 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// NOTE: <paramref name="protectedElementSize"/> must be at-least 1
         /// or access to <see cref="Password"/> will throw
         /// </remarks>
-        protected LoginMessage(int protectedElementSize = 1) : base(protectedElementSize) { }
+        protected LoginMessage(int protectedElementSize = 1) : base(protectedElementSize) 
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(protectedElementSize, 1);
+        }
+
+        // This is temporary until the API can be explored futher since this
+        // is an implementation of a client-side security interface
+#nullable disable
 
         /*
          * Support client security info
          */
         string IClientSecInfo.PublicKey => ClientPublicKey;
+
+        string IClientSecInfo.ClientId => ClientId;
+
+#nullable enable
     }
 }
