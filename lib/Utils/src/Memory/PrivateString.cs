@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -77,6 +77,19 @@ namespace VNLib.Utils.Memory
         public ReadOnlySpan<char> ToReadOnlySpan() => StringRef.AsSpan();
 
         /// <summary>
+        /// <para>
+        /// Allows for reading the internal string referrence without 
+        /// copying the string to a new instance.
+        /// </para>
+        /// <para>
+        /// WARNING: You must be careful when using the string returned by 
+        /// this method. It's memory may be erased when the instance is disposed.
+        /// </para>
+        /// </summary>
+        /// <returns></returns>
+        public virtual string? DangerousGetStringReference() => StringRef;
+
+        /// <summary>
         /// Creates a new deep copy of the current instance that 
         /// is an independent <see cref="PrivateString"/>
         /// </summary>
@@ -85,16 +98,20 @@ namespace VNLib.Utils.Memory
         public virtual PrivateString Clone() => new(ToString(), true);
 
         ///<inheritdoc/>
-        public bool Equals(string? other) => StringRef.Equals(other, StringComparison.Ordinal);
+        public bool Equals(string? other) 
+            => StringRef.Equals(other, StringComparison.Ordinal);
 
         ///<inheritdoc/>
-        public bool Equals(PrivateString? other) => other is not null && StringRef.Equals(other.StringRef, StringComparison.Ordinal);
+        public bool Equals(PrivateString? other) 
+            => other is not null && StringRef.Equals(other.StringRef, StringComparison.Ordinal);
 
         ///<inheritdoc/>
-        public override bool Equals(object? obj) => obj is PrivateString otherRef && StringRef.Equals(otherRef);
+        public override bool Equals(object? obj) 
+            => obj is PrivateString otherRef && StringRef.Equals(otherRef);
 
         ///<inheritdoc/>
-        public bool Equals(ReadOnlySpan<char> other) => StringRef.AsSpan().SequenceEqual(other);
+        public bool Equals(ReadOnlySpan<char> other)
+            => StringRef.AsSpan().SequenceEqual(other);
 
         /// <summary>
         /// Creates a deep copy of the internal string and returns that copy
@@ -114,7 +131,8 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <returns>The new <see cref="PrivateString"/> instance</returns>
         /// <exception cref="ObjectDisposedException"></exception>
-        object ICloneable.Clone() => new PrivateString(ToString(), true);       
+        object ICloneable.Clone() 
+            => new PrivateString(ToString(), ownsReferrence: true);       
 
         /// <summary>
         /// Erases the contents of the internal CLR string
@@ -136,14 +154,16 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="ps"></param>
         /// <returns>True if the parameter is null, or an empty string (""). False otherwise</returns>
-        public static bool IsNullOrEmpty([NotNullWhen(false)] PrivateString? ps) => ps is null || ps.Length == 0;
+        public static bool IsNullOrEmpty([NotNullWhen(false)] PrivateString? ps) 
+            => ps is null || ps.Length == 0;
 
         /// <summary>
         /// A nullable cast to a <see cref="PrivateString"/>
         /// </summary>
         /// <param name="data"></param>
         [return:NotNullIfNotNull(nameof(data))]
-        public static explicit operator PrivateString?(string? data) => ToPrivateString(data, true);
+        public static explicit operator PrivateString?(string? data) 
+            => ToPrivateString(data, ownsString: true);
 
         /// <summary>
         /// Creates a new <see cref="PrivateString"/> if the data is not null that owns the memory 
@@ -153,20 +173,23 @@ namespace VNLib.Utils.Memory
         /// <param name="ownsString">A value that indicates if the string memory is owned by the instance</param>
         /// <returns>The new private string wrapper, or null if the value is null</returns>
         [return:NotNullIfNotNull(nameof(data))]
-        public static PrivateString? ToPrivateString(string? data, bool ownsString) => data == null ? null : new(data, ownsString);
+        public static PrivateString? ToPrivateString(string? data, bool ownsString) 
+            => data == null ? null : new(data, ownsString);
 
         /// <summary>
         /// Casts the <see cref="PrivateString"/> to a <see cref="string"/>
         /// </summary>
         /// <param name="str"></param>
         [return: NotNullIfNotNull(nameof(str))]
-        public static explicit operator string?(PrivateString? str) => str?.StringRef;
+        public static explicit operator string?(PrivateString? str) 
+            => str?.DangerousGetStringReference();
 
         /// <summary>
         /// Casts the <see cref="PrivateString"/> to a <see cref="ReadOnlySpan{T}"/>
         /// </summary>
         /// <param name="str"></param>
-        public static implicit operator ReadOnlySpan<char>(PrivateString? str) => (str is null || str.Disposed) ? Span<char>.Empty : str.StringRef.AsSpan();
+        public static implicit operator ReadOnlySpan<char>(PrivateString? str) 
+            => (str is null || str.Disposed) ? [] : str.StringRef.AsSpan();
       
     }
 }
