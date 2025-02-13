@@ -71,7 +71,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             => new (library, secret, in setup);
 
         /// <summary>
-        /// Creates a new <see cref="PasswordHashing"/> instance using the default 
+        /// Creates a new <see cref="Argon2HashProvider"/> instance using the default 
         /// <see cref="VnArgon2"/> library.
         /// </summary>
         /// <param name="secret">The password secret provider</param>
@@ -82,7 +82,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             => Create(VnArgon2.GetOrLoadSharedLib(), secret, in setup);
 
         /// <summary>
-        /// Creates a new <see cref="PasswordHashing"/> instance using the specified library.
+        /// Creates a new <see cref="Argon2HashProvider"/> instance using the specified library.
         /// </summary>
         /// <param name="library">The library instance to use</param>
         /// <param name="setup">The configuration setup arguments</param>
@@ -91,7 +91,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             => Create(library, secret: null, in setup);
 
         /// <summary>
-        /// Creates a new <see cref="PasswordHashing"/> instance using the default 
+        /// Creates a new <see cref="Argon2HashProvider"/> instance using the default 
         /// <see cref="VnArgon2"/> library.
         /// </summary>
         /// <param name="setup">The configuration setup arguments</param>

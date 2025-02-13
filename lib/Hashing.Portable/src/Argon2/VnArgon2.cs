@@ -369,8 +369,8 @@ namespace VNLib.Hashing
              * Alloc binary buffer for decoding. Align it to the nearest page again
              * to help disguise the allocation purpose.
              */
-            int nearestPage = passBase64BufSize + saltBase64BufSize + rawPassLen;
-            using MemoryHandle<byte> rawBufferHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, nearestPage);
+            int bufferSize = passBase64BufSize + saltBase64BufSize + rawPassLen;
+            using MemoryHandle<byte> rawBufferHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, bufferSize);
             
             //Split buffers
             Span<byte> saltBuf = rawBufferHandle.AsSpan(0, saltBase64BufSize);
