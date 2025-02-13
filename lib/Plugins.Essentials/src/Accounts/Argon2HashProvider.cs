@@ -132,7 +132,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             else
             {
                 //Alloc a heap buffer
-                using UnsafeMemoryHandle<byte> secretBuffer = AllocSecretBuffer();
+                using UnsafeMemoryHandle<byte> secretBuffer = AllocSecretBuffer(_secret);
 
                 ERRNO secretSize = _secret.GetSecret(secretBuffer.Span);
 
@@ -155,9 +155,13 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <remarks>Uses fixed time comparison from <see cref="CryptographicOperations"/> class</remarks>
         public bool Verify(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> salt, ReadOnlySpan<byte> password)
         {
-            using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc<byte>(_config.BufferHeap, hash.Length, true);
+            using UnsafeMemoryHandle<byte> hashBuf = MemoryUtil.UnsafeAlloc<byte>(_config.BufferHeap, hash.Length, zero: true);
 
-            Hash(password, salt, hashBuf.Span);
+            Hash(
+                password: password, 
+                salt: salt,
+                hashOutput: hashBuf.Span
+            );
 
             //Compare the hashed password to the specified hash and return results
             return CryptographicOperations.FixedTimeEquals(hash, hashBuf.Span);
@@ -170,7 +174,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         {
             int secBufferSize = _secret is null ? 0 : _secret.BufferSize;
 
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(_config.SaltLen + secBufferSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(_config.SaltLen + secBufferSize, zero: true);
 
             //Split buffers
             Span<byte> saltBuf = buffer.Span[.._config.SaltLen];
@@ -212,7 +216,10 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             finally
             {
-                MemoryUtil.InitializeBlock(ref buffer.GetReference(), buffer.IntLength);
+                MemoryUtil.InitializeBlock(
+                    ref buffer.GetReference(), 
+                    buffer.IntLength
+                );
             }
         }
 
@@ -223,7 +230,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         {
             int secBufferSize = _secret is null ? 0 : _secret.BufferSize;
 
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(_config.SaltLen + secBufferSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(_config.SaltLen + secBufferSize, zero: true);
 
             //Split buffers
             Span<byte> saltBuf = buffer.AsSpan(0, _config.SaltLen);
@@ -265,7 +272,10 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             finally
             {
-                MemoryUtil.InitializeBlock(ref buffer.GetReference(), buffer.IntLength);
+                MemoryUtil.InitializeBlock(
+                    ref buffer.GetReference(), 
+                    buffer.IntLength
+                );
             }
         }
 
@@ -293,7 +303,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             }
             else
             {
-                using UnsafeMemoryHandle<byte> secretBuffer = AllocSecretBuffer();
+                using UnsafeMemoryHandle<byte> secretBuffer = AllocSecretBuffer(_secret);
 
                 try
                 {
@@ -325,7 +335,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             //Calc the min buffer size
             int minBufferSize = _config.SaltLen + (int)_config.HashLen;
 
-            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage<byte>(_config.BufferHeap, minBufferSize, true);
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAllocNearestPage<byte>(_config.BufferHeap, minBufferSize, zero: true);
 
             Span<byte> saltBuffer = buffer.AsSpan(0, _config.SaltLen);
             Span<byte> hashBuffer = buffer.AsSpan(_config.SaltLen, (int)_config.HashLen);
@@ -357,13 +367,18 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="passHash"></param>
         /// <param name="password"></param>
         /// <exception cref="NotSupportedException"></exception>
-        public bool Verify(ReadOnlySpan<byte> passHash, ReadOnlySpan<byte> password) => throw new NotSupportedException();
+        public bool Verify(ReadOnlySpan<byte> passHash, ReadOnlySpan<byte> password) 
+            => throw new NotSupportedException();
 
         /*
         * Always alloc page aligned to help keep block allocations 
         * a little less obvious. 
+        * 
+        * The secret argument is explict to ensure nullability is tracked
+        * at the callsite so this function cannot be used if the secret
+        * is null or with a warning.
         */
-        private UnsafeMemoryHandle<byte> AllocSecretBuffer() =>
-            _secret is null ? new() : MemoryUtil.UnsafeAllocNearestPage<byte>(_config.BufferHeap, _secret.BufferSize, zero: true);
+        private UnsafeMemoryHandle<byte> AllocSecretBuffer(ISecretProvider secret) 
+            => MemoryUtil.UnsafeAllocNearestPage<byte>(_config.BufferHeap, secret.BufferSize, zero: true);
     }
 }
