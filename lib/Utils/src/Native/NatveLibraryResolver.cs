@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -132,7 +132,7 @@ namespace VNLib.Utils.Native
             if (searchPath.HasFlag(DllImportSearchPath.AssemblyDirectory))
             {
                 //Get the calling assmblies directory
-                string libDir = Assembly.GetCallingAssembly().Location;
+                string libDir = assembly.Location;
                 Debug.WriteLine("Native library searching for calling assembly location:{0} ", libDir);
                 if (TryLoadInDirectory(libDir, out library))
                 {
