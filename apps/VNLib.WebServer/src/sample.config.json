@@ -23,7 +23,7 @@
     "max_request_header_count": 50,     //The maxium number of headers allowed in an HTTP request message
     "max_connections": 5000,            //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed   
     "response_header_buf_size": 16384,  //The size (in bytes) of the buffer used to store all response header data
-    "max_uploads_per_request": 10,      //Max number of multi-part file uploads allowed per request
+    "max_uploads_per_request": 10,      //Max number of file (or multi-part) uploads allowed per request
     "keepalive_ms": 1000000,            //Keepalive ms for HTTP1.1 keepalive connections
     "recv_timeout_ms": 5000,            //time (in ms) to wait for a response from an active connection in recv mode, before dropping it
     "send_timeout_ms": 60000,           //Time in ms to wait for the client to accept transport data before terminating the connection
@@ -136,9 +136,7 @@
     //Hot-reload creates collectable assemblies that allow full re-load support in the host application, should only be used for development purposes!
     "hot_reload": false,
     "reload_delay_sec": 2,
-    "paths": [
-      "/path/to/plugins_dir"
-    ]
+    "path": "/path/to/plugins_dir",
     //"assets":"",
     //"config_dir": ""
   },

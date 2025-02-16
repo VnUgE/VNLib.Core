@@ -73,7 +73,7 @@ namespace VNLib.Utils.Memory
             //If zero flag is set then specify zeroing memory (safe case because of the above check)
             IntPtr block = heap.Alloc((nuint)elements, (nuint)sizeof(T), zero);
 
-            return new(heap, block, elements);
+            return ToUnsafeHandle<T>(block, elements, heap);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace VNLib.Utils.Memory
                 InitializeBlock(array, (uint)size);
             }
 
-            return new(pool, array, size);
+            return ToUnsafeHandle(array, size, pool);
         }
 
         /// <summary>
@@ -169,7 +169,7 @@ namespace VNLib.Utils.Memory
             
             IntPtr block = heap.Alloc(elements, (nuint)sizeof(T), zero);
 
-            return new MemoryHandle<T>(heap, block, elements, zero);
+            return ToHandle<T>(block, elements, heap, zero);
         }
 
         /// <summary>
@@ -495,6 +495,7 @@ namespace VNLib.Utils.Memory
         /// <returns>A handle to the block of memory</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static IMemoryHandle<byte> SafeAllocNearestPage(int elements, bool zero = false)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
@@ -513,6 +514,8 @@ namespace VNLib.Utils.Memory
         /// <param name="heap">The unmanaged heap this block was allocated from (and can be freed back to)</param>
         /// <param name="zero">A flag that indicates if block should be zeroed during reallocations</param>
         /// <returns>A <see cref="MemoryHandle{T}"/> wrapper</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static MemoryHandle<T> ToHandle<T>(nint blockPtr, nuint elements, IUnmangedHeap heap, bool zero) 
             where T : unmanaged
         {
@@ -522,7 +525,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// DANGEROUS: Creates a new <see cref="MemoryHandle{T}"/> from an existing pointer that 
+        /// DANGEROUS: Creates a new <see cref="UnsafeMemoryHandle{T}"/> from an existing pointer that 
         /// belongs to the specified heap. This handle owns the pointer and will free it back 
         /// to the heap when disposed. No validation is performed on the pointer, so it is
         /// the responsibility of the caller to ensure the pointer is valid and points to a
@@ -531,13 +534,38 @@ namespace VNLib.Utils.Memory
         /// <param name="blockPtr">The pointer to the existing block of memory</param>
         /// <param name="elements">The element size of the block (NOT byte size)</param>
         /// <param name="heap">The unmanaged heap this block was allocated from (and can be freed back to)</param>
-        /// <returns>A <see cref="MemoryHandle{T}"/> wrapper</returns>
+        /// <returns>A <see cref="UnsafeMemoryHandle{T}"/> wrapper</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UnsafeMemoryHandle<T> ToUnsafeHandle<T>(nint blockPtr, int elements, IUnmangedHeap heap)
             where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(heap);
 
             return new UnsafeMemoryHandle<T>(heap, blockPtr, elements);
+        }
+
+
+        /// <summary>
+        /// DANGEROUS: Creates a new <see cref="UnsafeMemoryHandle{T}"/> from an existing pointer that 
+        /// belongs to the specified heap. This handle owns the pointer and will free it back 
+        /// to the heap when disposed. No validation is performed on the pointer, so it is
+        /// the responsibility of the caller to ensure the pointer is valid and points to a
+        /// block of memory that was allocated from the specified heap.
+        /// </summary>
+        /// <param name="block">The array buffer to wrap</param>
+        /// <param name="elements">The element size of the block (NOT byte size)</param>
+        /// <param name="pool">The pool which the array can be free back to</param>
+        /// <returns>A <see cref="UnsafeMemoryHandle{T}"/> wrapper</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UnsafeMemoryHandle<T> ToUnsafeHandle<T>(T[] block, int elements, ArrayPool<T> pool)
+            where T : unmanaged
+        {
+            ArgumentNullException.ThrowIfNull(block);
+            ArgumentNullException.ThrowIfNull(pool);
+
+            return new UnsafeMemoryHandle<T>(pool, block, elements);
         }
 
         /// <summary>
@@ -554,6 +582,7 @@ namespace VNLib.Utils.Memory
         /// are the same, otherwise false.
         /// </returns>
         /// <exception cref="ArgumentNullException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool AreHandlesEqual<T>(IMemoryHandle<T> handle1, IMemoryHandle<T> handle2)
         {
             ArgumentNullException.ThrowIfNull(handle1);
