@@ -56,7 +56,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: Test build
+- name: Staging build
   steps:
   - !CheckoutStep
     name: clone

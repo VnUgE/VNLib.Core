@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -35,6 +35,7 @@ namespace VNLib.Plugins.Runtime
         /// This is a new instance of the desired type
         /// </summary>
         /// <param name="plugin">A new instance of the requested type</param>
+        /// <param name="state">An optional user-state that will be passed when this function is invoked</param>
         void OnLoad(T plugin, object? state);
 
         /// <summary>
@@ -42,6 +43,7 @@ namespace VNLib.Plugins.Runtime
         /// the type.
         /// </summary>
         /// <param name="plugin">The instance of the type that is being unloaded</param>
+        /// <param name="state">An optional user-state that will be passed when this function is invoked</param>
         void OnUnload(T plugin, object? state);
     }
 }

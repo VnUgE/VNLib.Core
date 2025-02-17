@@ -123,11 +123,12 @@ tasks:
 
   dev-init:
     desc: 'Configures the module for local development'
-    cmds:
+    deps: 
      #build native libs for development
      - for: { var: NATIVE_LIB_DIRS }
-       cmd: cd '{{ .ITEM }}' && task dev-init
-
+       task:  run-dev-init
+       vars: { ITEM: '{{ .ITEM }}' }
+    cmds:
      - cmd: dotnet restore
 
      - cmd: echo "Module developer initialization complete"

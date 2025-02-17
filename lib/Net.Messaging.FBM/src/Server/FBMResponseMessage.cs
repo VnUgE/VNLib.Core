@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -24,6 +24,7 @@
 
 using System;
 using System.Text;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 using VNLib.Net.Http;
@@ -89,10 +90,12 @@ namespace VNLib.Net.Messaging.FBM.Server
         }
 
         ///<inheritdoc/>
-        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) => WriteHeader((byte)header, value);
+        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) 
+            => WriteHeader((byte)header, value);
         
         ///<inheritdoc/>
-        public void WriteHeader(byte header, ReadOnlySpan<char> value) => Helpers.WriteHeader(_headerAccumulator, header, value, _headerEncoding);
+        public void WriteHeader(byte header, ReadOnlySpan<char> value) 
+            => Helpers.WriteHeader(_headerAccumulator, header, value, _headerEncoding);
 
         ///<inheritdoc/>
         public void WriteBody(ReadOnlySpan<byte> body, ContentType contentType = ContentType.Binary)
@@ -112,7 +115,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <exception cref="InvalidOperationException"></exception>
         public void AddMessageBody(IAsyncMessageBody messageBody)
         {
-            _ = messageBody ?? throw new ArgumentNullException(nameof(messageBody));
+            ArgumentNullException.ThrowIfNull(messageBody);
 
             if(MessageBody != null)
             {
@@ -135,24 +138,17 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <returns>A value task that returns the message body enumerator</returns>
         internal IAsyncMessageReader GetResponseData() => _messageEnumerator;
 
-        private sealed class MessageSegmentEnumerator : IAsyncMessageReader
+        private sealed class MessageSegmentEnumerator(FBMResponseMessage message) : IAsyncMessageReader
         {
-            private readonly FBMResponseMessage _message;
-            private readonly ISlindingWindowBuffer<byte> _accumulator;
+            private readonly ISlindingWindowBuffer<byte> _accumulator = message._headerAccumulator;
 
             bool HeadersRead;
-
-            public MessageSegmentEnumerator(FBMResponseMessage message)
-            {
-                _message = message;
-                _accumulator = _message._headerAccumulator;
-            }
 
             ///<inheritdoc/>
             public ReadOnlyMemory<byte> Current => _accumulator.AccumulatedBuffer;
 
             ///<inheritdoc/>
-            public bool DataRemaining => _message.MessageBody?.RemainingSize > 0;
+            public bool DataRemaining => message.MessageBody?.RemainingSize > 0;
            
             ///<inheritdoc/>
             public async ValueTask<bool> MoveNextAsync()
@@ -167,7 +163,12 @@ namespace VNLib.Net.Messaging.FBM.Server
                      */
                     if (DataRemaining && _accumulator.RemainingSize > 0)
                     {
-                        int read = await _message.MessageBody.ReadAsync(_accumulator.RemainingBuffer).ConfigureAwait(false);
+                        //Message body must be set when data is remaining
+                        Debug.Assert(message.MessageBody != null);
+
+                        int read = await message.MessageBody
+                            .ReadAsync(_accumulator.RemainingBuffer)
+                            .ConfigureAwait(false);
 
                         //Advance accumulator to the read bytes
                         _accumulator.Advance(read);
@@ -183,8 +184,11 @@ namespace VNLib.Net.Messaging.FBM.Server
                     //Reset the accumulator so we can read another segment
                     _accumulator.Reset();
 
+                    //Message body must be set when data is remaining
+                    Debug.Assert(message.MessageBody != null);
+
                     //Read body segment
-                    int read = await _message.MessageBody.ReadAsync(_accumulator.RemainingBuffer);
+                    int read = await message.MessageBody.ReadAsync(_accumulator.RemainingBuffer);
 
                     //Advance accumulator to the read bytes
                     _accumulator.Advance(read);
@@ -201,7 +205,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                 HeadersRead = false;
 
                 //Dispose the message body if set
-                return _message.MessageBody != null ? _message.MessageBody.DisposeAsync() : ValueTask.CompletedTask;
+                return message.MessageBody != null ? message.MessageBody.DisposeAsync() : ValueTask.CompletedTask;
             }
         }
     }

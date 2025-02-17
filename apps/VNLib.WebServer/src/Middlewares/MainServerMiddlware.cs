@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -50,7 +50,7 @@ namespace VNLib.WebServer.Middlewares
             //Set special server header
             VirtualHostOptions.TrySetSpecialHeader(entity.Server, SpecialHeaders.Server);
 
-            //Block websocket requests
+            //Log websocket requests
             if (entity.Server.IsWebSocketRequest)
             {
                 Log.Verbose("Client {ip} made a websocket request", entity.TrustedRemoteIp);

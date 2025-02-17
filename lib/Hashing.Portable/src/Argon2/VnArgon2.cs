@@ -279,7 +279,7 @@ namespace VNLib.Hashing
             ReadOnlySpan<byte> password,
             ReadOnlySpan<byte> salt,
             ReadOnlySpan<byte> secret,
-            Span<byte> rawHashOutput, 
+            Span<byte> rawHashOutput,
             in Argon2CostParams costParams
         )
         {
@@ -296,7 +296,12 @@ namespace VNLib.Hashing
                 free_cbk        = null,
             };
 
-            fixed (byte* pSecret = secret, pPass = password, pSalt = salt, pRawHash = rawHashOutput)
+            fixed (byte*
+                pSecret = secret,
+                pPass = password,
+                pSalt = salt,
+                pRawHash = rawHashOutput
+            )
             {
                 ctx.pwd = pPass;
                 ctx.pwdlen = (uint)password.Length;
@@ -315,7 +320,6 @@ namespace VNLib.Hashing
                 ThrowOnArgonErr(argResult);
             }
         }
-
 
 
         /// <summary>
@@ -365,8 +369,8 @@ namespace VNLib.Hashing
              * Alloc binary buffer for decoding. Align it to the nearest page again
              * to help disguise the allocation purpose.
              */
-            int nearestPage = passBase64BufSize + saltBase64BufSize + rawPassLen;
-            using MemoryHandle<byte> rawBufferHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, nearestPage);
+            int bufferSize = passBase64BufSize + saltBase64BufSize + rawPassLen;
+            using MemoryHandle<byte> rawBufferHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, bufferSize);
             
             //Split buffers
             Span<byte> saltBuf = rawBufferHandle.AsSpan(0, saltBase64BufSize);

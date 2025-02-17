@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -78,12 +78,13 @@ namespace VNLib.Utils.Memory
         /// <param name="elements">The number of elements to store</param>
         /// <param name="array">The array reference to store</param>
         /// <param name="pool">The explicit pool to alloc buffers from</param>
-        /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         internal UnsafeMemoryHandle(ArrayPool<T> pool, T[] array, int elements)
         {
+            //Must verify sizes because unsafe array access can cause over/underruns
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(elements, array.Length);
             //Pool and array is required
             _pool = pool ?? throw new ArgumentNullException(nameof(pool));
             _poolArr = array ?? throw new ArgumentNullException(nameof(array));

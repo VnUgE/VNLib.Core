@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -76,6 +76,8 @@ namespace VNLib.Net.Transport.Tcp
 
         public void Prepare()
         {
+            Debug.Assert(_started == false);
+
             NetworkStream.ReadTimeout = Timeout.Infinite;
             NetworkStream.WriteTimeout = Timeout.Infinite;
         }      
@@ -169,7 +171,7 @@ namespace VNLib.Net.Transport.Tcp
 
                     //Get enumerator to write memory segments
                     enumerator = _sendReadRes.Buffer.GetEnumerator();
-                   
+
                     while (enumerator.MoveNext())
                     {
 
@@ -181,18 +183,18 @@ namespace VNLib.Net.Transport.Tcp
                          */
 
                         segmentReader = new(enumerator.Current);
-                         
-                        while(segmentReader.WindowSize > 0)
+
+                        while (segmentReader.WindowSize > 0)
                         {
                             //Write segment to socket, and upate written data
                             int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None);
 
-                            if(written < 0)
+                            if (written < 0)
                             {
                                 goto ExitOnSocketErr;
                             }
 
-                            if(written == segmentReader.WindowSize)
+                            if (written == segmentReader.WindowSize)
                             {
                                 //All data was written
                                 break;
@@ -200,7 +202,7 @@ namespace VNLib.Net.Transport.Tcp
 
                             //Advance unread window to end of the written data
                             segmentReader.Advance(written);
-                        } 
+                        }
                         //Advance to next window/segment
                     }
                   
@@ -443,10 +445,15 @@ namespace VNLib.Net.Transport.Tcp
 
                 //Get a new buffer span, as large as the data to copy
                 Span<byte> dest = writer.GetSpan(dataToCopy);
-                ref byte destRef = ref MemoryMarshal.GetReference(dest);
 
                 //Copy data to the buffer at the new position (attempt to use hardware acceleration)
-                MemoryUtil.AcceleratedMemmove(ref srcRef, written, ref destRef, 0, (uint)dataToCopy);
+                MemoryUtil.AcceleratedMemmove(
+                    src: in srcRef, 
+                    srcOffset: written, 
+                    dst: ref MemoryMarshal.GetReference(dest), 
+                    dstOffset: 0, 
+                    elementCount: (uint)dataToCopy
+                );
 
                 //Advance the writer by the number of bytes written
                 writer.Advance(dataToCopy);
