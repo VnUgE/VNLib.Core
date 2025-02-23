@@ -6,7 +6,6 @@ set(_COMP_PROJ_NAME "vnlib_compress")
 #set options for enable botli and zlib
 option(ENABLE_BROTLI "Enable brotli compression" ON)
 option(ENABLE_ZLIB "Enable zlib compression" ON)
-option(ENABLE_RPMALLOC "Enable local source code vnlib_rpmalloc memory allocator" OFF)
 option(COMPRESS_BUILD_SHARED "Produces a shared library instead of a static library" ON)
 option(USE_STATIC_RUNTIME "Use the static runtime library" OFF)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
@@ -26,30 +25,24 @@ set(VNLIB_COMPRESS_SOURCES
 
 ###############################
 #
-#	DOWNLOAD DEPENDENCIES
+#	ENABLE VENDORED DEPENDENCIES
 #		
 ###############################
 
 if(ENABLE_BROTLI)
 
-	message(STATUS "Downloading brotli compression as a local dependency")
+	message(STATUS "Enabling Brotli compression module from local source")
 
+	set(BROTLI_BUNDLED_MODE ON)		#enable inclusion in 3rd party projects
 	set(BROTLI_BUNDLED_MODE OFF)	#explicitly set bundled mode to off
 	set(BROTLI_EMSCRIPTEN OFF)		#disable emscripten support
 	set(BUILD_SHARED_LIBS OFF)		#disable shared library building, as only static is needed
+	set(BROTLI_BUILD_TOOLS OFF)		#disable building of tools
+	set(BROTLI_DISABLE_TESTS OFF)	#disable building of tests
 
-	FetchContent_Declare(
-	  lib_brotli
-	  GIT_REPOSITORY		https://github.com/google/brotli.git
-	  GIT_TAG				67d78bc41db1a0d03f2e763497748f2f69946627
-	  GIT_PROGRESS			TRUE
-	)
-
-	FetchContent_GetProperties(lib_brotli)
-	FetchContent_MakeAvailable(lib_brotli)
-
-	#add include directories for brotli
-	include_directories(${lib_brotli_SOURCE_DIR}/c/include)
+	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/brotli EXCLUDE_FROM_ALL)
+	
+	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/brotli/c/include)
 
 	#add the brotli source files to the project
 	list(APPEND VNLIB_COMPRESS_SOURCES src/feature_brotli.c)
@@ -59,24 +52,13 @@ endif()
 if(ENABLE_ZLIB)
 
 	#by default the cloudlfare fork should build a static lib. It will be large 	
-	message(STATUS "Downloading ZLIB as a local dependency")
+	message(STATUS "Enabling zlib compression module from local source code")
 
-	set(SKIP_INSTALL_ALL ON)	#do not install zlib files
+	set(SKIP_INSTALL_ALL ON)	#do not install any zlib files
 
-	#add zlib source files to the project
-	FetchContent_Declare(
-	  lib_cf_zlib
-	  GIT_REPOSITORY		https://github.com/cloudflare/zlib.git
-	  GIT_TAG				e8626ac81fa87f9150a34aedc9045a32e88e0310
-	  GIT_PROGRESS			TRUE
-	)
+	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib EXCLUDE_FROM_ALL)
 
-	#Get project properties
-	FetchContent_GetProperties(lib_cf_zlib)
-	FetchContent_MakeAvailable(lib_cf_zlib)
-
-	#add include directories for zlib
-	include_directories(${lib_cf_zlib_SOURCE_DIR})
+	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/zlib)
 
 	#enable the feature code for zlib and add the source files
 	list(APPEND VNLIB_COMPRESS_SOURCES src/feature_zlib.c)
