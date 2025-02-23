@@ -32,7 +32,7 @@ tasks:
   default:
     desc: 'Builds the managed libraries in this module for development'
     cmds:
-     - cmd: dotnet build -c debug {{ .MS_ARGS }} 
+     - cmd: dotnet build -c debug {{ .MS_ARGS }} {{ .CLI_ARGS }}
 
 #called by build pipeline to sync repo
   update:
@@ -102,7 +102,7 @@ tasks:
         --logger "console;verbosity=detailed"
         --configuration debug
         --verbosity normal
-        --framework {{ .TARGET_FRAMEWORK | default "net8.0" }}        
+        --framework {{ .TARGET_FRAMEWORK | default "net8.0" }}    
         --environment VNLIB_SHARED_HEAP_DIAGNOSTICS="1"
         --environment TEST_RPMALLOC_LIB_PATH="{{ .RPMALLOC_LIB_PATH }}"
         --environment TEST_MIMALLOC_LIB_PATH="{{ .MIMALLOC_LIB_PATH }}"
@@ -123,7 +123,7 @@ tasks:
      - task: clean-native
 
   dev-init:
-    desc: 'Configures the module for local development'
+    desc: 'Configures the module (and native dependencies) for local development'
     deps: 
      #build native libs for development
      - for: { var: NATIVE_LIB_DIRS }
