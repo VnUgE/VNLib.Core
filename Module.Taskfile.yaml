@@ -95,13 +95,20 @@ tasks:
      - cmd: echo "Ensure you have run 'task dev-init' before running tests to build native libraries"
        silent: true
 
+     - cmd: dotnet build 
+        {{ .MS_ARGS }}
+         /p:NoWarn=CS1591 
+        --nologo
+        --configuration debug
+        --verbosity normal
+
      - cmd: dotnet test
         {{ .CLI_ARGS }}
         {{ .MS_ARGS }}
-        /p:NoWarn=CS1591
+        --no-build
+        --nologo
         --logger "console;verbosity=detailed"
         --configuration debug
-        --verbosity normal
         --framework {{ .TARGET_FRAMEWORK | default "net8.0" }}    
         --environment VNLIB_SHARED_HEAP_DIAGNOSTICS="1"
         --environment TEST_RPMALLOC_LIB_PATH="{{ .RPMALLOC_LIB_PATH }}"
