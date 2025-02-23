@@ -34,9 +34,6 @@ tasks:
    desc: 'DO NOT USE. This is an internal task'  
 
    cmds:
-      #the CI pipline may have issues reading modules if the third-party dir is not cleaned every time a build runs, only an issue after build
-     - defer: { task: clean-third-party }
-     
      #build the local rpmalloc library for linking
      - task: build_rpmalloc
        vars: { RPMALLOC_ARGS: '-DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}' }
@@ -128,6 +125,8 @@ tasks:
         
       INCLUDES:
         "src/*
+         brotli/*
+         zlib/*
         LICENSE
         CMakeLists.txt
         Taskfile.yaml"
@@ -138,7 +137,6 @@ tasks:
      - tar {{ .EXCLUDES }} -czf '{{ .OUT_DIR }}/src.tgz' {{ .INCLUDES }} 
 
      - cmd: powershell rm LICENSE 
-
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -157,12 +155,3 @@ tasks:
      - for: [ bin/, build/ ]
        cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
     
-  clean-third-party:
-    internal: true
-    ignore_error: true
-    cmds:
-    - cmd: powershell rm -Recurse -Force '{{ .BUILD_DIR }}/_deps/'
-      platforms: [ windows ]
-    - cmd: rm -rf '{{ .BUILD_DIR }}/_deps/'
-      platforms: [ linux, darwin ]
-       
