@@ -94,6 +94,7 @@ tasks:
     cmds:
      - cmd: echo "Ensure you have run 'task dev-init' before running tests to build native libraries"
        silent: true
+
      - cmd: dotnet test
         {{ .CLI_ARGS }}
         {{ .MS_ARGS }}
@@ -144,5 +145,3 @@ tasks:
     cmds:
      - for: { var: NATIVE_LIB_DIRS }
        cmd: cd {{ .ITEM }} && task clean
-
-    
