@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -49,18 +49,20 @@ namespace VNLib.Hashing.Checksums
         /// <param name="length"></param>
         /// <returns>The next value of the checksum representing current and previously computed segments</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static ulong Update64(ulong initalizer, ref byte data, nuint length)
+        public static ulong Update64(ulong initalizer, ref readonly byte data, nuint length)
         {
-            if (Unsafe.IsNullRef(ref data))
+            if (Unsafe.IsNullRef(in data))
             {
                 throw new ArgumentNullException(nameof(data));
             }
 
             ulong digest = initalizer;
 
+            ref byte baseAddr = ref Unsafe.AsRef(in data);
+
             for (nuint i = 0; i < length; i++)
             {
-                digest ^= Unsafe.AddByteOffset(ref data, i);
+                digest ^= Unsafe.AddByteOffset(ref baseAddr, i);
                 digest *= FNV_PRIME;
             }
 
@@ -77,8 +79,11 @@ namespace VNLib.Hashing.Checksums
         /// <exception cref="ArgumentNullException"></exception>
         public static ulong Update64(ulong initalizer, ReadOnlySpan<byte> data)
         {
-            ref byte r0 = ref MemoryMarshal.GetReference(data);
-            return Update64(initalizer, ref r0, (nuint)data.Length);
+            return Update64(
+                initalizer, 
+                data: in MemoryMarshal.GetReference(data), 
+                length: (nuint)data.Length
+            );
         }
 
         /// <summary>
@@ -92,7 +97,8 @@ namespace VNLib.Hashing.Checksums
         /// WARNING: This function produces a non-cryptographic hash and should not be used for
         /// security or cryptographic purposes. It is intended for fast data integrity checks
         /// </remarks>
-        public static ulong Compute64(ref byte data, nuint length) => Update64(FNV_OFFSET_BASIS, ref data, length);
+        public static ulong Compute64(ref readonly byte data, nuint length) 
+            => Update64(FNV_OFFSET_BASIS, in data, length);
 
         /// <summary>
         /// Computes the next 64-bit FNV-1a hash value using the current hash 
@@ -106,8 +112,10 @@ namespace VNLib.Hashing.Checksums
         /// </remarks>
         public static ulong Compute64(ReadOnlySpan<byte> data)
         {
-            ref byte r0 = ref MemoryMarshal.GetReference(data);
-            return Compute64(ref r0, (nuint)data.Length);
+            return Compute64(
+                data: in MemoryMarshal.GetReference(data),
+                length: (nuint)data.Length
+            );
         }
     }
 }
