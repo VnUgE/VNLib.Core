@@ -10,7 +10,7 @@ apt-get install -y      \
     apt-transport-https \
     dotnet-sdk-8.0      
 
-curl https://github.com/go-task/task/releases/download/v3.41.0/task_linux_amd64.deb -o go-task.deb
+curl -L https://github.com/go-task/task/releases/download/v3.41.0/task_linux_amd64.deb -o go-task.deb
 dpkg -i go-task.deb
 rm go-task.deb
 
