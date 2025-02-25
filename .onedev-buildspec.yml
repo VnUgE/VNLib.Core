@@ -102,6 +102,7 @@ jobs:
     interpreter: !DefaultInterpreter
       commands: |
         bash tests/ci/ubuntu-x64.sh
+        task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
