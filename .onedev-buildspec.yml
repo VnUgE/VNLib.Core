@@ -86,7 +86,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: Linux Tests
+- name: Ubuntu Tests
   jobExecutor: docker
   steps:
   - !CheckoutStep
@@ -105,6 +105,22 @@ jobs:
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
     useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !BranchUpdateTrigger
+    branches: '** -master'
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: Fedora Tests
+  jobExecutor: docker
+  steps:
+  - !CheckoutStep
+    name: banch checkout
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: fedora-x64
