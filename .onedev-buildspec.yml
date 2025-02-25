@@ -101,7 +101,7 @@ jobs:
     image: ubuntu:24.04
     interpreter: !DefaultInterpreter
       commands: |
-        task -t tests/ci/Taskfile.yaml setup-ubuntu-x64
+        bash tests/ci/ubuntu-x64.sh
         task -t Module.Taskfile.yaml test
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
