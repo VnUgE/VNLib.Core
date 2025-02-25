@@ -82,13 +82,11 @@ jobs:
   jobDependencies:
   - jobName: Windows Tests
     requireSuccessful: true
-  - jobName: Ubuntu Tests
-    requireSuccessful: true
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: Ubuntu Tests
+- name: Linux Tests
   jobExecutor: docker
   steps:
   - !CheckoutStep
@@ -106,6 +104,17 @@ jobs:
         bash tests/ci/ubuntu-x64.sh
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: fedora-x64
+    runInContainer: true
+    image: fedora:42
+    interpreter: !DefaultInterpreter
+      commands: |
+        bash tests/ci/fedora-x64.sh
+        go-task -t Module.Taskfile.yaml dev-init
+        go-task -t Module.Taskfile.yaml test
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
