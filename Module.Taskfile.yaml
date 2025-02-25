@@ -90,7 +90,7 @@ tasks:
       MIMALLOC_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Memory/vnlib_mimalloc/{{ .NATIVE_BUILD_PATH}}{{ .LIB_PREFIX }}_mimalloc'
       VNCOMPRESS_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Net.Compression/vnlib_compress/{{ .NATIVE_BUILD_PATH }}{{ .LIB_PREFIX }}_compress'
       MONOCYPHER_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Cryptography/monocypher/{{ .NATIVE_BUILD_PATH }}{{ .LIB_PREFIX }}_monocypher'
-      ARGON2_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Cryptography/argon2/{{ .NATIVE_BUILD_PATH }}argon2'
+      ARGON2_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Cryptography/argon2/{{ .NATIVE_BUILD_PATH }}{{ if eq OS "linux"}}lib{{end}}argon2'
     cmds:
      - cmd: echo "Ensure you have run 'task dev-init' before running tests to build native libraries"
        silent: true

@@ -1,4 +1,4 @@
-version: 36
+version: 37
 jobs:
 - name: Repo Sync Push
   steps:
@@ -25,7 +25,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: Staging Tests
+- name: Windows Tests
   steps:
   - !CheckoutStep
     name: banch checkout
@@ -78,8 +78,36 @@ jobs:
   - !BranchUpdateTrigger
     branches: develop
   jobDependencies:
-  - jobName: Staging Tests
+  - jobName: Windows Tests
     requireSuccessful: true
+  - jobName: Ubuntu Tests
+    requireSuccessful: true
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: Ubuntu Tests
+  jobExecutor: docker
+  steps:
+  - !CheckoutStep
+    name: banch checkout
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: ubuntu-x64
+    runInContainer: true
+    image: ubuntu:24.04
+    interpreter: !DefaultInterpreter
+      commands: |
+        task -t tests/ci/Taskfile.yaml setup-ubuntu-x64
+        task -t Module.Taskfile.yaml test
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !BranchUpdateTrigger
+    branches: '** -master'
   retryCondition: never
   maxRetries: 3
   retryDelay: 30

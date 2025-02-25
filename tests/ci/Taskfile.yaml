@@ -1,0 +1,27 @@
+
+version: '3'
+
+tasks:
+
+  setup-ubuntu-x64:
+    desc: "Setup the Ubuntu x64 testing environment for the CI pipeline"
+    cmds:
+     - cmd: apt-get update
+     - cmd: apt-get install -y
+        cmake
+        wget
+        build-essential
+        apt-transport-https
+        dotnet-sdk-8.0
+
+     #install go-task
+     - cmd: wget https://github.com/go-task/task/releases/download/v3.41.0/task_linux_amd64.deb -O go-task.deb
+     - defer: rm go-task.deb
+     - cmd: dpkg -i go-task.deb
+     
+     #install vnbuild
+     - cmd: wget https://www.vaughnnugent.com/public/resources/software/builds/vnbuild/f517973e79d1b6c29ea451e48e6c4908827a879c/vnbuild/linux-x64-release.tgz
+        -O vnbuild.tgz
+     - defer: rm vnbuild.tgz
+     - cmd: tar -xzf vnbuild-linux-x64-release.tgz -C /usr/local/bin
+     - cmd: chmod +x /usr/local/bin/vnbuild
