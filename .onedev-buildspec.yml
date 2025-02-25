@@ -26,6 +26,7 @@ jobs:
   retryDelay: 30
   timeout: 3600
 - name: Windows Tests
+  jobExecutor: windows
   steps:
   - !CheckoutStep
     name: banch checkout
@@ -57,6 +58,7 @@ jobs:
   retryDelay: 30
   timeout: 3600
 - name: Staging build
+  jobExecutor: windows
   steps:
   - !CheckoutStep
     name: clone
@@ -114,6 +116,7 @@ jobs:
   retryDelay: 30
   timeout: 3600
 - name: Publish master
+  jobExecutor: windows
   steps:
   - !CheckoutStep
     name: clone
