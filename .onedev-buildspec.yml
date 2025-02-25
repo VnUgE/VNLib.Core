@@ -129,8 +129,9 @@ jobs:
     interpreter: !DefaultInterpreter
       commands: |
         bash tests/ci/fedora-x64.sh
-        go-task -t Module.Taskfile.yaml dev-init
-        go-task -t Module.Taskfile.yaml test
+        alias task=go-task
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
