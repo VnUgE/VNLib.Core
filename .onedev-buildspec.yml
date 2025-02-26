@@ -98,7 +98,7 @@ jobs:
   - !CommandStep
     name: ubuntu-x64
     runInContainer: true
-    image: vnbuild-ubuntu:latest
+    image: localhost/vnbuild-ubuntu:latest
     interpreter: !DefaultInterpreter
       commands: |
         task -t Module.Taskfile.yaml dev-init
@@ -124,7 +124,7 @@ jobs:
   - !CommandStep
     name: fedora-x64
     runInContainer: true
-    image: vnbuild-fedora:latest
+    image: localhost/vnbuild-fedora:latest
     interpreter: !DefaultInterpreter
       commands: |
         task -t Module.Taskfile.yaml dev-init
