@@ -98,10 +98,9 @@ jobs:
   - !CommandStep
     name: ubuntu-x64
     runInContainer: true
-    image: ubuntu:24.04
+    image: vnbuild-ubuntu:latest
     interpreter: !DefaultInterpreter
       commands: |
-        bash tests/ci/ubuntu-x64.sh
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
     useTTY: true
@@ -125,11 +124,9 @@ jobs:
   - !CommandStep
     name: fedora-x64
     runInContainer: true
-    image: fedora:42
+    image: vnbuild-fedora:latest
     interpreter: !DefaultInterpreter
       commands: |
-        bash tests/ci/fedora-x64.sh
-        alias task=go-task
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
     useTTY: true
