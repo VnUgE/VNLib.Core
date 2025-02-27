@@ -27,7 +27,7 @@ add_library(${_MI_PROJ_NAME}_static STATIC ${VNLIB_MIMALLOC_SOURCES})
 set_target_properties(${_MI_PROJ_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if (ENABLE_STATIC_FPIC)
-	set_target_properties(${_RP_PROJ_NAME}_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+	set_target_properties(${_MI_PROJ_NAME}_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 	message(STATUS "Static library will be built with fPIC. Set -DENABLE_STATIC_FPIC=OFF to disable this feature")
 endif()
 
