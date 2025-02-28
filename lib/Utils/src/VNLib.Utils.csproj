@@ -8,6 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -15,7 +16,7 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Product>VNLib Utilities Library</Product>
-    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
     <PackageTags>vnlib,utils,utilities,vnlib utils,utility</PackageTags>
     <Description>.NET/8.0 Utilities library for high-performance common operations. Utilities and abstractions for building and diagnosing native memory implementations. Dyanmic native library loading, IO, extensions, data encoding, resource access, and asynchronous cooperation primitives.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>

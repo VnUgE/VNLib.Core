@@ -7,13 +7,14 @@
     <AssemblyName>VNLib.Plugins.PluginBase</AssemblyName>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
   
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins.PluginBase</PackageId>
-    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
     <Description>A base class for VNLib.Plugins that provides all supported loading functionalities, with built-in logging, loading, task-managment and endpoint routing.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins.PluginBase</RepositoryUrl>

@@ -9,6 +9,7 @@
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>    
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -16,7 +17,7 @@
     <Description>Provides managed and random cryptocraphic hashing helper classes, including complete Argon2 password hashing.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
-    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Hashing.Portable</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
