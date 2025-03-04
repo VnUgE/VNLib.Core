@@ -7,7 +7,6 @@
     <AssemblyName>VNLib.Plugins.Runtime</AssemblyName>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
 
   <PropertyGroup>

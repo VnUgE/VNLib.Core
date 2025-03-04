@@ -9,7 +9,6 @@
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>    
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
-    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
 
   <PropertyGroup>

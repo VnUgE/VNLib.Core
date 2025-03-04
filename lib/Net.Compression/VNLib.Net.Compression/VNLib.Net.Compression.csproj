@@ -10,7 +10,6 @@
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <!--Enable dynamic loading because it's dynamically loaded by servers-->
     <EnableDynamicLoading>true</EnableDynamicLoading>
-    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
   
   <PropertyGroup>
