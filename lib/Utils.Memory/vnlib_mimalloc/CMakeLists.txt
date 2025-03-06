@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.18)
 project(
 	vnlib_mimalloc 
 	LANGUAGES C
-	DESCRIPTION "Exposes the minalloc allocator to the NativeHeapApi compatible with vnlib.core"
+	DESCRIPTION "Exposes the mimalloc allocator to the NativeHeapApi compatible with vnlib.core"
 	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
 )
 
