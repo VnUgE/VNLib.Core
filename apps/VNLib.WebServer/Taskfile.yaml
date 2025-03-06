@@ -37,7 +37,7 @@ tasks:
       - cmd: echo "Running tests for VNLib.WebServer"
         silent: true
 
-      - cmd: task build-debug
+      - task: build-debug
 
       #test help command exits successfully
       - cmd: cd 'bin/debug/net8.0' && dotnet VNLib.WebServer.dll --help

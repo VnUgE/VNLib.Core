@@ -1,4 +1,4 @@
-version: 36
+version: 37
 jobs:
 - name: Repo Sync Push
   steps:
@@ -25,7 +25,8 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: Staging Tests
+- name: Windows Tests
+  jobExecutor: windows
   steps:
   - !CheckoutStep
     name: banch checkout
@@ -57,6 +58,7 @@ jobs:
   retryDelay: 30
   timeout: 3600
 - name: Staging build
+  jobExecutor: windows
   steps:
   - !CheckoutStep
     name: clone
@@ -70,21 +72,74 @@ jobs:
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        vnbuild build -S
-        vnbuild publish
+        vnbuild build --no-delay --verbose
+        vnbuild publish --verbose
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
   - !BranchUpdateTrigger
     branches: develop
   jobDependencies:
-  - jobName: Staging Tests
+  - jobName: Windows Tests
     requireSuccessful: true
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+- name: Ubuntu Tests
+  jobExecutor: docker
+  steps:
+  - !CheckoutStep
+    name: banch checkout
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: ubuntu-x64
+    runInContainer: true
+    image: vnbuild-ubuntu:latest
+    interpreter: !DefaultInterpreter
+      commands: |
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !BranchUpdateTrigger
+    branches: '** -master'
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: Fedora Tests
+  jobExecutor: docker
+  steps:
+  - !CheckoutStep
+    name: banch checkout
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: fedora-x64
+    runInContainer: true
+    image: vnbuild-fedora:latest
+    interpreter: !DefaultInterpreter
+      commands: |
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !BranchUpdateTrigger
+    branches: '** -master'
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
 - name: Publish master
+  jobExecutor: windows
   steps:
   - !CheckoutStep
     name: clone
@@ -98,7 +153,7 @@ jobs:
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        vnbuild build -S
+        vnbuild build --no-delay
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep

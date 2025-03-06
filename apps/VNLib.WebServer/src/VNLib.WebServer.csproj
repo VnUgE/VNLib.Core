@@ -22,7 +22,7 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Description>A high performance, reference .NET 8 web/http server using VNLib.Core, with the VNLib.Plugins.Essentials web framework</Description>
-    <Copyright>Copyright © 2024 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
     <Product>VNLib.Webserver</Product>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/vnlib.core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/apps/VNLib.WebServer</RepositoryUrl>

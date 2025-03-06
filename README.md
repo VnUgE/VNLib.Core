@@ -75,6 +75,6 @@ I am however interested in what you build with my libraries, especially web-plug
 ## Donations
 If you like this project and want to support it or motivate me for faster development you can donate with fiat or on-chain BTC for now.  
 
-On-Chain Bitcoin: `bc1qgj4fk6gdu8lnhd4zqzgxgcts0vlwcv3rqznxn9`
-
-Fiat: [Paypal](https://www.paypal.com/donate/?business=VKEDFD74QAQ72&no_recurring=0&item_name=By+donating+you+are+funding+my+love+for+producing+free+software+for+my+community.+&currency_code=USD)
+Fiat: [Paypal](https://www.paypal.com/donate/?business=VKEDFD74QAQ72&no_recurring=0&item_name=By+donating+you+are+funding+my+love+for+producing+free+software+for+my+community.+&currency_code=USD)  
+On-Chain Bitcoin: `bc1qgj4fk6gdu8lnhd4zqzgxgcts0vlwcv3rqznxn9`  
+lnurl: ChipTuner@coinos.io  

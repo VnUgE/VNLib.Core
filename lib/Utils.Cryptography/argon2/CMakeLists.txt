@@ -1,6 +1,11 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.18)
 
-project(Argon2 C)
+project(
+	Argon2 
+	LANGUAGES C
+	DESCRIPTION "CMake wrapper for the Argon2 reference library"
+	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
+)
 
 #export header files to the main project
 file(GLOB HEADERS src/*.h)

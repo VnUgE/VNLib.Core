@@ -1,9 +1,16 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
-project(vnlib_rpmalloc C)
+project(
+	vnlib_rpmalloc 
+	LANGUAGES C
+	DESCRIPTION "Exposes the rpmalloc allocator to the NativeHeapApi compatible with vnlib.core"
+	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
+)
+
 set(_RP_PROJ_NAME "vnlib_rpmalloc")
 
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)
+option(ENABLE_STATIC_FPIC "Enable fPIC for static library" ON)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
@@ -29,6 +36,11 @@ add_library(${_RP_PROJ_NAME} SHARED ${VNLIB_RPMALLOC_SOURCES})
 add_library(${_RP_PROJ_NAME}_static STATIC ${VNLIB_RPMALLOC_SOURCES})
 #enable fPIC for shared library
 set_target_properties(${_RP_PROJ_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+if (ENABLE_STATIC_FPIC)
+	set_target_properties(${_RP_PROJ_NAME}_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+	message(STATUS "Static library will be built with fPIC. Set -DENABLE_STATIC_FPIC=OFF to disable this feature")
+endif()
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)

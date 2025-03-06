@@ -1,6 +1,12 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.18)
 
-project(vnlib_monocypher C)
+project(
+	vnlib_monocypher 
+	LANGUAGES C
+	DESCRIPTION "CMake build for vnlib_monocypher portable cryptographic software"
+	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
+)
+
 set(_PROJECT_NAME ${CMAKE_PROJECT_NAME})
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)

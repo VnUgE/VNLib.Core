@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(vnlib_mimalloc C)
+project(
+	vnlib_mimalloc 
+	LANGUAGES C
+	DESCRIPTION "Exposes the mimalloc allocator to the NativeHeapApi compatible with vnlib.core"
+	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
+)
+
 set(_MI_PROJ_NAME "vnlib_mimalloc")
 
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)
+option(ENABLE_STATIC_FPIC "Enable fPIC for static library" ON)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
@@ -13,17 +20,22 @@ message(STATUS "Build type is '${build_type}'")
 set(CMAKE_C_STANDARD 11)					#c11 is required for mimalloc static assertions
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-#export header files to the main project
-file(GLOB HEADERS *.h)
-
-#Add indepednent source files to the project
-file(GLOB VNLIB_MIMALLOC_SOURCES *.c)
+#Add all project headers and source files
+set(VNLIB_MIMALLOC_SOURCES
+	"NativeHeapApi.h"
+	"vnlib_mimalloc.c"
+)
 
 #create my shared library
-add_library(${_MI_PROJ_NAME} SHARED ${VNLIB_MIMALLOC_SOURCES} ${HEADERS})
-add_library(${_MI_PROJ_NAME}_static STATIC ${VNLIB_MIMALLOC_SOURCES} ${HEADERS})
+add_library(${_MI_PROJ_NAME} SHARED ${VNLIB_MIMALLOC_SOURCES})
+add_library(${_MI_PROJ_NAME}_static STATIC ${VNLIB_MIMALLOC_SOURCES})
 #enable fPIC for shared library
 set_target_properties(${_MI_PROJ_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+if (ENABLE_STATIC_FPIC)
+	set_target_properties(${_MI_PROJ_NAME}_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+	message(STATUS "Static library will be built with fPIC. Set -DENABLE_STATIC_FPIC=OFF to disable this feature")
+endif()
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
