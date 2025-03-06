@@ -53,12 +53,13 @@ namespace VNLib.Utils.Tests
         public void Base64ToUrlSafeInPlaceTest()
         {
             byte[] encodeBuffer = new byte[Base64.GetMaxEncodedToUtf8Length(64)];
-            
-            int bytesEncoded = GetRandomBase64Bytes(64, encodeBuffer);
+           
             Span<byte> encodeSpan;
 
             do
             {
+                //Get random base64 bytes and ensure the data contains illegal characters
+                int bytesEncoded = GetRandomBase64Bytes(64, encodeBuffer);
                 encodeSpan = encodeBuffer.AsSpan(0, bytesEncoded);
 
                 //Make sure some illegal characters are present
