@@ -37,25 +37,33 @@ namespace VNLib.Utils.Tests
     [TestClass()]
     public class VnEncodingTests
     {
+        private static int GetRandomBase64Bytes(int size, Span<byte> encodeBuffer)
+        {
+            byte[] randomData = RandomNumberGenerator.GetBytes(size);            
+            //Base64 encode
+            OperationStatus status = Base64.EncodeToUtf8(randomData, encodeBuffer, out _, out int bytesEncoded, true);
+
+            Assert.AreEqual(OperationStatus.Done, status);
+
+            return bytesEncoded;
+        }
+
 
         [TestMethod()]
         public void Base64ToUrlSafeInPlaceTest()
         {
-            //Get randomd data to encode
-            byte[] dataToEncode = RandomNumberGenerator.GetBytes(64);
-            //Calc buffer size
-            int base64Output = Base64.GetMaxEncodedToUtf8Length(64);
+            byte[] encodeBuffer = new byte[Base64.GetMaxEncodedToUtf8Length(64)];
+           
+            Span<byte> encodeSpan;
 
-            byte[] encodeBuffer = new byte[base64Output];
-            //Base64 encode
-            OperationStatus status = Base64.EncodeToUtf8(dataToEncode, encodeBuffer, out _, out int bytesEncoded, true);
+            do
+            {
+                //Get random base64 bytes and ensure the data contains illegal characters
+                int bytesEncoded = GetRandomBase64Bytes(64, encodeBuffer);
+                encodeSpan = encodeBuffer.AsSpan(0, bytesEncoded);
 
-            Assert.IsTrue(status == OperationStatus.Done);
-
-            Span<byte> encodeSpan = encodeBuffer.AsSpan(0, bytesEncoded);
-
-            //Make sure some illegal characters are encoded
-            Assert.IsTrue(encodeSpan.Contains((byte)'+') || encodeSpan.Contains((byte)'/'));
+                //Make sure some illegal characters are present
+            } while (!(encodeSpan.Contains((byte)'+') || encodeSpan.Contains((byte)'/')));          
 
             //Convert to url safe
             VnEncoding.Base64ToUrlSafeInPlace(encodeSpan);

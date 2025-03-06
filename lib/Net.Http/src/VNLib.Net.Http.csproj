@@ -8,7 +8,6 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
-    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
 
   <PropertyGroup>

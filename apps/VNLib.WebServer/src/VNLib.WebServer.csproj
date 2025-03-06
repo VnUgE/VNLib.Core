@@ -10,7 +10,6 @@
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <RetainVMGarbageCollection>true</RetainVMGarbageCollection>
     <StartupObject>VNLib.WebServer.Entry</StartupObject>
-    <PackageVersion>$(VNLibCoreVersion)</PackageVersion>
   </PropertyGroup>
   
   <!-- Dotnet tool stuff -->

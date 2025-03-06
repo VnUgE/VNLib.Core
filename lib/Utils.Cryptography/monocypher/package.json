@@ -4,7 +4,7 @@
   "output_dir": "bin",
   "author": "Vaughn Nugent",
   "description": "Integrates the MonoCypher native library into a wrapper utility library for usage in VNLib.Hashing.Portable for Blake2, Argon2 and more coming",
-  "copyright": "Copyright \u00A9 2023 Vaughn Nugent",
+  "copyright": "Copyright \u00A9 2025 Vaughn Nugent",
   "company": "Vaughn Nugent",
-  "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils.Cryptography/monocypher"
+  "repository": "https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Cryptography/monocypher"
 }

@@ -62,7 +62,6 @@ tasks:
         --include-symbols
         --configuration release
         --output "{{ .PACK_OUT }}/release/" 
-        -p:VNLibCoreVersion={{ .BUILD_VERSION }}
         {{ .MS_ARGS }}
 
   publish:

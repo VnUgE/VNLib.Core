@@ -1,6 +1,12 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
-project(vnlib_compress C)
+project(
+	vnlib_compress 
+	LANGUAGES C
+	DESCRIPTION "An all-in-one compression encoding api in C"
+	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
+)
+
 set(_COMP_PROJ_NAME "vnlib_compress")
 
 #set options for enable botli and zlib

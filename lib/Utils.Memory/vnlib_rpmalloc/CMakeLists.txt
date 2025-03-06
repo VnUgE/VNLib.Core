@@ -1,6 +1,12 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
-project(vnlib_rpmalloc C)
+project(
+	vnlib_rpmalloc 
+	LANGUAGES C
+	DESCRIPTION "Exposes the rpmalloc allocator to the NativeHeapApi compatible with vnlib.core"
+	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
+)
+
 set(_RP_PROJ_NAME "vnlib_rpmalloc")
 
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)

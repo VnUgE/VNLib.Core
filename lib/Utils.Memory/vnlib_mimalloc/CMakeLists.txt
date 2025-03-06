@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(vnlib_mimalloc C)
+project(
+	vnlib_mimalloc 
+	LANGUAGES C
+	DESCRIPTION "Exposes the minalloc allocator to the NativeHeapApi compatible with vnlib.core"
+	HOMEPAGE_URL "https://www.vaughnnugent.com/resources/modules/vnlib.core"
+)
+
 set(_MI_PROJ_NAME "vnlib_mimalloc")
 
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)
