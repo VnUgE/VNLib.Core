@@ -41,16 +41,11 @@ namespace VNLib.Net.Compression.Tests
         {
             CompressorManager manager = InitCompressorUnderTest();
 
-            Assert.ThrowsException<ArgumentNullException>(() => manager.InitCompressor(null!, CompressionMethod.Deflate));
-            Assert.ThrowsException<ArgumentNullException>(() => manager.DeinitCompressor(null!));
-
-            //Allocate a compressor instance
-            object compressor = manager.AllocCompressor();
-
-            Assert.IsNotNull(compressor);
+            Assert.ThrowsExactly<ArgumentNullException>(() => _ = manager.InitCompressor(null!, CompressionMethod.Deflate));
+            Assert.ThrowsExactly<ArgumentNullException>(() => manager.DeinitCompressor(null!));
 
             //Create a new testing wrapper
-            ManagerTestComp cp = new(compressor, manager);
+            ManagerTestComp cp = new(manager.AllocCompressor(), manager);
 
             //Test supported methods
             TestSupportedMethods(cp);
@@ -202,7 +197,7 @@ namespace VNLib.Net.Compression.Tests
             CompressionMethod methods = testCompressor.GetSupportedMethods();
 
             //Make sure at least on method is supported by the native lib
-            Assert.IsFalse(methods == CompressionMethod.None);
+            Assert.AreNotEqual(CompressionMethod.None, methods);
 
             //Test for brotli support
             if ((methods & CompressionMethod.Brotli) > 0)
@@ -226,10 +221,10 @@ namespace VNLib.Net.Compression.Tests
         private static void TestSupportedMethods(ITestCompressor compressor)
         {
             //Make sure error occurs with non-supported comp
-            Assert.ThrowsException<NotSupportedException>(() => { compressor.InitCompressor(CompressionMethod.None); });
+            Assert.ThrowsExactly<NotSupportedException>(() => { compressor.InitCompressor(CompressionMethod.None); });
 
             //test out of range, this should be a native lib error
-            Assert.ThrowsException<NotSupportedException>(() => { compressor.InitCompressor((CompressionMethod)4500); });
+            Assert.ThrowsExactly<NotSupportedException>(() => { compressor.InitCompressor((CompressionMethod)4500); });
 
             //Test all 3 compression methods
             CompressionMethod supported = compressor.GetSupportedMethods();
@@ -277,7 +272,7 @@ namespace VNLib.Net.Compression.Tests
              * Currently not worrying about block size in the native lib, so this 
              * should cause tests to fail when block size is supported later on
              */
-            Assert.IsTrue(blockSize == 0);
+            Assert.AreEqual(0, blockSize);
 
             try
             {
@@ -399,15 +394,20 @@ Page Size: {Environment.SystemPageSize}
 
         sealed class ManagerTestComp(object Compressor, CompressorManager Manager) : ITestCompressor
         {
-            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) => Manager.CompressBlock(Compressor, input, output);
+            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) 
+                => Manager.CompressBlock(Compressor, input, output);
 
-            public void DeinitCompressor() => Manager.DeinitCompressor(Compressor);
+            public void DeinitCompressor() 
+                => Manager.DeinitCompressor(Compressor);
 
-            public int Flush(Memory<byte> buffer) => Manager.Flush(Compressor, buffer);
+            public int Flush(Memory<byte> buffer)
+                => Manager.Flush(Compressor, buffer);
 
-            public CompressionMethod GetSupportedMethods() => Manager.GetSupportedMethods();
+            public CompressionMethod GetSupportedMethods() 
+                => Manager.GetSupportedMethods();
 
-            public int InitCompressor(CompressionMethod level) => Manager.InitCompressor(Compressor, level);
+            public int InitCompressor(CompressionMethod level) 
+                => Manager.InitCompressor(Compressor, level);
 
         }
 
@@ -415,9 +415,11 @@ Page Size: {Environment.SystemPageSize}
         {
             private INativeCompressor? _comp;
 
-            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) => _comp!.Compress(input, output);
+            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) 
+                => _comp!.Compress(input, output);
 
-            public CompressionResult CompressBlock(ReadOnlySpan<byte> input, Span<byte> output) => _comp!.Compress(input, output);
+            public CompressionResult CompressBlock(ReadOnlySpan<byte> input, Span<byte> output) 
+                => _comp!.Compress(input, output);
 
             public void DeinitCompressor()
             {

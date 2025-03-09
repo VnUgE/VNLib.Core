@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -41,13 +41,13 @@ namespace VNLib.Utils.Memory.Tests
         [TestMethod]
         public unsafe void MemoryHandleAllocLongExtensionTest()
         {
-            Assert.IsTrue(sizeof(nuint) == 8);
+            Assert.AreEqual(8, sizeof(nuint));
 
             //Check for negatives
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => Shared.Alloc<byte>(-1).Dispose());
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => Shared.Alloc<byte>(-1).Dispose());
 
             //Make sure over-alloc throws
-            Assert.ThrowsException<OverflowException>(() => Shared.Alloc<short>(nuint.MaxValue, false).Dispose());
+            Assert.ThrowsExactly<OverflowException>(() => Shared.Alloc<short>(nuint.MaxValue, false).Dispose());
         }
 #if TARGET_64_BIT
         [TestMethod]
@@ -79,16 +79,16 @@ namespace VNLib.Utils.Memory.Tests
         {
             using MemoryHandle<byte> handle = Shared.Alloc<byte>(128, true);
 
-            Assert.IsTrue(handle.Length == 128);
+            Assert.AreEqual(128ul, handle.Length);
 
-            Assert.IsTrue(handle.Length == 128);
+            Assert.AreEqual(128ul, handle.Length);
 
             //Check span against base pointer deref
 
             handle.Span[120] = 10;
 
-            Assert.IsTrue(*handle.GetOffset(120) == 10);
-            Assert.IsTrue(handle.GetOffsetRef(120) == 10);
+            Assert.AreEqual(10, *handle.GetOffset(120));
+            Assert.AreEqual(10, handle.GetOffsetRef(120));
         }
 
 
@@ -108,12 +108,12 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(handle.IsInvalid);
             Assert.IsTrue(handle.IsClosed);
 
-            Assert.ThrowsException<ObjectDisposedException>(() => _ = handle.Span);
-            Assert.ThrowsException<ObjectDisposedException>(() => _ = handle.BasePtr);
-            Assert.ThrowsException<ObjectDisposedException>(() => _ = handle.Base);
-            Assert.ThrowsException<ObjectDisposedException>(() => handle.Resize(10));
-            Assert.ThrowsException<ObjectDisposedException>(() => _ = handle.GetOffset(10));
-            Assert.ThrowsException<ObjectDisposedException>(handle.ThrowIfClosed);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.Span);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = _ = handle.BasePtr);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.Base);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => handle.Resize(10));
+            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.GetOffset(10));
+            Assert.ThrowsExactly<ObjectDisposedException>(handle.ThrowIfClosed);
         }
 
         [TestMethod]
@@ -143,12 +143,12 @@ namespace VNLib.Utils.Memory.Tests
 
             //Dec handle count
             handle.DangerousRelease();
-            
+
             //Now make sure the class is disposed
 
             Assert.IsTrue(handle.IsInvalid);
             Assert.IsTrue(handle.IsClosed);
-            Assert.ThrowsException<ObjectDisposedException>(() => _ = handle.Span);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.Span);
         }
 
         [TestMethod]
@@ -156,31 +156,31 @@ namespace VNLib.Utils.Memory.Tests
         {
             using MemoryHandle<byte> handle = Shared.Alloc<byte>(1024);
 
-            Assert.IsTrue(handle.Length == 1024);
+            Assert.AreEqual(1024u, handle.Length);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => handle.Resize(-1));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => handle.Resize(-1));
 
             //Resize the handle 
             handle.Resize(2048);
 
-            Assert.IsTrue(handle.Length == 2048);
+            Assert.AreEqual(2048u, handle.Length);
 
             Assert.IsTrue(handle.AsSpan(2048).IsEmpty);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.AsSpan(2049));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.AsSpan(2049));
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetOffset(2049));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetOffset(2049));
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetOffset(-1));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetOffset(-1));
 
             //test resize
             handle.ResizeIfSmaller(100);
             //Handle should be unmodified
-            Assert.IsTrue(handle.Length == 2048);
-            
+            Assert.AreEqual(2048u, handle.Length);
+
             //test working
             handle.ResizeIfSmaller(4096);
-            Assert.IsTrue(handle.Length == 4096);
+            Assert.AreEqual(4096u, handle.Length);
         }
 
         [TestMethod]
@@ -189,7 +189,7 @@ namespace VNLib.Utils.Memory.Tests
             //Confirm that an empty handle does not raise exceptions when in IMemoryHandle
             using (IMemoryHandle<byte> thandle = new MemoryHandle<byte>())
             {
-                Assert.IsTrue(thandle.Length == 0);
+                Assert.AreEqual(0u, thandle.Length);
 
                 Assert.IsTrue(thandle.Span == Span<byte>.Empty);
 
@@ -197,9 +197,9 @@ namespace VNLib.Utils.Memory.Tests
                 _ = thandle.AsSpan(0);
 
                 //Pin should throw
-                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = thandle.Pin(0));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = _ = thandle.Pin(0));
 
-                Assert.ThrowsException<ObjectDisposedException>(() => _ = thandle.GetReference());
+                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = _ = thandle.GetReference());
             }
 
             //Full ref to mhandle check status
@@ -213,15 +213,15 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsTrue(mHandle.IsInvalid);
 
                 Assert.IsFalse(mHandle.IsClosed);
-             
+
                 //Confirm empty handle protected values throw
-                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = mHandle.GetOffset(0));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = mHandle.GetOffset(0));
 
-                Assert.ThrowsException<ObjectDisposedException>(() => mHandle.Resize(10));
+                Assert.ThrowsExactly<ObjectDisposedException>(() => mHandle.Resize(10));
 
-                Assert.ThrowsException<ArgumentOutOfRangeException>(() => mHandle.BasePtr);
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = mHandle.BasePtr);
 
-                Assert.ThrowsException<ObjectDisposedException>(() => _ = mHandle.GetReference());
+                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = _ = mHandle.GetReference());
             }
         }
     }

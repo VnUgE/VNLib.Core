@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -24,8 +24,6 @@
 
 using System;
 
-using VNLib.Utils.Resources;
-
 namespace VNLib.Utils.Native
 {
     /// <summary>
@@ -33,7 +31,7 @@ namespace VNLib.Utils.Native
     /// native method
     /// </summary>
     /// <typeparam name="T">The native method deelgate type</typeparam>
-    public class SafeMethodHandle<T> : OpenHandle where T : Delegate
+    public class SafeMethodHandle<T> : VnDisposeable where T : Delegate
     {
         private T? _method;
         private readonly SafeLibraryHandle Library;
@@ -47,7 +45,14 @@ namespace VNLib.Utils.Native
         /// <summary>
         /// A delegate to the native method
         /// </summary>
-        public T? Method => _method;
+        public T? Method
+        {
+            get
+            {
+                Check();
+                return _method;
+            }
+        }
 
         ///<inheritdoc/>
         protected override void Free()
@@ -61,13 +66,10 @@ namespace VNLib.Utils.Native
         /// <summary>
         /// Releases the library handle on finalization
         /// </summary>
-#pragma warning disable CA1063 // Implement IDisposable Correctly
         ~SafeMethodHandle()
         {
             //Make sure the library is released on finalization
             Library.DangerousRelease();
         }
-#pragma warning restore CA1063 // Implement IDisposable Correctly
-
     }
 }

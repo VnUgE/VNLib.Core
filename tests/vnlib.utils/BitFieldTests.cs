@@ -11,7 +11,7 @@ namespace VNLib.Utils.Tests
         {
             BitField bf = new(0);
 
-            Assert.AreEqual(bf.Value, 0ul);
+            Assert.AreEqual(0ul, bf.Value);
 
             bf.Set(1);
             Assert.IsTrue(bf.IsSet(1));

@@ -115,10 +115,10 @@ namespace VNLib.Utils.Memory
         /// is returned.
         /// </summary>
         /// <param name="data">The data to decode</param>
-        /// <param name="encoding"></param>
-        /// <param name="heap"></param>
+        /// <param name="encoding">The encoding to use for decoding</param>
+        /// <param name="heap">The heap to allocate the buffer from</param>
         /// <returns>The decoded string from the binary data, or an empty string if no data was provided</returns>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentNullException">Thrown when encoding is null</exception>
         public static VnString FromBinary(ReadOnlySpan<byte> data, Encoding encoding, IUnmangedHeap? heap = null)
         {
             ArgumentNullException.ThrowIfNull(encoding);
@@ -128,25 +128,25 @@ namespace VNLib.Utils.Memory
                 return new VnString();
             }
 
-            //Fall back to shared heap
+            // Fall back to shared heap
             heap ??= MemoryUtil.Shared;
 
-            //Get the number of characters
+            // Get the number of characters
             int numChars = encoding.GetCharCount(data);
 
-            //New handle for decoded data
+            // New handle for decoded data
             MemoryHandle<char> charBuffer = heap.Alloc<char>(numChars);
             try
             {
-                //Write characters to character buffer
+                // Write characters to character buffer
                 numChars = encoding.GetChars(data, charBuffer.Span);
 
-                //Consume the new handle
+                // Consume the new handle
                 return ConsumeHandle(charBuffer, 0, numChars);
             }
             catch
             {
-                //If an error occured, dispose the buffer
+                // If an error occurred, dispose the buffer
                 charBuffer.Dispose();
                 throw;
             }
@@ -587,52 +587,97 @@ namespace VNLib.Utils.Memory
             return CompareTo(other.AsSpan(), StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// Compares the current instance with another read-only span of characters using ordinal comparison.
+        /// </summary>
+        /// <param name="other">The read-only span of characters to compare with this instance.</param>
+        /// <returns>An integer that indicates the relative order of the objects being compared.</returns>
         public int CompareTo(ReadOnlySpan<char> other)
           => AsSpan().CompareTo(other, StringComparison.Ordinal);
 
-        public int CompareTo(ReadOnlySpan<char> other, StringComparison comparison) 
+        /// <summary>
+        /// Compares the current instance with another read-only span of characters using the specified comparison option.
+        /// </summary>
+        /// <param name="other">The read-only span of characters to compare with this instance.</param>
+        /// <param name="comparison">One of the enumeration values that specifies the rules for the comparison.</param>
+        /// <returns>An integer that indicates the relative order of the objects being compared.</returns>
+        public int CompareTo(ReadOnlySpan<char> other, StringComparison comparison)
             => AsSpan().CompareTo(other, comparison);
 
         /// <summary>
-        /// Gets a hashcode for the underyling string by using the .NET <see cref="string.GetHashCode()"/>
-        /// method on the character representation of the data
+        /// Gets a hash code for the underlying string using the specified string comparison option.
         /// </summary>
-        /// <returns></returns>
+        /// <param name="stringComparison">The string comparison option to use for generating the hash code.</param>
+        /// <returns>A hash code for the underlying string.</returns>
         /// <remarks>
-        /// It is safe to compare hashcodes of <see cref="VnString"/> to the <see cref="string"/> class or 
-        /// a character span etc
+        /// It is safe to compare hash codes of <see cref="VnString"/> to the <see cref="string"/> class or 
+        /// a character span etc.
         /// </remarks>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public override int GetHashCode() 
-            => GetHashCode(StringComparison.Ordinal);
+        /// <exception cref="ObjectDisposedException">Thrown if the object has been disposed.</exception>
+        public int GetHashCode(StringComparison stringComparison)
+            => string.GetHashCode(AsSpan(), stringComparison);
 
         /// <summary>
-        /// Gets a hashcode for the underyling string by using the .NET <see cref="string.GetHashCode()"/>
-        /// method on the character representation of the data
+        /// Gets a hash code for the underlying string using ordinal comparison.
         /// </summary>
-        /// <param name="stringComparison">The string comperison mode</param>
-        /// <returns></returns>
+        /// <returns>A hash code for the underlying string.</returns>
         /// <remarks>
-        /// It is safe to compare hashcodes of <see cref="VnString"/> to the <see cref="string"/> class or 
-        /// a character span etc
+        /// It is safe to compare hash codes of <see cref="VnString"/> to the <see cref="string"/> class or 
+        /// a character span etc.
         /// </remarks>
-        /// <exception cref="ObjectDisposedException"></exception>
-        public int GetHashCode(StringComparison stringComparison) 
-            => string.GetHashCode(AsSpan(), stringComparison);
+        /// <exception cref="ObjectDisposedException">Thrown if the object has been disposed.</exception>
+        public override int GetHashCode()
+            => GetHashCode(StringComparison.Ordinal);
 
         ///<inheritdoc/>
         protected override void Free() => _handle?.Dispose();
 
+        /// <summary>
+        /// Determines whether two specified <see cref="VnString"/> objects have the same value.
+        /// </summary>
+        /// <param name="left">The first <see cref="VnString"/> to compare.</param>
+        /// <param name="right">The second <see cref="VnString"/> to compare.</param>
+        /// <returns>true if the value of <paramref name="left"/> is the same as the value of <paramref name="right"/>; otherwise, false.</returns>
         public static bool operator ==(VnString left, VnString right) => left is null ? right is not null : left.Equals(right, StringComparison.Ordinal);
 
+        /// <summary>
+        /// Determines whether two specified <see cref="VnString"/> objects have different values.
+        /// </summary>
+        /// <param name="left">The first <see cref="VnString"/> to compare.</param>
+        /// <param name="right">The second <see cref="VnString"/> to compare.</param>
+        /// <returns>true if the value of <paramref name="left"/> is different from the value of <paramref name="right"/>; otherwise, false.</returns>
         public static bool operator !=(VnString left, VnString right) => !(left == right);
 
+        /// <summary>
+        /// Determines whether the value of one <see cref="VnString"/> is less than the value of another <see cref="VnString"/>.
+        /// </summary>
+        /// <param name="left">The first <see cref="VnString"/> to compare.</param>
+        /// <param name="right">The second <see cref="VnString"/> to compare.</param>
+        /// <returns>true if the value of <paramref name="left"/> is less than the value of <paramref name="right"/>; otherwise, false.</returns>
         public static bool operator <(VnString left, VnString right) => left is null ? right is not null : left.CompareTo(right) < 0;
 
+        /// <summary>
+        /// Determines whether the value of one <see cref="VnString"/> is less than or equal to the value of another <see cref="VnString"/>.
+        /// </summary>
+        /// <param name="left">The first <see cref="VnString"/> to compare.</param>
+        /// <param name="right">The second <see cref="VnString"/> to compare.</param>
+        /// <returns>true if the value of <paramref name="left"/> is less than or equal to the value of <paramref name="right"/>; otherwise, false.</returns>
         public static bool operator <=(VnString left, VnString right) => left is null || left.CompareTo(right) <= 0;
 
+        /// <summary>
+        /// Determines whether the value of one <see cref="VnString"/> is greater than the value of another <see cref="VnString"/>.
+        /// </summary>
+        /// <param name="left">The first <see cref="VnString"/> to compare.</param>
+        /// <param name="right">The second <see cref="VnString"/> to compare.</param>
+        /// <returns>true if the value of <paramref name="left"/> is greater than the value of <paramref name="right"/>; otherwise, false.</returns>
         public static bool operator >(VnString left, VnString right) => left is not null && left.CompareTo(right) > 0;
 
+        /// <summary>
+        /// Determines whether the value of one <see cref="VnString"/> is greater than or equal to the value of another <see cref="VnString"/>.
+        /// </summary>
+        /// <param name="left">The first <see cref="VnString"/> to compare.</param>
+        /// <param name="right">The second <see cref="VnString"/> to compare.</param>
+        /// <returns>true if the value of <paramref name="left"/> is greater than or equal to the value of <paramref name="right"/>; otherwise, false.</returns>
         public static bool operator >=(VnString left, VnString right) => left is null ? right is null : left.CompareTo(right) >= 0;
     }
 }

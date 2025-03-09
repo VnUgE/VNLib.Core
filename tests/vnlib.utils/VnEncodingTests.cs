@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -90,9 +90,9 @@ namespace VNLib.Utils.Tests
             //Decode in place to confrim its valid
             OperationStatus status = Base64.DecodeFromUtf8InPlace(utf8, out int bytesWritten);
 
-            Assert.IsFalse(status == OperationStatus.NeedMoreData);
-            Assert.IsFalse(status == OperationStatus.DestinationTooSmall);
-            Assert.IsFalse(status == OperationStatus.InvalidData);
+            Assert.AreNotEqual(OperationStatus.NeedMoreData, status);
+            Assert.AreNotEqual(OperationStatus.DestinationTooSmall, status);
+            Assert.AreNotEqual(OperationStatus.InvalidData, status);
         }
         
         [TestMethod()]
@@ -136,7 +136,7 @@ namespace VNLib.Utils.Tests
 
             string decodedString = Encoding.UTF8.GetString(outBuffer, 0, decoded);
 
-            Assert.IsTrue(decodedString.Equals(urlDecoded, StringComparison.Ordinal));
+            Assert.AreEqual(urlDecoded, decodedString, false);
         }
 
         [TestMethod()]
@@ -155,7 +155,7 @@ namespace VNLib.Utils.Tests
 
             //Test that the encoded string is the same as the base32 encoded string
             string toString = VnEncoding.ToBase32String(rawBytes, true);
-            Assert.IsTrue(toString.Equals(base32Encoded, StringComparison.Ordinal));
+            Assert.AreEqual(base32Encoded, toString, false);
         }
     }
 }
