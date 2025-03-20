@@ -2,7 +2,12 @@ assembly-versioning-scheme: MajorMinorPatch
 assembly-versioning-format: '{Major}.{Minor}.{Patch}.{CommitsSinceVersionSourcePadded}'
 assembly-file-versioning-format: '{Major}.{Minor}.{Patch}.{CommitsSinceVersionSourcePadded}'
 mode: ContinuousDeployment
-branches: {}
+branches:
+  main:
+    mode: ContinuousDeployment
+    increment: Inherit
+    tag: 'rc'
+    regex: ^master$
 ignore:
   sha: []
 merge-message-formats: {}
