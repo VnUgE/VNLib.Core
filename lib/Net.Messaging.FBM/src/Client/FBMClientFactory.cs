@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -52,6 +52,14 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             _config = config;
             _socketMan = webSocketManager;
+
+            /*
+             * Create a shared pool of reusable FBMRequest objects
+             * for all clients to share. It helps cut down on total 
+             * memory, and keeps pools alive if clients are created
+             * and destroyed frequently. It also allows this factory
+             * to manage the cache for all created clients.
+             */
             _internalRequestPool = ObjectRental.CreateReusable(ReuseableRequestConstructor, maxClients);
         }
 
@@ -71,12 +79,12 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <returns>The initialized FBM client instance</returns>
         public FBMClient CreateClient()
-        {
-            //Init new socket
-            IFbmClientWebsocket socket = _socketMan.CreateWebsocket(in _config);
-            
-            //Create client wrapper
-            return new(in _config, socket, _internalRequestPool);
+        {  
+            return new(
+                config: in _config, 
+                websocket: _socketMan.CreateWebsocket(in _config), 
+                requestRental: _internalRequestPool
+            );
         }
 
         ///<inheritdoc/>

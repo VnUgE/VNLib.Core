@@ -90,7 +90,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         public ref readonly FBMClientConfig Config => ref _config;
 
         /// <summary>
-        /// A handle that is reset when a connection has been successfully set, and is set
+        /// A handle that is reset when a connection has been successfully established, and is set
         /// when the connection exists
         /// </summary>
         public ManualResetEvent ConnectionStatusHandle { get; }
@@ -107,7 +107,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="config">The client config</param>
         /// <param name="websocket">The websocket instance used to comunicate with an FBMServer</param>
         public FBMClient(ref readonly FBMClientConfig config, IFbmClientWebsocket websocket)
-            :this(in config, websocket, null)
+            :this(in config, websocket, requestRental: null)
         { }
 
         internal FBMClient(ref readonly FBMClientConfig config, IFbmClientWebsocket websocket, IObjectRental<FBMRequest>? requestRental)
@@ -150,22 +150,12 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <returns>The configured <see cref="FBMRequest"/></returns>
         protected virtual FBMRequest ReuseableRequestConstructor() => new(in _config);
 
-        private void Debug(string format, params string[] strings)
-        {
-            if(Config.DebugLog != null)
-            {
-                Config.DebugLog.Debug($"[DEBUG] FBM Client: {format}", strings);
-            }
-        }
-        
-        private void Debug(string format, long value, long other)
-        {
-            if (Config.DebugLog != null)
-            {
-                Config.DebugLog.Debug($"[DEBUG] FBM Client: {format}", value, other);
-            }
-        }
-       
+        private void Debug(string format, params string[] strings) 
+            => Config.DebugLog?.Debug($"[DEBUG] FBM Client: {format}", strings);
+
+        private void Debug(string format, long value, long other) 
+            => Config.DebugLog?.Debug($"[DEBUG] FBM Client: {format}", value, other);
+
 
         /// <summary>
         /// Asynchronously opens a websocket connection with the specifed remote server
@@ -311,7 +301,13 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public async Task<FBMResponse> StreamDataAsync(FBMRequest request, Stream payload, ContentType contentType, TimeSpan timeout, CancellationToken cancellationToken = default)
+        public async Task<FBMResponse> StreamDataAsync(
+            FBMRequest request, 
+            Stream payload, 
+            ContentType contentType, 
+            TimeSpan timeout, 
+            CancellationToken cancellationToken = default
+        )
         {
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(payload);
