@@ -33,7 +33,6 @@ using static VNLib.Utils.Memory.MemoryUtil;
 namespace VNLib.Utils.Memory.Tests
 {
 
-
     [TestClass]
     public class MemoryHandleTest
     {
@@ -109,7 +108,7 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(handle.IsClosed);
 
             Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.Span);
-            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = _ = handle.BasePtr);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.BasePtr);
             Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.Base);
             Assert.ThrowsExactly<ObjectDisposedException>(() => handle.Resize(10));
             Assert.ThrowsExactly<ObjectDisposedException>(() => _ = handle.GetOffset(10));
@@ -134,14 +133,14 @@ namespace VNLib.Utils.Memory.Tests
             //Dispose the handle early and test
             handle.Dispose();
 
-            //Asser is valid still
+            //Assert the handle is still valid
 
             //Make sure handle is not invalid until disposed
             Assert.IsFalse(handle.IsInvalid);
             Assert.IsFalse(handle.IsClosed);
             Assert.AreNotEqual(IntPtr.Zero, handle.BasePtr);
 
-            //Dec handle count
+            //Dec handle count (should dispose the handle now)
             handle.DangerousRelease();
 
             //Now make sure the class is disposed
@@ -170,8 +169,9 @@ namespace VNLib.Utils.Memory.Tests
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.AsSpan(2049));
 
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetOffset(2049));
-
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetOffset(-1));
+
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetOffsetByteRef(2049));           
 
             //test resize
             handle.ResizeIfSmaller(100);
@@ -197,9 +197,9 @@ namespace VNLib.Utils.Memory.Tests
                 _ = thandle.AsSpan(0);
 
                 //Pin should throw
-                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = _ = thandle.Pin(0));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = thandle.Pin(0));
 
-                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = _ = thandle.GetReference());
+                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = thandle.GetReference());
             }
 
             //Full ref to mhandle check status
@@ -221,7 +221,7 @@ namespace VNLib.Utils.Memory.Tests
 
                 Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = mHandle.BasePtr);
 
-                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = _ = mHandle.GetReference());
+                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = mHandle.GetReference());
             }
         }
     }

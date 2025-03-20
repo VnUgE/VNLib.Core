@@ -87,9 +87,9 @@ namespace VNLib.Utils.Memory
         /// <returns>A new <see cref="UnsafeMemoryHandle{T}"/> encapsulating the rented array</returns>
         public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(ArrayPool<T> pool, int size, bool zero = false) where T : unmanaged
         {
-            ArgumentNullException.ThrowIfNull(pool);
+            ArgumentNullException.ThrowIfNull(pool);           
 
-            if (size <= 0)
+            if (size == 0)
             {
                 return default;
             }
