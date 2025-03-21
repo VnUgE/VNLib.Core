@@ -15,11 +15,11 @@ namespace VNLib.Utils.IO.Tests
         {
             using (VnMemoryStream vms = new())
             {
-                Assert.IsTrue(vms.Length == 0);
-                Assert.IsTrue(vms.Position == 0);
-                Assert.IsTrue(vms.CanSeek == true);
-                Assert.IsTrue(vms.CanRead == true);
-                Assert.IsTrue(vms.CanWrite == true);
+                Assert.AreEqual(0, vms.Length);
+                Assert.AreEqual(0, vms.Position);
+                Assert.IsTrue(vms.CanSeek);
+                Assert.IsTrue(vms.CanRead);
+                Assert.IsTrue(vms.CanWrite);
             }
 
             //Test heap
@@ -27,11 +27,11 @@ namespace VNLib.Utils.IO.Tests
 
             using (VnMemoryStream vms = new(privateHeap, 1024, false))
             {
-                Assert.IsTrue(vms.Length == 0);
-                Assert.IsTrue(vms.Position == 0);
-                Assert.IsTrue(vms.CanSeek == true);
-                Assert.IsTrue(vms.CanRead == true);
-                Assert.IsTrue(vms.CanWrite == true);
+                Assert.AreEqual(0, vms.Length);
+                Assert.AreEqual(0, vms.Position);
+                Assert.IsTrue(vms.CanSeek);
+                Assert.IsTrue(vms.CanRead);
+                Assert.IsTrue(vms.CanWrite);
             }
 
 
@@ -40,42 +40,42 @@ namespace VNLib.Utils.IO.Tests
 
             using (VnMemoryStream vms = VnMemoryStream.FromHandle(handle, true, handle.GetIntLength(), false))
             {
-                Assert.IsTrue(vms.Length == byte.MaxValue);
-                Assert.IsTrue(vms.Position == 0);
-                Assert.IsTrue(vms.CanSeek == true);
-                Assert.IsTrue(vms.CanRead == true);
-                Assert.IsTrue(vms.CanWrite == true);
+                Assert.AreEqual(byte.MaxValue, vms.Length);
+                Assert.AreEqual(0, vms.Position);
+                Assert.IsTrue(vms.CanSeek);
+                Assert.IsTrue(vms.CanRead);
+                Assert.IsTrue(vms.CanWrite);
             }
 
             //Handle should throw since the stream owns the handle and it gets dispoed
-            Assert.ThrowsException<ObjectDisposedException>(handle.ThrowIfClosed);
+            Assert.ThrowsExactly<ObjectDisposedException>(handle.ThrowIfClosed);
 
             //From existing data
             ReadOnlySpan<byte> testSpan = [1, 2, 3, 4, 5, 6, 7, 8];
             using (VnMemoryStream vms = new (privateHeap, testSpan))
             {
-                Assert.IsTrue(vms.Length == testSpan.Length);
-                Assert.IsTrue(vms.Position == 0);
+                Assert.AreEqual(testSpan.Length, vms.Length);
+                Assert.AreEqual(0, vms.Position);
 
                 //Check values copied
                 while (vms.Position < vms.Length)
                 {
                     byte test = testSpan[(int)vms.Position];
-                    Assert.IsTrue(vms.ReadByte() == test);
+                    Assert.AreEqual(test, vms.ReadByte());
                 }
             }
 
             ReadOnlyMemory<byte> testMemory = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
             using (VnMemoryStream vms = new (privateHeap, testMemory))
             {
-                Assert.IsTrue(vms.Length == testMemory.Length);
-                Assert.IsTrue(vms.Position == 0);
+                Assert.AreEqual(testMemory.Length, vms.Length);
+                Assert.AreEqual(0, vms.Position);
 
                 //Check values copied
                 while(vms.Position < vms.Length)
                 {
                     byte test = testMemory.Span[(int)vms.Position];
-                    Assert.IsTrue(vms.ReadByte() == test);
+                    Assert.AreEqual(test, vms.ReadByte());
                 }
             }
         }
@@ -85,17 +85,17 @@ namespace VNLib.Utils.IO.Tests
         {
             using VnMemoryStream vms = new(MemoryUtil.Shared, 0, false);
 
-            Assert.IsTrue(vms.CanWrite == true);
+            Assert.IsTrue(vms.CanWrite);
 
             //Convert to readonly
             _ = VnMemoryStream.CreateReadonly(vms);
 
-            Assert.IsTrue(vms.CanSeek == true);
-            Assert.IsTrue(vms.CanRead == true);
-            Assert.IsTrue(vms.CanWrite == false);
+            Assert.IsTrue(vms.CanSeek);
+            Assert.IsTrue(vms.CanRead);
+            Assert.IsFalse(vms.CanWrite);
 
             //Try to write
-            Assert.ThrowsException<NotSupportedException>(() => vms.WriteByte(0));
+            Assert.ThrowsExactly<NotSupportedException>(() => vms.WriteByte(0));
 
         }
 

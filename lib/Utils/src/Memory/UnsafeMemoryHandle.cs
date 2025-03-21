@@ -222,16 +222,16 @@ namespace VNLib.Utils.Memory
         {
             ArgumentOutOfRangeException.ThrowIfNegative(start);
             ArgumentOutOfRangeException.ThrowIfNegative(length);
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(length - start, _length);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(start + length, _length);            
 
             /*
              * If the handle is empty, a null ref should be returned. The 
              * check above will gaurd against calling this function on non-empty
              * handles. So adding 0 to 0 on the reference should not cause any issues.
              */
-            
+
             return MemoryMarshal.CreateSpan(
-                ref Unsafe.Add(ref GetReference(), start), 
+                ref Unsafe.Add(ref GetReference(), start),
                 length
             );
         }
