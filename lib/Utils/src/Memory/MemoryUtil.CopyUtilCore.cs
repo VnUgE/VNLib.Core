@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -39,18 +39,11 @@ namespace VNLib.Utils.Memory
     {
         private static class CopyUtilCore
         {
-            const nuint _avx32ByteAlignment = 0x20u;
-
-            private static readonly ReflectedInternalMemmove _reflectedMemmove = new();
-            private static readonly FallbackUnsafeMemmove _fallbackMemmove = new();
-            private static readonly FallbackBufferCopy _bufferCopy = new();
-            private static readonly AvxCopyStrategy _avxCopy = new();
-
             /// <summary>
             /// Gets a value that indicates if the platform supports hardware 
             /// acceleration for memmove operations.
             /// </summary>
-            public static readonly bool IsHwAccelerationSupported = _avxCopy.Features.HasFlag(CopyFeatures.HwAccelerated);
+            public static readonly bool IsHwAccelerationSupported = AvxCopyStrategy.Features.HasFlag(CopyFeatures.HwAccelerated);
 
             /*
              * The following function allows callers to determine if a memmove 
@@ -80,12 +73,12 @@ namespace VNLib.Utils.Memory
                  * Otherwise if accleration is forced, pinning will always be required.
                  */
 
-                if(byteSize > uint.MaxValue && _reflectedMemmove.Features == CopyFeatures.NotSupported)
+                if (byteSize > uint.MaxValue && ReflectedInternalMemmove.Features == CopyFeatures.NotSupported)
                 {
                     return true;
                 }
 
-                if((forceAcceleration || Is32ByteAligned(byteSize)) && _avxCopy.Features != CopyFeatures.NotSupported)
+                if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteSize))
                 {
                     return true;
                 }
@@ -117,7 +110,7 @@ namespace VNLib.Utils.Memory
                 Debug.Assert(!Unsafe.IsNullRef(in srcByte), "Null source reference passed to MemmoveByRef");
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
-                _fallbackMemmove.Memmove(in srcByte, ref dstByte, byteCount);
+                FallbackUnsafeMemmove.Memmove(in srcByte, ref dstByte, byteCount);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -127,53 +120,41 @@ namespace VNLib.Utils.Memory
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
                 //Check for 64bit copy (should get optimized away when sizeof(nuint == uint) aka 32bit platforms)
-                if(byteCount > uint.MaxValue)
+                if (byteCount > uint.MaxValue)
                 {
                     //We need a 64bit copy strategy
-                    if(forceAcceleration || Is32ByteAligned(byteCount))
+                    if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteCount))
                     {
-                        //Must be supported
-                        if(_avxCopy.Features != CopyFeatures.NotSupported)
-                        {
-                            _avxCopy.Memmove(in srcByte, ref dstByte, byteCount);
-                            return;
-                        }
+                        AvxCopyStrategy.Memmove(in srcByte, ref dstByte, byteCount);
+                        return;
                     }
 
                     //try reflected memove incase it supports 64bit blocks
-                    if(_reflectedMemmove.Features != CopyFeatures.NotSupported)
+                    if (ReflectedInternalMemmove.Features != CopyFeatures.NotSupported)
                     {
-                        _reflectedMemmove.Memmove(in srcByte, ref dstByte, byteCount);
+                        ReflectedInternalMemmove.Memmove(in srcByte, ref dstByte, byteCount);
                         return;
                     }
 
                     //Fallback to buffer copy, caller should have used pinning
-                    _bufferCopy.Memmove(in srcByte, ref dstByte, byteCount);
+                    FallbackBufferCopy.Memmove(in srcByte, ref dstByte, byteCount);
                     return;
                 }
 
                 //32byte copy
 
                 //Try hardware acceleration if supported and aligned
-                if ((forceAcceleration || Is32ByteAligned(byteCount)) && _avxCopy.Features != CopyFeatures.NotSupported)
+                if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteCount))
                 {
                     //Copy
-                    _avxCopy.Memmove(in srcByte, ref dstByte, byteCount);
+                    AvxCopyStrategy.Memmove(in srcByte, ref dstByte, byteCount);
                     return;
                 }
 
                 //fallback to unsafe.copy on 32bit copy
-                _fallbackMemmove.Memmove(in srcByte, ref dstByte, byteCount);
+                FallbackUnsafeMemmove.Memmove(in srcByte, ref dstByte, byteCount);
                 return;
-            }
-
-            /// <summary>
-            /// Determines if the given size 32-byte aligned
-            /// </summary>
-            /// <param name="size">The block size to test</param>
-            /// <returns>A value that indicates if the block size is 32byte aligned</returns>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static bool Is32ByteAligned(nuint size) => unchecked(size % _avx32ByteAlignment) == 0;
+            }        
 
             private enum CopyFeatures
             {
@@ -181,16 +162,9 @@ namespace VNLib.Utils.Memory
                 NotSupported = 1,
                 Supports64Bit = 2,
                 HwAccelerated = 4
-            }
+            }          
 
-            private interface ICopyStrategy
-            {
-                CopyFeatures Features { get; }
-
-                void Memmove(ref readonly byte src, ref byte dst, nuint byteCount);
-            }
-
-            private sealed class ReflectedInternalMemmove : ICopyStrategy
+            private static class ReflectedInternalMemmove
             {
                 /*
                 * Dirty little trick to access internal Buffer.Memmove method for 
@@ -201,35 +175,32 @@ namespace VNLib.Utils.Memory
                 private static readonly BigMemmove? _clrMemmove = ManagedLibrary.TryGetStaticMethod<BigMemmove>(typeof(Buffer), "Memmove", BindingFlags.NonPublic);
 
                 //Cache features flags
-                private readonly CopyFeatures _features = _clrMemmove is null ? CopyFeatures.NotSupported : CopyFeatures.Supports64Bit;
-
-                ///<inheritdoc/>
-                public CopyFeatures Features => _features;
+                public static readonly CopyFeatures Features = _clrMemmove is null ? CopyFeatures.NotSupported : CopyFeatures.Supports64Bit;
 
                 ///<inheritdoc/>
                 [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-                public void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
+                public static void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
                 {
                     Debug.Assert(_clrMemmove != null, "Memmove delegate is null and flags assumed is was supported");
                     _clrMemmove!.Invoke(ref dst, in src, byteCount);
                 }
             }
 
-            private sealed class FallbackUnsafeMemmove : ICopyStrategy
+            private static class FallbackUnsafeMemmove
             {
                 ///<inheritdoc/>
-                public CopyFeatures Features => CopyFeatures.None;
+                public static readonly CopyFeatures Features = CopyFeatures.None;
 
                 ///<inheritdoc/>
                 [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-                public void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
+                public static void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
                 {
                     Debug.Assert(byteCount < uint.MaxValue, "Byte count must be less than uint.MaxValue and flags assumed 64bit blocks were supported");
                     Unsafe.CopyBlock(ref dst, in src, (uint)byteCount);
                 }
             }
 
-            private sealed class FallbackBufferCopy : ICopyStrategy
+            private static class FallbackBufferCopy
             {
                 /*
                  * This class is considered a fallback because it require's a fixed
@@ -241,11 +212,11 @@ namespace VNLib.Utils.Memory
                  */
 
                 ///<inheritdoc/>
-                public CopyFeatures Features => CopyFeatures.Supports64Bit;
+                public static readonly CopyFeatures Features = CopyFeatures.Supports64Bit;
 
                 ///<inheritdoc/>
                 [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-                public void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
+                public static void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
                 {
                     /*
                      * We assume that the references passed are not null and are 
@@ -258,19 +229,20 @@ namespace VNLib.Utils.Memory
                 }
             }
 
-            private sealed class AvxCopyStrategy : ICopyStrategy
+            private sealed class AvxCopyStrategy 
             {
                 const nuint _avx32ByteAlignment = 0x20u;
 
                 //If avx is supported, then set 64bit flags and hw acceleration
-                private readonly CopyFeatures _features = Avx2.IsSupported ? CopyFeatures.HwAccelerated | CopyFeatures.Supports64Bit : CopyFeatures.NotSupported;
+                public static readonly CopyFeatures Features = Avx2.IsSupported ? CopyFeatures.HwAccelerated | CopyFeatures.Supports64Bit : CopyFeatures.NotSupported;
 
-                ///<inheritdoc/>
-                public CopyFeatures Features => _features;
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                public static bool CanAccelerate(nuint size) 
+                    => unchecked(size % _avx32ByteAlignment) == 0 && (Features & CopyFeatures.HwAccelerated) > 0;
 
                 ///<inheritdoc/>
                 [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-                public void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
+                public static void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
                 {
                     Debug.Assert(Avx2.IsSupported, "AVX2 is not supported on this platform");
                     Debug.Assert(_avx32ByteAlignment == (nuint)Vector256<byte>.Count, "AVX2 vector size is not 32 bytes");

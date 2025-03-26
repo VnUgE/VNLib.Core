@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -824,9 +824,9 @@ namespace VNLib.Utils.Memory
             
             //Use memmove by ref
             CopyUtilCore.Memmove(
-                ref Refs.AsByte(source, (nuint)sourceOffset), 
-                ref Refs.AsByte(dest, (nuint)destOffset),
-                ByteCount<T>((uint)count),
+                srcByte: ref Refs.AsByte(source, (nuint)sourceOffset), 
+                dstByte: ref Refs.AsByte(dest, (nuint)destOffset),
+                byteCount: ByteCount<T>((uint)count),
                 forceAcceleration: false
             );
         }
@@ -1011,9 +1011,9 @@ namespace VNLib.Utils.Memory
 
             //Keep all core memory related optimizations to the core class
             CopyUtilCore.SmallMemmove(
-                in Refs.AsByteR(in src, srcOffset),
-                ref Refs.AsByte(ref dst, dstOffset),
-                (uint)ByteCount<T>(elementCount)
+                srcByte: in Refs.AsByteR(in src, srcOffset),
+                dstByte: ref Refs.AsByte(ref dst, dstOffset),
+                byteCount: (uint)ByteCount<T>(elementCount)
             );
         }
 
@@ -1044,9 +1044,9 @@ namespace VNLib.Utils.Memory
             }
 
             CopyUtilCore.Memmove(
-                in Refs.AsByteR(in src, srcOffset),
-                ref Refs.AsByte(ref dst, dstOffset),
-                ByteCount<T>(elementCount),
+                srcByte: in Refs.AsByteR(in src, srcOffset),
+                dstByte: ref Refs.AsByte(ref dst, dstOffset),
+                byteCount: ByteCount<T>(elementCount),
                 forceAcceleration: false
             );
         }
@@ -1087,17 +1087,17 @@ namespace VNLib.Utils.Memory
             }
 
             CopyUtilCore.Memmove(
-                in Refs.AsByteR(in src, srcOffset),
-                ref Refs.AsByte(ref dst, dstOffset),
-                ByteCount<T>(elementCount),
-                CopyUtilCore.IsHwAccelerationSupported
+                srcByte: in Refs.AsByteR(in src, srcOffset),
+                dstByte: ref Refs.AsByte(ref dst, dstOffset),
+                byteCount: ByteCount<T>(elementCount),
+                forceAcceleration: CopyUtilCore.IsHwAccelerationSupported
             );
         }
        
         private static void MemmoveInternal<T, TSrc, TDst>(ref readonly TSrc src, ref readonly TDst dst, nuint elementCount, bool forceAcceleration) 
             where T : unmanaged
-            where TSrc: I64BitBlock
-            where TDst: I64BitBlock
+            where TSrc : I64BitBlock
+            where TDst : I64BitBlock
         {
             //Validate source/dest arguments
             src.Validate(elementCount);
@@ -1112,15 +1112,15 @@ namespace VNLib.Utils.Memory
             * better pinning performance for handles that that have zero-cost pinning
             * such as unmanaged blocks.
             */
-            if(CopyUtilCore.RequiresPinning(byteCount, forceAcceleration))
+            if (CopyUtilCore.RequiresPinning(byteCount, forceAcceleration))
             {
                 //Pin before calling memmove
                 using MemoryHandle srcH = src.Pin();
                 using MemoryHandle dstH = dst.Pin();
 
                 CopyUtilCore.Memmove(
-                    in Refs.AsByte<T>(srcH.Pointer, src.Offset),
-                    ref Refs.AsByte<T>(dstH.Pointer, dst.Offset),
+                    srcByte: in Refs.AsByte<T>(srcH.Pointer, src.Offset),
+                    dstByte: ref Refs.AsByte<T>(dstH.Pointer, dst.Offset),
                     byteCount,
                     forceAcceleration
                 );
@@ -1129,8 +1129,8 @@ namespace VNLib.Utils.Memory
             {
                 //Reference based memmove
                 CopyUtilCore.Memmove(
-                    in src.GetOffsetRef(),
-                    ref dst.GetOffsetRef(),
+                    srcByte: in src.GetOffsetRef(),
+                    dstByte: ref dst.GetOffsetRef(),
                     byteCount,
                     forceAcceleration
                 );
