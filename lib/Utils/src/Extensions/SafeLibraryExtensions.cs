@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -32,25 +32,18 @@ namespace VNLib.Utils.Extensions
     /// <summary>
     /// When applied to a delegate, specifies the name of the native method to load
     /// </summary>
+    /// <remarks>
+    /// Creates a new <see cref="SafeMethodNameAttribute"/>
+    /// </remarks>
+    /// <param name="MethodName">The name of the native method</param>
     [AttributeUsage(AttributeTargets.Delegate)]
-    public sealed class SafeMethodNameAttribute : Attribute
+    public sealed class SafeMethodNameAttribute(string MethodName) : Attribute
     {
-        /// <summary>
-        /// Creates a new <see cref="SafeMethodNameAttribute"/>
-        /// </summary>
-        /// <param name="MethodName">The name of the native method</param>
-        public SafeMethodNameAttribute(string MethodName) => this.MethodName = MethodName;
-        /// <summary>
-        /// Creates a new <see cref="SafeMethodNameAttribute"/>, that uses the 
-        /// delegate name as the native method name
-        /// </summary>
-        public SafeMethodNameAttribute() => MethodName = null;
         /// <summary>
         /// The name of the native method
         /// </summary>
-        public string? MethodName { get; }
+        public string? MethodName { get; } = MethodName;
     }
-    
 
     /// <summary>
     /// Contains native library extension methods
@@ -58,20 +51,6 @@ namespace VNLib.Utils.Extensions
     public static class SafeLibraryExtensions
     {
         const string _missMemberExceptionMessage = $"The delegate type is missing the required {nameof(SafeMethodNameAttribute)} to designate the native method to load";
-
-        /// <summary>
-        /// Loads a native method from the current <see cref="SafeLibraryHandle"/>
-        /// that has a <see cref="SafeMethodNameAttribute"/> 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="library"></param>
-        /// <returns></returns>
-        /// <exception cref="MissingMemberException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        /// <exception cref="EntryPointNotFoundException"></exception>
-        [Obsolete("Use GetFunction<T>() extension instead")]
-        public static SafeMethodHandle<T> GetMethod<T>(this SafeLibraryHandle library) where T : Delegate
-         => GetFunction<T>(library);
 
         /// <summary>
         /// Loads a native function from the current <see cref="SafeLibraryHandle"/>
@@ -92,24 +71,7 @@ namespace VNLib.Utils.Extensions
             SafeMethodNameAttribute? attr = t.GetCustomAttribute<SafeMethodNameAttribute>();
             _ = attr ?? throw new MissingMemberException(_missMemberExceptionMessage);
             return library.GetFunction<T>(attr.MethodName ?? t.Name);
-        }
-
-        /// <summary>
-        /// Loads a native method from the current <see cref="SafeLibraryHandle"/>
-        /// that has a <see cref="SafeMethodNameAttribute"/> 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="library"></param>
-        /// <returns></returns>
-        /// <exception cref="MissingMemberException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        /// <exception cref="EntryPointNotFoundException"></exception>
-        /// <remarks>
-        /// The libraries handle count is left unmodified
-        /// </remarks>
-        [Obsolete("Use DangerousGetFunction<T>() extension instead")]
-        public static T DangerousGetMethod<T>(this SafeLibraryHandle library) where T: Delegate
-            => DangerousGetFunction<T>(library);
+        }    
 
         /// <summary>
         /// Loads a native method from the current <see cref="SafeLibraryHandle"/>
