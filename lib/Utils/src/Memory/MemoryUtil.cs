@@ -27,6 +27,7 @@ using System.Buffers;
 using System.Security;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
@@ -1093,8 +1094,8 @@ namespace VNLib.Utils.Memory
                 forceAcceleration: CopyUtilCore.IsHwAccelerationSupported
             );
         }
-       
-        private static void MemmoveInternal<T, TSrc, TDst>(ref readonly TSrc src, ref readonly TDst dst, nuint elementCount, bool forceAcceleration) 
+
+        private static void MemmoveInternal<T, TSrc, TDst>(ref readonly TSrc src, ref readonly TDst dst, nuint elementCount, bool forceAcceleration)
             where T : unmanaged
             where TSrc : I64BitBlock
             where TDst : I64BitBlock
@@ -1105,13 +1106,13 @@ namespace VNLib.Utils.Memory
 
             nuint byteCount = ByteCount<T>(elementCount);
 
-           /*
-            * The internal copy strategy may require buffers to be pinned in memory 
-            * instead of references based. We can pin the handles now to use a 
-            * memoryHandle pointer instead of fixing a reference. This can offer
-            * better pinning performance for handles that that have zero-cost pinning
-            * such as unmanaged blocks.
-            */
+            /*
+             * The internal copy strategy may require buffers to be pinned in memory 
+             * instead of references based. We can pin the handles now to use a 
+             * memoryHandle pointer instead of fixing a reference. This can offer
+             * better pinning performance for handles that that have zero-cost pinning
+             * such as unmanaged blocks.
+             */
             if (CopyUtilCore.RequiresPinning(byteCount, forceAcceleration))
             {
                 //Pin before calling memmove
@@ -1152,6 +1153,184 @@ namespace VNLib.Utils.Memory
                 throw new ArgumentNullException(argName);
             }
         }
+
+        #endregion
+
+        #region Mlock
+
+        [SupportedOSPlatform("linux")]
+        [LibraryImport("libc")]
+        private static partial ERRNO mlock(void* addr, nuint size);
+
+        [SupportedOSPlatform("linux")]
+        [LibraryImport("libc")]
+        private static partial ERRNO munlock(void* addr, nuint size);
+
+        [SupportedOSPlatform("windows")]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static partial bool VirtualLock(IntPtr lpAddress, nuint dwSize);
+
+        [SupportedOSPlatform("windows")]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static partial bool VirtualUnlock(IntPtr lpAddress, nuint dwSize);
+
+        /// <summary>
+        /// Locks a region of virtual memory into physical memory, preventing it from being paged to disk
+        /// </summary>
+        /// <param name="addr">The base address of the memory region to lock</param>
+        /// <param name="size">The size in bytes of the memory region to lock</param>
+        /// <returns>True if the memory was successfully locked, false otherwise</returns>
+        /// <remarks>
+        /// This method is only available on Linux and Windows platforms.
+        /// On Linux, it calls the mlock function, which returns 0 on success.
+        /// On Windows, it calls the VirtualLock function.
+        /// Returns false if the address is null or the size is zero.
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        [SupportedOSPlatform("windows")]
+        public static bool LockMemory(nint addr, nuint size)
+        {
+            // cant lock zero bytes or null address
+            if (addr == 0 || size == 0)
+            {
+                return false;
+            }
+
+            if (OperatingSystem.IsWindows())
+            {
+                return VirtualLock(addr, size);
+            }
+
+            if (OperatingSystem.IsLinux())
+            {
+                // munlock returns 0 when successful
+                return mlock((void*)addr, size) == 0;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Locks a memory handle's memory region into physical memory, preventing it from being paged to disk
+        /// </summary>
+        /// <typeparam name="T">The unmanaged datatype</typeparam>
+        /// <param name="handle">The memory handle to lock</param>
+        /// <returns>True if the memory was successfully locked, false otherwise</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="handle"/> is null</exception>
+        /// <remarks>
+        /// This method is only available on Linux and Windows platforms.
+        /// Returns false if the handle is empty, closed, or invalid.
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        [SupportedOSPlatform("windows")]
+        public static bool LockMemory<T>(MemoryHandle<T> handle) where T : unmanaged
+        {
+            ArgumentNullException.ThrowIfNull(handle);
+
+            if (handle.IsClosed || handle.IsInvalid)
+            {
+                return false;
+            }
+
+            return LockMemory(handle.BasePtr, handle.ByteLength);
+        }
+
+        /// <summary>
+        /// Locks a memory region referenced by a MemoryHandle into physical memory, 
+        /// preventing it from being paged to disk
+        /// </summary>
+        /// <param name="addr">A reference to the memory handle pointing to memory to lock</param>
+        /// <param name="size">The size in bytes of the memory region to lock</param>
+        /// <returns>True if the memory was successfully locked, false otherwise</returns>
+        /// <remarks>
+        /// This method is only available on Linux and Windows platforms.
+        /// It extracts the pointer from the memory handle and delegates to the
+        /// <see cref="LockMemory(nint, nuint)"/> method.
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        [SupportedOSPlatform("windows")]
+        public static bool LockMemory(ref readonly MemoryHandle addr, nuint size)
+            => LockMemory(GetIntptr(in addr), size);
+
+        /// <summary>
+        /// Unlocks a previously locked region of virtual memory on the system
+        /// that was locked by calling <see cref="LockMemory{T}(MemoryHandle{T})"/>
+        /// </summary>
+        /// <typeparam name="T">The unmanaged datatype</typeparam>
+        /// <param name="handle">The memory handle that was previously locked</param>
+        /// <returns>True if the memory was successfully unlocked, false otherwise</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="handle"/> is null</exception>
+        /// <remarks>
+        /// This method is only available on Linux and Windows platforms.
+        /// Returns false if the handle is empty, closed, or invalid.
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        [SupportedOSPlatform("windows")]
+        public static bool UnlockMemory<T>(MemoryHandle<T> handle) where T : unmanaged
+        {
+            ArgumentNullException.ThrowIfNull(handle);
+
+            if (handle.IsClosed || handle.IsInvalid)
+            {
+                return false;
+            }
+
+            return UnlockMemory(handle.BasePtr, handle.ByteLength);
+        }
+
+        /// <summary>
+        /// Unlocks a previously locked region of virtual memory on the system
+        /// </summary>
+        /// <param name="addr">The base address of the memory region to unlock</param>
+        /// <param name="size">The size in bytes of the memory region to unlock</param>
+        /// <returns>True if the memory was successfully unlocked, false otherwise</returns>
+        /// <remarks>
+        /// This method is only available on Linux and Windows platforms.
+        /// On Linux, it calls the munlock function, which returns 0 on success.
+        /// On Windows, it calls the VirtualUnlock function.
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        [SupportedOSPlatform("windows")]
+        public static bool UnlockMemory(nint addr, nuint size)
+        {
+            // cant unlock zero bytes or null address
+            if (addr == 0 || size == 0)
+            {
+                return false;
+            }
+
+            if (OperatingSystem.IsLinux())
+            {
+                //munlock returns 0 when successful
+                return munlock((void*)addr, size) == 0;
+            }
+
+            if (OperatingSystem.IsWindows())
+            {
+                return VirtualUnlock(addr, size);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Unlocks a previously locked region of virtual memory on the system
+        /// </summary>
+        /// <param name="memHandle">A reference to the memory handle to unlock</param>
+        /// <param name="size">The size in bytes of the memory region to unlock</param>
+        /// <returns>True if the memory was successfully unlocked, false otherwise</returns>
+        /// <remarks>
+        /// This method is only available on Linux and Windows platforms.
+        /// It extracts the pointer from the memory handle and delegates to the
+        /// <see cref="UnlockMemory(nint, nuint)"/> method.
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        [SupportedOSPlatform("windows")]
+        public static bool UnlockMemory(ref readonly MemoryHandle memHandle, nuint size)
+            => UnlockMemory(GetIntptr(in memHandle), size);
+
 
         #endregion
 
