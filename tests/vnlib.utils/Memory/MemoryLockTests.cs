@@ -1,7 +1,6 @@
 using System;
 using System.Buffers;
 using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -15,8 +14,6 @@ namespace VNLib.Utils.Memory.Tests
         private const int TEST_BLOCK_SIZE = 4096; // Typical page size
 
         [TestMethod]
-        [SupportedOSPlatform("windows")]
-        [SupportedOSPlatform("linux")]
         public void LockMemoryNintAddrTest()
         {
             // Only run on supported platforms
@@ -49,8 +46,6 @@ namespace VNLib.Utils.Memory.Tests
         }
 
         [TestMethod]
-        [SupportedOSPlatform("windows")]
-        [SupportedOSPlatform("linux")]
         public void LockMemoryHandleTest()
         {
             // Only run on supported platforms
@@ -76,8 +71,6 @@ namespace VNLib.Utils.Memory.Tests
         }
 
         [TestMethod]
-        [SupportedOSPlatform("windows")]
-        [SupportedOSPlatform("linux")]
         public void LockMemoryHandleRefTest()
         {
             // Only run on supported platforms
@@ -105,8 +98,6 @@ namespace VNLib.Utils.Memory.Tests
         }
 
         [TestMethod]
-        [SupportedOSPlatform("windows")]
-        [SupportedOSPlatform("linux")]
         public void UnlockMemoryHandleRefTest()
         {
             // Only run on supported platforms
