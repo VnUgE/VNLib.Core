@@ -1254,31 +1254,6 @@ namespace VNLib.Utils.Memory
         public static bool LockMemory(ref readonly MemoryHandle addr, nuint size)
             => LockMemory(GetIntptr(in addr), size);
 
-        /// <summary>
-        /// Unlocks a previously locked region of virtual memory on the system
-        /// that was locked by calling <see cref="LockMemory{T}(MemoryHandle{T})"/>
-        /// </summary>
-        /// <typeparam name="T">The unmanaged datatype</typeparam>
-        /// <param name="handle">The memory handle that was previously locked</param>
-        /// <returns>True if the memory was successfully unlocked, false otherwise</returns>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="handle"/> is null</exception>
-        /// <remarks>
-        /// This method is only available on Linux and Windows platforms.
-        /// Returns false if the handle is empty, closed, or invalid.
-        /// </remarks>
-        [SupportedOSPlatform("linux")]
-        [SupportedOSPlatform("windows")]
-        public static bool UnlockMemory<T>(MemoryHandle<T> handle) where T : unmanaged
-        {
-            ArgumentNullException.ThrowIfNull(handle);
-
-            if (handle.IsClosed || handle.IsInvalid)
-            {
-                return false;
-            }
-
-            return UnlockMemory(handle.BasePtr, handle.ByteLength);
-        }
 
         /// <summary>
         /// Unlocks a previously locked region of virtual memory on the system
@@ -1313,6 +1288,32 @@ namespace VNLib.Utils.Memory
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Unlocks a previously locked region of virtual memory on the system
+        /// that was locked by calling <see cref="LockMemory{T}(MemoryHandle{T})"/>
+        /// </summary>
+        /// <typeparam name="T">The unmanaged datatype</typeparam>
+        /// <param name="handle">The memory handle that was previously locked</param>
+        /// <returns>True if the memory was successfully unlocked, false otherwise</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="handle"/> is null</exception>
+        /// <remarks>
+        /// This method is only available on Linux and Windows platforms.
+        /// Returns false if the handle is empty, closed, or invalid.
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        [SupportedOSPlatform("windows")]
+        public static bool UnlockMemory<T>(MemoryHandle<T> handle) where T : unmanaged
+        {
+            ArgumentNullException.ThrowIfNull(handle);
+
+            if (handle.IsClosed || handle.IsInvalid)
+            {
+                return false;
+            }
+
+            return UnlockMemory(handle.BasePtr, handle.ByteLength);
         }
 
         /// <summary>
