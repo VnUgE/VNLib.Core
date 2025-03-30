@@ -105,28 +105,26 @@ namespace VNLib.Utils.Memory
         public static IUnmangedHeap Shared => _lazyHeap.Instance;       
 
 
-        private static readonly LazyInitializer<IUnmangedHeap> _lazyHeap = InitHeapInternal();
+        private static readonly LazyInitializer<IUnmangedHeap> _lazyHeap = new(InitSharedHeapInternal);
 
         //Avoiding static initializer
-        private static LazyInitializer<IUnmangedHeap> InitHeapInternal()
+        private static IUnmangedHeap InitSharedHeapInternal()
         {
             //Get env for heap diag
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_GLOBAL_ZERO), out ERRNO globalZero);
-           
+
             Trace.WriteLineIf(diagEnable, "Shared heap diagnostics enabled");
             Trace.WriteLineIf(globalZero, "Shared heap global zero enabled");
 
-            return new(() =>
-            {
-                //Init shared heap instance
-                IUnmangedHeap heap = InitHeapInternal(true, diagEnable, globalZero);
+            //Init shared heap instance
+            IUnmangedHeap heap = InitHeapInternal(isShared: true, globalZero);
 
-                //Register domain unload event
-                AppDomain.CurrentDomain.DomainUnload += (_, _) => heap.Dispose();
+            //Register domain unload event
+            AppDomain.CurrentDomain.DomainUnload += (_, _) => heap.Dispose();
 
-                return heap;
-            });            
+            // Enable diagnostics if requested
+            return diagEnable ? new TrackedHeapWrapper(heap, true) : heap;
         }
 
         /// <summary>
@@ -156,9 +154,9 @@ namespace VNLib.Utils.Memory
         /// <exception cref="SystemException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
         public static IUnmangedHeap InitializeNewHeapForProcess(bool globalZero = false) 
-            => InitHeapInternal(false, false, globalZero);
+            => InitHeapInternal(false, globalZero);
 
-        private static IUnmangedHeap InitHeapInternal(bool isShared, bool enableStats, bool globalZero)
+        private static IUnmangedHeap InitHeapInternal(bool isShared, bool globalZero)
         {
             //Get environment varable
             string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
@@ -217,8 +215,7 @@ namespace VNLib.Utils.Memory
                 heap = new ProcessHeap();
             }
 
-            //Enable heap statistics
-            return enableStats ? new TrackedHeapWrapper(heap, true) : heap;
+            return heap;
         }
 
         /// <summary>
@@ -236,7 +233,7 @@ namespace VNLib.Utils.Memory
 
             //Call init block on bytes
             Unsafe.InitBlock(
-                ref Refs.AsByte(ref src, 0),
+                startAddress: ref Refs.AsByte(ref src, 0),
                 value: 0,
                 byteCount: ByteCount<T>(elements)
             );
@@ -256,8 +253,8 @@ namespace VNLib.Utils.Memory
             }
 
             ZeroByRef(
-               ref MemoryMarshal.GetReference(block),  //Get typed reference
-               (uint)block.Length  //block must be a positive value
+               src: ref MemoryMarshal.GetReference(block),  //Get typed reference
+               elements: (uint)block.Length  //block must be a positive value
            );
         }
 
@@ -496,8 +493,8 @@ namespace VNLib.Utils.Memory
 
             //Memmove
             Unsafe.CopyBlockUnaligned(
-                ref target, 
-                in Unsafe.As<T, byte>(ref Unsafe.AsRef(in source)),     //Recover byte reference to struct
+                destination: ref target, 
+                source: in Unsafe.As<T, byte>(ref Unsafe.AsRef(in source)),     //Recover byte reference to struct
                 byteCount: ByteCount<T>(1u)
             );
         }
@@ -705,8 +702,8 @@ namespace VNLib.Utils.Memory
             ThrowIfNullRef(ref target, nameof(target));
 
             Unsafe.CopyBlockUnaligned(
-                ref Refs.AsByte(ref target, 0), 
-                in Refs.AsByteR(in source, 0), 
+                destination: ref Refs.AsByte(ref target, 0), 
+                source: in Refs.AsByteR(in source, 0), 
                 byteCount: ByteCount<T>(1u)
             );
         }
@@ -742,8 +739,8 @@ namespace VNLib.Utils.Memory
         /// <param name="sourceOffset">Source offset</param>
         /// <param name="destOffset">Dest offset</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(ReadOnlySpan<T> source, int sourceOffset, IMemoryHandle<T> dest, nuint destOffset, int count) 
-            where T: struct
+        public static void Copy<T>(ReadOnlySpan<T> source, int sourceOffset, IMemoryHandle<T> dest, nuint destOffset, int count)
+            where T : struct
         {
             ArgumentNullException.ThrowIfNull(dest);
 
@@ -755,12 +752,12 @@ namespace VNLib.Utils.Memory
             //Check bounds (will verify that count is a positive integer)
             CheckBounds(source, sourceOffset, count);
             CheckBounds(dest, destOffset, (uint)count);
-           
+
             //Use memmove by ref
             CopyUtilCore.Memmove(
-                ref Refs.AsByte(source, (nuint)sourceOffset),
-                ref Refs.AsByte(dest, destOffset),
-                ByteCount<T>((uint)count),
+                srcByte: ref Refs.AsByte(source, (nuint)sourceOffset),
+                dstByte: ref Refs.AsByte(dest, destOffset),
+                byteCount: ByteCount<T>((uint)count),
                 forceAcceleration: false
             );
         }
@@ -1339,7 +1336,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, nuint elementOffset)
         {
-            ArgumentNullException.ThrowIfNull(array, nameof(array));
+            ArgumentNullException.ThrowIfNull(array);
 
             //Quick verify index exists, may be the very last index
             CheckBounds(array, elementOffset, 1);
