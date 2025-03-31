@@ -35,11 +35,18 @@ namespace VNLib.Utils.Memory.Tests
         [TestMethod()]
         public void InitializeNewHeapForProcessTest()
         {
+            /*
+             * Testing for true private heap was removed because not all heap 
+             * managers support private first class heaps, so they all must have 
+             * the shared flag set.
+             * 
+             * Really it's up to the user to test heap flags to ensure they are
+             * suitable for their use case.
+             */
+
             //Test default private heap allocation
             using (IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess())
-            {
-                //Ensure that this heap is a private heap (not shared) and global zero is not set
-                Assert.IsFalse(heap.CreationFlags.HasFlag(HeapCreation.Shared));
+            {                
                 Assert.IsFalse(heap.CreationFlags.HasFlag(HeapCreation.GlobalZero));
 
                 //Test alloc
@@ -61,9 +68,7 @@ namespace VNLib.Utils.Memory.Tests
              * be guarunteed the heap imp will return blocks from the dirty area. 
              */
             using (IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess(globalZero: true))
-            {
-                //Ensure that this heap is a private heap (not shared) and global zero is set
-                Assert.IsFalse(heap.CreationFlags.HasFlag(HeapCreation.Shared));
+            {               
                 Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.GlobalZero));
 
                 //Test alloc with zero flag unset
