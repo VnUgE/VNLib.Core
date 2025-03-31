@@ -118,7 +118,11 @@ namespace VNLib.Utils.Memory
             Trace.WriteLineIf(globalZero, "Shared heap global zero enabled");
 
             //Init shared heap instance
-            IUnmangedHeap heap = InitHeapInternal(isShared: true, globalZero);
+            IUnmangedHeap heap = InitHeapInternal(
+                //Supply suggested arguments to the heap library, it can clear or set them as needed
+                HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc | HeapCreation.Shared,
+                globalZero
+            );
 
             //Register domain unload event
             AppDomain.CurrentDomain.DomainUnload += (_, _) => heap.Dispose();
@@ -154,29 +158,20 @@ namespace VNLib.Utils.Memory
         /// <exception cref="SystemException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
         public static IUnmangedHeap InitializeNewHeapForProcess(bool globalZero = false) 
-            => InitHeapInternal(false, globalZero);
+            => InitHeapInternal(
+                // Set default flags, the heap lib can clear or set them as needed. Default is a private heap.
+                HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc,
+                globalZero
+            );
 
-        private static IUnmangedHeap InitHeapInternal(bool isShared, bool globalZero)
+        private static IUnmangedHeap InitHeapInternal(HeapCreation defaultFlags, bool globalZero)
         {
             //Get environment varable
             string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
             string? rawFlagsEnv = Environment.GetEnvironmentVariable(SHARED_HEAP_RAW_FLAGS);
-
-            //Default flags
-            HeapCreation cFlags = HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc;
-
-            /*
-            * We need to set the shared flag and the synchronziation flag.
-            * 
-            * The heap impl may reset the synchronziation flag if it does not 
-            * need serialziation
-            */
-            cFlags |= isShared ? HeapCreation.Shared : HeapCreation.None;
-
+        
             //Set global zero flag if requested
-            cFlags |= globalZero ? HeapCreation.GlobalZero : HeapCreation.None;
-
-            IUnmangedHeap heap;
+            defaultFlags |= globalZero ? HeapCreation.GlobalZero : HeapCreation.None;
 
             ERRNO userFlags = 0;
 
@@ -190,7 +185,7 @@ namespace VNLib.Utils.Memory
             if (!string.IsNullOrWhiteSpace(heapDllPath))
             {
                 //Attempt to load the heap
-                heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, userFlags);
+                return NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, defaultFlags, userFlags);
             }
             //No user heap was specified, use fallback on windows
             else if (OperatingSystem.IsWindows())
@@ -207,15 +202,13 @@ namespace VNLib.Utils.Memory
                 }
 
                 //Create win32 private heap
-                heap = Win32PrivateHeap.Create(defaultSize, cFlags, flags:userFlags); 
+                return Win32PrivateHeap.Create(defaultSize, defaultFlags, flags:userFlags); 
             }
             else
             {
                 //Finally fallback to .NET native mem impl 
-                heap = new ProcessHeap();
+                return new ProcessHeap();
             }
-
-            return heap;
         }
 
         /// <summary>
@@ -1536,6 +1529,7 @@ namespace VNLib.Utils.Memory
 
         private static class Refs
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(void* ptr, nuint elementOffset) where T : unmanaged
             {
                 //Compute the pointer offset and return the reference
@@ -1544,18 +1538,21 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.AsRef<byte>(ptr);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(ref T ptr, nuint elementOffset)
             {
                 ref T offset = ref Unsafe.Add(ref ptr, elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByteR<T>(scoped ref readonly T ptr, nuint elementOffset)
             {
                 ref T offset = ref Unsafe.Add(ref Unsafe.AsRef(in ptr), elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(T[] arr, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetArrayDataReference(arr);
@@ -1563,6 +1560,7 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(Span<T> span, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetReference(span);
@@ -1570,6 +1568,7 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetReference(span);
@@ -1577,6 +1576,7 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset)
             {
                 ref T ptr = ref handle.GetReference();
