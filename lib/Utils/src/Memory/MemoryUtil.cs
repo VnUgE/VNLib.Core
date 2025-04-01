@@ -207,7 +207,7 @@ namespace VNLib.Utils.Memory
             else
             {
                 //Finally fallback to .NET native mem impl 
-                return new ProcessHeap();
+                return new ProcessHeap(defaultFlags);
             }
         }
 
