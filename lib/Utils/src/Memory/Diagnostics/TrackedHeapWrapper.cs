@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -31,20 +31,23 @@ namespace VNLib.Utils.Memory.Diagnostics
     /// A wrapper for <see cref="IUnmangedHeap"/> that tracks 
     /// statistics for memory allocations.
     /// </summary>
-    public class TrackedHeapWrapper : VnDisposeable, IUnmangedHeap
+    /// <remarks>
+    /// Creates a new diagnostics wrapper for the heap
+    /// </remarks>
+    /// <param name="heap">The heap to gather statistics on</param>
+    /// <param name="ownsHeap">If true, the wrapper will dispose the heap when disposed</param>
+    public class TrackedHeapWrapper(IUnmangedHeap heap, bool ownsHeap) : VnDisposeable, IUnmangedHeap
     {
-        private readonly IUnmangedHeap _heap;
-        private readonly bool _ownsHeap;
-        private readonly object _statsLock;
-        private readonly ConcurrentDictionary<IntPtr, ulong> _table;
+        private readonly object _statsLock = new();
+        private readonly ConcurrentDictionary<IntPtr, ulong> _table = new();
 
         ///<inheritdoc/>
-        public HeapCreation CreationFlags => _heap.CreationFlags;
+        public HeapCreation CreationFlags => heap.CreationFlags;
 
         /// <summary>
         /// Gets the underlying heap
         /// </summary>
-        protected IUnmangedHeap Heap => _heap;
+        protected IUnmangedHeap Heap => heap;
 
         /// <summary>
         /// Gets the internal lock held when updating statistics
@@ -53,26 +56,10 @@ namespace VNLib.Utils.Memory.Diagnostics
         protected object StatsLock => _statsLock;
 
         /* Stats block */
-        private ulong _alloctedBytes;
+        private ulong _allocatedBytes;
         private ulong _maxBlockSize;
         private ulong _maxHeapSize;
-        private ulong _minBlockSize;
-       
-
-        /// <summary>
-        /// Creates a new diagnostics wrapper for the heap
-        /// </summary>
-        /// <param name="heap">The heap to gather statistics on</param>
-        /// <param name="ownsHeap">If true, the wrapper will dispose the heap when disposed</param>
-        public TrackedHeapWrapper(IUnmangedHeap heap, bool ownsHeap)
-        {
-            _statsLock = new();
-            _table = new();
-            _heap = heap;
-            //Default min block size to max
-            _minBlockSize = ulong.MaxValue;
-            _ownsHeap = ownsHeap;
-        }
+        private ulong _minBlockSize = ulong.MaxValue;
 
         /// <summary>
         /// Captures the current state of the heap.
@@ -85,11 +72,11 @@ namespace VNLib.Utils.Memory.Diagnostics
             {
                 return new()
                 {
-                    AllocatedBytes = _alloctedBytes,
+                    AllocatedBytes = _allocatedBytes,
                     MaxBlockSize = _maxBlockSize,
                     MaxHeapSize = _maxHeapSize,
                     MinBlockSize = _minBlockSize,
-                    //The number of elements in the table is the number of tacked blocks
+                    //The number of elements in the table is the number of tracked blocks
                     AllocatedBlocks = (ulong)_table.Count
                 };
             }
@@ -100,10 +87,10 @@ namespace VNLib.Utils.Memory.Diagnostics
         {
             //Calc the number of bytes allocated
             ulong bytes = checked((ulong)elements * (ulong)size);
-            
+
             //Alloc the block
             IntPtr block = Heap.Alloc(elements, size, zero);
-            
+
             //Store number of bytes allocated
             _table[block] = bytes;
 
@@ -118,26 +105,26 @@ namespace VNLib.Utils.Memory.Diagnostics
         private void UpdateStats(ulong bytes)
         {
             //Update stats
-            _alloctedBytes += bytes;
+            _allocatedBytes += bytes;
             _maxBlockSize = Math.Max(_maxBlockSize, bytes);
-            _maxHeapSize = Math.Max(_maxHeapSize, _alloctedBytes);
+            _maxHeapSize = Math.Max(_maxHeapSize, _allocatedBytes);
             _minBlockSize = Math.Min(_minBlockSize, bytes);
         }
 
         ///<inheritdoc/>
         protected override void Free()
         {
-            if(_ownsHeap)
+            if (ownsHeap)
             {
-                _heap.Dispose();
+                heap.Dispose();
             }
         }
 
         ///<inheritdoc/>
         public bool Free(ref IntPtr block)
         {
-            //Remvoe the block from the table, if it has already been freed, raise exception
-            if(!_table.TryRemove(block, out ulong bytes))
+            //Remove the block from the table, if it has already been freed, raise exception
+            if (!_table.TryRemove(block, out ulong bytes))
             {
                 throw new IllegalHeapOperationException($"Double free detected. The block {block:x} has already been freed.");
             }
@@ -148,7 +135,7 @@ namespace VNLib.Utils.Memory.Diagnostics
             //Update stats
             lock (_statsLock)
             {
-                _alloctedBytes -= bytes;
+                _allocatedBytes -= bytes;
             }
 
             return result;
@@ -159,8 +146,8 @@ namespace VNLib.Utils.Memory.Diagnostics
         {
             //Store old block pointer
             IntPtr oldBlock = block;
-            
-            //Cacl new size 
+
+            //Calc new size 
             ulong newSize = checked((ulong)size * (ulong)elements);
 
             //resize the block
@@ -175,8 +162,8 @@ namespace VNLib.Utils.Memory.Diagnostics
             lock (_statsLock)
             {
                 //Remove old ref
-                _alloctedBytes -= oldSize;
-                
+                _allocatedBytes -= oldSize;
+
                 //Update stats
                 UpdateStats(newSize);
             }

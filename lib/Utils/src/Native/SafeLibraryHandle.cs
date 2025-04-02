@@ -214,7 +214,7 @@ namespace VNLib.Utils.Native
             NatveLibraryResolver resolver = new(libPath, assembly, searchPath);
 
             bool success = resolver.ResolveAndLoadLibrary(out library);
-            AdvancedTrace.WriteLineIf(success, $"Loaded library '{libPath}' with address: 0x'{library?.DangerousGetHandle():x}'");
+            AdvancedTrace.WriteLineIf(success, $"Loaded library '{libPath}' with address: 0x{library?.DangerousGetHandle():x}");
             return success;
         }
     }

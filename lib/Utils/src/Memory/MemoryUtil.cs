@@ -106,28 +106,30 @@ namespace VNLib.Utils.Memory
         public static IUnmangedHeap Shared => _lazyHeap.Instance;       
 
 
-        private static readonly LazyInitializer<IUnmangedHeap> _lazyHeap = InitHeapInternal();
+        private static readonly LazyInitializer<IUnmangedHeap> _lazyHeap = new(InitSharedHeapInternal);
 
         //Avoiding static initializer
-        private static LazyInitializer<IUnmangedHeap> InitHeapInternal()
+        private static IUnmangedHeap InitSharedHeapInternal()
         {
             //Get env for heap diag
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_GLOBAL_ZERO), out ERRNO globalZero);
-           
+
             Trace.WriteLineIf(diagEnable, "Shared heap diagnostics enabled");
             Trace.WriteLineIf(globalZero, "Shared heap global zero enabled");
 
-            return new(() =>
-            {
-                //Init shared heap instance
-                IUnmangedHeap heap = InitHeapInternal(true, diagEnable, globalZero);
+            //Init shared heap instance
+            IUnmangedHeap heap = InitHeapInternal(
+                //Supply suggested arguments to the heap library, it can clear or set them as needed
+                HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc | HeapCreation.Shared,
+                globalZero
+            );
 
-                //Register domain unload event
-                AppDomain.CurrentDomain.DomainUnload += (_, _) => heap.Dispose();
+            //Register domain unload event
+            AppDomain.CurrentDomain.DomainUnload += (_, _) => heap.Dispose();
 
-                return heap;
-            });            
+            // Enable diagnostics if requested
+            return diagEnable ? new TrackedHeapWrapper(heap, true) : heap;
         }
 
         /// <summary>
@@ -157,29 +159,20 @@ namespace VNLib.Utils.Memory
         /// <exception cref="SystemException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
         public static IUnmangedHeap InitializeNewHeapForProcess(bool globalZero = false) 
-            => InitHeapInternal(false, false, globalZero);
+            => InitHeapInternal(
+                // Set default flags, the heap lib can clear or set them as needed. Default is a private heap.
+                HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc,
+                globalZero
+            );
 
-        private static IUnmangedHeap InitHeapInternal(bool isShared, bool enableStats, bool globalZero)
+        private static IUnmangedHeap InitHeapInternal(HeapCreation defaultFlags, bool globalZero)
         {
             //Get environment varable
             string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
             string? rawFlagsEnv = Environment.GetEnvironmentVariable(SHARED_HEAP_RAW_FLAGS);
-
-            //Default flags
-            HeapCreation cFlags = HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc;
-
-            /*
-            * We need to set the shared flag and the synchronziation flag.
-            * 
-            * The heap impl may reset the synchronziation flag if it does not 
-            * need serialziation
-            */
-            cFlags |= isShared ? HeapCreation.Shared : HeapCreation.None;
-
+        
             //Set global zero flag if requested
-            cFlags |= globalZero ? HeapCreation.GlobalZero : HeapCreation.None;
-
-            IUnmangedHeap heap;
+            defaultFlags |= globalZero ? HeapCreation.GlobalZero : HeapCreation.None;
 
             ERRNO userFlags = 0;
 
@@ -193,7 +186,7 @@ namespace VNLib.Utils.Memory
             if (!string.IsNullOrWhiteSpace(heapDllPath))
             {
                 //Attempt to load the heap
-                heap = NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, cFlags, userFlags);
+                return NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, defaultFlags, userFlags);
             }
             //No user heap was specified, use fallback on windows
             else if (OperatingSystem.IsWindows())
@@ -210,16 +203,13 @@ namespace VNLib.Utils.Memory
                 }
 
                 //Create win32 private heap
-                heap = Win32PrivateHeap.Create(defaultSize, cFlags, flags:userFlags); 
+                return Win32PrivateHeap.Create(defaultSize, defaultFlags, flags:userFlags); 
             }
             else
             {
                 //Finally fallback to .NET native mem impl 
-                heap = new ProcessHeap();
+                return new ProcessHeap(defaultFlags);
             }
-
-            //Enable heap statistics
-            return enableStats ? new TrackedHeapWrapper(heap, true) : heap;
         }
 
         /// <summary>
@@ -237,7 +227,7 @@ namespace VNLib.Utils.Memory
 
             //Call init block on bytes
             Unsafe.InitBlock(
-                ref Refs.AsByte(ref src, 0),
+                startAddress: ref Refs.AsByte(ref src, 0),
                 value: 0,
                 byteCount: ByteCount<T>(elements)
             );
@@ -257,8 +247,8 @@ namespace VNLib.Utils.Memory
             }
 
             ZeroByRef(
-               ref MemoryMarshal.GetReference(block),  //Get typed reference
-               (uint)block.Length  //block must be a positive value
+               src: ref MemoryMarshal.GetReference(block),  //Get typed reference
+               elements: (uint)block.Length  //block must be a positive value
            );
         }
 
@@ -497,8 +487,8 @@ namespace VNLib.Utils.Memory
 
             //Memmove
             Unsafe.CopyBlockUnaligned(
-                ref target, 
-                in Unsafe.As<T, byte>(ref Unsafe.AsRef(in source)),     //Recover byte reference to struct
+                destination: ref target, 
+                source: in Unsafe.As<T, byte>(ref Unsafe.AsRef(in source)),     //Recover byte reference to struct
                 byteCount: ByteCount<T>(1u)
             );
         }
@@ -706,8 +696,8 @@ namespace VNLib.Utils.Memory
             ThrowIfNullRef(ref target, nameof(target));
 
             Unsafe.CopyBlockUnaligned(
-                ref Refs.AsByte(ref target, 0), 
-                in Refs.AsByteR(in source, 0), 
+                destination: ref Refs.AsByte(ref target, 0), 
+                source: in Refs.AsByteR(in source, 0), 
                 byteCount: ByteCount<T>(1u)
             );
         }
@@ -743,8 +733,8 @@ namespace VNLib.Utils.Memory
         /// <param name="sourceOffset">Source offset</param>
         /// <param name="destOffset">Dest offset</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static void Copy<T>(ReadOnlySpan<T> source, int sourceOffset, IMemoryHandle<T> dest, nuint destOffset, int count) 
-            where T: struct
+        public static void Copy<T>(ReadOnlySpan<T> source, int sourceOffset, IMemoryHandle<T> dest, nuint destOffset, int count)
+            where T : struct
         {
             ArgumentNullException.ThrowIfNull(dest);
 
@@ -756,12 +746,12 @@ namespace VNLib.Utils.Memory
             //Check bounds (will verify that count is a positive integer)
             CheckBounds(source, sourceOffset, count);
             CheckBounds(dest, destOffset, (uint)count);
-           
+
             //Use memmove by ref
             CopyUtilCore.Memmove(
-                ref Refs.AsByte(source, (nuint)sourceOffset),
-                ref Refs.AsByte(dest, destOffset),
-                ByteCount<T>((uint)count),
+                srcByte: ref Refs.AsByte(source, (nuint)sourceOffset),
+                dstByte: ref Refs.AsByte(dest, destOffset),
+                byteCount: ByteCount<T>((uint)count),
                 forceAcceleration: false
             );
         }
@@ -1519,7 +1509,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="IndexOutOfRangeException"></exception>
         public static MemoryHandle PinArrayAndGetHandle<T>(T[] array, nuint elementOffset)
         {
-            ArgumentNullException.ThrowIfNull(array, nameof(array));
+            ArgumentNullException.ThrowIfNull(array);
 
             //Quick verify index exists, may be the very last index
             CheckBounds(array, elementOffset, 1);
@@ -1719,6 +1709,7 @@ namespace VNLib.Utils.Memory
 
         private static class Refs
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(void* ptr, nuint elementOffset) where T : unmanaged
             {
                 //Compute the pointer offset and return the reference
@@ -1727,18 +1718,21 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.AsRef<byte>(ptr);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(ref T ptr, nuint elementOffset)
             {
                 ref T offset = ref Unsafe.Add(ref ptr, elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByteR<T>(scoped ref readonly T ptr, nuint elementOffset)
             {
                 ref T offset = ref Unsafe.Add(ref Unsafe.AsRef(in ptr), elementOffset);
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(T[] arr, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetArrayDataReference(arr);
@@ -1746,6 +1740,7 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(Span<T> span, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetReference(span);
@@ -1753,6 +1748,7 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset)
             {
                 ref T ptr = ref MemoryMarshal.GetReference(span);
@@ -1760,6 +1756,7 @@ namespace VNLib.Utils.Memory
                 return ref Unsafe.As<T, byte>(ref offset);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset)
             {
                 ref T ptr = ref handle.GetReference();
