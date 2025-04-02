@@ -48,7 +48,7 @@ tasks:
        silent: true
 
      #re-write semver after hard reset
-     - cmd: dotnet-gitversion.exe /updateprojectfiles
+     - cmd: dotnet gitversion /updateprojectfiles
 
     #build debug mode first
      - cmd: dotnet publish -c debug {{ .MS_ARGS }}

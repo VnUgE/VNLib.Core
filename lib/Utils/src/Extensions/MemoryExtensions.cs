@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -431,6 +431,7 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe MemoryHandle<T> Alloc<T>(this IUnmangedHeap heap, nuint elements, bool zero = false) where T : unmanaged 
             => MemoryUtil.SafeAlloc<T>(heap, elements, zero);
 

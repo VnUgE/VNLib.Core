@@ -18,20 +18,72 @@ namespace VNLib.Utils.Memory.Tests
         const int ZERO_TEST_LOOP_ITERATIONS = 100000;
         const int ZERO_TEST_MAX_BUFFER_SIZE = 10 * 1024;
 
+        [TestMethod]
+        public void VerifySharedHeapTest()
+        {
+            IUnmangedHeap sharedHeap = MemoryUtil.Shared;
+
+            //Ensure that this heap is a shared heap
+            Assert.IsTrue(sharedHeap.CreationFlags.HasFlag(HeapCreation.Shared));
+
+            /*
+             * All other flags are library specific usually. The library can choose to set 
+             * or clear flags like globalzero, synchronization, and realloc support.
+             */
+        }
+
         [TestMethod()]
         public void InitializeNewHeapForProcessTest()
         {
+            /*
+             * Testing for true private heap was removed because not all heap 
+             * managers support private first class heaps, so they all must have 
+             * the shared flag set.
+             * 
+             * Really it's up to the user to test heap flags to ensure they are
+             * suitable for their use case.
+             */
 
-            //Initialize the heap
-            using IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess();
+            //Test default private heap allocation
+            using (IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess())
+            {                
+                Assert.IsFalse(heap.CreationFlags.HasFlag(HeapCreation.GlobalZero));
 
-            //Test alloc
-            IntPtr block = heap.Alloc(1, 1, false);
+                //Test alloc
+                IntPtr block = heap.Alloc(1, 1, zero: false);
 
-            //Free block
-            heap.Free(ref block);
+                //Ensure the block was allocated should always happen, but catch it just in case
+                Assert.AreNotEqual(IntPtr.Zero, block);
 
-            //TODO verify the heap type by loading a dynamic heap dll
+                //Free block
+                heap.Free(ref block);
+            }
+
+            /*
+             * Test with global zero set
+             * 
+             * This test is fairly inconclusive since this test cant guaruntee that the heap 
+             * will have dirty memory since tests are so short. It's also not reasonable to 
+             * alloc a bunch of blocks, dirty them and return it to the heap because it can't 
+             * be guarunteed the heap imp will return blocks from the dirty area. 
+             */
+            using (IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess(globalZero: true))
+            {               
+                Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.GlobalZero));
+
+                //Test alloc with zero flag unset
+                IntPtr block = heap.Alloc((nuint)Environment.SystemPageSize, sizeof(byte), zero: false);
+
+                //Ensure the block was allocated should always happen, but catch it just in case
+                Assert.AreNotEqual(IntPtr.Zero, block);
+
+                //Ensure block is zeroed even when zero is false
+                Span<byte> blockSpan = MemoryUtil.GetSpan<byte>(block, Environment.SystemPageSize * sizeof(byte));
+                Assert.IsTrue(AllZero(blockSpan));
+
+                //Free block
+                heap.Free(ref block);
+            }
         }
 
         private static bool AllZero<T>(Span<T> span) where T : struct
@@ -134,19 +186,21 @@ namespace VNLib.Utils.Memory.Tests
             //We want to zero a block of memory by its pointer
 
             //Heap alloc a block of memory
-            byte* ptr = (byte*)MemoryUtil.Shared.Alloc(blockSize, sizeof(byte), false);
+            IntPtr ptr = MemoryUtil.Shared.Alloc(blockSize, sizeof(byte), false);
+
+            Span<byte> block = MemoryUtil.GetSpan<byte>(ptr, blockSize);
 
             //Fill with random data
-            RandomNumberGenerator.Fill(new Span<byte>(ptr, blockSize));
+            RandomNumberGenerator.Fill(block);
 
             //Make sure the block is not all zero
-            Assert.IsFalse(AllZero(new ReadOnlySpan<byte>(ptr, blockSize)));
+            Assert.IsFalse(AllZero(block));
 
-            //Zero the block
-            MemoryUtil.InitializeBlock(ptr, blockSize);
+            //Zero the block using the pointer overloads (this will call the typed pointer overload)
+            MemoryUtil.InitializeBlock<byte>(ptr, blockSize);
 
             //Confrim all zero
-            Assert.IsTrue(AllZero(new ReadOnlySpan<byte>(ptr, blockSize)));
+            Assert.IsTrue(AllZero(block));
         }
 
         unsafe struct BigStruct

@@ -106,7 +106,8 @@ namespace VNLib.Utils.Memory
        
         private HeapMethods MethodTable;
 
-        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) : base(flags->CreationFlags, true)
+        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) 
+            : base(flags->CreationFlags, ownsHandle: true)
         {
             //Store heap pointer
             SetHandle(flags->HeapPointer);
