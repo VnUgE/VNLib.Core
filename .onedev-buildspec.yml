@@ -139,7 +139,7 @@ jobs:
   retryDelay: 30
   timeout: 3600
 - name: Publish master
-  jobExecutor: windows
+  jobExecutor: publish-agents
   steps:
   - !CheckoutStep
     name: clone
