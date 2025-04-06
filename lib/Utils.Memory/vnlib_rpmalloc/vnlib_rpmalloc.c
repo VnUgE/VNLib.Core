@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_rpmalloc
@@ -47,22 +47,29 @@
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
-    (void)hModule;
-    (void)lpReserved;
+    (void)sizeof(hModule);
+    (void)sizeof(lpReserved);
     /*
     * Taken from the malloc.c file for initializing the library.
     * and thread events
+    * 
+    * Must set null when initlaizing the library so it will use the 
+    * default allocation functions. 
+    * 
+	* Initalize accepts an interface of function that can be used to
+    * map virtual memory operating system functions, we want to use the 
+	* one built into the library, so set the interface to null.
     */
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        rpmalloc_initialize();
+        rpmalloc_initialize(NULL);
         break;
     case DLL_THREAD_ATTACH:
         rpmalloc_thread_initialize();
         break;
     case DLL_THREAD_DETACH:
-        rpmalloc_thread_finalize(1);
+        rpmalloc_thread_finalize();
         break;
     case DLL_PROCESS_DETACH:
         rpmalloc_finalize();
@@ -87,7 +94,7 @@ static void thread_destructor(void*);
 
 static void __attribute__((constructor)) initializer(void) {
     rpmalloc_set_main_thread();
-    rpmalloc_initialize();
+    rpmalloc_initialize(0);
     pthread_key_create(&destructor_key, thread_destructor);
 }
 
@@ -112,7 +119,7 @@ static void* thread_starter(void* argptr) {
 
 static void thread_destructor(void* value) {
     (void)sizeof(value);
-    rpmalloc_thread_finalize(1);
+    rpmalloc_thread_finalize();
 }
 
 
