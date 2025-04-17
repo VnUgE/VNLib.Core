@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -172,7 +172,7 @@ namespace VNLib.Net.Http.Core
         {
             if (_state.UploadCount == 0)
             {
-                return Array.Empty<FileUpload>();
+                return [];
             }
 
             //Shortcut for a single upload request (hotpath optimization)
@@ -183,7 +183,7 @@ namespace VNLib.Net.Http.Core
             }
 
             //Create new array to hold uploads
-            FileUpload[] uploads = GC.AllocateUninitializedArray<FileUpload>(_state.UploadCount, false);
+            FileUpload[] uploads = GC.AllocateUninitializedArray<FileUpload>(_state.UploadCount, pinned: false);
            
             Array.Copy(_uploads, uploads, _state.UploadCount);
 
