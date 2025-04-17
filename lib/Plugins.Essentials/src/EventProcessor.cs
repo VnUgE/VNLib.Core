@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -711,7 +711,7 @@ namespace VNLib.Plugins.Essentials
                 }
 
                 //If the service type is not desired, return
-                int index = Array.IndexOf(expectedTypes, service);
+                int index = _types.IndexOf(service, 0);
                 if (index != -1)
                 {
                     //Set the service as a new weak reference atomically

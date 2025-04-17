@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -99,16 +99,14 @@ namespace VNLib.WebServer
 
             while (shutdownEvent.WaitOne(0) == false)
             {
+                output.Write("> ");
                 string[]? s = input.ReadLine()?.Split(' ');
                 if (s == null)
                 {
                     continue;
                 }
                 switch (s[0].ToLower(null))
-                {
-                    case "help":
-                        output.WriteLine(HELP);
-                        break;
+                {                   
                     //handle plugin
                     case "p":
                         {
@@ -157,17 +155,13 @@ namespace VNLib.WebServer
                     case "memstats":
                         {
 
-
                             //Collect gc info for managed heap stats
-                            int gen0 = GC.CollectionCount(0);
-                            int gen1 = GC.CollectionCount(1);
-                            int gen2 = GC.CollectionCount(2);
                             GCMemoryInfo mi = GC.GetGCMemoryInfo();
 
                             log.Debug(MANAGED_HEAP_STATS,
-                                gen0,
-                                gen1,
-                                gen2,
+                                GC.CollectionCount(0),
+                                GC.CollectionCount(1),
+                                GC.CollectionCount(2),
                                 mi.HighMemoryLoadThresholdBytes / 1024,
                                 mi.HeapSizeBytes / 1024,
                                 mi.MemoryLoadBytes / 1024,
@@ -193,14 +187,29 @@ namespace VNLib.WebServer
                             );
                         }
                         break;
+                    
                     case "collect":
                         CollectCache(_serviceStack);
-                        GC.Collect(2, GCCollectionMode.Forced, false, true);
+                        GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: true);
                         GC.WaitForFullGCComplete();
+
+                        log.Information("Manual garbage collection completed");
                         break;
+                    
                     case "stop":
                         shutdownEvent.Set();
                         return;
+
+                    case "":
+                        break;
+
+                    case "help":
+                        output.WriteLine(HELP);
+                        break;
+
+                    default:
+                        output.WriteLine("Unknown command");
+                        goto case "help";
                 }
             }
         }
@@ -221,7 +230,7 @@ namespace VNLib.WebServer
 
             while (true)
             {
-                output.Write("{0}>", pluignName);
+                output.Write("{0}> ", pluignName);
 
                 string? cmdText = input.ReadLine();
 
