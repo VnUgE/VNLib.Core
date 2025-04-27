@@ -38,7 +38,7 @@ namespace VNLib.Plugins.Essentials.Content
 
     /*
      *  Why does this file exist? Well, in .NET streaming files is slow as crap.
-     *  It is by-far the largest bottleneck in this framework. 
+     *  It is by-far the largest bottleneck in this framework according to profiling.
      *  
      *  I wanted more direct control over file access for future file performance 
      *  improvments. For now using the RandomAccess class bypasses the internal 
