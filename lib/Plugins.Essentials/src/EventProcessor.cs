@@ -27,6 +27,7 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Net.Sockets;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
@@ -44,6 +45,78 @@ using VNLib.Plugins.Essentials.Middleware;
 
 namespace VNLib.Plugins.Essentials
 {
+    internal class IHttpFsManager(string[] defaultFiles)
+    {
+
+        public FileDescriptor FindFile(string requestPath, bool fullyQualified)
+        {          
+            bool exists = FindFileResourceInternal(fullyQualified, ref requestPath);
+
+            return new(requestPath, exists)
+            {
+                Attributes      = File.GetAttributes(requestPath),
+                ContentType     = HttpHelpers.GetContentTypeFromFile(requestPath),
+                LastModified    = File.GetLastWriteTimeUtc(requestPath)
+            };
+        }     
+
+        private bool FindFileResourceInternal(bool fullyQualified, ref string path)
+        {
+            //Special case where user's can specify a fullly qualified path (meant to reach a remote file, eg UNC/network share or other disk)
+            if (
+                fullyQualified
+                && Path.IsPathRooted(path)
+                && Path.IsPathFullyQualified(path)
+                && FileOperations.FileExists(path)
+            )
+            {                
+                return true;
+            }
+
+            //Trailing / means dir, so look for a default file (index.html etc) (most likely so check first?)
+            if (Path.EndsInDirectorySeparator(path))
+            {
+                string comp = path;
+
+                //Probe for default files
+                foreach (string d in defaultFiles)
+                {
+                    path = Path.Combine(comp, d);
+                    
+                    if (FileOperations.FileExists(path))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            //try the file as is
+            return FileOperations.FileExists(path);
+        }
+
+        private struct UnsafeDescriptor(string name)
+        {
+            public readonly string Name = name;
+
+            public bool Exists;
+            public FileAttributes Attributes;
+            public DateTime LastModified;
+            public ContentType ContentType;
+        }
+    }
+
+    readonly struct FileDescriptor(string name, bool exists)
+    {
+        public readonly string Name = name;
+        public readonly bool Exists = exists;
+
+        public readonly FileAttributes Attributes { get; init; }
+        public readonly DateTime LastModified { get; init; }
+        public readonly ContentType ContentType { get; init; }
+    }
+
 
     /// <summary>
     /// Provides an abstract base implementation of <see cref="IWebRoot"/>
@@ -111,6 +184,8 @@ namespace VNLib.Plugins.Essentials
         ///<inheritdoc/>
         public string Hostname => config.Hostname;
 
+        private readonly IHttpFsManager _fsManager = new([.. config.ExcludedExtensions]);
+
 
         /*
          * Okay. So this is suposed to be a stupid fast lookup table for lock-free 
@@ -158,6 +233,32 @@ namespace VNLib.Plugins.Essentials
         private readonly MiddlewareController _middleware = new(config);
 
         private readonly FilePathCache _pathCache = FilePathCache.GetCacheStore(config.FilePathCacheMaxAge);
+
+        private static string GetPathFromArgs(HttpEntity entity, in FileProcessArgs args)
+        {
+            string? filename;
+
+            //Switch on routine
+            switch (args.Routine)
+            {
+                //Normal file lookup based on the client requested local path
+                case FpRoutine.Continue:
+                    filename = entity.Server.Path;
+                    break;
+
+                //Serve other file requested by system
+                case FpRoutine.ServeOtherFQ:
+                case FpRoutine.ServeOther:
+                    filename = args.Alternate;
+                    break;
+
+                default:
+                    Debug.Fail("Not found routine should be handled");
+                    return default; //Default will return a not found argument                    
+            }
+
+            return filename;
+        }
 
         ///<inheritdoc/>
         public virtual async ValueTask ClientConnectedAsync(IHttpEvent httpEvent)
@@ -322,103 +423,96 @@ namespace VNLib.Plugins.Essentials
         protected virtual void ProcessRoutine(IHttpEvent entity, ref readonly FileProcessArgs args)
         {
             try
-            {
-                string? filename = null;
+            { 
                 //Switch on routine
                 switch (args.Routine)
-                {
-                    //Close the connection with an error state
+                {                    
                     case FpRoutine.Error:
                         CloseWithError(HttpStatusCode.InternalServerError, entity);
                         return;
-                    //Redirect the user
-                    case FpRoutine.Redirect:
-                        //Set status code
+                   
+                    case FpRoutine.Redirect:                        
                         entity.Redirect(RedirectType.Found, args.Alternate);
                         return;
-                    //Deny
+                    
                     case FpRoutine.Deny:
                         CloseWithError(HttpStatusCode.Forbidden, entity);
                         return;
-                    //Not return not found
+            
                     case FpRoutine.NotFound:
                         CloseWithError(HttpStatusCode.NotFound, entity);
                         return;
-                    //Serve other file
-                    case FpRoutine.ServeOther:
-                        {
-                            //Use the specified relative alternate path the user specified
-                            if (FindResourceInRoot(args.Alternate, out string otherPath))
-                            {
-                                filename = otherPath;
-                            }
-                        }
-                        break;
-                    //Normal file lookup
-                    case FpRoutine.Continue:
-                        {
-                            //Lookup the file based on the client requested local path
-                            if (FindResourceInRoot(entity.Server.Path, out string path))
-                            {
-                                filename = path;
-                            }
-                        }
-                        break;
-                    //The user indicated that the file is a fully qualified path, and should be treated directly
-                    case FpRoutine.ServeOtherFQ:
-                        {
-                            //Get the absolute path of the file rooted in the current server root and determine if it exists
-                            if (FindResourceInRoot(args.Alternate, true, out string fqPath))
-                            {
-                                filename = fqPath;
-                            }
-                        }
-                        break;
+                   
                     //The user has indicated they handled all necessary action, and we will exit
                     case FpRoutine.VirtualSkip:
                         return;
+
+                    // We will handle the file processing/routing further
                     default:
                         break;
                 }
 
                 //If the file was not set or the request method is not a GET (or HEAD), return not-found
-                if (filename == null || (entity.Server.Method & (HttpMethod.GET | HttpMethod.HEAD)) == 0)
+                if ((entity.Server.Method & (HttpMethod.GET | HttpMethod.HEAD)) == 0)
                 {
                     CloseWithError(HttpStatusCode.NotFound, entity);
                     return;
                 }
 
-                DateTime fileLastModified = File.GetLastWriteTimeUtc(filename);
+                // Probe to find the desired file
+                FileDescriptor fsd = _fsManager.FindFile(entity, in args);
 
-                //See if the last modifed header was set
-                DateTimeOffset? ifModifedSince = entity.Server.LastModified();
-
-                //If the header was set, check the date, if the file has been modified since, continue sending the file
-                if (ifModifedSince.HasValue && ifModifedSince.Value > fileLastModified)
+                //File was not found on the filesystem
+                if (!fsd.Exists)
                 {
-                    //File has not been modified 
-                    entity.CloseResponse(HttpStatusCode.NotModified);
+                    entity.CloseResponse(HttpStatusCode.NotFound);
                     return;
                 }
 
-                //Get the content type of he file
-                ContentType fileType = HttpHelpers.GetContentTypeFromFile(filename);
-                
-                if (!entity.Server.Accepts(fileType))
+                //Check for excluded extensions
+                if (Path.HasExtension(fsd.Name))
                 {
-                    //Unacceptable
+                    string extension = Path.GetExtension(fsd.Name);
+                    if (Options.ExcludedExtensions.Contains(extension))
+                    {
+                        entity.CloseResponse(HttpStatusCode.NotFound);
+                        return;
+                    }
+                }
+
+                // Guard for disallowed file attributes
+                if (
+                    ((fsd.Attributes & Options.AllowedAttributes) > 0) && 
+                    ((fsd.Attributes & Options.DissallowedAttributes) == 0)
+                )
+                {
+                    entity.CloseResponse(HttpStatusCode.NotFound);
+                    return;                   
+                }
+
+                //If the header was set, check the date, if the file has been modified since, continue sending the file
+                DateTimeOffset? ifModifedSince = entity.Server.LastModified();
+                if (ifModifedSince.HasValue && ifModifedSince.Value > fsd.LastModified)
+                {                   
+                    entity.CloseResponse(HttpStatusCode.NotModified);
+                    return;
+                }
+                
+                //Ensure the file's content type can be accepted by the client
+                if (!entity.Server.Accepts(fsd.ContentType))
+                {                   
                     CloseWithError(HttpStatusCode.NotAcceptable, entity);
                     return;
                 }
 
                 //set last modified time as the files last write time
-                entity.Server.LastModified(fileLastModified);
+                entity.Server.LastModified(fsd.LastModified);
 
 
                 //Open the file handle directly, reading will always be sequentially read and async
 
 #pragma warning disable CA2000 // Dispose objects before losing scope
-                DirectFileStream dfs = DirectFileStream.Open(filename);
+                DirectFileStream dfs = DirectFileStream.Open(fsd.Name);
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
                 long endOffset = checked((long)entity.Server.Range.End);
@@ -443,7 +537,12 @@ namespace VNLib.Plugins.Essentials
                             entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
 
                             //Send the response, with actual response length (diff between stream length and position)
-                            entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, endOffset - startOffset + 1);
+                            entity.CloseResponse(
+                                HttpStatusCode.PartialContent, 
+                                type: fsd.ContentType, 
+                                entity: dfs, 
+                                length: endOffset - startOffset + 1
+                            );
                         }
                         break;
                     case HttpRangeType.FromStart:
@@ -460,7 +559,12 @@ namespace VNLib.Plugins.Essentials
                            
                             entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
                             
-                            entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, dfs.Length - dfs.Position);
+                            entity.CloseResponse(
+                                HttpStatusCode.PartialContent, 
+                                type: fsd.ContentType, 
+                                entity: dfs, 
+                                length: dfs.Length - dfs.Position
+                            );
                         }
                         break;
 
@@ -478,28 +582,35 @@ namespace VNLib.Plugins.Essentials
                             
                             entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
                             
-                            entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, dfs.Length - dfs.Position);
+                            entity.CloseResponse(
+                                HttpStatusCode.PartialContent, 
+                                type: fsd.ContentType, 
+                                entity: dfs, 
+                                length: dfs.Length - dfs.Position
+                            );
                         }
                         break;
                     //No range or invalid range (the server is supposed to ignore invalid ranges)
                     default:
                         //send the whole file
-                        entity.CloseResponse(HttpStatusCode.OK, fileType, dfs, dfs.Length);
+                        entity.CloseResponse(
+                            HttpStatusCode.OK, 
+                            type: fsd.ContentType, 
+                            entity: dfs, 
+                            length: dfs.Length
+                        );
                         break;
                 }
             }
             catch (IOException ioe)
             {
                 config.Log.Information(ioe, "Unhandled exception during file opening.");
-                CloseWithError(HttpStatusCode.Locked, entity);
-                return;
+                CloseWithError(HttpStatusCode.Locked, entity);               
             }
             catch (Exception ex)
             {
-                config.Log.Error(ex, "Unhandled exception during file opening.");
-                //Invoke the root error handler
-                CloseWithError(HttpStatusCode.InternalServerError, entity);
-                return;
+                config.Log.Error(ex, "Unhandled exception during file opening.");               
+                CloseWithError(HttpStatusCode.InternalServerError, entity);           
             }
         }
 
@@ -574,7 +685,7 @@ namespace VNLib.Plugins.Essentials
 
             args = FileProcessArgs.VirtualSkip;
         }
-      
+
         /// <summary>
         /// Determines the best <see cref="FileProcessArgs"/> processing response for the given connection.
         /// Alternativley may respond to the entity directly.
@@ -584,7 +695,7 @@ namespace VNLib.Plugins.Essentials
         /// <returns>The results to return to the file processor, this method must return an argument</returns>
         protected virtual ValueTask<FileProcessArgs> RouteFileAsync(IPageRouter? router, HttpEntity entity)
         {
-            if(router != null)
+            if (router != null)
             {
                 //Route file async from the router reference
                 return router.RouteAsync(entity);
@@ -593,28 +704,7 @@ namespace VNLib.Plugins.Essentials
             {
                 return ValueTask.FromResult(FileProcessArgs.Continue);
             }
-        }      
-
-        /// <summary>
-        /// Finds the file specified by the request and the server root the user has requested.
-        /// Determines if it exists, has permissions to access it, and allowed file attributes.
-        /// Also finds default files and files without extensions
-        /// </summary>
-        public bool FindResourceInRoot(string resourcePath, bool fullyQualified, out string path)
-        {
-            //Special case where user's can specify a fullly qualified path (meant to reach a remote file, eg UNC/network share or other disk)
-            if (fullyQualified 
-                && Path.IsPathRooted(resourcePath) 
-                && Path.IsPathFullyQualified(resourcePath) 
-                && FileOperations.FileExists(resourcePath)
-            )
-            {
-                path = resourcePath;
-                return true;
-            }
-            //Otherwise invoke non fully qualified path
-            return FindResourceInRoot(resourcePath, out path);
-        }
+        }    
 
         /// <summary>
         /// Determines if a requested resource exists within the <see cref="EventProcessor"/> and is allowed to be accessed.
@@ -645,12 +735,7 @@ namespace VNLib.Plugins.Essentials
         {
             //Check after fully qualified path name because above is a special case
             path = TranslateResourcePath(resourcePath);
-            string extension = Path.GetExtension(path);
-            //Make sure extension isnt blocked
-            if (Options.ExcludedExtensions.Contains(extension))
-            {
-                return false;
-            }
+            
             //Trailing / means dir, so look for a default file (index.html etc) (most likely so check first?)
             if (Path.EndsInDirectorySeparator(path))
             {

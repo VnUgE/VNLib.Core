@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -53,14 +53,7 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="requestPath">The path requested by the request </param>
         /// <returns>The translated and filtered filesystem path used to identify the file resource</returns>
-        string TranslateResourcePath(string requestPath);
-
-        /// <summary>
-        /// Finds the file specified by the request and the server root the user has requested.
-        /// Determines if it exists, has permissions to access it, and allowed file attributes.
-        /// Also finds default files and files without extensions
-        /// </summary>
-        bool FindResourceInRoot(string resourcePath, bool fullyQualified, out string path);
+        string TranslateResourcePath(string requestPath);       
 
         /// <summary>
         /// Determines if a requested resource exists within the <see cref="EventProcessor"/> and is allowed to be accessed.
