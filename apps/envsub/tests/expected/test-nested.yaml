@@ -1,0 +1,8 @@
+# Expected YAML output after environment substitution
+nested_example: "The Penguin says '\"To be or not to be\"' 7 times"
+mixed_formats: "Hello from VNLib and Blue"
+complex_defaults: "Hello from VNLib, Blue"
+multiline: |
+  Line 1: Hello from VNLib
+  Line 2: Penguin
+  Line 3: "To be or not to be"

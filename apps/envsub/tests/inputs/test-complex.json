@@ -1,0 +1,8 @@
+{
+  "deeply_nested": "${UNKNOWN_VAR:-${ANOTHER_UNKNOWN:-${THIRD_UNKNOWN:-${GREETING}}}}",
+  "empty_default": "${UNKNOWN_VAR:-}",
+  "default_with_spaces": "${UNKNOWN_VAR:-  spaced value  }",
+  "multiple_on_line": "First: ${GREETING}, Second: ${FAVORITE_COLOR}, Third: ${LUCKY_NUMBER}",
+  "recursive_defaults": "${UNKNOWN1:-${UNKNOWN2:-${ANIMAL}}} likes ${UNKNOWN3:-${FAVORITE_COLOR}}",
+  "mixed_syntax": "$GREETING with ${FAVORITE_COLOR} and $LUCKY_NUMBER"
+}

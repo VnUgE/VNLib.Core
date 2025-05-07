@@ -1,0 +1,9 @@
+{
+  "greeting": "Hello from VNLib",
+  "color": "Blue",
+  "number": "7",
+  "pi": "3.14159",
+  "is_fun": "true",
+  "animal": "Penguin",
+  "quotes": "\"To be or not to be\""
+}

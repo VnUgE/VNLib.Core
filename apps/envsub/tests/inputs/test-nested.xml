@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <nested_example>The ${ANIMAL} says '${QUOTES}' ${LUCKY_NUMBER} times</nested_example>
+  <mixed_formats>${GREETING} and ${FAVORITE_COLOR}</mixed_formats>
+  <complex_defaults>$GREETING, ${FAVORITE_COLOR:-Red}</complex_defaults>
+  <multiline>Line 1: $GREETING
+Line 2: ${ANIMAL}
+Line 3: ${QUOTES}</multiline>
+</root>

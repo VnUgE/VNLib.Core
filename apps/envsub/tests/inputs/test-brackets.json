@@ -1,0 +1,12 @@
+{
+  "message": "${GREETING:-Hi there!}",
+  "color": "${FAVORITE_COLOR:-Red}",
+  "lucky": "${LUCKY_NUMBER:-42}",
+  "pi_value": "${PI:-3.14}",
+  "fun_status": "${IS_FUN:-false}",
+  "favorite_animal": "${ANIMAL:-Cat}",
+  "quote": "${QUOTES:-No quote provided}",
+  "unknown_var": "${UNKNOWN_VAR:-DefaultValue}",
+  "simple_var": "${GREETING}",
+  "nested_example": "The ${ANIMAL} says: '${QUOTES}'"
+}

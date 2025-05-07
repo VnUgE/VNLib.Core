@@ -1,0 +1,8 @@
+{
+  "escaped_dollar": "Dollar sign: $GREETING",
+  "escaped_braces": "Escaped braces: ${ANIMAL}",
+  "dollar_in_quotes": "This \"Hello from VNLib\" is in quotes",
+  "mixed_escaping": "Normal: Penguin, Escaped: $ANIMAL",
+  "multiple_variables": "Hello from VNLib Blue 7",
+  "adjacent_vars": "Hello from VNLibPenguin"
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <nested_example>The Penguin says '"To be or not to be"' 7 times</nested_example>
+  <mixed_formats>Hello from VNLib and Blue</mixed_formats>
+  <complex_defaults>Hello from VNLib, Blue</complex_defaults>
+  <multiline>Line 1: Hello from VNLib
+Line 2: Penguin
+Line 3: "To be or not to be"</multiline>
+</root>

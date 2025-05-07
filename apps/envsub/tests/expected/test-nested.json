@@ -1,0 +1,6 @@
+{
+  "nested_example": "The Penguin says '\"To be or not to be\"' 7 times",
+  "mixed_formats": "Hello from VNLib and Blue",
+  "complex_defaults": "Hello from VNLib, Blue",
+  "multiline": "Line 1: Hello from VNLib\nLine 2: Penguin\nLine 3: \"To be or not to be\""
+}

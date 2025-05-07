@@ -1,0 +1,6 @@
+{
+  "existing": "$ANIMAL",
+  "missing1": "$MISSING_VAR",
+  "missing2": "$ANOTHER_MISSING",
+  "with_default": "${NONEXISTENT:-fallback value}"
+}

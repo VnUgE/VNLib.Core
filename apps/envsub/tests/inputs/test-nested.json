@@ -1,0 +1,6 @@
+{
+  "nested_example": "The ${ANIMAL} says '${QUOTES}' ${LUCKY_NUMBER} times",
+  "mixed_formats": "$GREETING and ${FAVORITE_COLOR}",
+  "complex_defaults": "${UNKNOWN_VAR1:-$GREETING}, ${UNKNOWN_VAR2:-${FAVORITE_COLOR:-purple}}",
+  "multiline": "Line 1: $GREETING\nLine 2: $ANIMAL\nLine 3: $QUOTES"
+}

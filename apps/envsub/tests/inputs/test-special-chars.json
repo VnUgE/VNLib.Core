@@ -1,0 +1,8 @@
+{
+  "escaped_dollar": "Dollar sign: \\$GREETING",
+  "escaped_braces": "Escaped braces: \\${ANIMAL}",
+  "dollar_in_quotes": "This \"$GREETING\" is in quotes",
+  "mixed_escaping": "Normal: $ANIMAL, Escaped: \\$ANIMAL",
+  "multiple_variables": "$GREETING $FAVORITE_COLOR $LUCKY_NUMBER",
+  "adjacent_vars": "$GREETING$ANIMAL"
+}

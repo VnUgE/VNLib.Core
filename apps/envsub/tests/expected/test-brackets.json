@@ -1,0 +1,12 @@
+{
+  "message": "Hi there!",
+  "color": "Red",
+  "lucky": "42",
+  "pi_value": "3.14",
+  "fun_status": "false",
+  "favorite_animal": "Cat",
+  "quote": "No quote provided",
+  "unknown_var": "DefaultValue",
+  "simple_var": "Hi there!",
+  "nested_example": "The Cat says: 'No quote provided'"
+}

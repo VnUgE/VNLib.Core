@@ -1,0 +1,9 @@
+{
+  "greeting": "$GREETING",
+  "color": "$FAVORITE_COLOR",
+  "number": "$LUCKY_NUMBER",
+  "pi": "$PI",
+  "is_fun": "$IS_FUN",
+  "animal": "$ANIMAL",
+  "quotes": "$QUOTES"
+}

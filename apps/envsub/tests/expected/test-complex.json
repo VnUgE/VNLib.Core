@@ -1,0 +1,8 @@
+{
+  "deeply_nested": "Hello from VNLib",
+  "empty_default": "",
+  "default_with_spaces": "  spaced value  ",
+  "multiple_on_line": "First: Hello from VNLib, Second: Blue, Third: 7",
+  "recursive_defaults": "Penguin likes Blue",
+  "mixed_syntax": "Hello from VNLib with Blue and 7"
+}

@@ -1,0 +1,6 @@
+{
+  "existing": "Penguin",
+  "missing1": "",
+  "missing2": "",
+  "with_default": "fallback value"
+}
