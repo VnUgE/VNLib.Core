@@ -1,0 +1,131 @@
+{
+
+  //Host application config, config is loaded as a read-only DOM that is available
+  //to the host and loaded child plugins, all elements are available to plugins via the 'HostConfig' property
+
+  "tcp": {
+    "keepalive_sec": 60,            //How long to wait for a keepalive response before closing the connection (0 to disable tcp keepalive)
+    "keepalive_interval_sec": 30,   //How long to wait between keepalive probes
+    "max_recv_size": 655360,        //640k absolute maximum recv buffer (defaults to OS socket buffer size)
+    "max_connections": ${HTTP_MAX_CONS:-5000}0,     //Per listener instance
+    "backlog": 1000,              //OS socket backlog,
+
+    "tx_buffer": 65536,           //OS socket send buffer size
+    "rx_buffer": 65536            //OS socket recv buffer size
+  },
+
+  "http": {
+    "default_version": "HTTP/1.1",            //The defaut HTTP version to being requests with (does not support http/2 yet)
+    "multipart_max_buf_size": 64,              //The size of the buffer to use when parsing multipart/form data uploads
+    "multipart_max_size": 0,                  //The maxium ammount of data (in bytes) allows for mulitpart/form data file uploads
+    "max_entity_size": ${MAX_CONTENT_LENGTH:-1024},  //Absolute maximum size (in bytes) of the request entity body (exludes headers)    
+    "header_buf_size": 8128,                  //The buffer size to use when parsing headers (also the maxium request header size allowed) 
+    "max_request_header_count": 50,                 //The maxium number of headers allowed in an HTTP request message
+    "max_connections": ${HTTP_MAX_CONS:-5000},       //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed   
+    "response_header_buf_size": 8128,               //The size (in bytes) of the buffer used to store all response header data
+    "max_uploads_per_request": 1,                  //Max number of multi-part file uploads allowed per request
+    "keepalive_ms": ${HTTP_KEEPALIVE_MS:-1000000},  //Keepalive ms for HTTP1.1 keepalive connections
+    "recv_timeout_ms": 5000,                        //Time (in ms) to wait for a response from an active connection in recv mode, before dropping it
+    "send_timeout_ms": 60000,                       //Time (in ms) to wait for the client to accept transport data before terminating the connection
+    
+    "compression": {
+      "enabled": ${COMPRESSION_ON:-true},       //controls compression globally
+      "assembly": "${COMPRESSOR_ASM_PATH}",     //A custom assembly path (ex: 'VNLib.Net.Compression.dll')
+      "max_size": ${COMPRESSION_MAX:-512000},   //Maxium size of a response to compress before it's bypassed
+      "min_size": ${COMPRESSION_MIN:-2048}      //Minium size of a response to compress, if smaller compression is bypassed
+    }
+  },
+  
+  //Setup the native lib
+  "vnlib.net.compression": {
+    "level": 1
+  },
+
+  //Maxium ammount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned
+  "max_execution_time_ms": 20000,
+
+  "virtual_hosts": [
+    {
+      "enabled": true,
+      "trace": ${HTTP_TRACE_ON:-false},
+      "force_port_check": ${HTTP_PORT_CHECK_ON:-false},        //disable port checking by default (useful for containers)
+
+      //The hostname to listen for, "*" as wildcard, and "[system]" as the default hostname for the current machine
+      "hostname": "${HTTP_HOSTNAME:-*}",
+      "path": "root/",
+
+      //The interface to bind to, you may not mix TLS and non-TLS connections on the same interface
+      "interfaces": [
+        {
+          "address": "${HTTP_BIND_ADDRESS:-0.0.0.0}",
+          "port": ${HTTP_BIND_PORT:-2557},
+
+          "ssl": ${TLS_ENABLE:-false},          //Enables TLS for this interface for this host specifically
+          "certificate": "${TLS_CERT}",         //Cert may be pem or pfx (include private key in pfx, or include private key in a pem file)
+          "private_key": "${TLS_PRIVATE_KEY}",  //A pem encoded private key, REQUIRED if using a PEM certificate, may be encrypted with a password
+          "password": null,                     //An optional password for the ssl private key
+          "client_cert_required": false,        //requires that any client connecting to this host present a valid certificate
+          "use_os_ciphers": false               //Use the OS's ciphers instead of the hard-coded ciphers
+        }
+      ],
+
+      //Collection of "trusted" servers to allow proxy header support from
+      "downstream_servers": ${HTTP_DOWNSTREAM_SERVERS:-[]},
+
+      //Key-value headers object, some headers are special and are controlled by the vh processor
+      "headers": {
+        "Server": "VNCache/0.1.0",
+        "X-Powered-By": "VNLib"
+      },
+
+      //The default
+      "cache_default_sec": 864000,
+      //Maxium ammount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned
+      "max_execution_time_ms": 20000,
+    }
+  ],
+
+
+  //Defines the directory where plugin's are to be loaded from
+  "plugins": {
+    "enabled": ${PLUGINS_ENABLED:-true},
+    "hot_reload": false,
+    "path": "plugins/",
+    "config_dir": "config/",
+    "assets": "plugins/assets/"
+  },
+
+  "logs": {
+    "sys_log": {
+      "enabled": ${FILE_LOG_ENABLED:-true},
+      "path": "data/logs/sys-log.txt",
+      "flush_sec": 5,
+      "retained_files": 31,
+      "file_size_limit": 10485760,
+      "interval": "infinite"
+    },
+
+    "app_log": {
+      "enabled": ${FILE_LOG_ENABLED:-true},
+      "path": "data/logs/app-log.txt",
+      "flush_sec": 5,
+      "retained_files": 31,
+      "file_size_limit": 10485760,
+      "interval": "infinite"
+    }
+  },
+
+  //HASHICORP VAULT
+  "hashicorp_vault": {
+    "url": "${HC_VAULT_ADDR}",
+    "token": "${HC_VAULT_TOKEN}",
+    "trust_cert": ${HC_VAULT_TRUST_CERT:-false}
+  },
+
+  "secrets": {
+    //Special key used by the loading library for access to the PasswordHashing library to pepper password hashes
+    "cache_private_key": "${CACHE_PRIV_KEY}",
+    "client_public_key": "${CLIENT_PUB_KEY}"
+  }
+}
+

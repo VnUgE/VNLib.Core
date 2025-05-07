@@ -1,0 +1,20 @@
+{
+    "tasks": [
+        {
+            "label": "build-debug",
+            "type": "cppbuild",
+            "command": "task",
+            "args": [ "build-debug" ],
+            "detail": "Build the project in debug mode",
+            "problemMatcher": [ "$gcc" ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        }
+    ],
+    "version": "2.0.0"
+}

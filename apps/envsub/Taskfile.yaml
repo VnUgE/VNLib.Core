@@ -1,0 +1,121 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
+
+tasks:
+
+  default:
+    desc: 'Builds the envsub project with defaults'
+    vars:
+      CONFIGURATION: '{{ .CONFIGURATION | default "release" }}'
+    cmds:
+     - cmd: cd src/ && dotnet build -c {{ .CONFIGURATION }} {{ .MS_ARGS }} {{ .CLI_ARGS }}
+
+  build-debug:
+    desc: 'Builds the envsub project in debug mode'
+    cmds:
+     - task: build-debug-gcc
+
+  test:
+    desc: 'Runs tests for the envsub project'
+    dir: '{{ .USER_WORKING_DIR }}'
+    dotenv: [ "tests/test.env" ]
+    vars:
+      TEST_FILES:
+        sh: ls -1 tests/test-*
+    cmds:
+      - cmd: echo "Running tests for envsub"
+        silent: true
+
+      - task: build-debug
+      - cmd: mkdir -p test-out
+
+      - for: { var: TEST_FILES }
+        cmd: bin/envsub --input '{{ .ITEM }}'
+
+
+  #called by build pipeline to build module
+  build:
+    dir: '{{ .USER_WORKING_DIR }}'
+    cmds:
+     - cmd: echo "no-op in CI mode, we just pack source :)"
+
+  #when build succeeds, archive the output into a tgz 
+  postbuild_success:
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      RELEASE_DIR: "{{ .BINARY_DIR }}/release/{{ .TARGET_FRAMEWORK }}"
+    cmds:
+     - cmd: powershell mkdir {{ .BINARY_DIR }} -Force
+
+     - task: pack_source
+
+  pack_source:
+    internal: true
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      EXCLUDES:
+        --exclude='src/bin/*'
+      INCLUDES:
+        src/*
+        CMakeLists.txt
+        LICENSE
+        Taskfile.yaml
+        README.md
+
+    cmds:
+      #pack up source code and put in output
+     - cmd: cd .. && tar {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
+
+    #Remove the output dirs on clean
+  clean:
+    dir: '{{ .USER_WORKING_DIR }}'
+    ignore_error: true
+    cmds:
+     - for: [ bin/, build/ ]
+       cmd: powershell Remove-Item -Recurse -Force '{{ .USER_WORKING_DIR }}/{{ .ITEM }}'
+
+  dev:
+    desc: 'Runs a hot-reload test for the envsub project'
+    watch: true
+    sources:
+      - src/*
+      - tests/*
+    cmds:
+      - task: test
+
+  build-debug-gcc:
+    internal: true
+    desc: 'Builds the envsub project with the GCC compiler'
+    dir: '{{ .USER_WORKING_DIR }}'
+    platforms: [ linux ]
+    vars:
+      CFLAGS: ' 
+        -g
+        -O0	
+        -Wextra 
+        -fstack-protector
+        -Werror
+        -Wall	
+        -pedantic	
+        -Winit-self	
+        -Wpointer-arith
+        -Wstrict-prototypes
+        -Wswitch-default
+        -Wshadow
+        -Wformat=2
+        -Wundef
+        -Wcast-align
+        -Wmissing-prototypes
+        -Wmissing-declarations
+        -Wmissing-noreturn
+        -Wdiscarded-qualifiers
+        -fdiagnostics-color=always
+        '
+    cmds:
+      - cmd: mkdir -p {{ .BINARY_DIR }}
+      - cmd: gcc -o {{ .BINARY_DIR }}/envsub src/main.c {{ .CFLAGS }}
+      - cmd: chmod +x {{ .BINARY_DIR }}/envsub

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{c10a37d7-2f3a-4a48-bd11-ce3e58521dcb}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\main.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\span.h\span.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" />
+    <None Include="$(MSBuildThisFileDirectory)package.json" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" />
+    <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
+    <None Include="$(MSBuildThisFileDirectory)tests\test-brackets.json" />
+    <None Include="$(MSBuildThisFileDirectory)tests\test-no-brackets.json" />
+    <None Include="$(MSBuildThisFileDirectory)tests\test.env" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="$(MSBuildThisFileDirectory)build.readme.txt" />
+  </ItemGroup>
+</Project>
