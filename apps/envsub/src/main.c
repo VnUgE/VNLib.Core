@@ -35,100 +35,71 @@ static void print_usage(const char *progname)
     fprintf(stderr, "  -o, --output     Output file (default: stdout)\n");
 }
 
-struct variable_line_pos 
-{
-    uint32_t start;
-    uint32_t end;
-};
 
-static uint32_t positionGetLen(const struct variable_line_pos* position)
+static size_t writeSpan(FILE* output, span_t span)
 {
-    assert(position->end >= position->start && "Expected end position to be greater than start position");
-    return position->end - position->start;
+    return fwrite(
+        spanGetOffset(span, 0),
+        sizeof(char),
+        spanGetSize(span),
+        output
+    );
 }
 
-static int findStartAndEndPos(cspan_t line, struct variable_line_pos* position)
+static void writeSpanC(FILE* output, cspan_t span)
 {
-    int found = 0;
+	fwrite(
+		spanGetOffsetC(span, 0),
+		sizeof(char),
+		spanGetSizeC(span),
+		output
+	);
+	fputc('\n', output); // Add a newline after writing the span
+}
 
-    //Reset position pointers
-    position->start = 0;
-    position->end = 0;
+static inline int isEndChar(char value)
+{
+	return 
+        value == '}'    || 
+        value == '\n'   || 
+        value == '\r'   || 
+        value == ' '    || 
+        value == '\t'   || 
+        value == '\0'   || 
+        value == '\\'   ||
+        value == '\"';
+}
 
+static uint32_t findVarEnd(cspan_t line)
+{
+    // Find the first end delimiter after the '$' character
     for (uint32_t i = 0; i < spanGetSizeC(line); i++)
-    {
-        if (spanGetCharC(line, i) == '$')
-        {
-            found = 1;
-            position->start = i; // Set the start position just before the '$' character
-            break;
-        }
-    }
-
-    // Find the end of the variable name
-    for (uint32_t i = position->start + 1; i < spanGetSizeC(line); i++)
     {
         char val = spanGetCharC(line, i);
 
-        if (val == '}' && i + 1 < spanGetSizeC(line))
-        {
-            position->end = i + 1; // Set the end position after the bracket
-            break;
-        }
-
         //Find some standard end of sequence
-        if (
-            val == '\n' ||
-            val == '\r' ||
-            val == ' ' ||
-            val == '\t' ||
-            val == '\0' ||
-            val == '\"'
-        )
+        if (isEndChar(val))
         {
-            position->end = i; // Set the end position
-            break;
+            return i;
         }
     }
 
-    return found;
+    return spanGetSizeC(line);
 }
 
 static cspan_t sliceVariableName(cspan_t line)
 {
-	// Should inlcude at least '$' and some variable name characters, 
-    // $ alone is not valid
-    if (spanGetSizeC(line) < 2)
+    assert(spanGetCharC(line, 0) == '$' && "Assumed the first character to be a '$'");
+
+	// Trim leading '$' character and optionally leading '{'
+	line = spanGetCharC(line, 1) == '{'
+		? spanSliceC(line, 2, spanGetSizeC(line) - 2)
+		: spanSliceC(line, 1, spanGetSizeC(line) - 1);
+
+	// Trim optional trailing '}' character
+    if (spanGetCharC(line, spanGetSizeC(line) - 1) == '{')
     {
-        return (cspan_t) { 0 };
-    }
-
-	// trim any leading characters and '$' character
-    for (uint32_t startPos = 0; startPos < spanGetSizeC(line); startPos++)
-    {
-        if (spanGetCharC(line, startPos) == '$')
-        {
-            startPos++; // Exclude the leading '$' character
-
-            if (spanGetCharC(line, startPos) == '{')
-            {
-                startPos++; // Exclude the optional '{' character
-            }
-
-            //Slice the line to exclude the leading '$' character
-            line = spanSliceC(line, startPos, spanGetSizeC(line) - startPos);
-            break;
-        }
-    }
-
-	//Trim optional trailing } character
-    for (int i = spanGetSizeC(line) - 1; i > 0; i--)
-    {
-        if (spanGetCharC(line, i) == '}')
-        {
-            line = spanSliceC(line, 0, i);
-            break;
-        }
+		line = spanSliceC(line, 0, spanGetSizeC(line) - 1);
     }
 
     // The variable contained no useable characters after trimming
@@ -153,7 +124,6 @@ static cspan_t sliceVariableName(cspan_t line)
 
 static cspan_t sliceDefaultValue(cspan_t line)
 {
-
     int found = 0;
 
     // Find the start of the default value
@@ -177,6 +147,7 @@ static cspan_t sliceDefaultValue(cspan_t line)
 
     if (!found)
     {
+		writeSpanC(stderr, line);
         return (cspan_t) { 0 };
     }
  
@@ -185,15 +156,7 @@ static cspan_t sliceDefaultValue(cspan_t line)
     {
         char val = spanGetCharC(line, i);
         
-        if (
-            val == '}' ||
-            val == '\n' ||
-            val == '\r' ||
-            val == ' ' ||
-            val == '\t' ||
-            val == '\0' ||
-            val == '\"'  
-        )
+        if (isEndChar(val))
         {
             line = spanSliceC(line, 0, i);
 			break;
@@ -230,20 +193,16 @@ static cspan_t getEnvFromVarName(cspan_t varName)
     return envValueSpan;
 }
 
-static cspan_t substituteLine(cspan_t line, const struct variable_line_pos* varPos)
-{
+static cspan_t substituteVariable(cspan_t line)
+{  
+    assert(spanGetCharC(line, 0) == '$' && "Assumed the first character to be a '$'");
 
-    // Assume the postions point to a valid range inside the line span
-    assert(spanIsValidRangeC(line, varPos->start, positionGetLen(varPos)) && "Expected variable name to be within line span");
-
-	line = spanSliceC(line, varPos->start, positionGetLen(varPos));
-  
     cspan_t varName = sliceVariableName(line);
     // If not found or empty, return the original line
     if (spanGetSizeC(varName) == 0)
     {
         return (cspan_t) { 0 };
-    }
+    }  
 
     // Check if the variable name is valid
     cspan_t envValue = getEnvFromVarName(varName);
@@ -251,68 +210,12 @@ static cspan_t substituteLine(cspan_t line, const struct variable_line_pos* varP
     {
 		return envValue; // Return the environment variable value
     }
-
+   
     // Otherwise, return the default value or an empty span
     cspan_t defaultValue = sliceDefaultValue(line);
     return spanGetSizeC(defaultValue) > 0
         ? defaultValue
         : (cspan_t) { 0 }; // Return empty span if no default value is found
-}
-
-static cspan_t getStartSlice(cspan_t line, const struct variable_line_pos* varPos)
-{    
-    // Return the start of the line up to the variable name
-    return spanSliceC(line, 0, varPos->start);
-}
-
-static cspan_t getEndSlice(cspan_t line, const struct variable_line_pos* varPos)
-{
-    // Return the end of the line after the variable name
-    return spanSliceC(
-        line, 
-        varPos->end, 
-        spanGetSizeC(line) - varPos->end
-    );
-}
-
-static size_t writeSpan(FILE* output, cspan_t span)
-{
-    return fwrite(
-        spanGetOffsetC(span, 0),
-        sizeof(char),
-        spanGetSizeC(span),
-        output
-    );
-}
-
-static void writeSubstitution(FILE* output, cspan_t line, const struct variable_line_pos* position, cspan_t variable)
-{
-    size_t written;
-
-    if (spanGetSizeC(variable) > 0)
-    {
-        // Ensure the line positions point within the line span
-        assert(spanIsValidRangeC(line, position->start, positionGetLen(position)) && "Expected variable position to be within line span");
-
-        // Write data up to the variable name
-        cspan_t startSlice = getStartSlice(line, position);
-        written = writeSpan(output, startSlice);
-        assert(written == spanGetSizeC(startSlice) && "Expected all bytes to be written to output file");
-
-        // Write variable value or default value
-        written = writeSpan(output, variable);
-        assert(written == spanGetSizeC(variable) && "Expected all bytes to be written to output file");
-
-        // Write remaining data after the variable
-        cspan_t endSlice = getEndSlice(line, position);
-        written = writeSpan(output, endSlice);
-        assert(written == spanGetSizeC(endSlice) && "Expected all bytes to be written to output file");
-    }
-    else
-    {
-        written = writeSpan(output, line);
-        assert(written == spanGetSizeC(line) && "Expected all bytes to be written to output file");
-    }
 }
 
 static int run_envsub(FILE *input, FILE *output)
@@ -330,24 +233,87 @@ static int run_envsub(FILE *input, FILE *output)
      */
 
     char line[1024];
-    cspan_t lineSpan = { 0 };
-    struct variable_line_pos varPos = { 0 };
-    cspan_t variable = { 0 };
+	char outBuffer[2048];   //Output buffer may need to be larger incase the variable value is very large
 
     while (fgets(line, sizeof(line), input))
     {
+        cspan_t lineSpan = { 0 };
+		span_t outSpan = { 0 };
+        uint32_t outputPosition = 0;
+        
         spanInitC(&lineSpan, line, strlen(line));
-        variable = (cspan_t){ 0 };
+		spanInit(&outSpan, outBuffer, sizeof(outBuffer));
 
-        if (findStartAndEndPos(lineSpan, &varPos))
+		// Scan line for '$' characters
+        for (uint32_t i = 0; i < spanGetSizeC(lineSpan); i++)
         {
-            variable = substituteLine(lineSpan, &varPos);
+            if (spanGetCharC(lineSpan, i) != '$')
+            {
+                goto Skip;
+            }
+
+			cspan_t varSlice = spanSliceC(lineSpan, i, spanGetSizeC(lineSpan) - i);
+
+            /*
+			* If a start of a variable is found, there must be an end. Find the end and always 
+			* point to the end of the variable name.
+            * 
+			* If a variable is substituted, it will be written to the output buffer. Otherwise,
+            * it will be skipped and stripped from the output, if there is no default value.
+            */
+
+			uint32_t varEnd = findVarEnd(varSlice);
+        
+            i += (varEnd - 1);
+
+            // Trim the variable slice to the end of the variable name
+            assert(spanIsValidRangeC(varSlice, 0, varEnd) && "Expected variable name to be within line span");
+            varSlice = spanSliceC(varSlice, 0, varEnd);
+
+            //Ensure there are enough characters to detect a variable name
+            if (spanGetSizeC(varSlice) <= 2)
+            {
+                goto Skip;
+            }
+
+            cspan_t variable = substituteVariable(varSlice);
+            if (spanGetSizeC(variable) == 0)
+            {
+				// If the variable is not found, skip and continue writing characters
+				goto Skip;
+            }         
+
+            //Write the whole variable value to the output buffer            
+            spanAppend(
+                outSpan, 
+                &outputPosition, 
+                spanGetOffsetC(variable, 0),
+                spanGetSizeC(variable)
+            );
+
+            // Force jump to the next itteration
+            continue;
+
+        Skip:;
+            
+            // If no variable is found, write the current character to the output
+            const char* val = spanGetOffsetC(lineSpan, i);
+            spanAppend(outSpan, &outputPosition, val, 1);
         }
 
-        writeSubstitution(output, lineSpan, &varPos, variable);
+        //Write the output line to the file descriptor
+		if (outputPosition > 0)
+		{
+			outSpan = spanSlice(outSpan, 0, outputPosition);
+
+			// Write the output line to the output file
+			size_t written = writeSpan(output, outSpan);
+			assert(written == outputPosition && "Expected all bytes to be written to output file");
+
+			fflush(output); // Flush the output buffer
+		}
 
         memset(line, 0, sizeof(line)); // Clear the line buffer before reading again
-        memset(&varPos, 0, sizeof(varPos)); // Clear the variable position struct
     }
 
     return 0;

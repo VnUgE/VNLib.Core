@@ -22,7 +22,6 @@ tasks:
   test:
     desc: 'Runs tests for the envsub project'
     dir: '{{ .USER_WORKING_DIR }}'
-    dotenv: [ "tests/test.env" ]
     platforms: [ "linux" ]   #only runs on gcc/linux
     vars:
       TEST_FILES:
@@ -129,6 +128,7 @@ tasks:
   test-compare:
     internal: true
     requires: { TEST_FILE }
+    dotenv: [ "tests/test.env" ]
     vars:
       TEST_TEMP: 'tests/temp/{{ base .TEST_FILE }}'
       TEST_EXPECTED_FILE: 'tests/expected/{{ base .TEST_FILE }}'
