@@ -72,13 +72,19 @@ jobs:
 - name: Ubuntu Tests
   jobExecutor: docker
   steps:
+  - !CheckoutStep
+    name: checkout source
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    checkoutPath: '@project_name@'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL  
   - !CommandStep
     name: ubuntu-x64 tests
     runInContainer: true
     image: vnuge/vnbuild:ubuntu-latest
     interpreter: !DefaultInterpreter
       commands: |
-        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
         cd @project_name@  
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
@@ -94,13 +100,19 @@ jobs:
 - name: Fedora Tests
   jobExecutor: docker
   steps:
+  - !CheckoutStep
+    name: checkout source
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    checkoutPath: '@project_name@'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL  
   - !CommandStep
     name: fedora-x64 tests
     runInContainer: true
     image: vnuge/vnbuild:fedora-latest
     interpreter: !DefaultInterpreter
       commands: |
-        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
         cd @project_name@  
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
