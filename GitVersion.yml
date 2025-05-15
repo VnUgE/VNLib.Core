@@ -5,7 +5,7 @@ mode: ContinuousDeployment
 
 branches:
   main:    
-    tag: 'rc'
+    label: 'rc'
 ignore:
   sha: []
 merge-message-formats: {}
