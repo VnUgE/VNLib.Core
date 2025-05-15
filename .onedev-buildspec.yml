@@ -28,26 +28,15 @@ jobs:
 - name: Windows Tests
   jobExecutor: windows
   steps:
-  - !CheckoutStep
-    name: banch checkout
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
-    name: Initalize dependencies
+    name: Clone init and test
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        task -t .\Module.Taskfile.yaml dev-init
-    useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
-  - !CommandStep
-    name: Run unit tests
-    runInContainer: false
-    interpreter: !DefaultInterpreter
-      commands: |
-        task -t .\Module.Taskfile.yaml test
+        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
+        cd @project_name@  
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   triggers:
@@ -60,18 +49,12 @@ jobs:
 - name: Staging build
   jobExecutor: windows
   steps:
-  - !CheckoutStep
-    name: clone
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
-    checkoutPath: '@project_name@/'
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
-    name: VNBuild Build
+    name: Clone and build
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
+        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
         vnbuild build --no-delay --verbose
         vnbuild publish --verbose
     useTTY: true
@@ -90,17 +73,19 @@ jobs:
   jobExecutor: docker
   steps:
   - !CheckoutStep
-    name: banch checkout
+    name: checkout source
     cloneCredential: !DefaultCredential {}
     withLfs: false
     withSubmodules: false
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    checkoutPath: '@project_name@'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL  
   - !CommandStep
-    name: ubuntu-x64
+    name: ubuntu-x64 tests
     runInContainer: true
-    image: vnbuild-ubuntu:latest
+    image: vnuge/vnbuild:ubuntu-latest
     interpreter: !DefaultInterpreter
       commands: |
+        cd @project_name@  
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
     useTTY: true
@@ -116,17 +101,19 @@ jobs:
   jobExecutor: docker
   steps:
   - !CheckoutStep
-    name: banch checkout
+    name: checkout source
     cloneCredential: !DefaultCredential {}
     withLfs: false
     withSubmodules: false
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    checkoutPath: '@project_name@'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL  
   - !CommandStep
-    name: fedora-x64
+    name: fedora-x64 tests
     runInContainer: true
-    image: vnbuild-fedora:latest
+    image: vnuge/vnbuild:fedora-latest
     interpreter: !DefaultInterpreter
       commands: |
+        cd @project_name@  
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
     useTTY: true
@@ -141,19 +128,20 @@ jobs:
 - name: Publish master
   jobExecutor: publish-agents
   steps:
-  - !CheckoutStep
+  - !CommandStep
     name: clone
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
-    checkoutPath: '@project_name@/'
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |        
+        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
+    useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: VNBuild Build
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        vnbuild build --no-delay
+        vnbuild build --no-delay 
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
