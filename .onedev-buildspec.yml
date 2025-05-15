@@ -28,11 +28,13 @@ jobs:
 - name: Windows Tests
   jobExecutor: windows
   steps:
-  - !CheckoutStep
-    name: banch checkout
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
+  - !CommandStep
+    name: clone
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |        
+        git clone @server_url@/@project_name@ --branch @branch@
+    useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: Initalize dependencies
@@ -60,12 +62,13 @@ jobs:
 - name: Staging build
   jobExecutor: windows
   steps:
-  - !CheckoutStep
+  - !CommandStep
     name: clone
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
-    checkoutPath: '@project_name@/'
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |        
+        git clone @server_url@/@project_name@ --branch @branch@
+    useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: VNBuild Build
@@ -89,11 +92,13 @@ jobs:
 - name: Ubuntu Tests
   jobExecutor: docker
   steps:
-  - !CheckoutStep
-    name: banch checkout
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
+  - !CommandStep
+    name: clone
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |        
+        git clone @server_url@/@project_name@ --branch @branch@
+    useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: ubuntu-x64
@@ -115,11 +120,13 @@ jobs:
 - name: Fedora Tests
   jobExecutor: docker
   steps:
-  - !CheckoutStep
-    name: banch checkout
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
+  - !CommandStep
+    name: clone
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |        
+        git clone @server_url@/@project_name@ --branch @branch@
+    useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: fedora-x64
@@ -141,19 +148,20 @@ jobs:
 - name: Publish master
   jobExecutor: publish-agents
   steps:
-  - !CheckoutStep
+  - !CommandStep
     name: clone
-    cloneCredential: !DefaultCredential {}
-    withLfs: false
-    withSubmodules: false
-    checkoutPath: '@project_name@/'
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |        
+        git clone @server_url@/@project_name@ --branch @branch@
+    useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: VNBuild Build
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        vnbuild build --no-delay
+        vnbuild build --no-delay 
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
