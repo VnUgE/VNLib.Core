@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -45,13 +45,13 @@ namespace VNLib.Utils.Async
         /// return asynchronously, or fail to enqueue items
         /// </summary>
         /// <param name="capacity">The maxium number of items to allow in the queue</param>
-        public AsyncQueue(int capacity):this(false, false, capacity)
+        public AsyncQueue(int capacity) : this(false, false, capacity)
         { }
 
         /// <summary>
         /// Initalizes a new multi-threaded unbound channel queue
         /// </summary>
-        public AsyncQueue():this(false, false)
+        public AsyncQueue() : this(false, false)
         { }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace VNLib.Utils.Async
         /// </param>
         public AsyncQueue(bool singleWriter, bool singleReader, int capacity = int.MaxValue)
         {
-            if(capacity == int.MaxValue)
+            if (capacity == int.MaxValue)
             {
                 //Create unbounded
                 UnboundedChannelOptions opt = new()
@@ -95,13 +95,15 @@ namespace VNLib.Utils.Async
         /// Initalizes a new unbound channel based queue
         /// </summary>
         /// <param name="ubOptions">Channel options</param>
-        public AsyncQueue(UnboundedChannelOptions ubOptions) => _channel = Channel.CreateUnbounded<T>(ubOptions);
+        public AsyncQueue(UnboundedChannelOptions ubOptions) 
+            => _channel = Channel.CreateUnbounded<T>(ubOptions);
 
         /// <summary>
         /// Initalizes a new bound channel based queue
         /// </summary>
         /// <param name="options">Channel options</param>
-        public AsyncQueue(BoundedChannelOptions options) => _channel = Channel.CreateBounded<T>(options);
+        public AsyncQueue(BoundedChannelOptions options) 
+            => _channel = Channel.CreateBounded<T>(options);
 
         /// <inheritdoc/>
         public bool TryEnqueue(T item) => _channel.Writer.TryWrite(item);
@@ -121,7 +123,5 @@ namespace VNLib.Utils.Async
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
         public bool TryPeek([MaybeNullWhen(false)] out T result) => _channel.Reader.TryPeek(out result);
-
-        bool IAsyncQueue<T>.TryEnque(T item) => TryEnqueue(item);
     }
 }

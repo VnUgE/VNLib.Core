@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -35,7 +35,7 @@ namespace VNLib.Utils.Memory.Caching
     public abstract class LRUCache<TKey, TValue> : LRUCollection<TKey, TValue> where TKey : notnull
     {
         ///<inheritdoc/>
-        protected LRUCache(): base()
+        protected LRUCache() : base()
         { }
 
         ///<inheritdoc/>
@@ -102,23 +102,25 @@ namespace VNLib.Utils.Memory.Caching
         public override bool TryGetValue(TKey key, [NotNullWhen(true)] out TValue? value)
         {
             //See if the cache contains the value
-            if(base.TryGetValue(key, out value))
+            if (base.TryGetValue(key, out value))
             {
                 //Cache hit
                 return true;
             }
+
             //Cache miss
-            if(CacheMiss(key, out value))
+            if (CacheMiss(key, out value))
             {
                 //Lookup hit
                 //Add the record to the store (eviction will happen as necessary
                 Add(key, value);
                 return true;
             }
+
             //Record does not exist
             return false;
         }
-        
+
         /// <summary>
         /// Invoked when a record is evicted from the cache
         /// </summary>
