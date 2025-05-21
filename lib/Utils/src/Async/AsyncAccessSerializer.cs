@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -198,7 +198,8 @@ namespace VNLib.Utils.Async
 
                         Debug.Assert(!releaser.WillTransition, "The wait entry referrence count was 0 but a release token was issued that would cause a lock transision");
 
-                        releaser.Release();
+                        bool result = releaser.Release();
+                        Debug.Assert(result, "Expected a wait token to complete when released with 0 waiting threads");
 
                         ReturnEntry(entry);
 
@@ -286,7 +287,7 @@ namespace VNLib.Utils.Async
             /// <summary>
             /// A stored referrnece to the moniker while the wait exists
             /// </summary>
-            public TMoniker? Moniker { get; private set; }         
+            public TMoniker? Moniker { get; private set; }
 
             /// <summary>
             /// Gets a token used to enter the lock which may block, or yield async
@@ -297,28 +298,8 @@ namespace VNLib.Utils.Async
             /// <returns>
             /// The incremented reference count.
             /// </returns>
-            public uint ScheduleWait(out WaitEnterToken enterToken)
-            {
-                /*
-                 * Increment wait count before entering the lock
-                 * A cancellation is the only way out, so cover that 
-                 * during the async, only if the token is cancelable
-                 */
-
-                _waitCount++;
-
-                if (_waitCount != 1)
-                {
-                    TaskNode waiter = InitAndEnqueueWaiter(default);
-                    enterToken = new(waiter);
-                    return _waitCount;
-                }
-                else
-                {
-                    enterToken = default;
-                    return _waitCount;
-                }
-            }
+            public uint ScheduleWait(out WaitEnterToken enterToken) 
+                => ScheduleWait(CancellationToken.None, out enterToken);
 
             /// <summary>
             /// Gets a token used to enter the lock which may block, or yield async
@@ -495,7 +476,7 @@ namespace VNLib.Utils.Async
             public readonly bool Release()
             {
                 //return success if no next waiter
-                if(_nextWaiter == null)
+                if (_nextWaiter == null)
                 {
                     return true;
                 }

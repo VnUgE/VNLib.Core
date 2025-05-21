@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -43,14 +43,6 @@ namespace VNLib.Utils.Async
         /// <param name="item">The item to eqneue</param>
         /// <returns>True if the queue can accept another item, false otherwise</returns>
         bool TryEnqueue(T item);
-
-        /// <summary>
-        /// Attemts to enqueue an item if the queue has the capacity
-        /// </summary>
-        /// <param name="item">The item to eqneue</param>
-        /// <returns>True if the queue can accept another item, false otherwise</returns>
-        [Obsolete("Use TryEnqueue instead")]
-        bool TryEnque(T item);
 
         /// <summary>
         /// Enqueues an item to the end of the queue and notifies a waiter that an item was enqueued
