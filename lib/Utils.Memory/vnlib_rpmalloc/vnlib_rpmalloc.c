@@ -177,14 +177,16 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapCreate(UnmanagedHeapDescriptor* flags)
         //Success
         return (ERRNO)TRUE;
     }
+    else
+    {
+        //Allocate a first class heap
+        flags->HeapPointer = rpmalloc_heap_acquire();
 
-    //Allocate a first class heap
-    flags->HeapPointer = rpmalloc_heap_acquire();
+        //Ignore remaining flags, zero/sync can be user optional
 
-    //Ignore remaining flags, zero/sync can be user optional
-
-    //Return value greater than 0
-    return flags->HeapPointer;
+        //Return value greater than 0
+        return flags->HeapPointer;
+    }
 }
 
 
