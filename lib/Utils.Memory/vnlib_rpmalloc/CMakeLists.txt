@@ -65,6 +65,7 @@ if(MSVC)
 		/TC
 		/GS 
 		/std:c11  # enable C11 support
+		/experimental:c11atomics
 
 		# Disable warnings for struct padding and spectre mitigation when WX is enabled
 		$<$<CONFIG:Debug>:/wd5045>
@@ -83,6 +84,7 @@ if(MSVC)
 	)
 
 	list(APPEND _RP_COMP_DEFS
+		_ENABLE_ATOMIC_ALIGNMENT_FIX
 		$<$<CONFIG:DEBUG>:DEBUG>
 		$<$<CONFIG:RELEASE>:RELEASE>
 	)

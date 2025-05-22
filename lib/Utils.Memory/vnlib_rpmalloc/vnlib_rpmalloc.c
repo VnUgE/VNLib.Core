@@ -150,7 +150,7 @@ int pthread_create(pthread_t* thread,
 #endif
 
 #define SHARED_HEAP_HANDLE_VALUE ((HeapHandle)1)
-#define GLOBAL_HEAP_INIT_CHECK if (!rpmalloc_is_thread_initialized()) { rpmalloc_thread_initialize(); }
+#define GLOBAL_HEAP_INIT_CHECK() if (!rpmalloc_is_thread_initialized()) { rpmalloc_thread_initialize(); }
 
 //Define the heap methods
 
@@ -217,7 +217,7 @@ VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, size_t elements, size_t
         * thread attach method, so we need to check and initialze the heap
         * for the current thread
         */
-        GLOBAL_HEAP_INIT_CHECK
+        GLOBAL_HEAP_INIT_CHECK()
 
         //Allocate the block
         if (zero)
@@ -260,7 +260,7 @@ VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, size_t e
         * thread attach method, so we need to check and initialze the heap
         * for the current thread
         */
-        GLOBAL_HEAP_INIT_CHECK
+        GLOBAL_HEAP_INIT_CHECK()
 
         //Calloc
         return rprealloc(block, size);
@@ -283,7 +283,7 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapFree(HeapHandle heap, void* block)
         * its cheap to check
         */
 
-        GLOBAL_HEAP_INIT_CHECK
+        GLOBAL_HEAP_INIT_CHECK()
 
         //free block
         rpfree(block);
