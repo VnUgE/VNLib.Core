@@ -183,7 +183,7 @@ namespace VNLib.Net.Http
 
             //Prepare http context to process a new message
             context.BeginRequest();
-            
+
             try
             {
                 HttpPerfCounter.StartCounter(ref counter);
@@ -202,11 +202,11 @@ namespace VNLib.Net.Http
                 bool keepalive = true;
 
                 //Handle an error parsing the request
-                if(!PreProcessRequest(context, (HttpStatusCode)status, ref keepalive))
+                if (!PreProcessRequest(context, (HttpStatusCode)status, ref keepalive))
                 {
                     return false;
                 }
-              
+
                 bool processSuccess = await ProcessRequestAsync(listenState, context);
 
 #if DEBUG
@@ -230,14 +230,14 @@ namespace VNLib.Net.Http
                 }
 
                 //Write debug response log
-                if(_config.RequestDebugLog != null)
+                if (_config.RequestDebugLog != null)
                 {
                     WriteConnectionDebugLog(this, context);
                 }
 #endif
 
                 HttpPerfCounter.StartCounter(ref counter);
-               
+
                 await context.WriteResponseAsync();
 
                 await context.FlushTransportAsync();
@@ -473,7 +473,7 @@ namespace VNLib.Net.Http
             }
 
             /*
-             * The http state should still be salvagable event with a user-code failure, 
+             * The http state should still be salvagable even with a user-code failure, 
              * so we shouldnt need to terminate requests here. This may need to be changed 
              * if a bug is found and users expect the framework to handle the error.
              * The safest option would be terminate the connection, well see.

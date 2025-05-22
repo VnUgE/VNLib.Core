@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -41,7 +41,6 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="args">The array of arguments to clone</param>
         /// <exception cref="ArgumentNullException"></exception>
-        [Obsolete("Deprecated in preference to ctor(IEnumerable<string>)")]
         public ArgumentList(string[] args) : this(args as IEnumerable<string>)
         { }
 
@@ -53,7 +52,7 @@ namespace VNLib.Utils
         public ArgumentList(IEnumerable<string> args)
         {
             ArgumentNullException.ThrowIfNull(args);
-            _args = args.ToList();
+            _args = [.. args];
         }
 
         /// <summary>
@@ -64,8 +63,8 @@ namespace VNLib.Utils
         ///<inheritdoc/>
         public string this[int key]
         {
-            get => _args[key]; 
-            set => _args[key] = value; 
+            get => _args[key];
+            set => _args[key] = value;
         }
 
         /// <summary>
@@ -119,7 +118,7 @@ namespace VNLib.Utils
         /// <param name="argsList">The collection to search for the arugment within</param>
         /// <param name="argName">The name of the argument to check existence of</param>
         /// <returns>A value that indicates if the argument is present in the list</returns>
-        public static bool HasArgument<T>(T argsList, string argName) where T: IEnumerable<string>
+        public static bool HasArgument<T>(T argsList, string argName) where T : IEnumerable<string>
             => argsList.Contains(argName, StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
@@ -150,11 +149,11 @@ namespace VNLib.Utils
             if (argsList is IList<string> argList)
             {
                 int index = argList.IndexOf(argName);
-                return index == -1 || index + 1 >= argList.Count 
-                    ? null 
+                return index == -1 || index + 1 >= argList.Count
+                    ? null
                     : argList[index + 1];
             }
-            else if(argsList is string[] argsArr)
+            else if (argsList is string[] argsArr)
             {
                 return findInArray(argsArr, argName);
             }
@@ -162,7 +161,7 @@ namespace VNLib.Utils
             {
                 //TODO use linq instead of converting to array on every call
                 return findInArray(
-                    argsList.ToArray(), 
+                    argsList.ToArray(),
                     argName
                 );
             }

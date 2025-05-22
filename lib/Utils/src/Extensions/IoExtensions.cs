@@ -95,9 +95,9 @@ namespace VNLib.Utils.Extensions
             {
                 bufferSize = (int)Math.Min(source.Length, bufferSize);
             }
-            //Alloc a buffer
-            using IMemoryOwner<byte> buffer = heap.DirectAlloc<byte>(bufferSize);
-            //Wait for copy to complete
+
+            using MemoryManager<byte> buffer = heap.DirectAlloc<byte>(bufferSize);            
+
             await CopyToAsync(source, dest, buffer.Memory, token);
         }
 
@@ -118,14 +118,15 @@ namespace VNLib.Utils.Extensions
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(dest);
+            ArgumentNullException.ThrowIfNull(heap);
 
             if (source.CanSeek)
             {
                 bufferSize = (int)Math.Min(source.Length, bufferSize);
             }
-            //Alloc a buffer
-            using IMemoryOwner<byte> buffer = heap.DirectAlloc<byte>(bufferSize);
-            //Wait for copy to complete
+            
+            using MemoryManager<byte> buffer = heap.DirectAlloc<byte>(bufferSize);
+           
             await CopyToAsync(source, dest, buffer.Memory, count, token);
         }
 
@@ -150,29 +151,33 @@ namespace VNLib.Utils.Extensions
             if (!dest.CanWrite)
             {
                 throw new ArgumentException("Destination stream is unwritable", nameof(dest));
-            }
-            heap ??= Shared;
+            }        
+
             //Get a buffer size, maximum of 2mb buffer size if the stream supports seeking, otherwise, min buf size
             int bufSize = source.CanSeek ? (int)Math.Min(source.Length, MAX_BUF_SIZE) : MIN_BUF_SIZE;
-            //Length must be 0, so return
+
             if (bufSize == 0)
             {
+                //Length must be 0, so return
                 return;
             }
-            //Alloc a buffer
-            using UnsafeMemoryHandle<byte> buffer = heap.UnsafeAlloc<byte>(bufSize);
-            int read;
+
+            //If no heap is defined, fall back to MemoryUtil alloc strategy
+            using UnsafeMemoryHandle<byte> buffer = heap is not null
+                ? UnsafeAlloc<byte>(heap, bufSize) 
+                : UnsafeAlloc<byte>(bufSize);
+
             do
             {
-                //read
-                read = source.Read(buffer.Span);
-                //Guard
+                int read = source.Read(buffer.Span);
+
                 if (read == 0)
                 {
                     break;
                 }
-                //write only the data that was read (slice)
+
                 dest.Write(buffer.Span[..read]);
+
             } while (true);
         }
 
@@ -194,38 +199,44 @@ namespace VNLib.Utils.Extensions
             {
                 throw new ArgumentException("Source stream is unreadable", nameof(source));
             }
+
             if (!dest.CanWrite)
             {
                 throw new ArgumentException("Destination stream is unwritable", nameof(dest));
             }
-            //Set default heap
-            heap ??= Shared;
+          
             //Get a buffer size, maximum of 2mb buffer size if the stream supports seeking, otherwise, min buf size
             int bufSize = source.CanSeek ? (int)Math.Min(source.Length, MAX_BUF_SIZE) : MIN_BUF_SIZE;
-            //Length must be 0, so return
+           
             if (bufSize == 0)
             {
+                //Length must be 0, so return
                 return;
             }
-            //Alloc a buffer
-            using UnsafeMemoryHandle<byte> buffer = heap.UnsafeAlloc<byte>(bufSize);
-            //wrapper around offset pointer
+
+            //If no heap is defined, fall back to MemoryUtil alloc strategy
+            using UnsafeMemoryHandle<byte> buffer = heap is not null
+                ? UnsafeAlloc<byte>(heap, bufSize)
+                : UnsafeAlloc<byte>(bufSize);
+
             long total = 0;
-            int read;
             do
             {
                 Span<byte> wrapper = buffer.Span[..(int)Math.Min(bufSize, (count - total))];
-                //read
-                read = source.Read(wrapper);
-                //Guard
+                
+                int read = source.Read(wrapper);
+                
                 if (read == 0)
                 {
                     break;
                 }
+                
                 //write only the data that was read (slice)
                 dest.Write(wrapper[..read]);
+                
                 //Update total
                 total += read;
+            
             } while (true);
         }
 
@@ -248,22 +259,21 @@ namespace VNLib.Utils.Extensions
             {
                 throw new ArgumentException("Source stream is unreadable", nameof(source));
             }
+
             if (!dest.CanWrite)
             {
                 throw new ArgumentException("Destination stream is unwritable", nameof(dest));
             }
-            //Read in loop
-            int read;
+            
             while (true)
             {
-                //read
-                read = await source.ReadAsync(buffer, token);
-                //Guard
+                int read = await source.ReadAsync(buffer, token);              
+
                 if (read == 0)
                 {
                     break;
                 }
-                //write only the data that was read (slice)
+              
                 await dest.WriteAsync(buffer[..read], token);
             }
         }
@@ -288,30 +298,32 @@ namespace VNLib.Utils.Extensions
             {
                 throw new ArgumentException("Source stream is unreadable", nameof(source));
             }
+            
             if (!dest.CanWrite)
             {
                 throw new ArgumentException("Destination stream is unwritable", nameof(dest));
             }
+            
             /*
              * Track total count so we copy the exect number of 
              * bytes from the source
              */
             long total = 0;
-            int read;
+            
             while (true)
             {
-                //get offset wrapper of the total buffer or remaining count
+                
                 Memory<byte> offset = buffer[..(int)Math.Min(buffer.Length, count - total)];
-                //read
-                read = await source.ReadAsync(offset, token);
-                //Guard
+               
+                int read = await source.ReadAsync(offset, token);
+                
                 if (read == 0)
                 {
                     break;
                 }
-                //write only the data that was read (slice)
+               
                 await dest.WriteAsync(offset[..read], token);
-                //Update total
+              
                 total += read;
             }
         }
@@ -379,13 +391,14 @@ namespace VNLib.Utils.Extensions
         /// <param name="fs"></param>
         /// <param name="offsetPath">The base path to prepend to all requests</param>
         /// <returns>A new <see cref="ISimpleFilesystem"/> with a new filesystem directory scope</returns>
-        public static ISimpleFilesystem CreateNewScope(this ISimpleFilesystem fs, string offsetPath) => new FsScope(fs, offsetPath);
+        public static ISimpleFilesystem CreateNewScope(this ISimpleFilesystem fs, string offsetPath) 
+            => new FsScope(fs, offsetPath);
 
         private sealed class FsScope(ISimpleFilesystem Parent, string OffsetPath) : ISimpleFilesystem
         {
 
             ///<inheritdoc/>
-            public Task DeleteFileAsync(string filePath, CancellationToken cancellation)
+            public ValueTask DeleteFileAsync(string filePath, CancellationToken cancellation)
             {
                 string path = Path.Combine(OffsetPath, filePath);
                 return Parent.DeleteFileAsync(path, cancellation);
@@ -399,18 +412,25 @@ namespace VNLib.Utils.Extensions
             }
 
             ///<inheritdoc/>
-            public Task<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation)
+            public ValueTask<Stream?> OpenFileAsync(string filePath, FileAccess options, CancellationToken cancellation)
+            {
+                string path = Path.Combine(OffsetPath, filePath);
+                return Parent.OpenFileAsync(path, options, cancellation);
+            }
+
+            ///<inheritdoc/>
+            public ValueTask<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation)
             {
                 string path = Path.Combine(OffsetPath, filePath);
                 return Parent.ReadFileAsync(path, output, cancellation);
             }
 
             ///<inheritdoc/>
-            public Task WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation)
+            public ValueTask WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation)
             {
                 string path = Path.Combine(OffsetPath, filePath);
                 return Parent.WriteFileAsync(path, data, contentType, cancellation);
-            }
+            }          
         }
 
         /// <summary>
@@ -439,48 +459,49 @@ namespace VNLib.Utils.Extensions
             public string GetExternalFilePath(string filePath) => Directory.GetFullFilePath(filePath);
 
             ///<inheritdoc/>
-            public Task DeleteFileAsync(string filePath, CancellationToken cancellation)
+            public ValueTask DeleteFileAsync(string filePath, CancellationToken cancellation)
             {
                 Directory.DeleteFile(filePath);
-                return Task.CompletedTask;
+                return ValueTask.CompletedTask;
             }
 
             ///<inheritdoc/>
-            public async Task WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation)
+            public async ValueTask WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation)
             {
                 //For when I forget and increase the buffer size
                 Debug.Assert(MaxCopyBufferSize < int.MaxValue, "MaxCopyBufferSize is too large to be cast to an int");
-
-                //Try to calculate a buffer size
-                long bufferSize = data.CanSeek ? Math.Clamp(data.Length, MinCopyBufferSize, MaxCopyBufferSize) : MinCopyBufferSize;
-
-                //Open the local file
+                
+                long bufferSize = data.CanSeek 
+                    ? Math.Clamp(data.Length, MinCopyBufferSize, MaxCopyBufferSize) 
+                    : MinCopyBufferSize;
+                
                 await using IsolatedStorageFileStream output = Directory.OpenFile(filePath, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-
-                //Copy file
+               
                 await CopyToAsync(data, output, (int)bufferSize, Shared, cancellation);
-
-                //All done
+                
             }
 
             ///<inheritdoc/>
-            public async Task<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation)
+            public async ValueTask<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation)
             {
                 //For when I forget and increase the buffer size
                 Debug.Assert(MaxCopyBufferSize < int.MaxValue, "MaxCopyBufferSize is too large to be cast to an int");
-
-                //Open the local file
+                
                 await using IsolatedStorageFileStream local = Directory.OpenFile(filePath, FileMode.Open, FileAccess.Read);
 
-                //Try to calculate a buffer size
                 long bufferSize = Math.Clamp(local.Length, MinCopyBufferSize, MaxCopyBufferSize);
-
-                //Copy file
+              
                 await CopyToAsync(local, output, (int)bufferSize, Shared, cancellation);
 
                 return local.Length;
             }
 
+            public ValueTask<Stream?> OpenFileAsync(string filePath, FileAccess options, CancellationToken cancellation)
+            {               
+                IsolatedStorageFileStream stream = Directory.OpenFile(filePath, FileMode.Open, FileAccess.Read, FileShare.Inheritable);
+              
+                return ValueTask.FromResult<Stream?>(stream);
+            }
         }
     }
 }
