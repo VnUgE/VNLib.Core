@@ -296,9 +296,13 @@ static int run_envsub(FILE *input, FILE *output)
 
         Skip:;
             
-            // If no variable is found, write the current character to the output
-            const char* val = spanGetOffsetC(lineSpan, i);
-            spanAppend(outSpan, &outputPosition, val, 1);
+            // If no variable is found, write the current character to the output        
+            spanAppend(
+                outSpan, 
+                &outputPosition, 
+                spanGetOffsetC(lineSpan, i), 
+                1
+            );
         }
 
         //Write the output line to the file descriptor
