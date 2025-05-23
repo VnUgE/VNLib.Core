@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -48,7 +48,7 @@ namespace VNLib.Utils.IO
         /// <param name="filePath">The path to the file to delete</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>A task that represents and asynchronous work</returns>
-        Task DeleteFileAsync(string filePath, CancellationToken cancellation);
+        ValueTask DeleteFileAsync(string filePath, CancellationToken cancellation);
 
         /// <summary>
         /// Writes a file from the stream to the given file location
@@ -58,7 +58,7 @@ namespace VNLib.Utils.IO
         /// <param name="contentType">The content type of the file to write</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>A task that represents and asynchronous work</returns>
-        Task WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation);
+        ValueTask WriteFileAsync(string filePath, Stream data, string contentType, CancellationToken cancellation);
 
         /// <summary>
         /// Reads a file from the storage system at the given path asynchronously
@@ -67,6 +67,15 @@ namespace VNLib.Utils.IO
         /// <param name="output">The stream to write the file output to</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>The number of bytes read, -1 if the operation failed</returns>
-        Task<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation);
+        ValueTask<long> ReadFileAsync(string filePath, Stream output, CancellationToken cancellation);
+
+        /// <summary>
+        /// Reads a file from the storage system at the given path asynchronously
+        /// </summary>
+        /// <param name="filePath">The file to read</param>
+        /// <param name="options">The file options to pass to the file open mechanism</param>
+        /// <param name="cancellation">A token to cancel the operation</param>
+        /// <returns>A stream of the file data</returns>
+        ValueTask<Stream?> OpenFileAsync(string filePath, FileAccess options, CancellationToken cancellation);
     }
 }
