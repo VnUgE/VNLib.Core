@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -94,9 +94,7 @@ namespace VNLib.Net.Http
                 //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 stream.Dispose();
                 return;
-            }
-         
-            Context.Response.SetStatusCode(code);
+            }           
             
             //Finally store the stream input
             if(!Context.ResponseBody.TrySetResponseBody(stream, length))
@@ -110,6 +108,9 @@ namespace VNLib.Net.Http
                 //Set content type header after body
                 Context.Response.Headers.Set(HttpResponseHeader.ContentType, HttpHelpers.GetContentTypeString(type));
             }
+
+            //Set status code only after everything else is good, should never throw
+            Context.Response.SetStatusCode(code);
         }
 
         ///<inheritdoc/>
@@ -123,9 +124,7 @@ namespace VNLib.Net.Http
                 //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 entity.Close();
                 return;
-            }
-          
-            Context.Response.SetStatusCode(code);
+            }          
 
             //Store the memory reader input
             if (!Context.ResponseBody.TrySetResponseBody(entity))
@@ -139,6 +138,9 @@ namespace VNLib.Net.Http
                 //Set content type header after body
                 Context.Response.Headers.Set(HttpResponseHeader.ContentType, HttpHelpers.GetContentTypeString(type));
             }
+
+            //Set status code only after everything else is good, should never throw
+            Context.Response.SetStatusCode(code);
         }
 
         ///<inheritdoc/>
@@ -153,10 +155,7 @@ namespace VNLib.Net.Http
                 //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 stream.Dispose();
                 return;
-            }
-
-            //Set status code
-            Context.Response.SetStatusCode(code);
+            }          
 
             //Finally store the stream input
             if (!Context.ResponseBody.TrySetResponseBody(stream, length))
@@ -170,6 +169,9 @@ namespace VNLib.Net.Http
                 //Set content type header after body
                 Context.Response.Headers.Set(HttpResponseHeader.ContentType, HttpHelpers.GetContentTypeString(type));
             }
+
+            //Set status code only after everything else is good, should never throw
+            Context.Response.SetStatusCode(code);
         }
 
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
