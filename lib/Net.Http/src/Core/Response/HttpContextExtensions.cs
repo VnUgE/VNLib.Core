@@ -40,33 +40,7 @@ namespace VNLib.Net.Http.Core.Response
         /// <param name="ctx"></param>
         /// <param name="code">The status code to send</param>
         /// <exception cref="InvalidOperationException"></exception>
-        public static void Respond(this HttpContext ctx, HttpStatusCode code) => ctx.Response.SetStatusCode(code);
-
-        /// <summary>
-        /// Begins a 301 redirection by sending status code and message heaaders to client.
-        /// </summary>
-        /// <param name="ctx"></param>
-        /// <param name="location">Location to direct client to, sets the "Location" header</param>
-        /// <exception cref="InvalidOperationException"></exception>
-        public static void Redirect301(this HttpContext ctx, Uri location)
-        {
-            ctx.Response.SetStatusCode(HttpStatusCode.MovedPermanently);
-            //Encode the string for propery http url formatting and set the location header
-            ctx.Response.Headers[HttpResponseHeader.Location] = location.ToString();
-        }
-
-        public const string NO_CACHE_STRING = "no-cache";
-        private static readonly string CACHE_CONTROL_VALUE = HttpHelpers.GetCacheString(CacheType.NoCache | CacheType.NoStore);
-
-        /// <summary>
-        /// Sets CacheControl and Pragma headers to no-cache
-        /// </summary>
-        /// <param name="Response"></param>
-        public static void SetNoCache(this HttpResponse Response)
-        {
-            Response.Headers[HttpResponseHeader.Pragma] = NO_CACHE_STRING;
-            Response.Headers[HttpResponseHeader.CacheControl] = CACHE_CONTROL_VALUE;
-        }
+        public static void Respond(this HttpContext ctx, HttpStatusCode code) => ctx.Response.SetStatusCode(code);   
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ReadOnlyMemory<byte> GetRemainingConstrained(this IMemoryResponseReader reader, int limit)
