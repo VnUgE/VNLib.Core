@@ -76,6 +76,11 @@ namespace VNLib.Net.Http.Core.Request
             {
                 return CompressionMethod.Brotli;
             }
+            else if (serverSupported.HasFlag(CompressionMethod.Zstd)
+                && acceptEncoding.Contains("zstd", StringComparison.OrdinalIgnoreCase))
+            {
+                return CompressionMethod.Zstd;
+            }
             else
             {
                 return CompressionMethod.None;

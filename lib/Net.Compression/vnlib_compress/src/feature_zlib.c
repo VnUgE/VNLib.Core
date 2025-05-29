@@ -46,7 +46,7 @@ static void _gzFreeCallback(void* opaque, void* address)
 	vnfree(address);
 }
 
-int DeflateAllocCompressor(_cmp_state_t* state)
+int DeflateAllocCompressor(comp_state_t* state)
 {	
 	int result, compLevel;
 
@@ -147,7 +147,7 @@ int DeflateAllocCompressor(_cmp_state_t* state)
 	return VNCMP_SUCCESS;
 }
 
-int DeflateFreeCompressor(_cmp_state_t* state)
+int DeflateFreeCompressor(comp_state_t* state)
 {
 	int result;
 
@@ -187,7 +187,7 @@ int DeflateFreeCompressor(_cmp_state_t* state)
 	return VNCMP_SUCCESS;
 }
 
-int DeflateCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation)
+int DeflateCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operation)
 {
 	int result;
 
@@ -261,7 +261,7 @@ int DeflateCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* o
 	return result;
 }
 
-int64_t DeflateGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush)
+int64_t DeflateGetCompressedSize(_In_ const comp_state_t* state, uint64_t length, int32_t flush)
 {
 	uint64_t compressedSize;
 

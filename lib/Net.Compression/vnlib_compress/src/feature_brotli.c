@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -47,7 +47,7 @@ static void _brFreeCallback(void* opaque, void* address)
 }
 
 
-int BrAllocCompressor(_cmp_state_t* state)
+int BrAllocCompressor(comp_state_t* state)
 {
 	BrotliEncoderState* comp;
 
@@ -121,7 +121,7 @@ int BrAllocCompressor(_cmp_state_t* state)
 	return VNCMP_SUCCESS;
 }
 
-void BrFreeCompressor(_cmp_state_t* state)
+void BrFreeCompressor(comp_state_t* state)
 {
 	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");	
 
@@ -135,7 +135,7 @@ void BrFreeCompressor(_cmp_state_t* state)
 	}
 }
 
-int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation)
+int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operation)
 {
 	BrotliEncoderOperation brOperation;
 	BROTLI_BOOL brResult;
@@ -222,7 +222,7 @@ int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operat
 }
 
 
-int64_t BrGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush)
+int64_t BrGetCompressedSize(_In_ const comp_state_t* state, uint64_t length, int32_t flush)
 {
 	size_t size;
 
