@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -150,11 +150,13 @@ namespace VNLib.Net.Messaging.FBM.Client
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) => WriteHeader((byte)header, value);
+        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) 
+            => WriteHeader((byte)header, value);
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteHeader(byte header, ReadOnlySpan<char> value) => Helpers.WriteHeader(Buffer.RequestBuffer, header, value, Helpers.DefaultEncoding);
+        public void WriteHeader(byte header, ReadOnlySpan<char> value) 
+            => Helpers.WriteHeader(Buffer.RequestBuffer, header, value, Helpers.DefaultEncoding);
 
         ///<inheritdoc/>
         public void WriteBody(ReadOnlySpan<byte> body, ContentType contentType = ContentType.Binary)
@@ -258,6 +260,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         }
         #endregion
 
+
         #region Diagnostics
 
         ///<inheritdoc/>
@@ -273,6 +276,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             
             return buffer.AsSpan(0, count).ToString();
         }
+
         ///<inheritdoc/>
         public void Compile(ref ForwardOnlyWriter<char> writer)
         {
@@ -282,6 +286,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             writer.AppendSmall(Environment.NewLine);
             Helpers.DefaultEncoding.GetChars(requestData.Span, ref writer);
         }
+
         ///<inheritdoc/>
         public ERRNO Compile(Span<char> buffer)
         {
@@ -289,6 +294,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             Compile(ref writer);
             return writer.Written;
         }
+
         ///<inheritdoc/>
         public override string ToString() => Compile();
 

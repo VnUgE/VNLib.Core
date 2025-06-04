@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -23,7 +23,7 @@
 */
 
 /*
- * A special stream that sits betnween the socket/pipeline listener
+ * A special stream that sits between the socket/pipeline listener
  * that marshals data between the application and the socket pipeline.
  * This stream uses a timer to cancel recv events. Because of this and 
  * pipeline aspects, it supports full duplex IO but it is not thread safe.
@@ -74,7 +74,7 @@ namespace VNLib.Net.Transport.Tcp
             set => _recvTimeoutMs = value > -2 ? value : throw new ArgumentException("Write timeout must be a 32bit signed integer larger than 0");
         }
 
-        // Write timeout is not currently used, becasue the writer managed socket timeouts
+        // Write timeout is not currently used, because the writer managed socket timeouts
         public override int WriteTimeout
         {
             get => _sendTimeoutMs;

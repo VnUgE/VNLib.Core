@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -92,6 +92,8 @@
 /*
 * Enumerated list of supported compression types for user selection
 * at runtime.
+* 
+* Must match VNLib.Net.Http.Compression.CompressionMethod.cs 
 */
 typedef enum CompressorType
 {
@@ -99,7 +101,7 @@ typedef enum CompressorType
 	COMP_TYPE_GZIP			= 0x01,
 	COMP_TYPE_DEFLATE		= 0x02,
 	COMP_TYPE_BROTLI		= 0x04,
-	COMP_TYPE_LZ4			= 0x08
+	COMP_TYPE_ZSTD			= 0x08
 } CompressorType;
 
 
@@ -161,7 +163,7 @@ typedef struct _vn_cmp_state_struct{
 	uint32_t blockSize;
 
 
-} _cmp_state_t;
+} comp_state_t;
 
 /*
 * An extern caller generated structure passed to calls for 

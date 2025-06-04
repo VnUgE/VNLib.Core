@@ -118,6 +118,9 @@ namespace VNLib.Net.Http.Core
                         case CompressionMethod.Brotli:
                             Response.Headers.Set(HttpResponseHeader.ContentEncoding, "br");
                             break;
+                        case CompressionMethod.Zstd:
+                            Response.Headers.Set(HttpResponseHeader.ContentEncoding, "zstd");
+                            break;
                     }
                 }
             }

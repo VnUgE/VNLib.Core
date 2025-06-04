@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -104,10 +104,10 @@ namespace VNLib.Utils.IO
 
             public bool RemoveHandler(string path, IFSChangeHandler handler)
             {
-                if(Handlers.TryGetValue(Path.GetFileName(path), out SingleFileSubPool? watcher))
+                if (Handlers.TryGetValue(Path.GetFileName(path), out SingleFileSubPool? watcher))
                 {
                     //Remove the single handler
-                    if(watcher.RemoveHandler(handler))
+                    if (watcher.RemoveHandler(handler))
                     {
                         //Handler watcher is empty, remove it from handlers store
                         _ = Handlers.TryRemove(Path.GetFileName(path), out _);

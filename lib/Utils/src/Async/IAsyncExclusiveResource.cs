@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -35,7 +35,7 @@ namespace VNLib.Utils.Async
     public interface IAsyncExclusiveResource : IResource
     {
         /// <summary>
-        /// Releases the resource from use. Called when a <see cref="ExclusiveResourceHandle{T}"/> is disposed
+        /// Releases the resource from use. Called when a is disposed
         /// </summary>
         ValueTask ReleaseAsync(CancellationToken cancellation = default);
     }

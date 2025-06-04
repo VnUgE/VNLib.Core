@@ -1148,6 +1148,12 @@ namespace VNLib.Utils.Memory
 
         #region Mlock
 
+        /// <summary>
+        /// A value that indicates whether memory locking is supported on the current 
+        /// operating system
+        /// </summary>
+        public static bool MemoryLockSupported { get; } = OperatingSystem.IsWindows() || OperatingSystem.IsLinux();
+
         [SupportedOSPlatform("linux")]
         [LibraryImport("libc")]
         private static partial ERRNO mlock(void* addr, nuint size);
