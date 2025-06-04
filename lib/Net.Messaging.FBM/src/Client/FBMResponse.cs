@@ -82,7 +82,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         {
             MessagePacket = null;
             StatusFlags = HeaderParseError.InvalidHeaderRead;
-            Headers = Array.Empty<FBMMessageHeader>();
+            Headers = [];
             IsSet = false;
             _onDispose = null;
         }
@@ -91,14 +91,19 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// Releases any resources associated with the response message
         /// </summary>
         public readonly void Dispose() => _onDispose?.Invoke();
+
         ///<inheritdoc/>
         public override bool Equals(object? obj) => obj is FBMResponse response && Equals(response);
+
         ///<inheritdoc/>
         public bool Equals(FBMResponse other) => IsSet && other.IsSet && ReferenceEquals(MessagePacket, other.MessagePacket);
+
         ///<inheritdoc/>
         public override int GetHashCode() => IsSet ? MessagePacket!.GetHashCode() : 0;
+
         ///<inheritdoc/>
         public static bool operator ==(FBMResponse left, FBMResponse right) => left.Equals(right);
+
         ///<inheritdoc/>
         public static bool operator !=(FBMResponse left, FBMResponse right) => !(left == right);
     }

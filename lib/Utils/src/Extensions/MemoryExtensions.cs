@@ -29,7 +29,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils.Memory;
-using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.Extensions
 {
@@ -40,8 +39,8 @@ namespace VNLib.Utils.Extensions
     public static class MemoryExtensions
     {
         /// <summary>
-        /// Rents a new array and stores it as a resource within an <see cref="OpenResourceHandle{T}"/> to return the 
-        /// array when work is completed
+        /// Allocates a new <see cref="UnsafeMemoryHandle{T}"/> with memory from the 
+        /// specified <see cref="ArrayPool{T}"/> instance.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="pool"></param>
