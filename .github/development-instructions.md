@@ -1,0 +1,5 @@
+This repository is called VNLib.Core. It's a large mono repo with many projects nested inside it. Applications and libraries are grouped by their purpose and usually namespaced accordingly. A repository is called a module and has a collection of projects. Projects within a module are publically available and can be used by other modules or applications both inside and outside development of VNLib products. 
+
+We use a mix of programming languages with our own paradigms and idioms. Projects are mostly written in C# and C11 when possible. Always conform to the coding styles defined in styleguide-<language>.md files for each language found in the .github/ directory. When generating code adhere strictly to the styleguide for the language you are generating code for to most closely relate to the existing codebase. 
+
+It is important that your code is maintainable, readable, and follows the principles of clean code. This means using meaningful names, keeping functions small and focused, and avoiding unnecessary complexity. 
