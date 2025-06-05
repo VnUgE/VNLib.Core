@@ -238,7 +238,6 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             try
             {
-                FBMResponse response = new();
 
                 //Get the request data segment
                 ReadOnlyMemory<byte> requestData = request.GetRequestData();
@@ -258,9 +257,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 Debug("Received {size} bytes for message {id}", request.Response?.Length ?? 0, request.MessageId);
 
                 //Get the response data
-                request.GetResponse(ref response);
-
-                return response;
+                return request.GetResponse();
             }
             catch
             {
@@ -322,8 +319,6 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             try
             {
-                FBMResponse response = new();
-
                 //Get the request data segment
                 ReadOnlyMemory<byte> requestData = request.GetRequestData();
 
@@ -368,8 +363,8 @@ namespace VNLib.Net.Messaging.FBM.Client
 
                 Debug("Response recieved {size} bytes for message {id}", request.Response?.Length ?? 0, request.MessageId);
 
-                request.GetResponse(ref response);
-                return response;
+
+                return request.GetResponse();
             }
             catch
             {

@@ -190,8 +190,11 @@ namespace VNLib.Net.Messaging.FBM.Client
         ///<inheritdoc/>
         protected override void Free()
         {
+            ResponseHeaderList.Clear();
+
             Buffer.Dispose();
             Response?.Dispose();
+
             //Dispose waiter
             (Waiter as FBMMessageWaiter)!.Dispose();
         }
@@ -224,40 +227,32 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// Gets the response of the sent message
         /// </summary>
         /// <returns>The response message for the current request</returns>
-        internal void GetResponse(ref FBMResponse response)
+        internal FBMResponse GetResponse()
         {
-            if (Response != null)
+            if (Response == null)
             {
-                /*
-                 * NOTICE
-                 * 
-                 * The FBM Client will position the response stream to the start 
-                 * of the header section (missing the message-id header)
-                 * 
-                 * The message id belongs to this request so it cannot be mismatched
-                 * 
-                 * The headers are read into a list of key-value pairs and the stream
-                 * is positioned to the start of the message body
-                 */
-
-                //Parse message headers
-                HeaderParseError statusFlags = Helpers.ParseHeaders(Response, Buffer, ResponseHeaderList, HeaderEncoding);
-
-                //return response structure
-                response = new(Response, statusFlags, ResponseHeaderList, OnResponseDisposed);
+                return new();
             }
+
+            /*
+             * NOTICE
+             * 
+             * The FBM Client will position the response stream to the start 
+             * of the header section (missing the message-id header)
+             * 
+             * The message id belongs to this request so it cannot be mismatched
+             * 
+             * The headers are read into a list of key-value pairs and the stream
+             * is positioned to the start of the message body
+             */
+
+            //Parse message headers
+            HeaderParseError statusFlags = Helpers.ParseHeaders(Response, Buffer, ResponseHeaderList, HeaderEncoding);
+
+            //return response structure
+            return new(Response, statusFlags, ResponseHeaderList);
         }
 
-        //Called when a response message is disposed to cleanup resources held by the response
-        private void OnResponseDisposed()
-        {
-            //Clear response header list
-            ResponseHeaderList.Clear();
-
-            //Clear old response
-            Response?.Dispose();
-            Response = null;
-        }
         #endregion
 
 
@@ -313,7 +308,6 @@ namespace VNLib.Net.Messaging.FBM.Client
             {
                 _request = request;
 
-                //Configure timer
                 _timer = new(OnTimeout, this, Timeout.Infinite, Timeout.Infinite);
             }
 
@@ -412,7 +406,6 @@ namespace VNLib.Net.Messaging.FBM.Client
                 _timer.Dispose();
                 _token.Dispose();
             }
-
         }
 
         #endregion
