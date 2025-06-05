@@ -23,10 +23,9 @@
 */
 
 using System;
-using System.Reflection;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -110,7 +109,7 @@ namespace VNLib.Utils.Memory
                 Debug.Assert(!Unsafe.IsNullRef(in srcByte), "Null source reference passed to MemmoveByRef");
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
-                FallbackUnsafeMemmove.Memmove(in srcByte, ref dstByte, byteCount);
+                Unsafe.CopyBlock(ref dstByte, in srcByte, byteCount);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -119,16 +118,16 @@ namespace VNLib.Utils.Memory
                 Debug.Assert(!Unsafe.IsNullRef(in srcByte), "Null source reference passed to MemmoveByRef");
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
+                // Always try to accelerate if the caller has requested it
+                if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteCount))
+                {
+                    AvxCopyStrategy.Memmove(in srcByte, ref dstByte, byteCount);
+                    return;
+                }
+
                 //Check for 64bit copy (should get optimized away when sizeof(nuint == uint) aka 32bit platforms)
                 if (byteCount > uint.MaxValue)
                 {
-                    //We need a 64bit copy strategy
-                    if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteCount))
-                    {
-                        AvxCopyStrategy.Memmove(in srcByte, ref dstByte, byteCount);
-                        return;
-                    }
-
                     //try reflected memove incase it supports 64bit blocks
                     if (ReflectedInternalMemmove.Features != CopyFeatures.NotSupported)
                     {
@@ -136,23 +135,27 @@ namespace VNLib.Utils.Memory
                         return;
                     }
 
-                    //Fallback to buffer copy, caller should have used pinning
-                    FallbackBufferCopy.Memmove(in srcByte, ref dstByte, byteCount);
-                    return;
-                }
+                    /*
+                     * At the moment, .NET's Buffer.MemoryCopy just calls Memmove internally
+                     * by passing pointers by reference. So it's a fallback to avoid pinning.
+                     * Memmove will pin internally if it has to fall back to the PInvoke.
+                     * 
+                     * Anyway, the point with the reflected version is to avoid pinning, 
+                     * unless completly necessary, so it should be available on most 
+                     * .NET 8.0 supported platforms, but this is fallback incase it's not.
+                     * 
+                     */
 
-                //32byte copy
+                    fixed (byte* srcPtr = &srcByte, dstPtr = &dstByte)
+                    {
+                        Buffer.MemoryCopy(srcPtr, dstPtr, byteCount, byteCount);
+                    }
 
-                //Try hardware acceleration if supported and aligned
-                if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteCount))
-                {
-                    //Copy
-                    AvxCopyStrategy.Memmove(in srcByte, ref dstByte, byteCount);
                     return;
                 }
 
                 //fallback to unsafe.copy on 32bit copy
-                FallbackUnsafeMemmove.Memmove(in srcByte, ref dstByte, byteCount);
+                SmallMemmove(in srcByte, ref dstByte, (uint)byteCount);
                 return;
             }        
 
@@ -184,50 +187,7 @@ namespace VNLib.Utils.Memory
                     Debug.Assert(_clrMemmove != null, "Memmove delegate is null and flags assumed is was supported");
                     _clrMemmove!.Invoke(ref dst, in src, byteCount);
                 }
-            }
-
-            private static class FallbackUnsafeMemmove
-            {
-                ///<inheritdoc/>
-                public static readonly CopyFeatures Features = CopyFeatures.None;
-
-                ///<inheritdoc/>
-                [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-                public static void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
-                {
-                    Debug.Assert(byteCount < uint.MaxValue, "Byte count must be less than uint.MaxValue and flags assumed 64bit blocks were supported");
-                    Unsafe.CopyBlock(ref dst, in src, (uint)byteCount);
-                }
-            }
-
-            private static class FallbackBufferCopy
-            {
-                /*
-                 * This class is considered a fallback because it require's a fixed
-                 * statment to get a pointer from a reference. This should avoided
-                 * unless pinning happens and pointers are converted to references.
-                 * 
-                 * Then it is a zero cost fixed statment capturing pointers from references
-                 * that were already pinned.
-                 */
-
-                ///<inheritdoc/>
-                public static readonly CopyFeatures Features = CopyFeatures.Supports64Bit;
-
-                ///<inheritdoc/>
-                [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-                public static void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
-                {
-                    /*
-                     * We assume that the references passed are not null and are 
-                     * already pinned, so this statement is zero cost.
-                     */
-                    fixed (byte* srcPtr = &src, dstPtr = &dst)
-                    {
-                        Buffer.MemoryCopy(srcPtr, dstPtr, byteCount, byteCount);
-                    }
-                }
-            }
+            }         
 
             private sealed class AvxCopyStrategy 
             {
