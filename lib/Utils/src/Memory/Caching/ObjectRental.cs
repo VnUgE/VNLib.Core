@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -37,10 +37,24 @@ namespace VNLib.Utils.Memory.Caching
     /// <typeparam name="T">The data type to reuse</typeparam>
     public class ObjectRental<T> : ObjectRental, IObjectRental<T>, ICacheHolder where T: class
     {
+        /// <summary>
+        /// The thread-safe internal storage collection for reusable objects
+        /// </summary>
         protected readonly ConcurrentStack<T> Storage;
 
+        /// <summary>
+        /// Optional action to execute when an object is returned to the rental pool
+        /// </summary>
         protected readonly Func<T, bool>? ReturnAction;
+
+        /// <summary>
+        /// Optional action to execute when an object is rented from the pool
+        /// </summary>
         protected readonly Action<T>? RentAction;
+        
+        /// <summary>
+        /// Factory function to create new instances of the rented type
+        /// </summary>
         protected readonly Func<T> Constructor;
 
         /// <summary>

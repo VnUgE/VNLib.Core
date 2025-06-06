@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -26,6 +26,10 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.Plugins
 {
+    /// <summary>
+    /// Represents a unified JSON client-server response message containing 
+    /// an upgrade response token and result information for client communication
+    /// </summary>
     public class WebMessage
     {
         /// <summary>

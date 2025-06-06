@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -32,17 +32,59 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Hashing.IdentityUtility
 {
+    /// <summary>
+    /// Contains constants for JSON Web Key (JWK) algorithm identifiers
+    /// </summary>
     public static class JWKAlgorithms
     {
+        /// <summary>
+        /// RSA signature algorithm using SHA-256 hash
+        /// </summary>
         public const string RS256 = "RS256";
+        
+        /// <summary>
+        /// RSA signature algorithm using SHA-384 hash
+        /// </summary>
         public const string RS384 = "RS384";
+        
+        /// <summary>
+        /// RSA signature algorithm using SHA-512 hash
+        /// </summary>
         public const string RS512 = "RS512";
+        
+        /// <summary>
+        /// RSA PSS signature algorithm using SHA-256 hash
+        /// </summary>
         public const string PS256 = "PS256";
+        
+        /// <summary>
+        /// RSA PSS signature algorithm using SHA-384 hash
+        /// </summary>
         public const string PS384 = "PS384";
+        
+        /// <summary>
+        /// RSA PSS signature algorithm using SHA-512 hash
+        /// </summary>
         public const string PS512 = "PS512";
+        
+        /// <summary>
+        /// ECDSA signature algorithm using P-256 curve and SHA-256 hash
+        /// </summary>
         public const string ES256 = "ES256";
+        
+        /// <summary>
+        /// ECDSA signature algorithm using P-384 curve and SHA-384 hash
+        /// </summary>
         public const string ES384 = "ES384";
+        
+        /// <summary>
+        /// ECDSA signature algorithm using P-521 curve and SHA-512 hash
+        /// </summary>
         public const string ES512 = "ES512";
+        
+        /// <summary>
+        /// ECDSA signature algorithm using secp256k1 curve and SHA-256 hash
+        /// </summary>
         public const string ES256K = "ES256K";
     }
     
