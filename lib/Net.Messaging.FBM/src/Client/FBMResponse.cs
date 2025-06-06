@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -34,25 +34,27 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// Once the request is disposed or returned this message state is invalid
     /// </summary>
     public readonly struct FBMResponse : IDisposable, IEquatable<FBMResponse>
-    {
-        private readonly Action? _onDispose;
-
+    {       
         /// <summary>
         /// True when a response body was recieved and properly parsed
         /// </summary>
         public readonly bool IsSet { get; }
+
         /// <summary>
         /// The raw response message packet
         /// </summary>
         public readonly VnMemoryStream? MessagePacket { get; }
+
         /// <summary>
         /// A collection of response message headers
         /// </summary>
         public readonly IReadOnlyList<FBMMessageHeader> Headers { get; }
+
         /// <summary>
         /// Status flags of the message parse operation
         /// </summary>
         public readonly HeaderParseError StatusFlags { get; }
+
         /// <summary>
         /// The body segment of the response message
         /// </summary>
@@ -65,14 +67,12 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="vms">The message buffer (message packet)</param>
         /// <param name="status">The size of the buffer to alloc for header value storage</param>
         /// <param name="headerList">The collection of headerse</param>
-        /// <param name="onDispose">A method that will be invoked when the message response body is disposed</param>
-        public FBMResponse(VnMemoryStream? vms, HeaderParseError status, IReadOnlyList<FBMMessageHeader> headerList, Action onDispose)
+        public FBMResponse(VnMemoryStream? vms, HeaderParseError status, IReadOnlyList<FBMMessageHeader> headerList)
         {
             MessagePacket = vms;
             StatusFlags = status;
             Headers = headerList;
             IsSet = true;
-            _onDispose = onDispose;
         }
 
         /// <summary>
@@ -82,23 +82,47 @@ namespace VNLib.Net.Messaging.FBM.Client
         {
             MessagePacket = null;
             StatusFlags = HeaderParseError.InvalidHeaderRead;
-            Headers = Array.Empty<FBMMessageHeader>();
+            Headers = [];
             IsSet = false;
-            _onDispose = null;
         }
 
         /// <summary>
         /// Releases any resources associated with the response message
         /// </summary>
-        public readonly void Dispose() => _onDispose?.Invoke();
+        public readonly void Dispose()
+        {
+            /*
+             * Originally this struct held a delegate to a function inside the 
+             * request that created it. Which did the following actions. Since 
+             * the request is disposable or reusable, any data in use that 
+             * are held by the request should be disposed or cleaned up with 
+             * request hooks. So we can just clear the headers and dispose
+             * the response. It doesn't really matter if this function is called
+             * either again the request will clean up after itself. 
+             */
+
+            //Clear the header list if possible
+            if (Headers is ICollection<FBMMessageHeader> hc)
+            {
+                hc.Clear();
+            }
+
+            //Dispose the message packet if it exists
+            MessagePacket?.Dispose();
+        }
+
         ///<inheritdoc/>
         public override bool Equals(object? obj) => obj is FBMResponse response && Equals(response);
+
         ///<inheritdoc/>
         public bool Equals(FBMResponse other) => IsSet && other.IsSet && ReferenceEquals(MessagePacket, other.MessagePacket);
+
         ///<inheritdoc/>
         public override int GetHashCode() => IsSet ? MessagePacket!.GetHashCode() : 0;
+
         ///<inheritdoc/>
         public static bool operator ==(FBMResponse left, FBMResponse right) => left.Equals(right);
+
         ///<inheritdoc/>
         public static bool operator !=(FBMResponse left, FBMResponse right) => !(left == right);
     }

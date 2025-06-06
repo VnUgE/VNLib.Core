@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: BackedResourceBase.cs 
+* File: ExternalResourceBase.cs 
 *
-* BackedResourceBase.cs is part of VNLib.Utils which is part of the larger 
+* ExternalResourceBase.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -22,16 +22,13 @@
 * along with VNLib.Utils. If not, see http://www.gnu.org/licenses/.
 */
 
-using System;
-using System.Runtime.CompilerServices;
-
 namespace VNLib.Utils.Resources
 {
     /// <summary>
     /// A base class for a resource that is backed by an external data store. 
     /// Implements the <see cref="IResource"/> interfaceS
     /// </summary>
-    public abstract class BackedResourceBase : IResource
+    public abstract class ExternalResourceBase : IResource
     {
         const int IsReleasedFlag = 1 << 0;
         const int IsDeletedFlag = 1 << 2;
@@ -42,7 +39,7 @@ namespace VNLib.Utils.Resources
         ///<inheritdoc/>
         public bool IsReleased
         {
-            get => (_flags & IsReleasedFlag) == IsReleasedFlag; 
+            get => (_flags & IsReleasedFlag) > 0;
             protected set => _flags |= IsReleasedFlag;
         }
 
@@ -51,41 +48,22 @@ namespace VNLib.Utils.Resources
         /// </summary>
         protected bool Deleted
         {
-            get => (_flags & IsDeletedFlag) == IsDeletedFlag;
+            get => (_flags & IsDeletedFlag) > 0;
             set => _flags |= IsDeletedFlag;
         }
+
+        /// <summary>
+        /// Marks the resource for deletion from backing store during closing events
+        /// </summary>
+        public virtual void Delete() => _flags |= IsDeletedFlag;
 
         /// <summary>
         /// A value indicating whether the instance should be updated when released
         /// </summary>
         protected bool Modified
         {
-            get => (_flags & IsModifiedFlag) == IsModifiedFlag;
+            get => (_flags & IsModifiedFlag) > 0;
             set => _flags |= IsModifiedFlag;
-        }
-
-        /// <summary>
-        /// Checks if the resouce has been disposed and raises an exception if it is
-        /// </summary>
-        /// <exception cref="ObjectDisposedException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void Check()
-        {
-            if (IsReleased)
-            {
-                throw new ObjectDisposedException(null, "The resource has been disposed");
-            }
-        }
-
-        /// <summary>
-        /// Returns the JSON serializable resource to be updated during an update
-        /// </summary>
-        /// <returns>The resource to update</returns>
-        protected abstract object GetResource();
-
-        /// <summary>
-        /// Marks the resource for deletion from backing store during closing events
-        /// </summary>
-        public virtual void Delete() => _flags |= IsDeletedFlag;
+        }    
     }
 }

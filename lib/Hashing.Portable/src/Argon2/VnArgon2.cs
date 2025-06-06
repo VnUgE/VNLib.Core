@@ -52,11 +52,35 @@ namespace VNLib.Hashing
     /// <remarks>Buffers are allocted on a private <see cref="IUnmangedHeap"/> instance.</remarks>
     public static unsafe class VnArgon2
     {
+        /// <summary>
+        /// Default flags value for Argon2 operations
+        /// </summary>
         public const uint ARGON2_DEFAULT_FLAGS = 0U;
+        
+        /// <summary>
+        /// Default hash size in bytes for Argon2 output
+        /// </summary>
         public const uint HASH_SIZE = 128;
+        
+        /// <summary>
+        /// Maximum allowed salt size in bytes
+        /// </summary>
         public const int MAX_SALT_SIZE = 100;
+        
+        /// <summary>
+        /// The Argon2 variant identifier string (argon2id)
+        /// </summary>
         public const string ID_MODE = "argon2id";
+        
+        /// <summary>
+        /// Default name of the Argon2 shared library (argon2.dll on Windows, libargon2.so on Linux, etc.).
+        /// </summary>
         public const string ARGON2_DEFUALT_LIB_NAME = "argon2";
+        
+        /// <summary>
+        /// Environment variable name for specifying custom Argon2 library path. This 
+        /// variable is read at library load time to determine the path to the native Argon2 library.
+        /// </summary>
         public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "VNLIB_ARGON2_DLL_PATH";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -153,35 +153,194 @@ namespace VNLib.Utils
         public readonly string ToString(string? format, IFormatProvider? formatProvider) 
             => ErrorCode.ToString(format, formatProvider);
 
+        /// <summary>
+        /// Adds an integer value to the error code
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="add">The value to add</param>
+        /// <returns>A new ERRNO with the result</returns>
         public static ERRNO operator +(ERRNO err, int add) => new(err.ErrorCode + add);
+        
+        /// <summary>
+        /// Adds a native integer value to the error code
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="add">The value to add</param>
+        /// <returns>A new ERRNO with the result</returns>
         public static ERRNO operator +(ERRNO err, nint add) => new(err.ErrorCode + add);
+        
+        /// <summary>
+        /// Increments the error code by 1
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <returns>A new ERRNO with the incremented error code</returns>
         public static ERRNO operator ++(ERRNO err) => new(err.ErrorCode + 1);
+        
+        /// <summary>
+        /// Decrements the error code by 1
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <returns>A new ERRNO with the decremented error code</returns>
         public static ERRNO operator --(ERRNO err) => new(err.ErrorCode - 1);
+        
+        /// <summary>
+        /// Subtracts an integer value from the error code
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="subtract">The value to subtract</param>
+        /// <returns>A new ERRNO with the result</returns>
         public static ERRNO operator -(ERRNO err, int subtract) => new(err.ErrorCode - subtract);
+        
+        /// <summary>
+        /// Subtracts a native integer value from the error code
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="subtract">The value to subtract</param>
+        /// <returns>A new ERRNO with the result</returns>
         public static ERRNO operator -(ERRNO err, nint subtract) => new(err.ErrorCode - subtract);
 
+        /// <summary>
+        /// Compares if one ERRNO is greater than another
+        /// </summary>
+        /// <param name="err">The first ERRNO instance</param>
+        /// <param name="other">The second ERRNO instance</param>
+        /// <returns>True if the first error code is greater than the second</returns>
         public static bool operator >(ERRNO err, ERRNO other) => err.ErrorCode > other.ErrorCode;
+        
+        /// <summary>
+        /// Compares if one ERRNO is less than another
+        /// </summary>
+        /// <param name="err">The first ERRNO instance</param>
+        /// <param name="other">The second ERRNO instance</param>
+        /// <returns>True if the first error code is less than the second</returns>
         public static bool operator <(ERRNO err, ERRNO other) => err.ErrorCode < other.ErrorCode;
+        
+        /// <summary>
+        /// Compares if one ERRNO is greater than or equal to another
+        /// </summary>
+        /// <param name="err">The first ERRNO instance</param>
+        /// <param name="other">The second ERRNO instance</param>
+        /// <returns>True if the first error code is greater than or equal to the second</returns>
         public static bool operator >=(ERRNO err, ERRNO other) => err.ErrorCode >= other.ErrorCode;
+        
+        /// <summary>
+        /// Compares if one ERRNO is less than or equal to another
+        /// </summary>
+        /// <param name="err">The first ERRNO instance</param>
+        /// <param name="other">The second ERRNO instance</param>
+        /// <returns>True if the first error code is less than or equal to the second</returns>
         public static bool operator <=(ERRNO err, ERRNO other) => err.ErrorCode <= other.ErrorCode;
 
+        /// <summary>
+        /// Compares if an ERRNO is greater than an integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The integer to compare</param>
+        /// <returns>True if the error code is greater than the integer</returns>
         public static bool operator >(ERRNO err, int other) => err.ErrorCode > other;
+        
+        /// <summary>
+        /// Compares if an ERRNO is less than an integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The integer to compare</param>
+        /// <returns>True if the error code is less than the integer</returns>
         public static bool operator <(ERRNO err, int other) => err.ErrorCode < other;
+        
+        /// <summary>
+        /// Compares if an ERRNO is greater than or equal to an integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The integer to compare</param>
+        /// <returns>True if the error code is greater than or equal to the integer</returns>
         public static bool operator >=(ERRNO err, int other) => err.ErrorCode >= other;
+        
+        /// <summary>
+        /// Compares if an ERRNO is less than or equal to an integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The integer to compare</param>
+        /// <returns>True if the error code is less than or equal to the integer</returns>
         public static bool operator <=(ERRNO err, int other) => err.ErrorCode <= other;
 
+        /// <summary>
+        /// Compares if an ERRNO is greater than a native integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The native integer to compare</param>
+        /// <returns>True if the error code is greater than the native integer</returns>
         public static bool operator >(ERRNO err, nint other) => err.ErrorCode > other;
+        
+        /// <summary>
+        /// Compares if an ERRNO is less than a native integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The native integer to compare</param>
+        /// <returns>True if the error code is less than the native integer</returns>
         public static bool operator <(ERRNO err, nint other) => err.ErrorCode < other;
+        
+        /// <summary>
+        /// Compares if an ERRNO is greater than or equal to a native integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The native integer to compare</param>
+        /// <returns>True if the error code is greater than or equal to the native integer</returns>
         public static bool operator >=(ERRNO err, nint other) => err.ErrorCode >= other;
+        
+        /// <summary>
+        /// Compares if an ERRNO is less than or equal to a native integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The native integer to compare</param>
+        /// <returns>True if the error code is less than or equal to the native integer</returns>
         public static bool operator <=(ERRNO err, nint other) => err.ErrorCode <= other;
 
+        /// <summary>
+        /// Checks if two ERRNO instances are equal
+        /// </summary>
+        /// <param name="err">The first ERRNO instance</param>
+        /// <param name="other">The second ERRNO instance</param>
+        /// <returns>True if both error codes are equal</returns>
         public static bool operator ==(ERRNO err, ERRNO other) => err.ErrorCode == other.ErrorCode;
-        public static bool operator !=(ERRNO err, ERRNO other) => err.ErrorCode != other.ErrorCode;
-        public static bool operator ==(ERRNO err, int other) => err.ErrorCode == other;
-        public static bool operator !=(ERRNO err, int other) => err.ErrorCode != other;
-        public static bool operator ==(ERRNO err, nint other) => err.ErrorCode == other;
-        public static bool operator !=(ERRNO err, nint other) => err.ErrorCode != other;
-
         
+        /// <summary>
+        /// Checks if two ERRNO instances are not equal
+        /// </summary>
+        /// <param name="err">The first ERRNO instance</param>
+        /// <param name="other">The second ERRNO instance</param>
+        /// <returns>True if the error codes are not equal</returns>
+        public static bool operator !=(ERRNO err, ERRNO other) => err.ErrorCode != other.ErrorCode;
+        
+        /// <summary>
+        /// Checks if an ERRNO is equal to an integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The integer to compare</param>
+        /// <returns>True if the error code equals the integer</returns>
+        public static bool operator ==(ERRNO err, int other) => err.ErrorCode == other;
+        
+        /// <summary>
+        /// Checks if an ERRNO is not equal to an integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The integer to compare</param>
+        /// <returns>True if the error code does not equal the integer</returns>
+        public static bool operator !=(ERRNO err, int other) => err.ErrorCode != other;
+        
+        /// <summary>
+        /// Checks if an ERRNO is equal to a native integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The native integer to compare</param>
+        /// <returns>True if the error code equals the native integer</returns>
+        public static bool operator ==(ERRNO err, nint other) => err.ErrorCode == other;
+        
+        /// <summary>
+        /// Checks if an ERRNO is not equal to a native integer
+        /// </summary>
+        /// <param name="err">The ERRNO instance</param>
+        /// <param name="other">The native integer to compare</param>
+        /// <returns>True if the error code does not equal the native integer</returns>
+        public static bool operator !=(ERRNO err, nint other) => err.ErrorCode != other;
     }
 }

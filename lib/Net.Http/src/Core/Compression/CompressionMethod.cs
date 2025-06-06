@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -47,6 +47,10 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Brotli compression is required
         /// </summary>
-        Brotli = 0x04
+        Brotli = 0x04,
+        /// <summary>
+        /// Zstandard compression is required
+        /// </summary>
+        Zstd = 0x08,
     }
 }

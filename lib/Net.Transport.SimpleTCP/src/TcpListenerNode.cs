@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -110,15 +110,12 @@ namespace VNLib.Net.Transport.Tcp
         public ValueTask<ITcpConnectionDescriptor> AcceptConnectionAsync(CancellationToken cancellation)
         {
             //Try get args from queue
-            if (WaitingSockets.TryDequeue(out ITcpConnectionDescriptor? args))
-            {
-                return ValueTask.FromResult(args);
-            }
-
-            return WaitingSockets!.DequeueAsync(cancellation);
+            return WaitingSockets.TryDequeue(out ITcpConnectionDescriptor? args)
+                ? ValueTask.FromResult(args)
+                : WaitingSockets!.DequeueAsync(cancellation);
         }
 
-      
+
         public async ValueTask CloseConnectionAsync(ITcpConnectionDescriptor descriptor, bool reuse)
         {
             ArgumentNullException.ThrowIfNull(descriptor);

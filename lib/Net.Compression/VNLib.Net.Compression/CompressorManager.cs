@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -82,7 +82,11 @@ namespace VNLib.Net.Compression
 
                     _nativeLib = LibraryWrapper.LoadLibrary(libPath, DllImportSearchPath.SafeDirectories);
 
-                    log?.Debug("Loaded native compression library with compression level {l}", _compLevel.ToString());
+                    log?.Debug(
+                         "Loaded default native compression library. Supports {sup} with compression level {l} ",
+                         GetSupportedMethods(),
+                         _compLevel.ToString()
+                     );
 
                     return;
                 }
@@ -96,7 +100,11 @@ namespace VNLib.Net.Compression
 
             _nativeLib = LibraryWrapper.LoadDefault();
 
-            log?.Debug("Loaded default native compression library with compression level {l}", _compLevel.ToString());
+            log?.Debug(
+                "Loaded default native compression library. Supports {sup} with compression level {l} ",
+                GetSupportedMethods(),
+                _compLevel.ToString()
+            );
         }
 
         ///<inheritdoc/>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -22,16 +22,6 @@
 * along with VNLib.Hashing.Portable. If not, see http://www.gnu.org/licenses/.
 */
 
-/*
- *  VnArgon2.cs
- *  Author: Vaughhn Nugent
- *  Date: July 17, 2021
- *  
- *  Dependencies Argon2.
- *  https://github.com/P-H-C/phc-winner-argon2
- *  
- */
-
 using System;
 
 namespace VNLib.Hashing
@@ -41,10 +31,18 @@ namespace VNLib.Hashing
     /// </summary>
     public class VnArgon2PasswordFormatException : Exception
     {
+        /// <summary>
+        /// Initializes a new instance of the VnArgon2PasswordFormatException class with a specified error message
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for the exception</param>
         public VnArgon2PasswordFormatException(string message) : base(message) { }
 
+        /// <summary>
+        /// Initializes a new instance of the VnArgon2PasswordFormatException class with a specified error message and inner exception
+        /// </summary>
+        /// <param name="message">The error message that explains the reason for the exception</param>
+        /// <param name="innerException">The exception that is the cause of the current exception</param>
         public VnArgon2PasswordFormatException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
+        { }
     }
 }

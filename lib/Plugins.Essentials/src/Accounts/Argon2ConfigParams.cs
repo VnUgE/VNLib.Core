@@ -31,14 +31,8 @@ namespace VNLib.Plugins.Essentials.Accounts
     /// <summary>
     /// The configuration parameters for the Argon2 hashing algorithm
     /// </summary>
-    public readonly record struct Argon2ConfigParams
+    public readonly record struct Argon2ConfigParams()
     {
-
-        /// <summary>
-        /// Initializes a new <see cref="Argon2ConfigParams"/> instance with the default values
-        /// </summary>
-        public Argon2ConfigParams()
-        { }
 
         /// <summary>
         /// The length of the random salt to use in bytes (defaults to 32)

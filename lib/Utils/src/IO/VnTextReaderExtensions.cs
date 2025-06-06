@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -33,6 +33,9 @@ namespace VNLib.Utils.IO
     /// </summary>
     public static class VnTextReaderExtensions
     {
+        /// <summary>
+        /// Error code indicating that the provided buffer is too small for the operation
+        /// </summary>
         public const int E_BUFFER_TOO_SMALL = -1;
 
 

@@ -80,7 +80,7 @@ namespace VNLib.Net.Transport.Tcp
 
             NetworkStream.ReadTimeout = Timeout.Infinite;
             NetworkStream.WriteTimeout = Timeout.Infinite;
-        }      
+        }
 
         public bool Release()
         {
@@ -136,14 +136,14 @@ namespace VNLib.Net.Transport.Tcp
          * the pipes and the socket
          */
 
-        private ReadResult _sendReadRes;
         private int _sysSocketBufferSize;
+        private ReadResult _sendReadRes;
+        private ReadOnlySequence<byte>.Enumerator _sendEnum;
 
         public async Task SendDoWorkAsync<TIO>(TIO sock, int sendBufferSize)
             where TIO : ISocketIo
         {
             Exception? errCause = null;
-            ReadOnlySequence<byte>.Enumerator enumerator;
             ForwardOnlyMemoryReader<byte> segmentReader;
 
             _started |= true;
@@ -170,9 +170,9 @@ namespace VNLib.Net.Transport.Tcp
                      */
 
                     //Get enumerator to write memory segments
-                    enumerator = _sendReadRes.Buffer.GetEnumerator();
+                    _sendEnum = _sendReadRes.Buffer.GetEnumerator();
 
-                    while (enumerator.MoveNext())
+                    while (_sendEnum.MoveNext())
                     {
 
                         /*
@@ -182,7 +182,7 @@ namespace VNLib.Net.Transport.Tcp
                          * move to the next segment
                          */
 
-                        segmentReader = new(enumerator.Current);
+                        segmentReader = new(_sendEnum.Current);
 
                         while (segmentReader.WindowSize > 0)
                         {
@@ -205,10 +205,10 @@ namespace VNLib.Net.Transport.Tcp
                         }
                         //Advance to next window/segment
                     }
-                  
+
                     //Advance pipe
                     SendPipe.Reader.AdvanceTo(_sendReadRes.Buffer.End);
-                    
+
                     //Pipe has been completed and all data was written
                     if (_sendReadRes.IsCompleted)
                     {
@@ -222,11 +222,12 @@ namespace VNLib.Net.Transport.Tcp
             }
             catch (Exception ex)
             {
-                errCause = ex;   
+                errCause = ex;
             }
             finally
             {
                 _sendReadRes = default;
+                _sendEnum = default;
 
                 //Complete the send pipe reader
                 await SendPipe.Reader.CompleteAsync(errCause);
@@ -235,13 +236,12 @@ namespace VNLib.Net.Transport.Tcp
 
 
         private FlushResult _recvFlushRes;
-      
+        private Memory<byte> _recvBuffer;
 
         public async Task RecvDoWorkAsync<TIO>(TIO sock, int bytesTransferred, int recvBufferSize)
             where TIO : ISocketIo
-        {            
+        {
             Exception? cause = null;
-            Memory<byte> buffer;
 
             _started |= true;
 
@@ -268,12 +268,12 @@ namespace VNLib.Net.Transport.Tcp
                 while (true)
                 {
                     //Get buffer from pipe writer
-                    buffer = RecvPipe.Writer.GetMemory(recvBufferSize);
-                    
-                    //Wait for data or error from socket
-                    int count = await sock.ReceiveAsync(buffer, SocketFlags.None);
+                    _recvBuffer = RecvPipe.Writer.GetMemory(recvBufferSize);
 
-                    if(count <= 0)
+                    //Wait for data or error from socket
+                    int count = await sock.ReceiveAsync(_recvBuffer, SocketFlags.None);
+
+                    if (count <= 0)
                     {
                         //Connection is softly closing, exit
                         break;
@@ -313,7 +313,8 @@ namespace VNLib.Net.Transport.Tcp
         }
 
 
-        private static bool IsPipeClosedAfterFlush(ref FlushResult result) => result.IsCanceled || result.IsCompleted;
+        private static bool IsPipeClosedAfterFlush(ref FlushResult result)
+            => result.IsCanceled || result.IsCompleted;
 
 
         /// <summary>
@@ -412,7 +413,7 @@ namespace VNLib.Net.Transport.Tcp
                     return new(AwaitFlushTask(result, timer));
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 //Stop timer on exception
                 timer.Stop();
@@ -426,7 +427,7 @@ namespace VNLib.Net.Transport.Tcp
         }
 
         private static void CopyAndPublishDataOnSendPipe<TWriter>(ReadOnlySpan<byte> src, int bufferSize, TWriter writer)
-            where TWriter: IBufferWriter<byte>
+            where TWriter : IBufferWriter<byte>
         {
             Debug.Assert(bufferSize > 0, "A call to CopyAndPublishDataOnSendPipe was made before a socket was connected");
 
@@ -448,10 +449,10 @@ namespace VNLib.Net.Transport.Tcp
 
                 //Copy data to the buffer at the new position (attempt to use hardware acceleration)
                 MemoryUtil.AcceleratedMemmove(
-                    src: in srcRef, 
-                    srcOffset: written, 
-                    dst: ref MemoryMarshal.GetReference(dest), 
-                    dstOffset: 0, 
+                    src: in srcRef,
+                    srcOffset: written,
+                    dst: ref MemoryMarshal.GetReference(dest),
+                    dstOffset: 0,
                     elementCount: (uint)dataToCopy
                 );
 
@@ -461,7 +462,7 @@ namespace VNLib.Net.Transport.Tcp
                 //Increment the written count
                 written += (uint)dataToCopy;
             }
-        }       
+        }
 
         void ITransportInterface.Send(ReadOnlySpan<byte> data, int timeout)
         {
@@ -559,13 +560,13 @@ namespace VNLib.Net.Transport.Tcp
         }
 
         private static class ThrowHelpers
-        {            
-            public static void ThrowIfWriterCanceled(bool isCancelled) 
+        {
+            public static void ThrowIfWriterCanceled(bool isCancelled)
             {
-                if(isCancelled)
+                if (isCancelled)
                 {
                     throw new OperationCanceledException("The write operation was canceled by the underlying PipeWriter");
-                }               
+                }
             }
         }
 
