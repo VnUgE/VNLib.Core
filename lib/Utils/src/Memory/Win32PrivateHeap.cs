@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -53,10 +53,25 @@ namespace VNLib.Utils.Memory
        
         #region Extern
         //Heap flags
+        /// <summary>
+        /// No special heap flags
+        /// </summary>
         public const DWORD HEAP_NO_FLAGS = 0x00;
+        /// <summary>
+        /// Enable heap to generate exceptions on failure
+        /// </summary>
         public const DWORD HEAP_GENERATE_EXCEPTIONS = 0x04;
+        /// <summary>
+        /// Disable heap serialization for improved performance in single-threaded scenarios
+        /// </summary>
         public const DWORD HEAP_NO_SERIALIZE = 0x01;
+        /// <summary>
+        /// Restrict reallocation to in-place operations only
+        /// </summary>
         public const DWORD HEAP_REALLOC_IN_PLACE_ONLY = 0x10;
+        /// <summary>
+        /// Initialize allocated memory to zero
+        /// </summary>
         public const DWORD HEAP_ZERO_MEMORY = 0x08;
 
 

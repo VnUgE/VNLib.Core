@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -39,10 +39,25 @@ namespace VNLib.Utils.Memory
     /// </summary>
     public class NativeHeap : UnmanagedHeapBase
     {
+        /// <summary>
+        /// The name of the native function that will be called to create a heap instance
+        /// </summary>
         public const string CREATE_METHOD_NAME = "heapCreate";
+        /// <summary>
+        /// The name of the native function that will be called to allocate memory in the native library
+        /// </summary>
         public const string ALLOCATE_METHOD_NAME = "heapAlloc";
+        /// <summary>
+        /// The name of the native function that will be called to reallocate memory in the native library
+        /// </summary>
         public const string REALLOC_METHOD_NAME = "heapRealloc";
+        /// <summary>
+        /// The name of the native function that will be called to free memory in the native library
+        /// </summary>
         public const string FREE_METHOD_NAME = "heapFree";
+        /// <summary>
+        /// The name of the native function that will be called to destroy a heap instance in the native library
+        /// </summary>
         public const string DESTROY_METHOD_NAME = "heapDestroy";
 
         /// <summary>

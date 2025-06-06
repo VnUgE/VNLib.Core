@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -61,6 +61,9 @@ namespace VNLib.Utils.Extensions
         Ticks
     }
     
+    /// <summary>
+    /// Provides extension methods for JSON serialization and deserialization operations
+    /// </summary>
     public static class JsonExtensions
     {
         /// <summary>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -41,6 +41,10 @@ namespace VNLib.Utils.IO
     /// </summary>
     public sealed class VnMemoryStream : Stream, ICloneable
     {
+        /// <summary>
+        /// The default buffer size used when initializing a new instance of 
+        /// the <see cref="VnMemoryStream"/> class.
+        /// </summary>
         public const int DefaultBufferSize = 4096;
 
         private nint _position;

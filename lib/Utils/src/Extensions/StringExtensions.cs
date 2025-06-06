@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -333,13 +333,31 @@ namespace VNLib.Utils.Extensions
             int index = data.IndexOf(search);
             return index > -1 ? index + 1 : -1;
         }
-
+        
+        /// <summary>
+        /// Searches for the specified byte within the memory buffer and returns the index of the first occurrence
+        /// </summary>
+        /// <param name="data">The memory buffer to search in</param>
+        /// <param name="search">The byte value to search for</param>
+        /// <returns>The zero-based index of the first occurrence of the byte, or -1 if not found</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf(this in Memory<byte> data, byte search) => data.Span.IndexOf(search);
         
+        /// <summary>
+        /// Searches for the specified byte sequence within the memory buffer and returns the index of the first occurrence
+        /// </summary>
+        /// <param name="data">The memory buffer to search in</param>
+        /// <param name="search">The byte sequence to search for</param>
+        /// <returns>The zero-based index of the first occurrence of the sequence, or -1 if not found</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf(this in Memory<byte> data, ReadOnlySpan<byte> search) => data.Span.IndexOf(search);
         
+        /// <summary>
+        /// Searches for the specified byte sequence within the memory buffer and returns the index of the first occurrence
+        /// </summary>
+        /// <param name="data">The memory buffer to search in</param>
+        /// <param name="search">The byte sequence to search for</param>
+        /// <returns>The zero-based index of the first occurrence of the sequence, or -1 if not found</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf(this in Memory<byte> data, ReadOnlyMemory<byte> search) => IndexOf(data, search.Span);
 

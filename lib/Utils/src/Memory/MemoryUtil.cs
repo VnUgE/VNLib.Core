@@ -78,7 +78,16 @@ namespace VNLib.Utils.Memory
         /// </summary>
         public const nuint SHARED_HEAP_INIT_SIZE = 20971520;
 
+        /// <summary>
+        /// A central constant to specify the maximum buffer size for buffer operations
+        /// within the Utils library. 
+        /// </summary>
         public const int MAX_BUF_SIZE = 2097152;
+        
+        /// <summary>
+        /// Also a central constant to specify the minimum buffer size for buffer operations
+        /// within the Utils library.
+        /// </summary>
         public const int MIN_BUF_SIZE = 16000;
         
         /// <summary>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -26,8 +26,34 @@ using System;
 
 namespace VNLib.Utils.Logging
 {
+    /// <summary>
+    /// Specifies the logging levels for logging operations
+    /// </summary>
     public enum LogLevel
     {
-        Verbose, Debug, Information, Warning, Error, Fatal
+        /// <summary>
+        /// Verbose logging level for detailed diagnostic information
+        /// </summary>
+        Verbose, 
+        /// <summary>
+        /// Debug logging level for debug information during development
+        /// </summary>
+        Debug, 
+        /// <summary>
+        /// Information logging level for general informational messages
+        /// </summary>
+        Information, 
+        /// <summary>
+        /// Warning logging level for potentially harmful situations
+        /// </summary>
+        Warning, 
+        /// <summary>
+        /// Error logging level for error events that might still allow the application to continue
+        /// </summary>
+        Error, 
+        /// <summary>
+        /// Fatal logging level for very severe error events that will presumably lead to application abort
+        /// </summary>
+        Fatal
     }
 }
