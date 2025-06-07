@@ -78,7 +78,7 @@ jobs:
     withLfs: false
     withSubmodules: false
     checkoutPath: '@project_name@'
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL  
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: ubuntu-x64 tests
     runInContainer: true
@@ -106,7 +106,7 @@ jobs:
     withLfs: false
     withSubmodules: false
     checkoutPath: '@project_name@'
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL  
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep
     name: fedora-x64 tests
     runInContainer: true
@@ -132,8 +132,17 @@ jobs:
     name: clone
     runInContainer: false
     interpreter: !DefaultInterpreter
-      commands: |        
+      commands: |
         git clone @server_url@/@project_name@ --branch @branch@ @project_name@
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: Create git tag
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |
+        cd @project_name@
+        task tag-current-commit -t Module.Taskfile.yaml
     useTTY: true
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !CommandStep

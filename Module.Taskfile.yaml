@@ -162,3 +162,15 @@ tasks:
     cmds:
      - for: { var: NATIVE_LIB_DIRS }
        cmd: cd {{ .ITEM }} && task clean
+
+  tag-current-commit:
+    vars:
+    #get the current build version from gitversion
+      BUILD_VERSION:
+        sh: dotnet gitversion /showvariable FullSemver
+    #ensure the current branch is master
+    cmds:
+     - cmd: echo "Tagging current commit with version v{{ .BUILD_VERSION }}"
+     - cmd: git tag -s -a v{{ .BUILD_VERSION }} -m "CI Build version {{ .BUILD_VERSION }}"
+     - cmd: git push origin v{{ .BUILD_VERSION }}
+  
