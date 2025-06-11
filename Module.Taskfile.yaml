@@ -39,6 +39,9 @@ tasks:
       BUILD_VERSION:
         sh: dotnet gitversion /showvariable FullSemver
     #ensure the current branch is master
+    status:
+      #see if tag already exists otherwise error on windows
+      - git tag --list v{{ .BUILD_VERSION }} | findstr . >nul
     cmds:
      - cmd: echo "Tagging current commit with version v{{ .BUILD_VERSION }}"
      - cmd: git tag -s -a v{{ .BUILD_VERSION }} -m "CI Build version {{ .BUILD_VERSION }}"
