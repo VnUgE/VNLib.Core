@@ -25,12 +25,27 @@ tasks:
     cmds:
      - cmd: dotnet build -c debug {{ .MS_ARGS }} {{ .CLI_ARGS }}
 
-#called by build pipeline to sync repo
+  #called by build pipeline to sync repo
   update:
     cmds:
      - cmd: git reset --hard  #clean up any local changes
      - cmd: git remote update
      - cmd: git pull origin {{ .BRANCH_NAME }} --verify-signatures 
+  
+  tag-current-commit:
+    desc: 'Tags the current commit with the current build version from gitversion'  
+    vars:
+    #get the current build version from gitversion
+      BUILD_VERSION:
+        sh: dotnet gitversion /showvariable FullSemver
+    #ensure the current branch is master
+    status:
+      #see if tag already exists otherwise error on windows
+      - git tag --list v{{ .BUILD_VERSION }} | findstr . >nul
+    cmds:
+     - cmd: echo "Tagging current commit with version v{{ .BUILD_VERSION }}"
+     - cmd: git tag -s -a v{{ .BUILD_VERSION }} -m "CI Build version {{ .BUILD_VERSION }}"
+     - cmd: git push origin v{{ .BUILD_VERSION }}
 
 #called by build pipeline to build module
   build:
@@ -69,6 +84,7 @@ tasks:
     cmds:
      #git archive in the module directory
      - cmd: git archive --format {{ .ARCHIVE_FILE_FORMAT }} --output {{ .ARCHIVE_FILE_NAME }} HEAD
+     - task: write-changelog
 
   test:
     desc: "Runs managed tests against the entire solution and all loaded test projects"
@@ -162,3 +178,21 @@ tasks:
     cmds:
      - for: { var: NATIVE_LIB_DIRS }
        cmd: cd {{ .ITEM }} && task clean
+
+  write-changelog:
+    vars:      
+      MOD_URL_NAME: '{{ .MODULE_NAME | replace "." "-" | lower }}'
+      CHANGELOG_FILE: '{{ .OUTPUT_DIR }}/CHANGELOG.md' #write the changelog to the release directory
+    cmds:
+     - cmd: powershell "auto-changelog 
+         --latest-version v{{ .VERSION }}
+         --unreleased
+         --hide-empty-releases
+         --template keepachangelog
+         --tag-prefix 'v'
+         --issue-url 'https://www.vaughnnugent.com/resources/software/modules/{{ .MODULE_NAME }}-issues?id={id}' 
+         --compare-url 'https://git.vaughnnugent.com/cgit/vnuge/{{ .MOD_URL_NAME }}.git/diff?id={from}&id2={to}'
+         --commit-url 'https://git.vaughnnugent.com/cgit/vnuge/{{ .MOD_URL_NAME }}.git/commit?id={id}'
+         --ignore-commit-pattern '[Mm]erge pull request|[Mm]erge branch|[Mm]erge tag|[Ss]quashed commit '
+         --output {{ .CHANGELOG_FILE }}
+         {{ .CLI_ARGS }}"
