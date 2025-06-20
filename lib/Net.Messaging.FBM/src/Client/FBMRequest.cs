@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.IO;
 using System.Text;
 using System.Buffers;
 using System.Threading;
@@ -73,9 +74,8 @@ namespace VNLib.Net.Messaging.FBM.Client
          * header key-value pair, and internal copy overhead. 
          */
 
-#pragma warning disable CA2213 // Disposable fields should be disposed
-        private readonly FBMBuffer Buffer;
-#pragma warning restore CA2213 // Disposable fields should be disposed
+
+        private readonly FBMReusableRequestStream _buffer;
         private readonly Encoding HeaderEncoding;
 
         /*
@@ -91,7 +91,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <summary>
         /// The size (in bytes) of the request message
         /// </summary>
-        public int Length => Buffer.RequestBuffer.AccumulatedSize;
+        public int Length => _buffer.AccumulatedSize;
 
         /// <summary>
         /// The id of the current request message
@@ -102,7 +102,6 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// Gets the request message waiter
         /// </summary>
         internal IFBMMessageWaiter Waiter { get; }
-
 
         internal VnMemoryStream? Response { get; private set; }
 
@@ -141,10 +140,10 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Configure waiter
             Waiter = new FBMMessageWaiter(this);
            
-            Buffer = new(manager, bufferSize);
+            _buffer = new(manager, bufferSize);
 
             //Prepare the message incase the request is fresh
-            Buffer.Prepare();
+            _buffer.Prepare();
             Reset();
         }
 
@@ -156,15 +155,17 @@ namespace VNLib.Net.Messaging.FBM.Client
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteHeader(byte header, ReadOnlySpan<char> value) 
-            => Helpers.WriteHeader(Buffer.RequestBuffer, header, value, Helpers.DefaultEncoding);
+            => Helpers.WriteHeader(_buffer, header, value, Helpers.DefaultEncoding);
 
         ///<inheritdoc/>
         public void WriteBody(ReadOnlySpan<byte> body, ContentType contentType = ContentType.Binary)
         {
             //Write content type header
             WriteHeader(HeaderCommand.ContentType, HttpHelpers.GetContentTypeString(contentType));
-            //Now safe to write body
-            Helpers.WriteBody(Buffer.RequestBuffer, body);
+
+            // Writing the message body directly to the stream is the most
+            // efficient
+            _buffer.Write(body);
         }
 
         /// <summary>
@@ -172,28 +173,55 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <returns>A <see cref="IBufferWriter{T}"/> to write message body to</returns>
         /// <remarks>Calling this method ends the headers section of the request</remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IBufferWriter<byte> GetBodyWriter() => Buffer.GetBodyWriter();
+        public IBufferWriter<byte> GetBodyWriter()
+        {
+            //Write the trailing termination header to the stream
+            Helpers.WriteTermination(_buffer);
+            return _buffer;
+        }
+
+        /// <summary>
+        /// Gets a specialized stream of the request message body, this stream is used to 
+        /// write the body data to the request
+        /// </summary>
+        /// <returns>A <see cref="Stream"/> to write the request body to</returns>
+        public Stream GetBodyStream()
+        {
+            _ = GetBodyWriter(); //Ensure the body writer is initialized and headers are ended
+
+            //Return the stream for writing
+            return _buffer;
+        }
 
         /// <summary>
         /// The request message packet, this may cause side effects
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ReadOnlyMemory<byte> GetRequestData() => Buffer.RequestData;
+        public ReadOnlyMemory<byte> GetRequestData() => _buffer.GetWrittenMemory();
 
         /// <summary>
         /// Resets the internal buffer and allows for writing a new message with
         /// the same message-id
         /// </summary>
-        public void Reset() => Buffer.Reset(MessageId);
+        public void Reset()
+        {
+            //Reset request header accumulator when complete
+            _buffer.Reset();
+
+            //Write message id to accumulator, it should already be reset
+            Helpers.WriteMessageid(_buffer, MessageId);
+        }
 
         ///<inheritdoc/>
         protected override void Free()
         {
             ResponseHeaderList.Clear();
 
-            Buffer.Dispose();
             Response?.Dispose();
+
+            // Calling release multiple times is safe, and will release any 
+            // held resources
+            _buffer.Release();            
 
             //Dispose waiter
             (Waiter as FBMMessageWaiter)!.Dispose();
@@ -202,7 +230,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         void IReusable.Prepare()
         {
             //MUST BE CALLED FIRST!
-            Buffer.Prepare();
+            _buffer.Prepare();
             Reset();
         }
 
@@ -216,9 +244,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             Response = null;
 
             //Free buffer
-            Buffer.Release();
-
-            return true;
+            return _buffer.Release();
         }
 
         #region Response 
@@ -247,7 +273,7 @@ namespace VNLib.Net.Messaging.FBM.Client
              */
 
             //Parse message headers
-            HeaderParseError statusFlags = Helpers.ParseHeaders(Response, Buffer, ResponseHeaderList, HeaderEncoding);
+            HeaderParseError statusFlags = Helpers.ParseHeaders(Response, _buffer, ResponseHeaderList, HeaderEncoding);
 
             //return response structure
             return new(Response, statusFlags, ResponseHeaderList);
