@@ -101,7 +101,7 @@ namespace VNLib.Net.Messaging.FBM
             public void AllocBuffer(int size)
             {
                 //Alloc buffer and memory manager to wrap it               
-                _memHandle = Heap.DirectAlloc<byte>(size, false);
+                _memHandle = Heap.AllocMemory<byte>(size, zero: false);
             }
 
             ///<inheritdoc/>
