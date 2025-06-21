@@ -70,7 +70,7 @@ namespace VNLib.WebServer.Middlewares
              * Even though this is testing, the buffer is zeroed to avoid leaking 
              * any data that may be in heap memory after allocation.
              */
-            MemoryManager<byte> man = MemoryUtil.Shared.DirectAlloc<byte>(size, true);
+            MemoryManager<byte> man = MemoryUtil.Shared.AllocMemory<byte>(size, true);
 
             if (random)
             {

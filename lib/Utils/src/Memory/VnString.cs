@@ -308,7 +308,7 @@ namespace VNLib.Utils.Memory
             else
             {
                 //Rent a temp binary buffer
-                using MemoryManager<byte> binBuffer = heap.DirectAlloc<byte>(bufferSize);
+                using MemoryManager<byte> binBuffer = heap.AllocMemory<byte>(bufferSize);
 
                 //Create a new char buffer starting with the buffer size
                 MemoryHandle<char> charBuffer = heap.Alloc<char>(bufferSize);
