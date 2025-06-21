@@ -25,6 +25,7 @@
 using System;
 using System.Collections.Generic;
 
+using VNLib.Utils;
 using VNLib.Utils.IO;
 
 namespace VNLib.Net.Messaging.FBM.Client
@@ -109,6 +110,25 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             //Dispose the message packet if it exists
             MessagePacket?.Dispose();
+        }
+
+        /// <summary>
+        /// If the <see cref="IsSet"/> property is false, raises an <see cref="InvalidResponseException"/>
+        /// </summary>
+        /// <exception cref="InvalidResponseException"></exception>
+        /// <exception cref="InternalBufferTooSmallException"></exception>      
+        public readonly void ValidateStatus()
+        {
+            if (!IsSet)
+            {
+                throw new InvalidResponseException("The response state is undefined (no response received)");
+            }
+
+            //Also throw if buffer header buffer size was too small
+            if (StatusFlags == HeaderParseError.HeaderOutOfMem)
+            {
+                throw new InternalBufferTooSmallException("The internal header buffer was too small to store response headers");
+            }
         }
 
         ///<inheritdoc/>

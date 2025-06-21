@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
-* File: FbmReusableRequestStream.cs 
+* File: FBMReusableRequestBuffer.cs 
 *
-* FbmReusableRequestStream.cs is part of VNLib.Net.Messaging.FBM which is part of the larger 
+* FBMReusableRequestBuffer.cs is part of VNLib.Net.Messaging.FBM which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Messaging.FBM is free software: you can redistribute it and/or modify 
@@ -35,7 +35,7 @@ using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Messaging.FBM.Client
 {
-    internal sealed class FBMReusableRequestStream(IFBMMemoryManager manager, int bufferSize) : 
+    internal sealed class FBMReusableRequestBuffer(IFBMMemoryManager manager, int bufferSize) : 
         Stream,
         IDataAccumulator<byte>,
         IBufferWriter<byte>,
@@ -166,7 +166,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         {
             // Since this request is reusable, we do not want to close the stream
             // so do nothing here.
-        }      
+        }
 
         /// <summary>
         /// This is a no-op method, as the FBM protocol does not require flushing
