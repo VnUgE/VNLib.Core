@@ -767,8 +767,8 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <returns>A <see cref="Span{T}"/> over the modified data</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> AsSpan<T>(this ref ForwardOnlyWriter<T> buffer) => buffer.Buffer[..buffer.Written];
-
+        public static Span<T> AsSpan<T>(this ref readonly ForwardOnlyWriter<T> buffer)
+            => buffer.Buffer[..buffer.Written];
 
         #endregion
 
@@ -789,13 +789,14 @@ namespace VNLib.Utils.Extensions
             //Allow empty spans for empty handles or last elements
             if ((nuint)start == handle.Length)
             {
-                return Span<T>.Empty;
+                return [];
             }
 
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((nuint)start, handle.Length);
 
             //calculate a remaining count
             int count = checked((int)(handle.Length - (uint)start));
+
             //call the other overload
             return AsSpan(handle, start, count);
         }
