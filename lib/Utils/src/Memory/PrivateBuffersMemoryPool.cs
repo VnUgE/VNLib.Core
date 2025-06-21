@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -51,7 +51,7 @@ namespace VNLib.Utils.Memory
         ///<exception cref="ObjectDisposedException"></exception>
         ///<exception cref="ArgumentOutOfRangeException"></exception>
         public override IMemoryOwner<T> Rent(int minBufferSize = 0) 
-            => Heap.DirectAlloc<T>(minBufferSize, zero: false);
+            => Heap.AllocMemory<T>(minBufferSize, zero: false);
 
         /// <summary>
         /// Allocates a new <see cref="MemoryManager{T}"/> of a different data type from the pool
@@ -60,7 +60,7 @@ namespace VNLib.Utils.Memory
         /// <param name="minBufferSize">Minumum size of the buffer</param>
         /// <returns>The memory owner of a different data type</returns>
         public IMemoryOwner<TDifType> Rent<TDifType>(int minBufferSize = 0) where TDifType : unmanaged 
-            => Heap.DirectAlloc<TDifType>(minBufferSize, zero: false);
+            => Heap.AllocMemory<TDifType>(minBufferSize, zero: false);
 
         ///<inheritdoc/>
         protected override void Dispose(bool disposing) => Heap.Dispose();

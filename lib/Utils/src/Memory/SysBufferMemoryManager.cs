@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -48,9 +48,9 @@ namespace VNLib.Utils.Memory
         public SysBufferMemoryManager(IMemoryHandle<T> existingHandle, bool ownsHandle)
         {
             BackingMemory = existingHandle ?? throw new ArgumentNullException(nameof(existingHandle));
-            
+
             //check for overflow
-            if(existingHandle.Length > Int32.MaxValue)
+            if (existingHandle.Length > Int32.MaxValue)
             {
                 throw new OverflowException("This memory manager does not accept handles larger than Int32.MaxValue");
             }
@@ -68,12 +68,12 @@ namespace VNLib.Utils.Memory
         /// </summary> 
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public unsafe override MemoryHandle Pin(int elementIndex = 0) => BackingMemory.Pin(elementIndex);
+        public unsafe override MemoryHandle Pin(int elementIndex = 0)
+            => BackingMemory.Pin(elementIndex);
 
         ///<inheritdoc/>
-        public override void Unpin()
-        {}
-        
+        public override void Unpin() { }
+
         ///<inheritdoc/>
         protected override void Dispose(bool disposing)
         {
