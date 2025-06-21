@@ -28,6 +28,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
@@ -130,7 +132,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
         /// <summary>
         /// Writes specified buffer to the internal buffer. If the internal buffer is 
-        /// undersized 
+        /// undersized or the buffer exceeds the remaining size, an exception will be thrown.
         /// </summary>
         /// <param name="buffer"></param>
         public override void Write(ReadOnlySpan<byte> buffer)
@@ -157,7 +159,57 @@ namespace VNLib.Net.Messaging.FBM.Client
             );
 
             Advance(buffer.Length);
-        }     
+        }
+
+        /// <summary>
+        /// Writes the specified buffer to the internal buffer. This function always runs synchronously,
+        /// and returns a completed <see cref="ValueTask"/>. The buffer must not exceed the remaining size
+        /// of the internal buffer, otherwise an <see cref="ArgumentOutOfRangeException"/> will be thrown.
+        /// </summary>
+        /// <param name="buffer">A readonly memory buffer to write to the internal buffer</param>
+        /// <param name="cancellationToken">Is never read</param>
+        /// <returns>
+        /// <see cref="ValueTask.CompletedTask"/>If the operation was successful, otherwise a completed 
+        /// <see cref="ValueTask"/> with an exception.
+        /// </returns>
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Write(buffer.Span);
+                return ValueTask.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                return ValueTask.FromException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Writes the specified buffer to the internal buffer. This function always runs synchronously,
+        /// and returns a completed <see cref="Task"/>. The buffer must not exceed the remaining size
+        /// of the internal buffer, otherwise an <see cref="ArgumentOutOfRangeException"/> will be thrown.
+        /// </summary>
+        /// <param name="buffer"> A byte array to write to the internal buffer</param>
+        /// <param name="count"> The number of bytes to write from the buffer</param>
+        /// <param name="offset"> The offset in the buffer to start writing from</param>
+        /// <param name="cancellationToken">Is never read</param>
+        /// <returns>
+        /// <see cref="Task.CompletedTask"/>If the operation was successful, otherwise a completed 
+        /// <see cref="Task"/> with an exception.
+        /// </returns>
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            try
+            {
+                Write(buffer.AsSpan(offset, count));
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                return Task.FromException(ex);
+            }
+        }
 
         /// <summary>
         /// <inheritdoc/>
