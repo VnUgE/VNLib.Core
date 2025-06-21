@@ -50,7 +50,7 @@ namespace VNLib.Utils.IO
         private nint _position;
         private nint _length;
         private bool _isReadonly;
-        
+
         //Memory
         private readonly IResizeableMemoryHandle<byte> _buffer;
 
@@ -68,7 +68,7 @@ namespace VNLib.Utils.IO
         /// <param name="readOnly">Should the stream be readonly?</param>
         /// <exception cref="ArgumentException"></exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
-        public static VnMemoryStream ConsumeHandle(IResizeableMemoryHandle<byte> handle, nint length, bool readOnly) 
+        public static VnMemoryStream ConsumeHandle(IResizeableMemoryHandle<byte> handle, nint length, bool readOnly)
             => FromHandle(handle, true, length, readOnly);
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace VNLib.Utils.IO
             ArgumentNullException.ThrowIfNull(heap);
             _buffer = heap.Alloc<byte>(bufferSize, zero);
         }
-       
+
         /// <summary>
         /// Creates a new memory stream from the data provided
         /// </summary>
@@ -187,8 +187,8 @@ namespace VNLib.Utils.IO
         private VnMemoryStream(
             IResizeableMemoryHandle<byte> buffer,
             MemoryManager<byte>? existingManager,
-            nint length, 
-            bool readOnly, 
+            nint length,
+            bool readOnly,
             bool ownsHandle
         )
         {
@@ -201,7 +201,7 @@ namespace VNLib.Utils.IO
             _isReadonly = readOnly;
             _memoryWrapper = existingManager;
         }
-      
+
         /// <summary>
         /// UNSAFE Number of bytes between position and length. Never negative
         /// </summary>
@@ -219,7 +219,7 @@ namespace VNLib.Utils.IO
                 ? throw new NotSupportedException("This stream is not readonly. Cannot create shallow copy on a mutable stream")
                 : new VnMemoryStream(_buffer, _memoryWrapper, _length, readOnly: true, ownsHandle: false);
         }
-        
+
         /// <summary>
         /// Writes data directly to the destination stream from the internal buffer
         /// without allocating or copying any data.
@@ -231,7 +231,7 @@ namespace VNLib.Utils.IO
         {
             ArgumentNullException.ThrowIfNull(destination);
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(bufferSize, 0);
-   
+
             if (!destination.CanWrite)
             {
                 throw new IOException("The destinaion stream is not writeable");
@@ -244,7 +244,7 @@ namespace VNLib.Utils.IO
 
                 //Create a span wrapper by using the offet function to support memory handles larger than 2gb
                 ReadOnlySpan<byte> span = _buffer.GetOffsetSpan(_position, bytesToRead);
-                
+
                 destination.Write(span);
 
                 //Update position
@@ -273,10 +273,10 @@ namespace VNLib.Utils.IO
                 throw new IOException("The destinaion stream is not writeable");
             }
 
-            cancellationToken.ThrowIfCancellationRequested();            
+            cancellationToken.ThrowIfCancellationRequested();
 
             //Memory manager requires 32bit or less in length
-            if(_length < Int32.MaxValue)
+            if (_length < Int32.MaxValue)
             {
                 //Get/alloc the internal memory manager and get the block
                 ReadOnlyMemory<byte> asMemory = AsMemory();
@@ -336,7 +336,7 @@ namespace VNLib.Utils.IO
 
         ///<inheritdoc/>
         public override bool CanTimeout => false;
-       
+
         ///<inheritdoc/>
         public override long Position
         {
@@ -375,13 +375,13 @@ namespace VNLib.Utils.IO
             }
             //Number of bytes to read from memory buffer
             int bytesToRead = (int)Math.Min(LenToPosDiff, buffer.Length);
-            
+
             //Copy bytes to buffer
             MemoryUtil.Copy(_buffer, _position, buffer, 0, bytesToRead);
-            
+
             //Increment buffer position
             _position += bytesToRead;
-            
+
             return bytesToRead;
         }
 
@@ -395,7 +395,7 @@ namespace VNLib.Utils.IO
 
             //get the value at the current position
             ref byte ptr = ref _buffer.GetOffsetByteRef(_position);
-            
+
             //Increment position
             _position++;
 
@@ -445,7 +445,7 @@ namespace VNLib.Utils.IO
 
                 case SeekOrigin.Current:
 
-                    if(_offset < 0)
+                    if (_offset < 0)
                     {
                         ArgumentOutOfRangeException.ThrowIfLessThan(offset, -_position);
                     }
@@ -471,7 +471,7 @@ namespace VNLib.Utils.IO
                 default:
                     throw new ArgumentException("Stream operation is not supported on current stream");
             }
-        }        
+        }
 
         /// <summary>
         /// Resizes the internal buffer to the exact size (in bytes) of the 
@@ -492,22 +492,23 @@ namespace VNLib.Utils.IO
 
             ArgumentOutOfRangeException.ThrowIfNegative(value);
             ArgumentOutOfRangeException.ThrowIfGreaterThan(value, nint.MaxValue);
-            
+
             nint _value = (nint)value;
 
             //Resize the buffer to the specified length
             _buffer.Resize(_value);
-            
+
             //Set length
             _length = _value;
-            
+
             //Make sure the position is not pointing outside of the buffer after resize
             _position = Math.Min(_position, _length);
         }
 
         ///<inheritdoc/>
         ///<exception cref="OutOfMemoryException"></exception>
-        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+        public override void Write(byte[] buffer, int offset, int count) 
+            => Write(buffer.AsSpan(offset, count));
 
         ///<inheritdoc/>
         ///<exception cref="OutOfMemoryException"></exception>
@@ -517,8 +518,10 @@ namespace VNLib.Utils.IO
             {
                 throw new NotSupportedException("Write operation is not allowed on readonly stream!");
             }
+
             //Calculate the new final position
             nint newPos = checked(_position + buffer.Length);
+
             //Determine if the buffer needs to be expanded
             if (buffer.Length > LenToPosDiff)
             {
@@ -530,13 +533,13 @@ namespace VNLib.Utils.IO
 
             //Copy the input buffer to the internal buffer
             MemoryUtil.Copy(
-                source: buffer, 
-                sourceOffset: 0, 
-                dest: _buffer, 
-                destOffset: (nuint)_position, 
+                source: buffer,
+                sourceOffset: 0,
+                dest: _buffer,
+                destOffset: (nuint)_position,
                 count: buffer.Length
             );
-            
+
             //Update the position
             _position = newPos;
         }
@@ -582,12 +585,12 @@ namespace VNLib.Utils.IO
                 //Use new opperator if larger than 32bit
                 data = new byte[_length];
             }
-           
+
             MemoryUtil.CopyArray(_buffer, 0, data, 0, (nuint)_length);
-            
+
             return data;
         }
-        
+
         /// <summary>
         /// Returns a <see cref="ReadOnlySpan{T}"/> window over the data within the entire stream
         /// that is equal in length to the stream length.
@@ -635,7 +638,7 @@ namespace VNLib.Utils.IO
              */
             return asMemory.Memory[..len];
         }
-      
+
         /// <summary>
         /// If the current stream is a readonly stream, creates a shallow copy for reading only.
         /// </summary>

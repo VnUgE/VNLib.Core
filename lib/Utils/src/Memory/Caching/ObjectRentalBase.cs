@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -33,6 +33,19 @@ namespace VNLib.Utils.Memory.Caching
     public abstract class ObjectRental : VnDisposeable
     {
         /// <summary>
+        /// Creates a new <see cref="ObjectRental{T}"/> store with generic rental and return callback handlers
+        /// </summary>
+        /// <param name="constructor">The function invoked to create a new instance when required</param>
+        /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
+        /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
+        /// <param name="quota">The maximum number of elements that will be cached</param>
+        public static ObjectRental<TNew> Create<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Func<TNew, bool>? returnCb, int quota = 0) where TNew : class
+        {
+            ArgumentNullException.ThrowIfNull(constructor);
+            return new(constructor, rentCb, returnCb, quota);
+        }
+
+        /// <summary>
         /// Creates a new <see cref="ObjectRental{T}"/> store
         /// </summary>
         /// <param name="quota">The maximum number of elements that will be cached</param>
@@ -60,7 +73,7 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
         /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
         /// <param name="quota">The maximum number of elements that will be cached</param>
-        public static ObjectRental<TNew> Create<TNew>(Action<TNew>? rentCb, Action<TNew>? returnCb, int quota = 0) where TNew : class, new() 
+        public static ObjectRental<TNew> Create<TNew>(Action<TNew>? rentCb, Action<TNew>? returnCb, int quota = 0) where TNew : class, new()
             => Create(rentCb, FromAction(returnCb), quota);
 
         /// <summary>
@@ -69,17 +82,8 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="constructor">The function invoked to create a new instance when required</param>
         /// <param name="quota">The maximum number of elements that will be cached</param>
         /// <returns></returns>
-        public static ObjectRental<TNew> Create<TNew>(Func<TNew> constructor, int quota = 0) where TNew : class => Create(constructor, null, null, quota);
-
-        /// <summary>
-        /// Creates a new <see cref="ObjectRental{T}"/> store with generic rental and return callback handlers
-        /// </summary>
-        /// <param name="constructor">The function invoked to create a new instance when required</param>
-        /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
-        /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
-        /// <param name="quota">The maximum number of elements that will be cached</param>
-        public static ObjectRental<TNew> Create<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Func<TNew, bool>? returnCb, int quota = 0) where TNew : class 
-            => new(constructor, rentCb, returnCb, quota);
+        public static ObjectRental<TNew> Create<TNew>(Func<TNew> constructor, int quota = 0) where TNew : class
+            => Create(constructor, null, null, quota);
 
 
         /// <summary>
@@ -100,8 +104,12 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="rentCb">Function responsible for preparing an instance to be rented</param>
         /// <param name="returnCb">Function responsible for cleaning up an instance before reuse</param>
         /// <returns>The initialized store</returns>
-        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Func<TNew, bool>? returnCb) where TNew : class 
-            => new (constructor, rentCb, returnCb);
+        /// <exception cref="ArgumentNullException"></exception>
+        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Func<TNew> constructor, Action<TNew>? rentCb, Func<TNew, bool>? returnCb) where TNew : class
+        {
+            ArgumentNullException.ThrowIfNull(constructor);
+            return new(constructor, rentCb, returnCb); 
+        }
 
         /// <summary>
         /// Creates a new <see cref="ThreadLocalObjectStorage{TNew}"/> store with generic rental and return callback handlers
@@ -150,7 +158,8 @@ namespace VNLib.Utils.Memory.Caching
         /// </summary>
         /// <param name="constructor">The function invoked to create a new instance when required</param>
         /// <returns></returns>
-        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Func<TNew> constructor) where TNew : class => CreateThreadLocal(constructor, null, null);
+        public static ThreadLocalObjectStorage<TNew> CreateThreadLocal<TNew>(Func<TNew> constructor) where TNew : class
+            => CreateThreadLocal(constructor, null, null);
 
         /// <summary>
         /// Creates a new <see cref="ObjectRental{T}"/> instance with a parameterless constructor
@@ -171,7 +180,7 @@ namespace VNLib.Utils.Memory.Caching
         /// <param name="constructor">The constructor function invoked to create new instances of the <see cref="IReusable"/> type</param>
         /// <param name="quota">The maximum number of elements that will be cached</param>
         /// <returns></returns>
-        public static ObjectRental<T> CreateReusable<T>(Func<T> constructor, int quota = 0) where T : class, IReusable 
+        public static ObjectRental<T> CreateReusable<T>(Func<T> constructor, int quota = 0) where T : class, IReusable
             => Create(constructor, StaticOnReusablePrepare, StaticOnReusableRelease, quota);
 
         /// <summary>
@@ -182,7 +191,7 @@ namespace VNLib.Utils.Memory.Caching
         public static ThreadLocalObjectStorage<T> CreateThreadLocalReusable<T>() where T : class, IReusable, new()
         {
             static T constructor() => new();
-            return CreateThreadLocalReusable(constructor);          
+            return CreateThreadLocalReusable(constructor);
         }
 
         /// <summary>
@@ -191,28 +200,30 @@ namespace VNLib.Utils.Memory.Caching
         /// <typeparam name="T">The <see cref="IReusable"/> type</typeparam>
         /// <param name="constructor">The constructor function invoked to create new instances of the <see cref="IReusable"/> type</param>
         /// <returns></returns>
-        public static ThreadLocalObjectStorage<T> CreateThreadLocalReusable<T>(Func<T> constructor) where T : class, IReusable 
-            => new(constructor, StaticOnReusablePrepare, StaticOnReusableRelease);
+        public static ThreadLocalObjectStorage<T> CreateThreadLocalReusable<T>(Func<T> constructor) where T : class, IReusable
+            => CreateThreadLocal(constructor, StaticOnReusablePrepare, StaticOnReusableRelease);
 
-        private static void StaticOnReusablePrepare<T>(T item) where T: IReusable => item.Prepare();
+        private static void StaticOnReusablePrepare<T>(T item) where T : IReusable => item.Prepare();
 
         private static bool StaticOnReusableRelease<T>(T item) where T : IReusable => item.Release();
 
 
         private static Func<T, bool>? FromAction<T>(Action<T>? callback)
         {
-            //Propagate null callback
-            if(callback is null)
+            // Propagate null callback
+            if (callback is null)
             {
                 return null;
             }
 
-            //Local function always returns true
-            return (T item) =>
+            // Local function always returns true
+            bool FromActionCallback(T item)
             {
                 callback(item);
                 return true;
-            };
+            }
+
+            return FromActionCallback;
         }
     }
 }
