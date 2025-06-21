@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -81,7 +81,6 @@ namespace VNLib.Net.Messaging.FBM
 
         private sealed record class FBMMemHandle(IUnmangedHeap Heap) : IFBMMemoryHandle, IFBMBufferHolder
         {
-            private MemoryHandle<byte>? _handle;
             private MemoryManager<byte>? _memHandle;
 
             ///<inheritdoc/>
@@ -94,24 +93,25 @@ namespace VNLib.Net.Messaging.FBM
             ///<inheritdoc/>
             public Span<byte> GetSpan()
             {
-                _ = _handle ?? throw new InvalidOperationException("Buffer has not allocated");
-                return _handle.Span;
+                _ = _memHandle ?? throw new InvalidOperationException("Buffer has not allocated");
+                return _memHandle.GetSpan();
             }
 
             ///<inheritdoc/>
             public void AllocBuffer(int size)
             {
-                //Alloc buffer and memory manager to wrap it
-                _handle = Heap.Alloc<byte>(size, false);
-                _memHandle = _handle.ToMemoryManager(false);
+                //Alloc buffer and memory manager to wrap it               
+                _memHandle = Heap.DirectAlloc<byte>(size, false);
             }
 
             ///<inheritdoc/>
             public void FreeBuffer()
             {
-                _handle?.Dispose();
+                if (_memHandle is IDisposable disp)
+                {
+                    disp.Dispose();
+                }
 
-                _handle = null;
                 _memHandle = null;
             }
         }

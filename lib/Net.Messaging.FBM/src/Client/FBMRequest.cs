@@ -44,10 +44,12 @@ namespace VNLib.Net.Messaging.FBM.Client
 
     /// <summary>
     /// <para>
-    /// A reusable Fixed Buffer Message request container. This class is not thread-safe
+    /// A reusable Fixed Buffer Message (FBM) request object. 
     /// </para>
     /// <para>
-    /// The internal buffer is used for storing headers, body data (unless streaming)
+    /// This class is not thread-safe. This class may be used in stores that support 
+    /// the <see cref="IReusable"/> interface. This class will allocate large internal buffers 
+    /// that are reused for the FBM transaction.
     /// </para>
     /// </summary>
     public sealed class FBMRequest : VnDisposeable, IReusable, IFBMMessage, IStringSerializeable
@@ -75,7 +77,7 @@ namespace VNLib.Net.Messaging.FBM.Client
          */
 
 
-        private readonly FBMReusableRequestStream _buffer;
+        private readonly FBMReusableRequestBuffer _buffer;
         private readonly Encoding HeaderEncoding;
 
         /*
@@ -97,7 +99,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// The id of the current request message
         /// </summary>
         public int MessageId { get; }
-    
+
         /// <summary>
         /// Gets the request message waiter
         /// </summary>
@@ -119,7 +121,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="messageId">The custom message id</param>
         /// <param name="config">The fbm client config storing required config variables</param>
         public FBMRequest(int messageId, ref readonly FBMClientConfig config)
-            :this(messageId, config.MemoryManager, config.MessageBufferSize, config.HeaderEncoding)
+            : this(messageId, config.MemoryManager, config.MessageBufferSize, config.HeaderEncoding)
         { }
 
         /// <summary>
@@ -139,7 +141,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             //Configure waiter
             Waiter = new FBMMessageWaiter(this);
-           
+
             _buffer = new(manager, bufferSize);
 
             //Prepare the message incase the request is fresh
@@ -147,15 +149,16 @@ namespace VNLib.Net.Messaging.FBM.Client
             Reset();
         }
 
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value) 
+        ///<inheritdoc/>       
+        public void WriteHeader(HeaderCommand header, ReadOnlySpan<char> value)
             => WriteHeader((byte)header, value);
 
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteHeader(byte header, ReadOnlySpan<char> value) 
-            => Helpers.WriteHeader(_buffer, header, value, Helpers.DefaultEncoding);
+        ///<inheritdoc/>        
+        public void WriteHeader(byte header, ReadOnlySpan<char> value)
+        {
+            Check();
+            Helpers.WriteHeader(_buffer, header, value, Helpers.DefaultEncoding);
+        }
 
         ///<inheritdoc/>
         public void WriteBody(ReadOnlySpan<byte> body, ContentType contentType = ContentType.Binary)
@@ -165,6 +168,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             // Writing the message body directly to the stream is the most
             // efficient
+            _buffer.Write(Helpers.Termination.Span);
             _buffer.Write(body);
         }
 
@@ -175,6 +179,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <remarks>Calling this method ends the headers section of the request</remarks>
         public IBufferWriter<byte> GetBodyWriter()
         {
+            Check();
+
             //Write the trailing termination header to the stream
             Helpers.WriteTermination(_buffer);
             return _buffer;
@@ -194,61 +200,85 @@ namespace VNLib.Net.Messaging.FBM.Client
         }
 
         /// <summary>
-        /// The request message packet, this may cause side effects
+        /// Get's the current request data as a read-only memory segment. This is a 
+        /// raw view of the internal buffer containing the request headers as are
+        /// currently written to the buffer.
         /// </summary>
+        /// <exception cref="ObjectDisposedException">Thrown if the request has been disposed</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ReadOnlyMemory<byte> GetRequestData() => _buffer.GetWrittenMemory();
+        public ReadOnlyMemory<byte> GetRequestData()
+        {
+            Check();
+            return _buffer.GetWrittenMemory();
+        }
+
+        /// <summary>
+        /// Clears the internal state of the request, this is used 
+        /// to reset the request
+        /// </summary>
+        private void ClearInternals()
+        {
+            //Cleanup response data if it's set
+            Response?.Dispose();
+            Response = null;
+
+            //Clear response header list
+            ResponseHeaderList.Clear();
+
+            //Reset buffer to position 0
+            _buffer.Reset();
+        }
 
         /// <summary>
         /// Resets the internal buffer and allows for writing a new message with
-        /// the same message-id
+        /// the same message-id. This destroys all data and <see cref="FBMResponse"/>
+        /// structures created by this request.
         /// </summary>
+        /// <exception cref="ObjectDisposedException">Thrown if the request has been disposed</exception>
         public void Reset()
         {
-            //Reset request header accumulator when complete
-            _buffer.Reset();
+            Check();
+
+            ClearInternals();
 
             //Write message id to accumulator, it should already be reset
             Helpers.WriteMessageid(_buffer, MessageId);
-        }
-
-        ///<inheritdoc/>
-        protected override void Free()
-        {
-            ResponseHeaderList.Clear();
-
-            Response?.Dispose();
-
-            // Calling release multiple times is safe, and will release any 
-            // held resources
-            _buffer.Release();            
-
-            //Dispose waiter
-            (Waiter as FBMMessageWaiter)!.Dispose();
-        }
+        }     
 
         void IReusable.Prepare()
         {
-            //MUST BE CALLED FIRST!
-            _buffer.Prepare();
-            Reset();
+            if (!Disposed)
+            {
+                //Buffer must be allocated before use
+                _buffer.Prepare();
+
+                Reset();
+            }
         }
 
         bool IReusable.Release()
         {
-            //Make sure response header list is clear
-            ResponseHeaderList.Clear();
-
-            //Clear old response data if error occured
-            Response?.Dispose();
-            Response = null;
+            ClearInternals();
 
             //Free buffer
             return _buffer.Release();
         }
 
+        ///<inheritdoc/>
+        protected override void Free()
+        {
+            ClearInternals();
+
+            // Calling release multiple times is safe, and will release any 
+            // held resources
+            _buffer.Release();
+
+            //Dispose waiter
+            (Waiter as FBMMessageWaiter)!.Dispose();
+        }
+
         #region Response 
-        
+
         /// <summary>
         /// Gets the response of the sent message
         /// </summary>
@@ -290,11 +320,11 @@ namespace VNLib.Net.Messaging.FBM.Client
             ReadOnlyMemory<byte> requestData = GetRequestData();
 
             int charSize = Helpers.DefaultEncoding.GetCharCount(requestData.Span);
-            
+
             using UnsafeMemoryHandle<char> buffer = MemoryUtil.UnsafeAlloc<char>(charSize + 128);
-            
+
             ERRNO count = Compile(buffer.Span);
-            
+
             return buffer.AsSpan(0, count).ToString();
         }
 
@@ -380,7 +410,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             ///<inheritdoc/>
             public void Execute() => _tcs?.TrySetResult();
 
-            
+
             ///<inheritdoc/>
             public Task GetTask(TimeSpan timeout, CancellationToken cancellation)
             {
@@ -422,7 +452,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             private void OnTimeout(object? state)
             {
-               TimeoutException to = new("A response was not received in the desired timeout period. Operation aborted");
+                TimeoutException to = new("A response was not received in the desired timeout period. Operation aborted");
                 _tcs?.TrySetException(to);
             }
 
