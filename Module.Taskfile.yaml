@@ -84,7 +84,6 @@ tasks:
     cmds:
      #git archive in the module directory
      - cmd: git archive --format {{ .ARCHIVE_FILE_FORMAT }} --output {{ .ARCHIVE_FILE_NAME }} HEAD
-     - task: write-changelog
 
   test:
     desc: "Runs managed tests against the entire solution and all loaded test projects"
@@ -179,20 +178,11 @@ tasks:
      - for: { var: NATIVE_LIB_DIRS }
        cmd: cd {{ .ITEM }} && task clean
 
-  write-changelog:
-    vars:      
-      MOD_URL_NAME: '{{ .MODULE_NAME | replace "." "-" | lower }}'
-      CHANGELOG_FILE: '{{ .OUTPUT_DIR }}/CHANGELOG.md' #write the changelog to the release directory
+  write-changelog:    
     cmds:
-     - cmd: powershell "auto-changelog 
-         --latest-version v{{ .VERSION }}
-         --unreleased
-         --hide-empty-releases
-         --template keepachangelog
-         --tag-prefix 'v'
-         --issue-url 'https://www.vaughnnugent.com/resources/software/modules/{{ .MODULE_NAME }}-issues?id={id}' 
-         --compare-url 'https://git.vaughnnugent.com/cgit/vnuge/{{ .MOD_URL_NAME }}.git/diff?id={from}&id2={to}'
-         --commit-url 'https://git.vaughnnugent.com/cgit/vnuge/{{ .MOD_URL_NAME }}.git/commit?id={id}'
-         --ignore-commit-pattern '[Mm]erge pull request|[Mm]erge branch|[Mm]erge tag|[Ss]quashed commit '
-         --output {{ .CHANGELOG_FILE }}
-         {{ .CLI_ARGS }}"
+     - cmd: git-cliff
+         --verbose
+         --config ci/cliff.toml
+         --output 'CHANGELOG.md'
+         --tag v{{ .VERSION }}
+         {{ .CLI_ARGS }}
