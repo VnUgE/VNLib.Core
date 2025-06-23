@@ -136,5 +136,33 @@ namespace VNLib.Utils.IO.Tests
 
             Assert.IsTrue(array.AsSpan().SequenceEqual(testData));
         }
+
+        [TestMethod]
+        public void SetLengthTest()
+        {
+            using VnMemoryStream vms = new(1024, false);
+
+            Assert.AreEqual(0, vms.Length);
+
+            // Set length to 0
+            vms.SetLength(0);
+            Assert.AreEqual(0, vms.Length);
+
+            // Set length to a positive value
+            vms.SetLength(512);
+            Assert.AreEqual(512, vms.Length);
+            Assert.AreEqual(0, vms.Position);
+
+            // Check that position smaller than legnth gets reset below new length
+            vms.Seek(100, System.IO.SeekOrigin.Begin);           
+            Assert.AreEqual(100, vms.Position, "Position should not change if it is less than the new length.");
+
+            vms.SetLength(25);
+            Assert.AreEqual(25, vms.Length);
+            Assert.AreEqual(25, vms.Position, "Position should be shrunk to point within the new length");
+
+            // Check invalid arguments
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => vms.SetLength(-1), "Setting length to a negative value should throw ArgumentOutOfRangeException.");
+        }
     }
 }

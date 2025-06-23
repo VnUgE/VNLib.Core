@@ -116,16 +116,33 @@ namespace VNLib.Utils.Extensions
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryManager<T> DirectAlloc<T>(this IUnmangedHeap heap, int size, bool zero = false) where T : unmanaged
+        public static MemoryManager<T> AllocMemory<T>(this IUnmangedHeap heap, int size, bool zero = false) where T : unmanaged
         {
             /*
              * Size it limited to int32 because the memory manager uses int32 for length
              * and the constructor will attempt to cast the size to int32 or cause an
              * overflow exception
              */
-            MemoryHandle<T> handle = heap.Alloc<T>(size, zero);
-            return new SysBufferMemoryManager<T>(handle, true);
+            MemoryHandle<T> handle = Alloc<T>(heap, size, zero);
+            return ToMemoryManager(handle, ownsHandle: true);
         }
+
+        /// <summary>
+        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="IUnmangedHeap"/> instance
+        /// of the specified number of elements
+        /// </summary>
+        /// <typeparam name="T">The unmanaged data type</typeparam>
+        /// <param name="heap"></param>
+        /// <param name="size">The number of elements to allocate on the heap</param>
+        /// <param name="zero">Optionally zeros conents of the block when allocated</param>
+        /// <returns>The <see cref="MemoryManager{T}"/> wrapper around the block of memory</returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="OutOfMemoryException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Obsolete("Use AllocMemory instead")]
+        public static MemoryManager<T> DirectAlloc<T>(this IUnmangedHeap heap, int size, bool zero = false) where T : unmanaged 
+            => AllocMemory<T>(heap, size, zero);
 
         /// <summary>
         /// Gets the integer length (number of elements) of the <see cref="IMemoryHandle{T}"/>
@@ -750,8 +767,8 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <returns>A <see cref="Span{T}"/> over the modified data</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Span<T> AsSpan<T>(this ref ForwardOnlyWriter<T> buffer) => buffer.Buffer[..buffer.Written];
-
+        public static Span<T> AsSpan<T>(this ref readonly ForwardOnlyWriter<T> buffer)
+            => buffer.Buffer[..buffer.Written];
 
         #endregion
 
@@ -772,13 +789,14 @@ namespace VNLib.Utils.Extensions
             //Allow empty spans for empty handles or last elements
             if ((nuint)start == handle.Length)
             {
-                return Span<T>.Empty;
+                return [];
             }
 
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((nuint)start, handle.Length);
 
             //calculate a remaining count
             int count = checked((int)(handle.Length - (uint)start));
+
             //call the other overload
             return AsSpan(handle, start, count);
         }

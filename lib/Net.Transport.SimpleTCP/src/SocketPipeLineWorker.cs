@@ -431,7 +431,7 @@ namespace VNLib.Net.Transport.Tcp
         {
             Debug.Assert(bufferSize > 0, "A call to CopyAndPublishDataOnSendPipe was made before a socket was connected");
 
-            ref byte srcRef = ref MemoryMarshal.GetReference(src);
+            ref readonly byte srcRef = ref MemoryMarshal.GetReference(src);
 
             /*
              * Only publish blocks up to the size of the socket buffer
