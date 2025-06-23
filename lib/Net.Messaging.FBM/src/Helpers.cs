@@ -232,21 +232,7 @@ namespace VNLib.Net.Messaging.FBM
                 ? (ERRNO)(-1)
                 : (ERRNO)encoding.GetChars(value, output);
         }
-
-        /// <summary>
-        /// Ends the header section of the request and appends the message body to 
-        /// the end of the request
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="body">The message body to send with request</param>
-        /// <exception cref="OutOfMemoryException"></exception>
-        public static void WriteBody(IDataAccumulator<byte> buffer, ReadOnlySpan<byte> body)
-        {
-            //start with termination
-            WriteTermination(buffer);
-            //Write the body
-            buffer.Append(body);
-        }
+       
 
         /// <summary>
         /// Rounds the requested byte size up to the 1kb 
