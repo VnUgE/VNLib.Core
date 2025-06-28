@@ -10,11 +10,18 @@ project(
 set(_COMP_PROJ_NAME "vnlib_compress")
 
 #set options for enable botli and zlib
-option(ENABLE_BROTLI "Enable brotli compression" ON)
-option(ENABLE_ZLIB "Enable zlib compression" ON)
+option(COMPRESS_ENABLE_BROTLI "Enable brotli compression" ON)
+option(COMPRESS_ENABLE_ZLIB "Enable zlib compression" ON)
+option(COMPRESS_ENABLE_ZSTD "Enable zstd compression" ON)
 option(COMPRESS_BUILD_SHARED "Produces a shared library instead of a static library" ON)
 option(USE_STATIC_RUNTIME "Use the static runtime library" OFF)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
+
+# declare options for native heap linking
+set(NATIVE_HEAP_NAME "" CACHE STRING "Name of the native heap if linking to NativeHeapApi.h")
+set(NATIVE_HEAP_BIN "" CACHE PATH "Path to the native heap binary directory")
+set(NATIVE_HEAP_SRC "" CACHE PATH "Path to the native heap source directory")
+set(NATIVE_HEAP_INCLUDES "" CACHE PATH "Path to the native heap includes directory")
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
 message(STATUS "Build type is '${build_type}'")
@@ -71,6 +78,36 @@ if(ENABLE_ZLIB)
 	add_compile_definitions(VNLIB_COMPRESSOR_ZLIB_ENABLED)
 endif()
 
+if(COMPRESS_ENABLE_ZSTD)
+
+	message(STATUS "Enabling zstd compression module from local source code")
+
+	set(ZSTD_FRAMEWORK OFF CACHE BOOL "Disable zstd framework" FORCE)
+	set(ZSTD_LEGACY_SUPPORT OFF CACHE BOOL "Disable legacy support, as it is not needed" FORCE)
+	set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Disable building of programs, as we only need the library" FORCE)
+	set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Disable building of tests" FORCE)
+	set(ZSTD_BUILD_STATIC ON CACHE BOOL "Enable static library building not shared to link against" FORCE)
+	set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Disable shared library building" FORCE)
+	set(ZSTD_BUILD_COMPRESSION ON CACHE BOOL "Enable compression, as we only need compression" FORCE)
+	set(ZSTD_BUILD_DECOMPRESSION OFF CACHE BOOL "Disable decompression, as we only need compression" FORCE)
+	set(ZSTD_BUILD_CONTRIB OFF CACHE BOOL "Disable building contrib libraries" FORCE)
+
+	# must point to the zstd build directory
+	add_subdirectory(
+		${CMAKE_CURRENT_SOURCE_DIR}/zstd/build/cmake
+		${CMAKE_CURRENT_BINARY_DIR}/zstd
+	)
+
+	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/zstd/lib)
+	
+	# Setup additional include directories for ZSTD
+	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/zstd/include)
+
+	#add the zstd source files to the project
+	#list(APPEND VNLIB_COMPRESS_SOURCES src/feature_zstd.c)
+	#add_compile_definitions(VNLIB_COMPRESSOR_ZSTD_ENABLED)
+endif()
+
 ###############################
 #
 #	CONFIGURE LIBRARY BUILD
@@ -110,6 +147,15 @@ if(ENABLE_ZLIB)
 	endif()
 
 	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE zlib)
+endif()
+
+if(COMPRESS_ENABLE_ZSTD)
+	#link the zstd library to the main project
+	target_link_libraries(
+		${_COMP_PROJ_NAME} 
+		PRIVATE 
+		${CMAKE_BINARY_DIR}/zstd/lib/${CMAKE_BUILD_TYPE}/zstd_static${CMAKE_STATIC_LIBRARY_SUFFIX}
+	)
 endif()
 
 #setup flags for windows compilation
