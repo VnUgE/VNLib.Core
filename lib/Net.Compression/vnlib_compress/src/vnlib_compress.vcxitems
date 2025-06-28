@@ -17,10 +17,12 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)feature_brotli.c" />
     <ClCompile Include="$(MSBuildThisFileDirectory)compression.c" />
     <ClCompile Include="$(MSBuildThisFileDirectory)feature_zlib.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)feature_zstd.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)feature_brotli.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)compression.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)feature_zstd.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)platform.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)util.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)feature_zlib.h" />
