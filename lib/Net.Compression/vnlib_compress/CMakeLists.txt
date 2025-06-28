@@ -42,16 +42,16 @@ set(VNLIB_COMPRESS_SOURCES
 #		
 ###############################
 
-if(ENABLE_BROTLI)
+if(COMPRESS_ENABLE_BROTLI)
 
 	message(STATUS "Enabling Brotli compression module from local source")
 
-	set(BROTLI_BUNDLED_MODE ON)		#enable inclusion in 3rd party projects
-	set(BROTLI_BUNDLED_MODE OFF)	#explicitly set bundled mode to off
-	set(BROTLI_EMSCRIPTEN OFF)		#disable emscripten support
-	set(BUILD_SHARED_LIBS OFF)		#disable shared library building, as only static is needed
-	set(BROTLI_BUILD_TOOLS OFF)		#disable building of tools
-	set(BROTLI_DISABLE_TESTS OFF)	#disable building of tests
+	set(BROTLI_BUNDLED_MODE ON CACHE BOOL "enable inclusion in 3rd party projects" FORCE)
+	set(BROTLI_BUNDLED_MODE OFF CACHE BOOL "explicitly set bundled mode to off" FORCE)
+	set(BROTLI_EMSCRIPTEN OFF CACHE BOOL "disable emscripten support" FORCE)
+	set(BUILD_SHARED_LIBS OFF CACHE BOOL "disable shared library building, as only static is needed" FORCE)
+	set(BROTLI_BUILD_TOOLS OFF CACHE BOOL "disable building of tools" FORCE)
+	set(BROTLI_DISABLE_TESTS OFF CACHE BOOL "disable building of tests" FORCE)
 
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/brotli EXCLUDE_FROM_ALL)
 	
@@ -62,12 +62,12 @@ if(ENABLE_BROTLI)
 	add_compile_definitions(VNLIB_COMPRESSOR_BROTLI_ENABLED)
 endif()
 
-if(ENABLE_ZLIB)
+if(COMPRESS_ENABLE_ZLIB)
 
 	#by default the cloudlfare fork should build a static lib. It will be large 	
 	message(STATUS "Enabling zlib compression module from local source code")
 
-	set(SKIP_INSTALL_ALL ON)	#do not install any zlib files
+	set(SKIP_INSTALL_ALL ON CACHE BOOL "do not install any zlib files" FORCE)
 
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib EXCLUDE_FROM_ALL)
 
@@ -125,23 +125,23 @@ else()
 	add_library(${_COMP_PROJ_NAME} STATIC ${VNLIB_COMPRESS_SOURCES})
 endif()
 
-target_compile_features(${_COMP_PROJ_NAME} PRIVATE c_std_99)		#force compiler to use c90 standard for library
+target_compile_features(${_COMP_PROJ_NAME} PRIVATE c_std_99)		#force compiler to use c99 standard for library
 
 #if on unix lib will be appended, so we can adjust
 if(UNIX)
 	set_target_properties(${_COMP_PROJ_NAME} PROPERTIES OUTPUT_NAME vn_compress)
 endif()
 
-#since were buildiing in tree, set the export defintiions
+#since were building in tree, set the export definitions
 target_compile_definitions(${_COMP_PROJ_NAME} PRIVATE VNLIB_COMPRESS_EXPORTING)
 
-if(ENABLE_BROTLI)
+if(COMPRESS_ENABLE_BROTLI)
 	#link the encoder-only library to the main project
 	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE brotlienc)	
 endif()
 
-if(ENABLE_ZLIB)
-	#workaround cloudlfare fork bug. SSE is always enabled with x64 on Windows
+if(COMPRESS_ENABLE_ZLIB)
+	#workaround cloudflare fork bug. SSE is always enabled with x64 on Windows
     if(MSVC)
 		target_compile_definitions(zlib PRIVATE HAS_SSE42 PRIVATE HAS_SSE2)
 	endif()
