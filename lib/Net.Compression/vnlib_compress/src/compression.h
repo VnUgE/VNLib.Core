@@ -39,6 +39,7 @@
 #define _VNCMP_COMPRESSION_H_
 
 #include <stdint.h>
+#include <stddef.h>
 #include "platform.h"
 
 
@@ -139,12 +140,30 @@ typedef enum CompressorStatus {
 	COMPRESSOR_STATUS_NEEDS_FLUSH	= 0x02
 } CompressorStatus;
 
+typedef void* (*vnlib_mem_alloc) (void* opaque, size_t size);
+typedef void  (*vnlib_mem_free) (void* opaque, void* address);
+
 typedef struct _vn_cmp_state_struct{	
 
 	/*
 	  Pointer to the underlying compressor implementation.
 	*/
 	void* compressor;
+
+	/* 
+		Opaque pointer for custom memory allocation 
+	*/
+	void* memOpaque;
+
+	/*
+	  Memory allocation function for the compressor.
+    */
+	vnlib_mem_alloc allocFunc;
+
+	/*
+		Memory deallocation function for the compressor.
+	*/
+	vnlib_mem_free freeFunc;
 
 	/*
 		Indicates the type of underlying compressor.
@@ -160,8 +179,7 @@ typedef struct _vn_cmp_state_struct{
 	/*
 		Indicates the suggested block size for the underlying compressor.
 	*/
-	uint32_t blockSize;
-
+	uint32_t blockSize;  
 
 } comp_state_t;
 

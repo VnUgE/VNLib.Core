@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -29,21 +29,41 @@
 
 #define validateCompState(state) \
 	if (!state) return ERR_INVALID_PTR; \
-	if (!state->compressor) return ERR_GZ_INVALID_STATE; \
+	if (!state->compressor) return ERR_GZ_INVALID_STATE; 
+
+static _vncmp_inline void* _stateMemAlloc(const comp_state_t * state, size_t size)
+{
+	if (!state || !state->allocFunc || size == 0)
+	{
+		return NULL; // Return NULL for invalid parameters
+	}
+
+	return state->allocFunc(state->memOpaque, size);
+}
+
+static _vncmp_inline void _stateMemFree(const comp_state_t * state, void* ptr)
+{
+	if (state && state->freeFunc && ptr)
+	{
+		state->freeFunc(state->memOpaque, ptr);
+	}
+}
 
 /*
-* Stream memory management functions
+* Helper alloc callback function for zlib to match the zlib API
+* 
+* The alloc function will store a pointer to the comp_state_t
+* structure, it can be recovered to access the custom allocator
 */
 static void* _gzAllocCallback(void* opaque, uint32_t items, uint32_t size)
 {
-	(void)sizeof(opaque);
-	return vnmalloc(items, size);
-}
+	if (opaque == NULL || items == 0 || size == 0)
+	{
+		return NULL; // Return NULL for invalid parameters
+	}
 
-static void _gzFreeCallback(void* opaque, void* address)
-{
-	(void)sizeof(opaque);
-	vnfree(address);
+	comp_state_t* state = (comp_state_t*)opaque;
+	return state->allocFunc(state->memOpaque, items * size);
 }
 
 int DeflateAllocCompressor(comp_state_t* state)
@@ -56,7 +76,7 @@ int DeflateAllocCompressor(comp_state_t* state)
 	* Allocate the z-stream state on the heap so we can
 	* store it in the compressor state
 	*/
-	z_stream* stream = (z_stream*)vncalloc(1, sizeof(z_stream));
+	z_stream* stream = (z_stream*)_stateMemAlloc(state, sizeof(z_stream));
 
 	if (!stream) 
 	{
@@ -64,14 +84,14 @@ int DeflateAllocCompressor(comp_state_t* state)
 	}
 
 	stream->zalloc = &_gzAllocCallback;
-	stream->zfree = &_gzFreeCallback;
-	stream->opaque = Z_NULL;
+	stream->zfree = state->freeFunc;
+	/* Store the entire state structure to access the callback functions */
+	stream->opaque = state;
 
 	/*
 	* Initialize the z-stream state with the 
 	* desired compression level
 	*/
-
 
 	switch (state->level)
 	{
@@ -136,7 +156,7 @@ int DeflateAllocCompressor(comp_state_t* state)
 
 	if (result != Z_OK)
 	{
-		vnfree(stream);
+		_stateMemFree(state, stream);
 		return result;
 	}
 
@@ -169,7 +189,7 @@ int DeflateFreeCompressor(comp_state_t* state)
 		* stream failed to end.
 		*/
 
-		vnfree(state->compressor);
+		_stateMemFree(state, state->compressor);
 		state->compressor = NULL;
 
 		/*
@@ -270,14 +290,14 @@ int64_t DeflateGetCompressedSize(_In_ const comp_state_t* state, uint64_t length
 	* entire size of the compressed data, which can include metadata
 	*/
 
-	validateCompState(state)
+	validateCompState(state);
 
 	if (length <= 0)
 	{
 		return 0;
 	}
 
-	if(flush)
+	if (flush)
 	{
 		/*
 		* TODO: actualy determine the size of the compressed data

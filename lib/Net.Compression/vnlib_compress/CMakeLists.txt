@@ -30,7 +30,6 @@ include(FetchContent)
 
 #the compression source file is required, all other sources will be added
 set(VNLIB_COMPRESS_SOURCES 
-	src/util.h
 	src/platform.h
 	src/compression.c
 	src/compression.h
