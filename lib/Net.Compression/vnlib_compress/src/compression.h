@@ -90,6 +90,9 @@
 #define ERR_COMPRESSION_FAILED			-13
 #define ERR_OVERFLOW					-14
 
+#define CHECK_NULL_PTR(ptr) if(!ptr) return ERR_INVALID_PTR;
+#define CHECK_ARG_RANGE(x, min, max) if(x < min || x > max) return ERR_OUT_OF_BOUNDS;
+
 /*
 * Enumerated list of supported compression types for user selection
 * at runtime.

@@ -31,7 +31,6 @@
 
 #define VNLIB_COMPRESS_EXPORTING 1
 
-#include "util.h"
 #include "compression.h"
 
 #ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED

@@ -24,12 +24,14 @@
 #ifndef ZSTD_STUB_H_
 #define ZSTD_STUB_H_
 
-#include "util.h"
 #include "compression.h"
+
+#define ERR_ZSTD_INVALID_STATE -18
+#define ERR_ZSTD_COMPRESSION_FAILED -19
 
 int ZstdAllocCompressor(comp_state_t* state);
 
-int ZstdFreeCompressor(comp_state_t* state);
+void ZstdFreeCompressor(comp_state_t* state);
 
 int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operation);
 
