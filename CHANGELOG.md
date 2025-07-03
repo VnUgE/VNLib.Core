@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refactor(lib) : minor documentation and text alignment
 - Update brotli to f2022b9 and close #31
+- Update test dependencies
 
 ### Fixed
 
@@ -86,7 +87,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update vnbuild commands for latest version
 - Update donation addresses
 - Correct some tests, add some comments
 - Minor code clarity change
@@ -107,7 +107,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix mimalloc description
 - Cleanup and correct some testing unit functions
 - Add UnsafeMemoryHandle tests
 - Close #27 and add mlock functions and basic unit testing
