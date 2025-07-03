@@ -19,32 +19,14 @@
 * along with vnlib_compress. If not, see http://www.gnu.org/licenses/.
 */
 
+#define ZSTD_STATIC_LINKING_ONLY 1
+
 #include <zstd.h>
 #include "feature_zstd.h"
-
-#define ZSTD_CLEVEL_DEFAULT 10
-
-#define ERR_ZSTD_INVALID_STATE -18
-#define ERR_ZSTD_COMPRESSION_FAILED -19
 
 #define validateCompState(state) \
 	if (!state) return ERR_INVALID_PTR; \
 	if (!state->compressor) return ERR_ZSTD_INVALID_STATE;
-
-/*
-* Custom memory allocation functions for ZSTD
-*/
-static void* _zstdAllocCallback(void* opaque, size_t size)
-{
-	(void)sizeof(opaque);
-	return vnmalloc(1, size);
-}
-
-static void _zstdFreeCallback(void* opaque, void* address)
-{
-	(void)sizeof(opaque);
-	vnfree(address);
-}
 
 int ZstdAllocCompressor(comp_state_t* state)
 {
@@ -55,9 +37,9 @@ int ZstdAllocCompressor(comp_state_t* state)
 	DEBUG_ASSERT2(state, "Expected non-null state parameter");
 
 	ZSTD_customMem customMem = {
-		.customAlloc = &_zstdAllocCallback,
-		.customFree = &_zstdFreeCallback,
-		.opaque = state
+		.customAlloc = state->allocFunc,
+		.customFree = state->freeFunc,
+		.opaque = state->memOpaque
 	};
 
 	/* Create compression stream with custom allocator */
@@ -110,7 +92,7 @@ int ZstdAllocCompressor(comp_state_t* state)
 	return VNCMP_SUCCESS;
 }
 
-int ZstdFreeCompressor(comp_state_t* state)
+void ZstdFreeCompressor(comp_state_t* state)
 {
 	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
 
@@ -118,17 +100,13 @@ int ZstdFreeCompressor(comp_state_t* state)
 	{
 		ZSTD_freeCStream((ZSTD_CStream*)state->compressor);
 		state->compressor = NULL;
-	}
-
-	return VNCMP_SUCCESS;
+	}	
 }
 
 int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operation)
 {
-	ZSTD_CStream* cstream;
-	ZSTD_inBuffer input;
-	ZSTD_outBuffer output;
 	size_t result;
+	ZSTD_CStream* cstream;	
 
 	validateCompState(state)
 
@@ -147,26 +125,26 @@ int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* oper
 	cstream = (ZSTD_CStream*)state->compressor;
 
 	/* Setup input buffer */
-	input.src = operation->bytesIn;
-	input.size = operation->bytesInLength;
-	input.pos = 0;
+	ZSTD_inBuffer input = {
+		.src = operation->bytesIn,
+		.size = operation->bytesInLength,
+		.pos = 0
+	};
 
 	/* Setup output buffer */
-	output.dst = operation->bytesOut;
-	output.size = operation->bytesOutLength;
-	output.pos = 0;
+	ZSTD_outBuffer output = {
+		.dst = operation->bytesOut,
+		.size = operation->bytesOutLength,
+		.pos = 0
+	};
 
-	/* Perform compression operation */
-	if (operation->flush)
-	{
-		/* Flush/finish the stream */
-		result = ZSTD_endStream(cstream, &output);
-	}
-	else
-	{
-		/* Regular compression */
-		result = ZSTD_compressStream(cstream, &output, &input);
-	}
+	/* Regular compression */
+	result = ZSTD_compressStream2(
+		cstream, 
+		&output, 
+		&input, 
+		operation->flush ? ZSTD_e_end : ZSTD_e_continue
+	);
 
 	/* Check for errors */
 	if (ZSTD_isError(result))
@@ -174,9 +152,28 @@ int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* oper
 		return ERR_ZSTD_COMPRESSION_FAILED;
 	}
 
+	/*
+	* check for possible overflow and retrun error
+	*/
+	if (input.pos > operation->bytesInLength || output.pos > operation->bytesOutLength)
+	{
+		return ERR_COMPRESSION_FAILED;
+	}
+
 	/* Update bytes read and written */
 	operation->bytesRead = (uint32_t)input.pos;
 	operation->bytesWritten = (uint32_t)output.pos;
+
+	if (operation->flush && result == 0)
+	{
+		/* 
+			flushing has completed if return 0 on a 
+			flush operation. This is assumed to occur 			
+			when the compressor has no more data to write.
+		*/
+
+		operation->bytesWritten = 0;
+	}	
 
 	/* Return success or bytes remaining (for flush operations) */
 	return (int)result;

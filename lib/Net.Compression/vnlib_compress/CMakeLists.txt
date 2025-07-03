@@ -99,12 +99,9 @@ if(COMPRESS_ENABLE_ZSTD)
 
 	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/zstd/lib)
 	
-	# Setup additional include directories for ZSTD
-	include_directories(${CMAKE_CURRENT_SOURCE_DIR}/zstd/include)
-
 	#add the zstd source files to the project
-	#list(APPEND VNLIB_COMPRESS_SOURCES src/feature_zstd.c)
-	#add_compile_definitions(VNLIB_COMPRESSOR_ZSTD_ENABLED)
+	list(APPEND VNLIB_COMPRESS_SOURCES src/feature_zstd.c)
+	add_compile_definitions(VNLIB_COMPRESSOR_ZSTD_ENABLED)
 endif()
 
 ###############################
