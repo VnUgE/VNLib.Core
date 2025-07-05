@@ -27,10 +27,6 @@
 #include <zlib.h>
 #include "feature_zlib.h"
 
-#define validateCompState(state) \
-	if (!state) return ERR_INVALID_PTR; \
-	if (!state->compressor) return ERR_GZ_INVALID_STATE; 
-
 static _vncmp_inline void* _stateMemAlloc(const comp_state_t * state, size_t size)
 {
 	if (!state || !state->allocFunc || size == 0)
@@ -211,14 +207,15 @@ int DeflateCompressBlock(_In_ const comp_state_t* state, CompressionOperation* o
 {
 	int result;
 
-	validateCompState(state)
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
 	
 	/* Clear the result read/written fields */
 	operation->bytesRead = 0;
 	operation->bytesWritten = 0;
 
 	/*
-	* If the input is empty a flush is not requested, they we are waiting for
+	* If the input is empty a flush is not requested, then we are waiting for
 	* more input and this was just an empty call. Should be a no-op
 	*/
 
@@ -290,7 +287,8 @@ int64_t DeflateGetCompressedSize(_In_ const comp_state_t* state, uint64_t length
 	* entire size of the compressed data, which can include metadata
 	*/
 
-	validateCompState(state);
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
+	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
 
 	if (length <= 0)
 	{
