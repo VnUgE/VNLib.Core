@@ -136,17 +136,10 @@ typedef enum CompressionLevel
 	COMP_LEVEL_SMALLEST_SIZE	= 3
 } CompressionLevel;
 
-
-typedef enum CompressorStatus {
-	COMPRESSOR_STATUS_READY			= 0x00,
-	COMPRESSOR_STATUS_INITALIZED	= 0x01,
-	COMPRESSOR_STATUS_NEEDS_FLUSH	= 0x02
-} CompressorStatus;
-
 typedef void* (*vnlib_mem_alloc) (void* opaque, size_t size);
 typedef void  (*vnlib_mem_free) (void* opaque, void* address);
 
-typedef struct _vn_cmp_state_struct{	
+typedef struct _vn_cmp_state_struct {	
 
 	/*
 	  Pointer to the underlying compressor implementation.
