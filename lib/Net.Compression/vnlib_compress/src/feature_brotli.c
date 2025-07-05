@@ -120,7 +120,7 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 	BrotliEncoderOperation brOperation;
 	BROTLI_BOOL brResult;
 
-	size_t availableIn, availableOut, totalOut;
+	size_t availableIn, availableOut;
 	const uint8_t* nextIn;
 	uint8_t* nextOut;
 
@@ -147,14 +147,9 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 	* Determine the operation to perform
 	*/
 
-	if (operation->flush) 
-	{
-		brOperation = BROTLI_OPERATION_FINISH;
-	}
-	else
-	{
-		brOperation = BROTLI_OPERATION_PROCESS;
-	}
+	brOperation = operation->flush 
+		? BROTLI_OPERATION_FINISH 
+		: BROTLI_OPERATION_PROCESS;
 
 	/*
 	* Update lengths and data pointers from input/output spans
@@ -179,7 +174,7 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 		&nextIn,
 		&availableOut,
 		&nextOut,
-		&totalOut
+		NULL
 	);
 	
 	/*
