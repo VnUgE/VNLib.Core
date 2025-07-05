@@ -46,7 +46,11 @@ tasks:
     cmds:
      #init cmake build with greedy enabled
      - task: cmake-configure
-       vars: { CMAKE_ARGS: '{{ .CLI_ARGS }} -G "Visual Studio 17 2022" -A x64' }
+       vars: 
+         CMAKE_ARGS: '
+           {{ .CLI_ARGS }} 
+           {{ if eq OS "windows" }}-G "Visual Studio 17 2022" {{ end }}         
+           {{ if eq OS "windows" }}-A x64{{ end }}'
 
      - task: cmake-compile
        vars: { BUILD_TYPE: "debug" }

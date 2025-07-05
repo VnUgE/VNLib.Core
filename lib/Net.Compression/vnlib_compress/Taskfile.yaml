@@ -39,8 +39,6 @@ tasks:
         -S .
         -B{{ .CMAKE_BUILD_DIR }}
         -DCMAKE_BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}
-        {{ if eq OS "windows" }}-G 'Visual Studio 17 2022'{{ end }}
-        {{ if eq OS "windows" }}-A x64{{ end }}
 
   cmake-compile:
     desc: 'Compiles the project for the current platform'
@@ -81,6 +79,8 @@ tasks:
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '
            {{ .CLI_ARGS }}
+           {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
+           {{ if eq OS "windows" }}-A x64{{ end }}
            -DNATIVE_HEAP_NAME={{ if eq OS "windows" }}vnlib_rpmalloc{{else}}libvn_rpmalloc.a{{end}}
            -DNATIVE_HEAP_SRC={{ .RPMALLOC_SRC_DIR }}
            -DNATIVE_HEAP_BIN={{ .RPMALLOC_SRC_DIR }}/{{ .CMAKE_BUILD_DIR }}
