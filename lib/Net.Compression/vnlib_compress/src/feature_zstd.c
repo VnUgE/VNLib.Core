@@ -24,17 +24,56 @@
 #include <zstd.h>
 #include "feature_zstd.h"
 
-#define validateCompState(state) \
-	if (!state) return ERR_INVALID_PTR; \
-	if (!state->compressor) return ERR_ZSTD_INVALID_STATE;
+#define STREAM_FLAG_FINISHED 0x01
+
+struct zstd_stream_state
+{
+	ZSTD_CStream* stream;
+	int flags;
+};
+
+
+static _vncmp_inline void* _stateMemAlloc(const comp_state_t * state, size_t size)
+{
+	if (!state || !state->allocFunc || size == 0)
+	{
+		return NULL; // Return NULL for invalid parameters
+	}
+
+	return state->allocFunc(state->memOpaque, size);
+}
+
+static _vncmp_inline void _stateMemFree(const comp_state_t * state, void* ptr)
+{
+	if (state && state->freeFunc && ptr)
+	{
+		state->freeFunc(state->memOpaque, ptr);
+	}
+}
 
 int ZstdAllocCompressor(comp_state_t* state)
 {
-	int compLevel;
-	ZSTD_CStream* cstream;
+	int compLevel, ret;
+	struct zstd_stream_state* streamState;
 	size_t result;
 
 	DEBUG_ASSERT2(state, "Expected non-null state parameter");
+
+	/*
+	* Allocate the private stream state structure from dynamic 
+	* memory.
+	*/
+	streamState = (struct zstd_stream_state*)_stateMemAlloc(state, sizeof(struct zstd_stream_state));
+	if(!streamState)
+	{
+		return ERR_OUT_OF_MEMORY;
+	}
+
+	streamState->stream = NULL;
+	streamState->flags = 0;
+
+	/* Store the stream wrapper struct in the compressor state */
+	state->compressor = streamState;
 
 	ZSTD_customMem customMem = {
 		.customAlloc = state->allocFunc,
@@ -43,11 +82,11 @@ int ZstdAllocCompressor(comp_state_t* state)
 	};
 
 	/* Create compression stream with custom allocator */
-	cstream = ZSTD_createCStream_advanced(customMem);
-
-	if (!cstream)
+	streamState->stream = ZSTD_createCStream_advanced(customMem);
+	if (!streamState->stream)
 	{
-		return ERR_OUT_OF_MEMORY;
+		ret = ERR_OUT_OF_MEMORY;
+		goto Error;
 	}
 
 	/* Map compression levels to ZSTD levels */
@@ -75,21 +114,25 @@ int ZstdAllocCompressor(comp_state_t* state)
 	}
 
 	/* Initialize the compression stream */
-	result = ZSTD_initCStream(cstream, compLevel);
+	result = ZSTD_initCStream(streamState->stream, compLevel);
 
 	if (ZSTD_isError(result))
 	{
-		ZSTD_freeCStream(cstream);
-		return ERR_COMPRESSION_FAILED;
+		ret = ERR_ZSTD_COMPRESSION_FAILED;
+		goto Error;
 	}
 
 	/* Set suggested block size */
 	state->blockSize = (uint32_t)ZSTD_CStreamInSize();
 
-	/* Store the stream in the compressor state */
-	state->compressor = cstream;
-
 	return VNCMP_SUCCESS;
+
+Error:
+	
+	/* If we failed to initialize the compressor, free the stream state */
+	ZstdFreeCompressor(state);
+
+	return ret;
 }
 
 void ZstdFreeCompressor(comp_state_t* state)
@@ -98,7 +141,16 @@ void ZstdFreeCompressor(comp_state_t* state)
 
 	if (state->compressor)
 	{
-		ZSTD_freeCStream((ZSTD_CStream*)state->compressor);
+		struct zstd_stream_state* streamState = (struct zstd_stream_state*)state->compressor;
+
+		if (streamState->stream)
+		{
+			ZSTD_freeCStream(streamState->stream);
+			streamState->stream = NULL;
+		}
+
+		/* Free the stream state */
+		_stateMemFree(state, state->compressor);
 		state->compressor = NULL;
 	}	
 }
@@ -106,9 +158,10 @@ void ZstdFreeCompressor(comp_state_t* state)
 int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operation)
 {
 	size_t result;
-	ZSTD_CStream* cstream;	
+	struct zstd_stream_state* streamState;
 
-	validateCompState(state)
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
+	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
 
 	/* Clear the result read/written fields */
 	operation->bytesRead = 0;
@@ -122,7 +175,20 @@ int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* oper
 		return VNCMP_SUCCESS;
 	}
 
-	cstream = (ZSTD_CStream*)state->compressor;
+	streamState = (struct zstd_stream_state*)state->compressor;
+
+	/*
+	* If a previous operation to finish the stream was successful,
+	* but produced output, this call is to confirm the stream successfully
+	* finished and no more data is expected.
+	* 
+	* The flag is set when the compressor successfully finishes a stream
+	* and has no more data to process.
+	*/
+	if (operation->flush && (streamState->flags & STREAM_FLAG_FINISHED))
+	{
+		return VNCMP_SUCCESS;
+	}
 
 	/* Setup input buffer */
 	ZSTD_inBuffer input = {
@@ -140,7 +206,7 @@ int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* oper
 
 	/* Regular compression */
 	result = ZSTD_compressStream2(
-		cstream, 
+		streamState->stream,
 		&output, 
 		&input, 
 		operation->flush ? ZSTD_e_end : ZSTD_e_continue
@@ -164,15 +230,15 @@ int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* oper
 	operation->bytesRead = (uint32_t)input.pos;
 	operation->bytesWritten = (uint32_t)output.pos;
 
+	/*
+	* The encoder will return 0 when the stream is finished and 
+	* has no more data to flush to the output buffer. The finish
+	* flag may be set to indicate that further calls to flush 
+	* will not produce any more data. See above. 
+	*/
 	if (operation->flush && result == 0)
 	{
-		/* 
-			flushing has completed if return 0 on a 
-			flush operation. This is assumed to occur 			
-			when the compressor has no more data to write.
-		*/
-
-		operation->bytesWritten = 0;
+		streamState->flags |= STREAM_FLAG_FINISHED;
 	}	
 
 	/* Return success or bytes remaining (for flush operations) */
@@ -183,7 +249,7 @@ int64_t ZstdGetCompressedSize(_In_ const comp_state_t* state, uint64_t length, i
 {
 	size_t compressedSize;
 	
-	validateCompState(state)
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
 
 	if (length <= 0)
 	{
