@@ -26,7 +26,7 @@ set(NATIVE_HEAP_INCLUDES "" CACHE PATH "Path to the native heap includes directo
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
 message(STATUS "Build type is '${build_type}'")
 
-include(FetchContent)
+set(_native_heap_lib)
 
 #the compression source file is required, all other sources will be added
 set(VNLIB_COMPRESS_SOURCES 
@@ -51,6 +51,9 @@ if(COMPRESS_ENABLE_BROTLI)
 	set(BUILD_SHARED_LIBS OFF CACHE BOOL "disable shared library building, as only static is needed" FORCE)
 	set(BROTLI_BUILD_TOOLS OFF CACHE BOOL "disable building of tools" FORCE)
 	set(BROTLI_DISABLE_TESTS OFF CACHE BOOL "disable building of tests" FORCE)
+
+	# May cause issues force disabiling the shared library build because this is a CMake global variable
+	set(BUILD_SHARED_LIBS OFF CACHE BOOL "disable shared library building, as only static is needed" FORCE)
 
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/brotli EXCLUDE_FROM_ALL)
 	
@@ -104,6 +107,26 @@ if(COMPRESS_ENABLE_ZSTD)
 	add_compile_definitions(VNLIB_COMPRESSOR_ZSTD_ENABLED)
 endif()
 
+if(COMPRESS_RPMALLOC_SOURCE_DIR)
+
+	message(STATUS "Enabling static build of rpmalloc")
+	
+	set(ENABLE_STATIC_FPIC ON CACHE BOOL "Enables rpmallocs static build with FPIC because it's linking with a static library" FORCE)
+
+	#add the rpmalloc source files to the project
+	add_subdirectory(
+		${COMPRESS_RPMALLOC_SOURCE_DIR} 
+		${CMAKE_CURRENT_BINARY_DIR}/vnlib_rpmalloc
+		EXCLUDE_FROM_ALL
+	)
+
+	# set native heap linking variables
+	set(_native_heap_lib vnlib_rpmalloc_static)
+	set(NATIVE_HEAP_INCLUDES ${COMPRESS_RPMALLOC_SOURCE_DIR})
+
+endif()
+
+
 ###############################
 #
 #	CONFIGURE LIBRARY BUILD
@@ -147,11 +170,7 @@ endif()
 
 if(COMPRESS_ENABLE_ZSTD)
 	#link the zstd library to the main project
-	target_link_libraries(
-		${_COMP_PROJ_NAME} 
-		PRIVATE 
-		${CMAKE_BINARY_DIR}/zstd/lib/${CMAKE_BUILD_TYPE}/zstd_static${CMAKE_STATIC_LIBRARY_SUFFIX}
-	)
+	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE libzstd_static)
 endif()
 
 #setup flags for windows compilation
@@ -221,6 +240,10 @@ endif()
 
 if(NATIVE_HEAP_NAME)
 
+	if(_native_heap_lib)
+		message(WARN " Native heap library already linked to the project, overriding library linkage")
+	endif()
+
 	find_library(
 		_native_heap_lib
 		NAMES 
@@ -242,14 +265,20 @@ if(NATIVE_HEAP_NAME)
 		REQUIRED
 	)
 	
-	message(STATUS "Linking native heap library to the main project found at ${_native_heap_lib}")
+endif()
 
-	#Include the nativeheap api header
-	include_directories(${NATIVE_HEAP_INCLUDES})
+if(_native_heap_lib)
+
+	message(STATUS "Linking native heap library to the main project found at ${_native_heap_lib}")
 
 	#If manual heap linking is enabled, we need to link the native heap library
 	target_link_libraries(${_COMP_PROJ_NAME} PRIVATE ${_native_heap_lib})
 
 	target_compile_definitions(${_COMP_PROJ_NAME} PRIVATE VNLIB_CUSTOM_MALLOC_ENABLE)	#enable native heap memory overrides
 
+endif()
+
+if(NATIVE_HEAP_INCLUDES)
+	#add the native heap includes to the project
+	include_directories(${NATIVE_HEAP_INCLUDES})
 endif()

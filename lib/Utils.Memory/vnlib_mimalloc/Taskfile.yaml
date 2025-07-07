@@ -14,8 +14,8 @@ vars:
   BUILD_DIR: 'build/{{ OS }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
-  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       
-  ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       #default to greedy allocator build
+  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       # default build to release
+  ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       # default to greedy allocator build
 
 tasks:
 
@@ -31,7 +31,8 @@ tasks:
          BUILD_DIR: "{{ .BUILD_DIR }}"
 
      - task: cmake-compile
-       vars: { BUILD_TYPE: "debug" }
+       vars: 
+         BUILD_TYPE: "{{ .BUILD_TYPE }}" 
        
      - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
        silent: true

@@ -14,24 +14,25 @@ vars:
   BUILD_DIR: 'build/{{ OS }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
-  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       
-  ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       #default to greedy allocator build
+  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       # default build to release
+  ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       # default to greedy allocator build
 
 tasks:
 
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
-     #init cmake build with greedy enabled
+     # init cmake build with greedy enabled
      - task: cmake-configure
        vars: 
-         #explicitly pass args so they can be overriden
+         # explicitly pass args so they can be overriden
          CMAKE_ARGS: "{{ .CMAKE_ARGS }}"
          BUILD_TYPE: "{{ .BUILD_TYPE }}"
          BUILD_DIR: "{{ .BUILD_DIR }}"
 
      - task: cmake-compile
-       vars: { BUILD_TYPE: "debug" }
+       vars: 
+         BUILD_TYPE: "{{ .BUILD_TYPE }}" 
        
      - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
        silent: true
@@ -44,7 +45,7 @@ tasks:
   build:
     desc: 'DO NOT USE! This function is used internally during releases.'
     cmds:
-     #init cmake build with greedy enabled
+     # init cmake build with greedy enabled
      - task: cmake-configure
        vars: 
          CMAKE_ARGS: '

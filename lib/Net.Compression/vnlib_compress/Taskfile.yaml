@@ -64,13 +64,8 @@ tasks:
 
   #called by ci pipline to build the winx64 project
   build:
-   desc: 'DO NOT USE. This is an internal task'
+   desc: 'DO NOT USE. This is an internal task'  
    cmds:
-     #build the local rpmalloc library for linking
-     - task: build_rpmalloc
-       vars: 
-         CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
-
      # build the project assuming we can link against rpmalloc
      # also use the project defaults for CMAKE_BUILD_DIR and CMAKE_BUILD_TYPE
      - task: cmake-build
@@ -81,10 +76,7 @@ tasks:
            {{ .CLI_ARGS }}
            {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
            {{ if eq OS "windows" }}-A x64{{ end }}
-           -DNATIVE_HEAP_NAME={{ if eq OS "windows" }}vnlib_rpmalloc{{else}}libvn_rpmalloc.a{{end}}
-           -DNATIVE_HEAP_SRC={{ .RPMALLOC_SRC_DIR }}
-           -DNATIVE_HEAP_BIN={{ .RPMALLOC_SRC_DIR }}/{{ .CMAKE_BUILD_DIR }}
-           -DNATIVE_HEAP_INCLUDES={{ .RPMALLOC_SRC_DIR }}'  
+           -DCOMPRESS_RPMALLOC_SOURCE_DIR={{ .RPMALLOC_SRC_DIR }}'  
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
@@ -92,15 +84,6 @@ tasks:
      - cmd: powershell mkdir -Force '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
      - task: pack_parallel
   
-  build_rpmalloc:
-    internal: true
-    dir: '{{ .RPMALLOC_SRC_DIR }}'
-    cmds:
-     - cmd: task build
-         {{ if .CLI_VERBOSE }}--verbose{{ end }}
-         "BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}"
-         -- {{ .RPMALLOC_ARGS }}
-
   pack_parallel:
     internal: true
     vars:
