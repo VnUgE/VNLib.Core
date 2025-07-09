@@ -45,7 +45,6 @@ if(COMPRESS_ENABLE_BROTLI)
 
 	message(STATUS "Enabling Brotli compression module from local source")
 
-	set(BROTLI_BUNDLED_MODE ON CACHE BOOL "enable inclusion in 3rd party projects" FORCE)
 	set(BROTLI_BUNDLED_MODE OFF CACHE BOOL "explicitly set bundled mode to off" FORCE)
 	set(BROTLI_EMSCRIPTEN OFF CACHE BOOL "disable emscripten support" FORCE)
 	set(BUILD_SHARED_LIBS OFF CACHE BOOL "disable shared library building, as only static is needed" FORCE)
