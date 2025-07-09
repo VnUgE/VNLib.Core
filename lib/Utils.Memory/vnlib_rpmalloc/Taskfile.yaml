@@ -37,7 +37,7 @@ tasks:
   debug:
     cmds:
      - task: default
-       vars: { BUILD_TYPE: "debug" }
+       vars: { CMAKE_BUILD_TYPE: "debug" }
 
   cmake-configure:
     desc: 'Configures the build for the current platform'

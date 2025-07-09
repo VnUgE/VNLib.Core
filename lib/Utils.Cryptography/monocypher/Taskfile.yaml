@@ -32,6 +32,11 @@ tasks:
        
      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
        silent: true
+
+  debug:
+    cmds:
+     - task: default
+       vars: { CMAKE_BUILD_TYPE: "debug" }
   
   cmake-configure:
     desc: 'Configures the build for the current platform'
@@ -157,8 +162,7 @@ tasks:
   dev-init:
     desc: 'Configures the project for local development'
     cmds:
-     - task: default
-       vars: { BUILD_TYPE: "debug" }
+     - task: debug
      - cmd: echo "dev init complete"
        silent: true
 
