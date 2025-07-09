@@ -228,6 +228,19 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 			-Wall			#enable all warnings
 			-Werror			#treat warnings as errors
 			-pedantic		#enable pedantic mode
+			
+			-Winit-self	
+			-Wpointer-arith
+			-Wstrict-prototypes
+			-Wswitch-default
+			-Wshadow
+			-Wformat=2
+			-Wundef
+			-Wcast-align
+			-Wmissing-prototypes
+			-Wmissing-declarations
+			-Wmissing-noreturn
+			-Wdiscarded-qualifiers
 		)
 
 		target_compile_definitions(${_COMP_PROJ_NAME} PRIVATE DEBUG)
