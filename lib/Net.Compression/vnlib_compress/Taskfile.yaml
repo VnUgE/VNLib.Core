@@ -27,12 +27,15 @@ tasks:
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
-         CMAKE_ARGS: '{{ .CLI_ARGS }}'
+         CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS }}'
 
   debug:
     cmds:
      - task: default
-       vars: { BUILD_TYPE: "debug" }
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: "debug" 
+         CMAKE_ARGS: '{{ .CMAKE_ARGS }}'
 
   cmake-configure:
     desc: 'Configures the build for the current platform'
@@ -81,7 +84,7 @@ tasks:
            {{ .CLI_ARGS }}
            {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
            {{ if eq OS "windows" }}-A x64{{ end }}
-           -DCOMPRESS_RPMALLOC_SOURCE_DIR={{ .RPMALLOC_SRC_DIR }}'  
+           -DCOMPRESS_RPMALLOC_SOURCE_DIR={{ .RPMALLOC_SRC_DIR }}' 
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
@@ -167,6 +170,8 @@ tasks:
     desc: 'Configures the project for local development'
     cmds:
      - task: debug
+       vars:
+         CMAKE_ARGS: '-DCOMPRESS_RPMALLOC_SOURCE_DIR={{ .RPMALLOC_SRC_DIR }}' 
   
      - cmd: echo "dev init complete"
        silent: true
