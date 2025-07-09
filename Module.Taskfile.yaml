@@ -143,17 +143,14 @@ tasks:
         lib/Utils.Memory/vnlib_rpmalloc
         lib/Utils.Memory/vnlib_mimalloc
         lib/Utils.Cryptography/monocypher
-        lib/Utils.Cryptography/argon2'
+        lib/Utils.Cryptography/argon2
+        lib/Net.Compression/vnlib_compress'
     deps: 
      #build native libs for development in parallel
      - for: { var: NATIVE_LIB_DIRS }
        task:  run-dev-init
        vars: { ITEM: '{{ .ITEM }}' }
-    cmds:
-     # build the compress library after the other native libraries 
-     # because it depends on rpmalloc by default
-     - task: run-dev-init
-       vars: { ITEM: 'lib/Net.Compression/vnlib_compress' }
+    cmds:   
      
      - cmd: dotnet restore
 
