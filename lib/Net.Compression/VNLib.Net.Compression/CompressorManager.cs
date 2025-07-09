@@ -40,6 +40,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 using VNLib.Net.Http;
 using VNLib.Utils.Logging;
@@ -51,10 +52,10 @@ namespace VNLib.Net.Compression
     /// A compressor manager that implements the IHttpCompressorManager interface, for runtime loading.
     /// </summary>
     public sealed class CompressorManager : IHttpCompressorManager
-    {       
+    {
 
         private LibraryWrapper? _nativeLib;
-        private CompressionLevel _compLevel =  CompressionLevel.Fastest;
+        private CompConfigurationJson _config = new();
 
         /// <summary>
         /// Called by the VNLib.Webserver during startup to initiialize the compressor.
@@ -62,30 +63,24 @@ namespace VNLib.Net.Compression
         /// <param name="log">The application log provider</param>
         /// <param name="config">The json configuration element</param>
         public void OnLoad(ILogProvider? log, JsonElement? config)
-        {          
+        {
             //Get the compression element
             if (config.HasValue && config.Value.TryGetProperty("vnlib.net.compression", out JsonElement compEl))
             {
-                //Try to get the user specified compression level
-                if (compEl.TryGetProperty("level", out JsonElement lEl))
-                {
-                    _compLevel = (CompressionLevel)lEl.GetUInt16();
-                }
+                _config = compEl.Deserialize<CompConfigurationJson>()
+                    ?? throw new InvalidOperationException("Failed to deserialize compression configuration");
 
                 //Allow the user to specify the path to the native library
-                if (compEl.TryGetProperty("lib_path", out JsonElement libEl) 
-                    && libEl.ValueKind == JsonValueKind.String)
+                if (!string.IsNullOrWhiteSpace(_config.LibPath))
                 {
-                    string libPath = libEl.GetString()!;
+                    log?.Debug("Attempting to load native compression library from: {lp}", _config.LibPath);
 
-                    log?.Debug("Attempting to load native compression library from: {lib}", libPath);
-
-                    _nativeLib = LibraryWrapper.LoadLibrary(libPath, DllImportSearchPath.SafeDirectories);
+                    _nativeLib = LibraryWrapper.LoadLibrary(_config.LibPath, DllImportSearchPath.SafeDirectories);
 
                     log?.Debug(
-                         "Loaded default native compression library. Supports {sup} with compression level {l} ",
+                         "Loaded default native compression library. Supports {sup} with options {l} ",
                          GetSupportedMethods(),
-                         _compLevel.ToString()
+                         _config
                      );
 
                     return;
@@ -101,16 +96,16 @@ namespace VNLib.Net.Compression
             _nativeLib = LibraryWrapper.LoadDefault();
 
             log?.Debug(
-                "Loaded default native compression library. Supports {sup} with compression level {l} ",
+                "Loaded default native compression library. Supports {sup} with options {l} ",
                 GetSupportedMethods(),
-                _compLevel.ToString()
+                _config
             );
         }
 
         ///<inheritdoc/>
         public CompressionMethod GetSupportedMethods()
         {
-            if(_nativeLib is null)
+            if (_nativeLib is null)
             {
                 throw new InvalidOperationException("The native library has not been loaded yet.");
             }
@@ -131,7 +126,7 @@ namespace VNLib.Net.Compression
             Debug.Assert(compressor.Instance == IntPtr.Zero, "Init was called but and old compressor instance was not properly freed");
 
             //Alloc the compressor, let native lib raise exception for supported methods
-            compressor.Instance = _nativeLib!.AllocateCompressor(compMethod, _compLevel);
+            compressor.Instance = _nativeLib!.AllocateCompressor(compMethod, _config.Level);
 
             //Return the compressor block size
             return (int)_nativeLib!.GetBlockSize(compressor.Instance);
@@ -143,7 +138,7 @@ namespace VNLib.Net.Compression
             DebugThrowIfNull(compressorState, nameof(compressorState));
             Compressor compressor = Unsafe.As<Compressor>(compressorState);
 
-            if(compressor.Instance == IntPtr.Zero)
+            if (compressor.Instance == IntPtr.Zero)
             {
                 throw new InvalidOperationException("This compressor instance has not been initialized, cannot free compressor");
             }
@@ -166,13 +161,24 @@ namespace VNLib.Net.Compression
                 throw new InvalidOperationException("This compressor instance has not been initialized, cannot free compressor");
             }
 
+            Debug.Assert(
+                output.Length > 0, 
+                "Output buffer must be at least 1 byte in length to flush data"
+            );
+
             //Force a flush until no more data is available
-            CompressionResult result = _nativeLib!.CompressBlock(compressor.Instance, output, default, true);
+            CompressionResult result = _nativeLib!.CompressBlock(
+                compressor.Instance, 
+                output, 
+                input: default, 
+                finalBlock: true
+            );
+
             return result.BytesWritten;
         }
 
         ///<inheritdoc/>
-        public CompressionResult CompressBlock(object compressorState, ReadOnlyMemory<byte> input, Memory<byte> output) 
+        public CompressionResult CompressBlock(object compressorState, ReadOnlyMemory<byte> input, Memory<byte> output)
         {
             DebugThrowIfNull(compressorState, nameof(compressorState));
             Compressor compressor = Unsafe.As<Compressor>(compressorState);
@@ -183,7 +189,12 @@ namespace VNLib.Net.Compression
             }
 
             //Compress the block
-            return _nativeLib!.CompressBlock(compressor.Instance, output, input, false);
+            return _nativeLib!.CompressBlock(
+                compressor.Instance, 
+                output, 
+                input, 
+                finalBlock: false
+            );
         }
 
         /*
@@ -205,6 +216,15 @@ namespace VNLib.Net.Compression
         {
             public IntPtr Instance;
         }
-       
+
+
+        private sealed class CompConfigurationJson
+        {
+            [JsonPropertyName("level")]
+            public CompressionLevel Level { get; init; } = CompressionLevel.Fastest;
+
+            [JsonPropertyName("lib_path")]
+            public string? LibPath { get; init; } = null;            
+        }
     }
 }
