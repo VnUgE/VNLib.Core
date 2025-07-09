@@ -11,10 +11,10 @@ version: '3'
 vars:
   DEP_NAME: 'mimalloc'
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_mimalloc" }}'
-  BUILD_DIR: 'build/{{ OS }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
-  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       # default build to release
+  CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       # default build to release
+  CMAKE_BUILD_DIR: 'build/{{ OS }}'
   ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       # default to greedy allocator build
 
 tasks:
@@ -22,19 +22,16 @@ tasks:
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
     cmds:
-     #init cmake build with greedy enabled
-     - task: cmake-configure
-       vars: 
-         #explicitly pass args so they can be overriden
-         CMAKE_ARGS: "{{ .CMAKE_ARGS }}"
-         BUILD_TYPE: "{{ .BUILD_TYPE }}"
-         BUILD_DIR: "{{ .BUILD_DIR }}"
-
-     - task: cmake-compile
-       vars: 
-         BUILD_TYPE: "{{ .BUILD_TYPE }}" 
+     - cmd: echo "Building {{ .PROJECT_NAME }}"
+       silent: true
+     
+     - task: cmake-build
+       vars:
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+         CMAKE_ARGS: '{{ .CLI_ARGS }}'
        
-     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'"
+     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}'"
        silent: true
 
   debug:
@@ -42,43 +39,51 @@ tasks:
      - task: default
        vars: { BUILD_TYPE: "debug" }
 
+  cmake-configure:
+    desc: 'Configures the build for the current platform'
+    internal: true
+    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    cmds:
+      - cmd: cmake 
+         {{ .CMAKE_ARGS }} 
+         -S .
+         -B{{ .CMAKE_BUILD_DIR }}
+         -DCMAKE_BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}
+         -DENABLE_GREEDY={{ .ENABLE_GREEDY }}
+
+  cmake-compile:
+    desc: 'Compiles the project for the current platform'
+    requires: { CMAKE_BUILD_DIR }
+    internal: true
+    cmds:
+      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
+      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
+
+  cmake-build:
+    internal: true
+    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    cmds:
+      - task: cmake-configure
+        vars:
+          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+          CMAKE_ARGS: '{{ .CMAKE_ARGS }}'
+   
+      - task: cmake-compile
+        vars:
+          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+
   build:
     desc: 'DO NOT USE! This function is used internally during releases.'
     cmds:
-     #init cmake build with greedy enabled
-     - task: cmake-configure
-       vars: 
+     - task: cmake-build
+       vars:
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '
            {{ .CLI_ARGS }} 
-           {{ if eq OS "windows" }}-G "Visual Studio 17 2022" {{ end }}         
+           {{ if eq OS "windows" }}-G "Visual Studio 17 2022" {{ end }}
            {{ if eq OS "windows" }}-A x64{{ end }}'
-
-     - task: cmake-compile
-       vars: { BUILD_TYPE: "debug" }
-     - task: cmake-compile
-       vars: { BUILD_TYPE: "release" }  
-
-  cmake-configure:
-    internal: true
-    requires: { BUILD_DIR, BUILD_TYPE, CMAKE_ARGS }
-    cmds:      
-      #build with defaults
-      #init cmake build with greedy enabled
-      - cmd: cmake 
-         -S .
-         -B{{ .BUILD_DIR }}/
-         -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
-         -DENABLE_GREEDY={{ .ENABLE_GREEDY }}
-         {{ .CMAKE_ARGS }}
-         {{ .CLI_ARGS }}
-
-  cmake-compile:
-    internal: true
-    requires: { BUILD_DIR, BUILD_TYPE }
-    cmds:
-      - cmd: cmake 
-         --build {{ .BUILD_DIR }}/ 
-         --config {{ .BUILD_TYPE }}
 
   postbuild_success:
     cmds:
@@ -101,11 +106,11 @@ tasks:
   #packs binary artifacts for distribution
   pack_artifacts:
     internal: true
-    requires: { BUILD_DIR, BUILD_TYPE }
+    requires: { CMAKE_BUILD_DIR, BUILD_TYPE }
     cmds:
      - task: pack_resources
-       vars: { TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_TYPE }}' }
-     - cmd: "cd {{ .BUILD_DIR }}/{{ .BUILD_TYPE }} 
+       vars: { TARGET: './{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_TYPE }}' }
+     - cmd: "cd {{ .CMAKE_BUILD_DIR }}/{{ .BUILD_TYPE }} 
         && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-{{ .BUILD_TYPE }}-{{ .PROJECT_NAME }}.tgz' ."
 
   pack_resources:
@@ -141,9 +146,10 @@ tasks:
      - for: [ bin/, build/ ]
        cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
 
-  #called by module for initializing the project, it's not internal but hidden
   dev-init:
-    internal: false
+    desc: 'Configures the project for local development'
     cmds:
      - task: debug
+     - cmd: echo "dev init complete"
+       silent: true
   
