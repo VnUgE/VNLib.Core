@@ -130,7 +130,7 @@ namespace VNLib.Net.Http.Core.Request
         }
 
         /// <summary>
-        /// Initializes the <see cref="HttpRequest.RequestBody"/> for the current request
+        /// Initializes the <see cref="HttpRequest"/> for the current request
         /// </summary>
         /// <param name="context"></param>
         /// <exception cref="IOException"></exception>
@@ -142,7 +142,9 @@ namespace VNLib.Net.Http.Core.Request
             ParseQueryArgs(context.Request);
 
             //Decode requests from body
-            return !context.Request.State.HasEntityBody ? ValueTask.CompletedTask : ParseInputStream(context);
+            return !context.Request.State.HasEntityBody 
+                ? ValueTask.CompletedTask 
+                : ParseInputStream(context);
         }
 
         private static async ValueTask ParseInputStream(HttpContext context)
@@ -164,7 +166,7 @@ namespace VNLib.Net.Http.Core.Request
 
                         //Get the body as a span, and split the 'string' at the & character
                         ((ReadOnlySpan<char>)urlbody.AsSpan(0, chars))
-                            .Split('&', StringSplitOptions.RemoveEmptyEntries, UrlEncodedSplitCb, request);
+                            .Split(splitter: '&', StringSplitOptions.RemoveEmptyEntries, UrlEncodedSplitCb, request);
 
                     }
                     break;
@@ -182,14 +184,19 @@ namespace VNLib.Net.Http.Core.Request
 
                         //Split the body as a span at the boundries
                         ((ReadOnlySpan<char>)formBody.AsSpan(0, chars))
-                            .Split($"--{request.State.Boundry}", StringSplitOptions.RemoveEmptyEntries, FormDataBodySplitCb, context);
+                            .Split(
+                                splitter: $"--{request.State.Boundry}", 
+                                StringSplitOptions.RemoveEmptyEntries, 
+                                splitCb: FormDataBodySplitCb, 
+                                state: context
+                            );
 
                     }
                     break;
                 //Default case is store as a file
                 default:
                     //add upload (if it fails thats fine, no memory to clean up)
-                    request.AddFileUpload(new(request.InputStream, DisposeStream: false, request.State.ContentType, FileName: null));
+                    request.AddFileUpload() = new(request.InputStream, DisposeStream: false, request.State.ContentType, FileName: null);
                     break;
             }
 
@@ -327,11 +334,10 @@ namespace VNLib.Net.Http.Core.Request
                 if (state.Request.CanAddUpload())
                 {
                     UploadFromString(
-                        data: reader.Window.TrimCRLF(),
                         context: state,
+                        data: reader.Window.TrimCRLF(),
                         filename: FileName,
-                        contentType: ctHeaderVal,
-                        upload: ref state.Request.AddFileUpload()
+                        contentType: ctHeaderVal
                     );
                 }
             }
@@ -352,14 +358,11 @@ namespace VNLib.Net.Http.Core.Request
         /// <param name="context">The connection context</param>
         /// <param name="filename">The name of the file</param>
         /// <param name="contentType">The content type of the file data</param>
-        /// <param name="upload">A reference to the file upload to assign</param>
-        /// <returns>The <see cref="FileUpload"/> container</returns>
         private static void UploadFromString(
-            ReadOnlySpan<char> data,
             HttpContext context,
+            ReadOnlySpan<char> data,
             string filename,
-            ContentType contentType,
-            ref FileUpload upload
+            ContentType contentType
         )
         {
             IHttpContextInformation info = context;
@@ -377,7 +380,7 @@ namespace VNLib.Net.Http.Core.Request
                 VnMemoryStream vms = VnMemoryStream.FromHandle(buffHandle, ownsHandle: true, bytes, readOnly: true);
 
                 //Create new upload wrapper that owns the stream
-                upload = new(vms, DisposeStream: true, contentType, filename);
+                context.Request.AddFileUpload() = new(vms, DisposeStream: true, contentType, filename);
             }
             catch
             {
@@ -406,17 +409,6 @@ namespace VNLib.Net.Http.Core.Request
          */
         private static void ParseQueryArgs(HttpRequest Request)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            //Query string parse method
-            static void QueryParser(ReadOnlySpan<char> queryArgument, HttpRequest Request)
-            {
-                //Split spans at the '=' character
-                ReadOnlySpan<char> key = queryArgument.SliceBeforeParam('=');
-                ReadOnlySpan<char> value = queryArgument.SliceAfterParam('=');
-
-                Request.QueryArgs[key.ToString()] = value.ToString();
-            }
-
             //if the request has query args, parse and store them
             ReadOnlySpan<char> queryString = Request.State.Location.Query;
 
@@ -426,7 +418,22 @@ namespace VNLib.Net.Http.Core.Request
                 queryString = queryString.TrimStart('?');
 
                 //Split args by '&'
-                queryString.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries, QueryParser, Request);
+                queryString.Split(
+                    splitter: '&', 
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries, 
+                    splitCb: QueryParser, 
+                    state: Request
+                );
+            }
+
+            //Query string parse method`
+            static void QueryParser(ReadOnlySpan<char> queryArgument, HttpRequest Request)
+            {
+                //Split spans at the '=' character
+                ReadOnlySpan<char> key = queryArgument.SliceBeforeParam('=');
+                ReadOnlySpan<char> value = queryArgument.SliceAfterParam('=');
+
+                Request.QueryArgs[key.ToString()] = value.ToString();
             }
         }
     }
