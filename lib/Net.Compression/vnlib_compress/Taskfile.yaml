@@ -29,11 +29,16 @@ tasks:
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '{{ .CLI_ARGS }}'
 
+  debug:
+    cmds:
+     - task: default
+       vars: { BUILD_TYPE: "debug" }
+
   cmake-configure:
     desc: 'Configures the build for the current platform'
     internal: true
     requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
-    cmds:     
+    cmds:
      - cmd: cmake 
         {{ .CMAKE_ARGS }} 
         -S .
@@ -141,7 +146,7 @@ tasks:
     internal: true
     vars:
       OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
-      EXCLUDES: ''        
+      EXCLUDES: ''
       INCLUDES:
         "src/*
          brotli/*
@@ -161,9 +166,7 @@ tasks:
   dev-init:
     desc: 'Configures the project for local development'
     cmds:
-     - task: build
-       vars: 
-         CMAKE_BUILD_TYPE: Debug
+     - task: debug
   
      - cmd: echo "dev init complete"
        silent: true
