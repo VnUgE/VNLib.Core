@@ -145,11 +145,12 @@ tasks:
         lib/Utils.Cryptography/monocypher
         lib/Utils.Cryptography/argon2
         lib/Net.Compression/vnlib_compress'
-    cmds:
+    deps:
      - for: { var: NATIVE_LIB_DIRS }
        task:  run-dev-init
        vars: { ITEM: '{{ .ITEM }}' }
 
+    cmds:
      - cmd: dotnet restore
 
      - cmd: echo "Module developer initialization complete"
