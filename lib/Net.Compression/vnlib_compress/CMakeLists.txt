@@ -9,12 +9,14 @@ project(
 
 set(_COMP_PROJ_NAME "vnlib_compress")
 
-#set options for enable botli and zlib
+#set options to enable brotli, zlib, and zstd
 option(COMPRESS_ENABLE_BROTLI "Enable brotli compression" ON)
 option(COMPRESS_ENABLE_ZLIB "Enable zlib compression" ON)
 option(COMPRESS_ENABLE_ZSTD "Enable zstd compression" ON)
+
 option(COMPRESS_BUILD_SHARED "Produces a shared library instead of a static library" ON)
 option(USE_STATIC_RUNTIME "Use the static runtime library" OFF)
+option(BUILD_SHARED_LIBS "DO NOT USE" OFF)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
 
 # declare options for native heap linking
@@ -47,12 +49,8 @@ if(COMPRESS_ENABLE_BROTLI)
 
 	set(BROTLI_BUNDLED_MODE OFF CACHE BOOL "explicitly set bundled mode to off" FORCE)
 	set(BROTLI_EMSCRIPTEN OFF CACHE BOOL "disable emscripten support" FORCE)
-	set(BUILD_SHARED_LIBS OFF CACHE BOOL "disable shared library building, as only static is needed" FORCE)
 	set(BROTLI_BUILD_TOOLS OFF CACHE BOOL "disable building of tools" FORCE)
 	set(BROTLI_DISABLE_TESTS OFF CACHE BOOL "disable building of tests" FORCE)
-
-	# May cause issues force disabiling the shared library build because this is a CMake global variable
-	set(BUILD_SHARED_LIBS OFF CACHE BOOL "disable shared library building, as only static is needed" FORCE)
 
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/brotli EXCLUDE_FROM_ALL)
 	
@@ -276,6 +274,16 @@ if(NATIVE_HEAP_NAME)
 		NO_CACHE
 		REQUIRED
 	)
+
+	if(NOT _native_heap_lib)
+		message(FATAL_ERROR 
+			"Native heap library '${NATIVE_HEAP_NAME}' not found!\n"
+			"Searched in:\n"
+			"  ${NATIVE_HEAP_BIN}\n"
+			"  ${NATIVE_HEAP_SRC}\n"
+			"Please check NATIVE_HEAP_BIN and NATIVE_HEAP_SRC paths."
+		)
+	endif()
 	
 endif()
 
