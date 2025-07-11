@@ -145,13 +145,11 @@ tasks:
         lib/Utils.Cryptography/monocypher
         lib/Utils.Cryptography/argon2
         lib/Net.Compression/vnlib_compress'
-    deps: 
-     #build native libs for development in parallel
+    cmds:
      - for: { var: NATIVE_LIB_DIRS }
        task:  run-dev-init
        vars: { ITEM: '{{ .ITEM }}' }
-    cmds:   
-     
+
      - cmd: dotnet restore
 
      - cmd: echo "Module developer initialization complete"
@@ -159,6 +157,8 @@ tasks:
 
   run-dev-init:
     internal: true
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: '{{ .numCpu }}'
     cmds:
      - cmd: cd '{{ .ITEM }}' && task dev-init
 
@@ -175,7 +175,7 @@ tasks:
      - for: { var: NATIVE_LIB_DIRS }
        cmd: cd {{ .ITEM }} && task clean
 
-  write-changelog:    
+  write-changelog:
     cmds:
      - cmd: git-cliff
          --verbose
