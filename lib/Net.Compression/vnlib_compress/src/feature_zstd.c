@@ -139,7 +139,7 @@ void ZstdFreeCompressor(comp_state_t* state)
 {
 	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
 
-	if (state->compressor)
+	if (state && state->compressor) 
 	{
 		struct zstd_stream_state* streamState = (struct zstd_stream_state*)state->compressor;
 
