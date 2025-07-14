@@ -1,5 +1,16 @@
 <p align="center"><img src="https://raw.githubusercontent.com/facebook/zstd/dev/doc/images/zstd_logo86.png" alt="Zstandard"></p>
 
+## ⚠ Notice of modification for VNLib
+This is a manual fork of the ZSTD Compression library. The encoding code is meant to be left entirely intact and verifiable at the moment. All code
+strictly necessary for streaming compression and building has been removed as best as possible. There may be future modifications to the encoding code, but for now it's just stripped to reduce
+the repository size. 
+
+Zstd is a mostly up-to-date C project that releases regularly, compared to Clouflare zlib and Google brotli. 
+
+You can verify the [COMMIT](COMMIT) file to see the exact commit the current code is based on.
+
+## Original README
+
 __Zstandard__, or `zstd` as short version, is a fast lossless compression algorithm,
 targeting real-time compression scenarios at zlib-level and better compression ratios.
 It's backed by a very fast entropy stage, provided by [Huff0 and FSE library](https://github.com/Cyan4973/FiniteStateEntropy).
