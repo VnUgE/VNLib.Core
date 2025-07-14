@@ -90,9 +90,9 @@ tasks:
   postbuild_success:
     cmds:
      - cmd: powershell mkdir -Force '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
-     - task: pack_parallel
+     - task: pack-parallel
   
-  pack_parallel:
+  pack-parallel:
     internal: true
     vars:
       #required files to include in tar
@@ -102,6 +102,7 @@ tasks:
         platform.h
         compression.h
         license.txt"
+
       DEBUG_TAR_FILES: 
         "{{ .PROJECT_NAME }}.dll 
         {{ .PROJECT_NAME }}.pdb 
@@ -110,41 +111,42 @@ tasks:
         compression.h
         license.txt"
 
+      DIST_HEADERS: 
+        "platform.h
+         compression.h"
     deps:
-     - task: pack_source
+     - task: pack-source
 
-     - task: pack_artifacts
+     - task: pack-dist
        vars: 
          BUILD_MODE: 'debug'
          TAR_FILES: '{{ .DEBUG_TAR_FILES }}'
+         DIST_HEADERS: '{{ .DIST_HEADERS }}'
 
-     - task: pack_artifacts
+     - task: pack-dist
        vars: 
          BUILD_MODE: 'release'
          TAR_FILES: '{{ .REL_TAR_FILES }}'
+         DIST_HEADERS: '{{ .DIST_HEADERS }}'
 
-  pack_artifacts:
+  pack-dist:
     desc: 'Packs the binary artifacts into a tar file for distribution'  
     internal: true
+    requires: { CMAKE_BUILD_DIR, BUILD_MODE, TAR_FILES, DIST_HEADERS }
     vars:
       ARCHIVE_PATH: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
-    deps:
-      - task: embed
-        vars: 
-          TARGET: './{{ .BUILD_DIR }}/{{ .BUILD_MODE }}'
+      TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'     
     cmds:
-      - cmd: cd {{ .BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
-
- #add embeded resources to the binary output for distribution
-  embed:
-    internal: true
-    cmds:
-     - cmd: powershell cp ../LICENSE '{{ .TARGET }}/license.txt'
+      # publish the license file for distribution
+      - cmd: powershell cp ../LICENSE '{{ .TARGET_DIR }}/license.txt'
      
-     - for: [ platform.h, compression.h ]
-       cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET }}/{{ .ITEM }}'
-  
-  pack_source:
+      # publish headers for distribution
+      - for: { var: DIST_HEADERS }
+        cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}/{{ .ITEM }}'
+      
+      - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
+
+  pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
     internal: true
     vars:
