@@ -1,4 +1,4 @@
-version: 37
+version: 40
 jobs:
 - name: Repo Sync Push
   steps:
@@ -8,14 +8,16 @@ jobs:
     userName: VnUgE
     passwordSecret: git-access-token
     force: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !PushRepository
     name: Codeberg push sync
     remoteUrl: https://codeberg.org/VnUgE/VNLib.Core.git
     userName: VnUgE
     passwordSecret: codeberg-access-token
     force: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !TagCreateTrigger
     projects: VNLib.Core
@@ -25,6 +27,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+
 - name: Windows Tests
   jobExecutor: windows
   steps:
@@ -33,12 +36,13 @@ jobs:
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
-        cd @project_name@  
-        task -t Module.Taskfile.yaml dev-init
-        task -t Module.Taskfile.yaml test
+         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+         cd @project_name@  
+         task -t Module.Taskfile.yaml dev-init
+         task -t Module.Taskfile.yaml test
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger
     branches: '** -master'
@@ -46,6 +50,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+
 - name: Staging build
   jobExecutor: windows
   steps:
@@ -54,11 +59,12 @@ jobs:
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
         vnbuild build --no-delay --verbose
         vnbuild publish --verbose
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger
     branches: develop
@@ -78,18 +84,20 @@ jobs:
     withLfs: false
     withSubmodules: false
     checkoutPath: '@project_name@'
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: ubuntu-x64 tests
     runInContainer: true
     image: vnuge/vnbuild:ubuntu-latest
     interpreter: !DefaultInterpreter
       commands: |
-        cd @project_name@  
-        task -t Module.Taskfile.yaml dev-init
-        task -t Module.Taskfile.yaml test
+          cd @project_name@
+          task -t Module.Taskfile.yaml dev-init
+          task -t Module.Taskfile.yaml test
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger
     branches: '** -master'
@@ -97,6 +105,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+
 - name: Fedora Tests
   jobExecutor: docker
   steps:
@@ -106,18 +115,20 @@ jobs:
     withLfs: false
     withSubmodules: false
     checkoutPath: '@project_name@'
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: fedora-x64 tests
     runInContainer: true
     image: vnuge/vnbuild:fedora-latest
     interpreter: !DefaultInterpreter
       commands: |
-        cd @project_name@  
-        task -t Module.Taskfile.yaml dev-init
-        task -t Module.Taskfile.yaml test
+         cd @project_name@
+         task -t Module.Taskfile.yaml dev-init
+         task -t Module.Taskfile.yaml test
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger
     branches: '** -master'
@@ -125,6 +136,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+
 - name: Publish master
   jobExecutor: publish-agents
   steps:
@@ -133,9 +145,10 @@ jobs:
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
-        git clone @server_url@/@project_name@ --branch @branch@ @project_name@
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: Create git tag
     runInContainer: false
@@ -144,7 +157,8 @@ jobs:
         cd @project_name@
         task tag-current-commit -t Module.Taskfile.yaml
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: VNBuild Build
     runInContainer: false
@@ -152,7 +166,8 @@ jobs:
       commands: |
         vnbuild build --no-delay 
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: VNBuild Publish
     runInContainer: false
@@ -165,7 +180,8 @@ jobs:
     - name: FTP_PASSWORD
       value: '@secret:ftp_password@'
     useTTY: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   triggers:
   - !BranchUpdateTrigger
     branches: master

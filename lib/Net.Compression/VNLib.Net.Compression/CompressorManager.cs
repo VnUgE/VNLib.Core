@@ -218,7 +218,7 @@ namespace VNLib.Net.Compression
         }
 
 
-        private sealed class CompConfigurationJson
+        private sealed record CompConfigurationJson
         {
             [JsonPropertyName("level")]
             public CompressionLevel Level { get; init; } = CompressionLevel.Fastest;
