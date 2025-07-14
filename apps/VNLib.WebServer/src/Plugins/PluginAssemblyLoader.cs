@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -39,10 +39,8 @@ namespace VNLib.WebServer.Plugins
 
     internal static class PluginAsemblyLoading
     {
-        public static IAssemblyLoader Create(IPluginAssemblyLoadConfig config)
-        {
-            return config.Unloadable ? new UnloadableAlc(config) : new ImmutableAl(config);
-        }
+        public static IAssemblyLoader Create(IPluginAssemblyLoadConfig config) 
+            => config.Unloadable ? new UnloadableAlc(config) : new ImmutableAl(config);
 
         //Immutable assembly loader
         internal sealed record class ImmutableAl(IPluginAssemblyLoadConfig Config) : IAssemblyLoader
