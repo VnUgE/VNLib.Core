@@ -6,5 +6,6 @@
   "description": "A port of rpmalloc library that exposes a universal NativeHeapApi for use with VNLib.Utils enabled applications.",
   "copyright": "Copyright \u00A9 2025 Vaughn Nugent",
   "company": "Vaughn Nugent",
-  "repository": "https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Memory/vnlib_rpmalloc"
+  "repository": "https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Memory/vnlib_rpmalloc",
+  "output_files": "msvc-x64-debug-vnlib_rpmalloc.tgz,msvc-x64-release-vnlib_rpmalloc.tgz,src.tgz"
 }
