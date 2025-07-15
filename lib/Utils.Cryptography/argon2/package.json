@@ -4,7 +4,8 @@
   "output_dir": "bin",
   "author": "Vaughn Nugent",
   "description": "A vendored copy of the offical Argon2 repository that only produces the dependent Argon2 dynamic library required for some VNLib projects that wish to support secure password hashing",
-  "copyright": "",
+  "copyright": "Copyright \u00A9 pch-winner-argon2 authors",
   "company": "Vaughn Nugent",
-  "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils.Cryptography/argon2"
+  "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils.Cryptography/argon2",
+  "output_files": "msvc-x64-debug-argon2.tgz,msvc-x64-release-argon2.tgz,src.tgz"
 }
