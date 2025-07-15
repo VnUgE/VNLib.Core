@@ -11,45 +11,77 @@ version: '3'
 vars:
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_monocypher" }}'
   MODULE_NAME: '{{ .MODULE_NAME | default "vnlib.core" }}'
-  BUILD_DIR: 'build/{{ OS }}'
-  BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACT_OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+  CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
+  CMAKE_BUILD_DIR: 'build/{{ OS }}'
 
 tasks:
 
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
-    vars:
-      OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BUILD_DIR }}'
     cmds:
-      #build with defaults
-      - task: build
-      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ osClean .OUT_DIR }}\033[0m"
-        silent: true
+     - cmd: echo "Building {{ .PROJECT_NAME }}"
+       silent: true
+     
+     - task: cmake-build
+       vars:
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+         CMAKE_ARGS: '{{ .CLI_ARGS }}'
+       
+     - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
+       silent: true
+
+  debug:
+    cmds:
+     - task: default
+       vars: { CMAKE_BUILD_TYPE: "debug" }
   
+  cmake-configure:
+    desc: 'Configures the build for the current platform'
+    internal: true
+    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    cmds:
+     - cmd: cmake 
+        {{ .CMAKE_ARGS }} 
+        -S .
+        -B{{ .CMAKE_BUILD_DIR }}
+        -DCMAKE_BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}
+
+  cmake-compile:
+    desc: 'Compiles the project for the current platform'
+    requires: { CMAKE_BUILD_DIR }
+    internal: true
+    cmds:
+      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
+      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
+
+  cmake-build:
+    internal: true
+    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    cmds:
+      - task: cmake-configure
+        vars:
+          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+          CMAKE_ARGS: '{{ .CMAKE_ARGS }}'
+   
+      - task: cmake-compile
+        vars:
+          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+
   build:
     desc: 'DO NOT USE! This function is used internally during automated builds.'
     cmds:
-     - cmd: echo Building {{ .PROJECT_NAME }} in {{ .BUILD_TYPE }} mode
-       silent: true
-     - task: build-internal
-      
-
-  build-internal:
-    internal: true
-    vars:
-      CMAKE_ARGS: '{{ .CLI_ARGS }}'
-    cmds:
-     #configure the build with vnlib_rpmalloc since we know the source must be local during CI
-     - cmd: cmake 
-        {{ .CMAKE_ARGS }} 
-        -B{{ .BUILD_DIR }}
-        -DCMAKE_BUILD_TYPE={{ .BUILD_TYPE }}
-     
-     #build for platform, since Windows, build in both modes
-     - cmd: cmake --build {{ .BUILD_DIR }}/ --config debug
-     - cmd: cmake --build {{ .BUILD_DIR }}/ --config release
+     - task: cmake-build
+       vars:
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+         CMAKE_ARGS: '
+           {{ .CLI_ARGS }} 
+           {{ if eq OS "windows" }}-G "Visual Studio 17 2022" {{ end }}
+           {{ if eq OS "windows" }}-A x64{{ end }}'
   
   postbuild_success:
     desc: 'DO NOT USE! This function is used internally during automated builds.'
@@ -94,7 +126,7 @@ tasks:
         util.h
         platform.h
       TAR_FILES: "{{ .TAR_FILES }} {{ .ADD_FILES }}"
-      TARGET_DIR: '{{ .BUILD_DIR }}/{{ .BUILD_MODE }}'
+      TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
     cmds:
 
       #add header files
@@ -112,7 +144,7 @@ tasks:
   pack_source:
     internal: true
     vars:
-      EXCLUDES:       
+      EXCLUDES:
         
       INCLUDES:
         "src/*
@@ -130,9 +162,7 @@ tasks:
   dev-init:
     desc: 'Configures the project for local development'
     cmds:
-     - task: build-internal
-       vars: { BUILD_TYPE: Debug }
-
+     - task: debug
      - cmd: echo "dev init complete"
        silent: true
 
@@ -144,8 +174,7 @@ tasks:
      - vendor/**/*
      - CMakelists.txt  
     cmds:
-     - task: build-internal
-       vars: { BUILD_TYPE: Debug }
+     - task: dev-init
 
   clean:
     desc: 'Cleans any build artifacts and output directories'

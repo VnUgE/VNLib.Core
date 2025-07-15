@@ -24,7 +24,6 @@
 #ifndef BROTLI_STUB_H_
 #define BROTLI_STUB_H_
 
-#include "util.h"
 #include "compression.h"
 
 #define ERR_BR_INVALID_STATE -24

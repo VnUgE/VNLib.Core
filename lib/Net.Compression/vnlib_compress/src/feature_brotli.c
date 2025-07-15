@@ -26,26 +26,6 @@
 	CHECK_NULL_PTR(state); \
 	if (!state->compressor) return ERR_BR_INVALID_STATE; \
 
-/*
-* Stream memory management functions
-*/
-static void* _brAllocCallback(void* opaque, size_t size)
-{
-	(void)sizeof(opaque);
-	return vnmalloc(size, 1);
-}
-
-static void _brFreeCallback(void* opaque, void* address)
-{
-	(void)sizeof(opaque);
-	
-	/*Brotli may pass a null address to the free callback*/
-	if (address)
-	{
-		vnfree(address);
-	}
-}
-
 
 int BrAllocCompressor(comp_state_t* state)
 {
@@ -63,9 +43,9 @@ int BrAllocCompressor(comp_state_t* state)
 	}
 	
 	comp = BrotliEncoderCreateInstance(
-		&_brAllocCallback, 
-		&_brFreeCallback,
-		NULL
+		state->allocFunc, 
+		state->freeFunc,
+		state->memOpaque
 	);
 
 	if (!comp)
@@ -140,7 +120,7 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 	BrotliEncoderOperation brOperation;
 	BROTLI_BOOL brResult;
 
-	size_t availableIn, availableOut, totalOut;
+	size_t availableIn, availableOut;
 	const uint8_t* nextIn;
 	uint8_t* nextOut;
 
@@ -167,14 +147,9 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 	* Determine the operation to perform
 	*/
 
-	if (operation->flush) 
-	{
-		brOperation = BROTLI_OPERATION_FINISH;
-	}
-	else
-	{
-		brOperation = BROTLI_OPERATION_PROCESS;
-	}
+	brOperation = operation->flush 
+		? BROTLI_OPERATION_FINISH 
+		: BROTLI_OPERATION_PROCESS;
 
 	/*
 	* Update lengths and data pointers from input/output spans
@@ -199,7 +174,7 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 		&nextIn,
 		&availableOut,
 		&nextOut,
-		&totalOut
+		NULL
 	);
 	
 	/*
