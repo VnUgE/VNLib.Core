@@ -19,10 +19,8 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   triggers:
-  - !TagCreateTrigger
-    projects: VNLib.Core
-  - !BranchUpdateTrigger
-    projects: VNLib.Core
+  - !TagCreateTrigger {}
+  - !BranchUpdateTrigger {}
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
