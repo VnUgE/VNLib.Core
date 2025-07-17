@@ -13,10 +13,10 @@ vars:
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_rpmalloc" }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
-  
+
   # optional build variables
   ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       # default to greedy allocator build
-  
+
   # default cmake build parameters
   CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   CMAKE_BUILD_DIR: 'build/{{ OS }}'
@@ -36,12 +36,12 @@ tasks:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS }}'
-       
+
      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
        silent: true
 
   debug:
-    desc: 'Builds the vnlib_rpmalloc library for the current platform in debug mode'
+    desc: 'Builds the library for the current platform in debug mode'
     cmds:
      - task: default
        vars: 
@@ -68,8 +68,8 @@ tasks:
     requires:
       vars: [CMAKE_BUILD_DIR]
     cmds:
-      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
-      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
+     - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
+     - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
 
   cmake-build:
     desc: 'Runs the cmake generate and build commands as a single task'
@@ -89,12 +89,10 @@ tasks:
 
   #called by ci pipline to build the winx64 project
   build:
-   desc: 'DO NOT USE. This is an internal task'
-   requires:
-    vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
-   cmds:
-     # build the project assuming we can link against rpmalloc
-     # also use the project defaults for CMAKE_BUILD_DIR and CMAKE_BUILD_TYPE
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
+    cmds:
      - task: cmake-build
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
@@ -102,7 +100,7 @@ tasks:
          CMAKE_ARGS: '
            {{ .CLI_ARGS }}
            {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
-           {{ if eq OS "windows" }}-A x64{{ end }}' 
+           {{ if eq OS "windows" }}-A x64{{ end }}'
 
   postbuild_success:
     desc: 'DO NOT USE. This is an internal task'
@@ -125,15 +123,14 @@ tasks:
      - task: pack-dist
        vars: { BUILD_MODE: 'release' }
 
-  #packs binary artifacts for distribution
   pack-dist:
     desc: 'Packs the binary artifacts into a tar file for distribution'  
     internal: true
     requires:
       vars: [ARTIFACT_DIR, BUILD_MODE, PROJECT_NAME]
     vars:
-      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
      - cmd: powershell cp NativeHeapApi.h '{{ .TARGET_DIR }}/'
      - cmd: powershell cp vendor/license '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
@@ -141,7 +138,7 @@ tasks:
      - cmd: powershell cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
 
      - cmd: "cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' ."
-  
+
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
     internal: true
@@ -158,8 +155,8 @@ tasks:
         '{{ .PROJECT_NAME }}.c'
 
     cmds:
-      #tar up the source
-     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}  
+     # tar up the source
+     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -168,7 +165,6 @@ tasks:
      - cmd: echo "dev init complete"
        silent: true
 
-  #Remove the output dirs on clean
   clean:
     desc: 'Cleans any build artifacts and output directories'
     ignore_error: true

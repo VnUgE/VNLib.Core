@@ -40,7 +40,7 @@ tasks:
        silent: true
 
   debug:
-    desc: 'Builds the vnlib_compress library for the current platform in debug mode'
+    desc: 'Builds the library for the current platform in debug mode'
     cmds:
      - task: default
        vars: 
@@ -87,10 +87,10 @@ tasks:
 
   #called by ci pipline to build the winx64 project
   build:
-   desc: 'DO NOT USE. This is an internal task'
-   requires:
-    vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, RPMALLOC_SRC_DIR]
-   cmds:
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, RPMALLOC_SRC_DIR]
+    cmds:
      # build the project assuming we can link against rpmalloc
      # also use the project defaults for CMAKE_BUILD_DIR and CMAKE_BUILD_TYPE
      - task: cmake-build
@@ -105,7 +105,7 @@ tasks:
 
   postbuild_success:
     desc: 'DO NOT USE. This is an internal task'
-    requires: 
+    requires:
       vars: [ARTIFACT_DIR]
     cmds:
      - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
@@ -119,8 +119,7 @@ tasks:
     requires:
       vars: [PROJECT_NAME]
     vars:
-      #required files to include in tar
-      REL_TAR_FILES: 
+      REL_TAR_FILES:
         "{{ .PROJECT_NAME }}.dll 
         {{ .PROJECT_NAME }}.lib 
         platform.h
@@ -142,13 +141,13 @@ tasks:
      - task: pack-source
 
      - task: pack-dist
-       vars: 
+       vars:
          BUILD_MODE: 'debug'
          TAR_FILES: '{{ .DEBUG_TAR_FILES }}'
          DIST_HEADERS: '{{ .DIST_HEADERS }}'
 
      - task: pack-dist
-       vars: 
+       vars:
          BUILD_MODE: 'release'
          TAR_FILES: '{{ .REL_TAR_FILES }}'
          DIST_HEADERS: '{{ .DIST_HEADERS }}'
@@ -159,8 +158,8 @@ tasks:
     requires:
       vars: [BUILD_MODE, TAR_FILES, DIST_HEADERS]
     vars:
-      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
       # publish the license file for distribution
       - cmd: powershell cp ../LICENSE '{{ .TARGET_DIR }}/license.txt'
@@ -168,7 +167,7 @@ tasks:
       # publish headers for distribution
       - for: { var: DIST_HEADERS }
         cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}/{{ .ITEM }}'
-      
+
       - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
 
   pack-source:
@@ -204,11 +203,9 @@ tasks:
      - cmd: echo "dev init complete"
        silent: true
 
-  #Remove the output dirs on clean
   clean:
     desc: 'Cleans any build artifacts and output directories'
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
        cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
-    
