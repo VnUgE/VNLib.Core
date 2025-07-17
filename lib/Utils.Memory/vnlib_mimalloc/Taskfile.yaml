@@ -12,37 +12,48 @@ vars:
   DEP_NAME: 'mimalloc'
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_mimalloc" }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
-  ARTIFACTS_OUT: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}'
-  CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'       # default build to release
-  CMAKE_BUILD_DIR: 'build/{{ OS }}'
+  ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+  
+  # optional build variables
   ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       # default to greedy allocator build
+  
+  # default cmake build parameters
+  CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
+  CMAKE_BUILD_DIR: 'build/{{ OS }}'
 
 tasks:
 
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, PROJECT_NAME]
     cmds:
-     - cmd: echo "Building {{ .PROJECT_NAME }}"
+     - cmd: echo "Building {{ .PROJECT_NAME }} in mode {{ .CMAKE_BUILD_TYPE }}"
        silent: true
      
      - task: cmake-build
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
-         CMAKE_ARGS: '{{ .CLI_ARGS }}'
+         CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS }}'
        
-     - cmd: echo "Your {{ .PROJECT_NAME }} library file can be found in '{{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}'"
+     - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
        silent: true
 
   debug:
+    desc: 'Builds the vnlib_rpmalloc library for the current platform in debug mode'
     cmds:
      - task: default
-       vars: { CMAKE_BUILD_TYPE: "debug" }
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: "debug" 
+         CMAKE_ARGS: '{{ .CMAKE_ARGS }}'
 
   cmake-configure:
     desc: 'Configures the build for the current platform'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, ENABLE_GREEDY]
     cmds:
       - cmd: cmake 
          {{ .CMAKE_ARGS }} 
@@ -53,15 +64,18 @@ tasks:
 
   cmake-compile:
     desc: 'Compiles the project for the current platform'
-    requires: { CMAKE_BUILD_DIR }
     internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR]
     cmds:
       - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
       - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
 
   cmake-build:
+    desc: 'Runs the cmake generate and build commands as a single task'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, CMAKE_ARGS]
     cmds:
       - task: cmake-configure
         vars:
@@ -73,60 +87,68 @@ tasks:
         vars:
           CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
 
+  #called by ci pipline to build the winx64 project
   build:
-    desc: 'DO NOT USE! This function is used internally during releases.'
-    cmds:
+   desc: 'DO NOT USE. This is an internal task'
+   requires:
+    vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
+   cmds:
+     # build the project assuming we can link against rpmalloc
+     # also use the project defaults for CMAKE_BUILD_DIR and CMAKE_BUILD_TYPE
      - task: cmake-build
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '
-           {{ .CLI_ARGS }} 
-           {{ if eq OS "windows" }}-G "Visual Studio 17 2022" {{ end }}
-           {{ if eq OS "windows" }}-A x64{{ end }}'
+           {{ .CLI_ARGS }}
+           {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
+           {{ if eq OS "windows" }}-A x64{{ end }}' 
 
   postbuild_success:
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [ARTIFACT_DIR]
     cmds:
-      #make bin dir
-    - cmd: powershell mkdir -Force '{{ .ARTIFACTS_OUT }}'
-      ignore_error: true
-  
-    - task: pack_parallel
+     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+       ignore_error: true
 
-  pack_parallel:
+     - task: pack-parallel
+
+  pack-parallel:
+    desc: 'Packs the binary artifacts into tar files for distribution for various builds in parallel'
     internal: true
     deps:
-     - task: pack_source
+     - task: pack-source
 
-     - task: pack_artifacts
-       vars: { BUILD_TYPE: 'debug' }
-     - task: pack_artifacts
-       vars: { BUILD_TYPE: 'release' }
+     - task: pack-dist
+       vars: { BUILD_MODE: 'debug' }
+     - task: pack-dist
+       vars: { BUILD_MODE: 'release' }
 
   #packs binary artifacts for distribution
-  pack_artifacts:
+  pack-dist:
+    desc: 'Packs the binary artifacts into a tar file for distribution'  
     internal: true
-    requires: { CMAKE_BUILD_DIR, BUILD_TYPE }
-    cmds:
-     - task: pack_resources
-       vars: { TARGET: './{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_TYPE }}' }
-     - cmd: "cd {{ .CMAKE_BUILD_DIR }}/{{ .BUILD_TYPE }} 
-        && tar -czf '{{ .ARTIFACTS_OUT }}/msvc-x64-{{ .BUILD_TYPE }}-{{ .PROJECT_NAME }}.tgz' ."
-
-  pack_resources:
-    internal: true
-    requires: { TARGET }
-    cmds:
-     - cmd: powershell cp NativeHeapApi.h '{{ .TARGET }}/'
-     - cmd: powershell cp vendor/license '{{ .TARGET }}/{{ .DEP_NAME }}_license.txt'
-     - cmd: powershell cp license '{{ .TARGET }}/license.txt'
-     - cmd: powershell cp build.readme.txt '{{ .TARGET }}/readme.txt'
-  
-  pack_source:
-    internal: true
-    desc: "Packs up the project source code and creates a tarball in the builds binary directory"
+    requires:
+      vars: [ARTIFACT_DIR, BUILD_MODE, PROJECT_NAME]
     vars:
-      TARGET_SOURCE: '{{ .PROJECT_DIR }}/{{ .BINARY_DIR }}/src.tgz'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
+      TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
+    cmds:
+     - cmd: powershell cp NativeHeapApi.h '{{ .TARGET_DIR }}/'
+     - cmd: powershell cp vendor/license '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
+     - cmd: powershell cp license '{{ .TARGET_DIR }}/license.txt'
+     - cmd: powershell cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
+
+     - cmd: "cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' ."
+  
+  pack-source:
+    desc: 'Packs the source code into a tar file for distribution' 
+    internal: true
+    requires:
+      vars: [ARTIFACT_DIR, PROJECT_NAME]
+    vars:
+      TARGET_SOURCE: '{{ .ARTIFACT_DIR }}/src.tgz'
       SOURCE_FILES: 
         CMakeLists.txt
         Taskfile.yaml
@@ -139,17 +161,17 @@ tasks:
       #tar up the source
      - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}  
 
-  clean:
-    desc: 'Cleans any build artifacts and output directories'
-    ignore_error: true
-    cmds:
-     - for: [ bin/, build/ ]
-       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
-
   dev-init:
     desc: 'Configures the project for local development'
     cmds:
      - task: debug
      - cmd: echo "dev init complete"
        silent: true
-  
+
+  #Remove the output dirs on clean
+  clean:
+    desc: 'Cleans any build artifacts and output directories'
+    ignore_error: true
+    cmds:
+     - for: [ bin/, build/ ]
+       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
