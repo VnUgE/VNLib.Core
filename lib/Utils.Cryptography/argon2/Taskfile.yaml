@@ -12,6 +12,9 @@ vars:
   PROJECT_NAME: '{{ .PROJECT_NAME | default "argon2" }}'
   MODULE_NAME: '{{ .MODULE_NAME | default "vnlib.core" }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
+  ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+  
+  # default cmake build parameters
   CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   CMAKE_BUILD_DIR: 'build/{{ OS }}'
 
@@ -19,28 +22,35 @@ tasks:
 
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, PROJECT_NAME]
     cmds:
-     - cmd: echo "Building {{ .PROJECT_NAME }}"
+     - cmd: echo "Building {{ .PROJECT_NAME }} in mode {{ .CMAKE_BUILD_TYPE }}"
        silent: true
      
      - task: cmake-build
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
-         CMAKE_ARGS: '{{ .CLI_ARGS }}'
-       
-     - cmd: echo "Your {{ .PROJECT_NAME }} dll file can be found in '{{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}'"
+         CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS }}'
+
+     - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
        silent: true
 
   debug:
+    desc: 'Builds the library for the current platform in debug mode'
     cmds:
      - task: default
-       vars: { CMAKE_BUILD_TYPE: "debug" }
-  
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: "debug" 
+         CMAKE_ARGS: '{{ .CMAKE_ARGS }}'
+
   cmake-configure:
     desc: 'Configures the build for the current platform'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
      - cmd: cmake 
         {{ .CMAKE_ARGS }} 
@@ -50,15 +60,18 @@ tasks:
 
   cmake-compile:
     desc: 'Compiles the project for the current platform'
-    requires: { CMAKE_BUILD_DIR }
     internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR]
     cmds:
-      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
-      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
+     - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
+     - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
 
   cmake-build:
+    desc: 'Runs the cmake generate and build commands as a single task'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, CMAKE_ARGS]
     cmds:
       - task: cmake-configure
         vars:
@@ -70,85 +83,98 @@ tasks:
         vars:
           CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
 
+  #called by ci pipline to build the winx64 project
   build:
-    desc: 'DO NOT USE! This function is used internally during automated builds.'
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
      - task: cmake-build
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '
-           {{ .CLI_ARGS }} 
-           {{ if eq OS "windows" }}-G "Visual Studio 17 2022" {{ end }}
-           {{ if eq OS "windows" }}-A x64{{ end }}' 
+           {{ .CLI_ARGS }}
+           {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
+           {{ if eq OS "windows" }}-A x64{{ end }}'
 
- 
   postbuild_success:
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [ARTIFACT_DIR]
     cmds:
-      #make bin dir
-    - cmd: powershell mkdir -Force '{{ .BINARY_DIR }}'
-      ignore_error: true
-    
-    - task: parallel_postbuild
+     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+       ignore_error: true
+
+     - task: pack-parallel
   
-  parallel_postbuild:
+  pack-parallel:
+    desc: 'Packs the binary artifacts into tar files for distribution for various builds in parallel'
     internal: true
     vars:
-      #required files to include in tar
-      BIN_FILES: 
-        license.txt 
+      REL_TAR_FILES:
+        "argon2.dll 
+        argon2_static.lib
+        argon2.lib 
+        argon2.h
         readme.txt 
-        argon2.h 
-        argon2.dll
+        license.txt"
+
+      DEBUG_TAR_FILES:
+        "{{ .REL_TAR_FILES }}
+        argon2.pdb
+        argon2_static.pdb"
 
     deps:
-     - task: pack_source
-  
-     - task: pack_artifacts
-       vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .BIN_FILES }} argon2.pdb' }  
-     - task: pack_artifacts
-       vars: { BUILD_MODE: 'release', TAR_FILES: '{{ .BIN_FILES }}' }
+     - task: pack-source
 
-  #packs up the binary artifacts for distribution
-  pack_artifacts:
-    internal: true
-    vars:
-      OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
-    deps:
-      - task: embed
-        vars: { TARGET: './{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}' }
-    cmds:
-      - cmd: cd {{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }} && tar -czf '{{ .OUT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
+     - task: pack-dist
+       vars:
+         BUILD_MODE: 'debug'
+         TAR_FILES: '{{ .DEBUG_TAR_FILES }}'
+         ARTIFACT_DIR: '{{ .ARTIFACT_DIR }}'
 
-  #add embeded resources to the binary output for distribution
-  embed:
+     - task: pack-dist
+       vars:
+         BUILD_MODE: 'release'
+         TAR_FILES: '{{ .REL_TAR_FILES }}'
+         ARTIFACT_DIR: '{{ .ARTIFACT_DIR }}'
+
+  pack-dist:
+    desc: 'Packs the binary artifacts into a tar file for distribution'  
     internal: true
-    cmds:
-     - powershell cp LICENSE '{{.TARGET}}/license.txt'
-     - powershell cp build.readme.txt '{{.TARGET}}/readme.txt'
-     - powershell cp include/argon2.h '{{.TARGET}}/argon2.h'
-  
-  #packages source code for distribution
-  pack_source:
-    internal: true
+    requires:
+      vars: [BUILD_MODE, TAR_FILES, ARTIFACT_DIR, PROJECT_NAME]
     vars:
-      EXCLUDES:
-        
-      INCLUDES:
+      TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
+    cmds:
+      - cmd: powershell cp LICENSE '{{ .TARGET_DIR }}/license.txt'
+      - cmd: powershell cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
+      - cmd: powershell cp include/argon2.h '{{ .TARGET_DIR }}/argon2.h'
+
+      - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
+
+  pack-source:
+    desc: 'Packs the source code into a tar file for distribution' 
+    internal: true
+    requires:
+      vars: [ARTIFACT_DIR, PROJECT_NAME]
+    vars:
+      TARGET_SOURCE: '{{ .ARTIFACT_DIR }}/src.tgz'
+      SOURCE_FILES:
         src/*
         include/*
         CHANGELOG.md
         CMakeLists.txt
         README.md
         LICENSE
-        Argon2.sln
-        libargon2.pc.in
         Makefile
         Taskfile.yaml
 
     cmds:
-     #just pack up current directory, excluding build, bin, and git directories
-     - tar {{ .EXCLUDES }} -czf '{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
+     # tar up the source
+     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -158,6 +184,7 @@ tasks:
        silent: true
 
   clean:
+    desc: 'Cleans any build artifacts and output directories'
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]

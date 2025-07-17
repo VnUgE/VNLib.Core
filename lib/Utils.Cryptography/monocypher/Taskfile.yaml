@@ -10,9 +10,10 @@ version: '3'
 
 vars:
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_monocypher" }}'
-  MODULE_NAME: '{{ .MODULE_NAME | default "vnlib.core" }}'
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
-  ARTIFACT_OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+  ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+  
+  # default cmake build parameters
   CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   CMAKE_BUILD_DIR: 'build/{{ OS }}'
 
@@ -20,28 +21,35 @@ tasks:
 
   default:
     desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, PROJECT_NAME]
     cmds:
-     - cmd: echo "Building {{ .PROJECT_NAME }}"
+     - cmd: echo "Building {{ .PROJECT_NAME }} in mode {{ .CMAKE_BUILD_TYPE }}"
        silent: true
      
      - task: cmake-build
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
-         CMAKE_ARGS: '{{ .CLI_ARGS }}'
-       
+         CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS }}'
+
      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
        silent: true
 
   debug:
+    desc: 'Builds the library for the current platform in debug mode'
     cmds:
      - task: default
-       vars: { CMAKE_BUILD_TYPE: "debug" }
-  
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: "debug" 
+         CMAKE_ARGS: '{{ .CMAKE_ARGS }}'
+
   cmake-configure:
     desc: 'Configures the build for the current platform'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
      - cmd: cmake 
         {{ .CMAKE_ARGS }} 
@@ -51,15 +59,18 @@ tasks:
 
   cmake-compile:
     desc: 'Compiles the project for the current platform'
-    requires: { CMAKE_BUILD_DIR }
     internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR]
     cmds:
-      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
-      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
+     - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
+     - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
 
   cmake-build:
+    desc: 'Runs the cmake generate and build commands as a single task'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, CMAKE_ARGS]
     cmds:
       - task: cmake-configure
         vars:
@@ -71,93 +82,111 @@ tasks:
         vars:
           CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
 
+  #called by ci pipline to build the winx64 project
   build:
-    desc: 'DO NOT USE! This function is used internally during automated builds.'
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
      - task: cmake-build
        vars:
          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '
-           {{ .CLI_ARGS }} 
-           {{ if eq OS "windows" }}-G "Visual Studio 17 2022" {{ end }}
+           {{ .CLI_ARGS }}
+           {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
            {{ if eq OS "windows" }}-A x64{{ end }}'
-  
+
   postbuild_success:
-    desc: 'DO NOT USE! This function is used internally during automated builds.'
-    cmds:  
-      #make bin dir
-      - cmd: powershell mkdir -Force '{{ .ARTIFACT_OUT_DIR }}'
-        ignore_error: true
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [ARTIFACT_DIR]
+    cmds:
+     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+       ignore_error: true
 
-      - task: pack_parallel
-
-  pack_parallel:    
+     - task: pack-parallel
+  
+  pack-parallel:
+    desc: 'Packs the binary artifacts into tar files for distribution for various builds in parallel'
     internal: true
+    requires:
+      vars: [PROJECT_NAME, CMAKE_BUILD_DIR, ARTIFACT_DIR]
     vars:
-      REL_TAR_FILES: 
+      REL_TAR_FILES:
         "{{ .PROJECT_NAME }}_static.lib
+        {{ .PROJECT_NAME }}.lib
         {{ .PROJECT_NAME }}.dll"
 
       DEBUG_TAR_FILES:
-        "{{ .PROJECT_NAME }}_static.lib
-        {{ .PROJECT_NAME }}.dll
+        "{{ .REL_TAR_FILES }}
+        {{ .PROJECT_NAME }}_static.pdb
         {{ .PROJECT_NAME }}.pdb"
-    
+
     deps:
-      - task: pack_source
-  
-      - task: pack-artifacats
-        vars: { BUILD_MODE: 'debug', TAR_FILES: '{{ .DEBUG_TAR_FILES }}' }
+     - task: pack-source
 
-      - task: pack-artifacats
-        vars: { BUILD_MODE: 'release', TAR_FILES: '{{ .REL_TAR_FILES }}' }
-   
+     - task: pack-dist
+       vars:
+         BUILD_MODE: 'debug'
+         TAR_FILES: '{{ .DEBUG_TAR_FILES }}'
+         DIST_HEADERS: '{{ .DIST_HEADERS }}'
 
-  pack-artifacats:
+     - task: pack-dist
+       vars:
+         BUILD_MODE: 'release'
+         TAR_FILES: '{{ .REL_TAR_FILES }}'
+         DIST_HEADERS: '{{ .DIST_HEADERS }}'
+
+  pack-dist:
+    desc: 'Packs the binary artifacts into a tar file for distribution'  
     internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR, BUILD_MODE, TAR_FILES, ARTIFACT_DIR, PROJECT_NAME]
     vars:
-      ADD_FILES:
+      DIST_HEADERS:
+        "argon2.h
+        blake2b.h
+        util.h
+        platform.h"
+      DIST_FILES:
         license.txt 
         monocypher-license.md
         readme.txt
-        argon2.h
-        blake2b.h
-        util.h
-        platform.h
-      TAR_FILES: "{{ .TAR_FILES }} {{ .ADD_FILES }}"
+        {{ .DIST_HEADERS }}
+      TAR_FILES: "{{ .TAR_FILES }} {{ .DIST_FILES }}"
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
-
-      #add header files
-      - for: [argon2.h, blake2b.h, util.h, platform.h]
+      # publish headers for distribution
+      - for: { var: DIST_HEADERS }
         cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}'
 
       - cmd: powershell cp 'vendor/LICENCE.md' '{{ .TARGET_DIR }}/monocypher-license.md'
       - cmd: powershell cp 'LICENSE' '{{ .TARGET_DIR }}/license.txt'
       - cmd: powershell cp 'build.readme.txt' '{{ .TARGET_DIR }}/readme.txt'
 
-      - cmd: cd {{ .TARGET_DIR }}
-         && tar -czf '{{ .ARTIFACT_OUT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz' {{ .TAR_FILES }}
-  
- #packages source code for distribution
-  pack_source:
+      - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
+
+  pack-source:
+    desc: 'Packs the source code into a tar file for distribution' 
     internal: true
+    requires:
+      vars: [ARTIFACT_DIR]
     vars:
-      EXCLUDES:
-        
-      INCLUDES:
-        "src/*
+      TARGET_SOURCE: '{{ .ARTIFACT_DIR }}/src.tgz'
+      SOURCE_FILES:
+        src/*
         vendor/*
         readme.md
         LICENSE
         CMakeLists.txt
         Taskfile.yaml
-        vnlib_monocypher.vcxitems"
+        vnlib_monocypher.vcxitems
 
     cmds:
-     #just pack up current directory, excluding build, bin, and git directories
-     - cmd: tar {{ .EXCLUDES }} -czf '{{ .ARTIFACT_OUT_DIR }}/src.tgz' {{ .INCLUDES }}
+     # tar up the source
+     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -172,7 +201,7 @@ tasks:
     sources:
      - src/*
      - vendor/**/*
-     - CMakelists.txt  
+     - CMakelists.txt
     cmds:
      - task: dev-init
 
@@ -181,4 +210,4 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{ else }}rm -rf{{ end }} "{{ .ITEM }}"'
+       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'

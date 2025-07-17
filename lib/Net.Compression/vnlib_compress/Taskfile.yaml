@@ -10,17 +10,24 @@ version: '3'
 
 vars:
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_compress" }}'
-  RPMALLOC_SRC_DIR: '../../Utils.Memory/vnlib_rpmalloc'    
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
+  ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+
+  # optional build variables
+  RPMALLOC_SRC_DIR: '../../Utils.Memory/vnlib_rpmalloc' # path to the rpmalloc source code
+
+  # default cmake build parameters
   CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   CMAKE_BUILD_DIR: 'build/{{ OS }}'
 
 tasks:
 
   default:
-    desc: 'Builds the vnlib_compress library for the current platform'   
+    desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, PROJECT_NAME]
     cmds:
-     - cmd: echo "Building {{ .PROJECT_NAME }}"
+     - cmd: echo "Building {{ .PROJECT_NAME }} in mode {{ .CMAKE_BUILD_TYPE }}"
        silent: true
      
      - task: cmake-build
@@ -29,7 +36,11 @@ tasks:
          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
          CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS }}'
 
+     - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
+       silent: true
+
   debug:
+    desc: 'Builds the library for the current platform in debug mode'
     cmds:
      - task: default
        vars: 
@@ -40,7 +51,8 @@ tasks:
   cmake-configure:
     desc: 'Configures the build for the current platform'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
      - cmd: cmake 
         {{ .CMAKE_ARGS }} 
@@ -50,15 +62,18 @@ tasks:
 
   cmake-compile:
     desc: 'Compiles the project for the current platform'
-    requires: { CMAKE_BUILD_DIR }
     internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR]
     cmds:
      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config debug
      - cmd: cmake --build {{ .CMAKE_BUILD_DIR }}/ --config release
 
   cmake-build:
+    desc: 'Runs the cmake generate and build commands as a single task'
     internal: true
-    requires: { CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE }
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, CMAKE_ARGS]
     cmds:
       - task: cmake-configure
         vars:
@@ -72,8 +87,10 @@ tasks:
 
   #called by ci pipline to build the winx64 project
   build:
-   desc: 'DO NOT USE. This is an internal task'  
-   cmds:
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, RPMALLOC_SRC_DIR]
+    cmds:
      # build the project assuming we can link against rpmalloc
      # also use the project defaults for CMAKE_BUILD_DIR and CMAKE_BUILD_TYPE
      - task: cmake-build
@@ -86,17 +103,23 @@ tasks:
            {{ if eq OS "windows" }}-A x64{{ end }}
            -DCOMPRESS_RPMALLOC_SOURCE_DIR={{ .RPMALLOC_SRC_DIR }}' 
 
-  #when build succeeds, archive the output into a tgz 
   postbuild_success:
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [ARTIFACT_DIR]
     cmds:
-     - cmd: powershell mkdir -Force '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+       ignore_error: true
+
      - task: pack-parallel
   
   pack-parallel:
+    desc: 'Packs the binary artifacts into tar files for distribution for various builds in parallel'
     internal: true
+    requires:
+      vars: [PROJECT_NAME]
     vars:
-      #required files to include in tar
-      REL_TAR_FILES: 
+      REL_TAR_FILES:
         "{{ .PROJECT_NAME }}.dll 
         {{ .PROJECT_NAME }}.lib 
         platform.h
@@ -118,13 +141,13 @@ tasks:
      - task: pack-source
 
      - task: pack-dist
-       vars: 
+       vars:
          BUILD_MODE: 'debug'
          TAR_FILES: '{{ .DEBUG_TAR_FILES }}'
          DIST_HEADERS: '{{ .DIST_HEADERS }}'
 
      - task: pack-dist
-       vars: 
+       vars:
          BUILD_MODE: 'release'
          TAR_FILES: '{{ .REL_TAR_FILES }}'
          DIST_HEADERS: '{{ .DIST_HEADERS }}'
@@ -132,10 +155,11 @@ tasks:
   pack-dist:
     desc: 'Packs the binary artifacts into a tar file for distribution'  
     internal: true
-    requires: { CMAKE_BUILD_DIR, BUILD_MODE, TAR_FILES, DIST_HEADERS }
+    requires:
+      vars: [BUILD_MODE, TAR_FILES, DIST_HEADERS]
     vars:
-      ARCHIVE_PATH: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
-      TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'     
+      TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
       # publish the license file for distribution
       - cmd: powershell cp ../LICENSE '{{ .TARGET_DIR }}/license.txt'
@@ -143,30 +167,31 @@ tasks:
       # publish headers for distribution
       - for: { var: DIST_HEADERS }
         cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}/{{ .ITEM }}'
-      
+
       - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
     internal: true
+    requires:
+      vars: [ARTIFACT_DIR, PROJECT_NAME]
     vars:
-      OUT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
-      EXCLUDES: ''
-      INCLUDES:
-        "src/*
-         brotli/*
-         zlib/*
-         zstd/*
+      TARGET_SOURCE: '{{ .ARTIFACT_DIR }}/src.tgz'
+      SOURCE_FILES:
+        src/*
+        brotli/*
+        zlib/*
+        zstd/*
         LICENSE
         CMakeLists.txt
-        Taskfile.yaml"
+        Taskfile.yaml
 
     cmds:
-     - cmd: powershell cp ../LICENSE 'LICENSE' -Force   
-  
-     - cmd: tar {{ .EXCLUDES }} -czf '{{ .OUT_DIR }}/src.tgz' {{ .INCLUDES }} 
-  
-     - cmd: powershell rm LICENSE 
+     - cmd: powershell cp ../LICENSE 'LICENSE' -Force
+
+     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
+
+     - cmd: powershell rm LICENSE
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -178,11 +203,9 @@ tasks:
      - cmd: echo "dev init complete"
        silent: true
 
-  #Remove the output dirs on clean
   clean:
     desc: 'Cleans any build artifacts and output directories'
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
        cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
-    
