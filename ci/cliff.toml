@@ -95,8 +95,6 @@ topo_order = true
 # Allowed values: newest, oldest
 sort_commits = "oldest"
 
-limit_commits = 100
-
 #exclude development tags from changelog
 ignore_tags = "[A|a]lpha"
 
