@@ -29,16 +29,22 @@
 
 static _vncmp_inline void* _stateMemAlloc(const comp_state_t * state, size_t size)
 {
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->allocFunc != NULL, "Expected non-null allocFunc pointer");
+	
 	if (!state || !state->allocFunc || size == 0)
 	{
 		return NULL; // Return NULL for invalid parameters
 	}
-
+	
 	return state->allocFunc(state->memOpaque, size);
 }
 
 static _vncmp_inline void _stateMemFree(const comp_state_t * state, void* ptr)
 {
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->freeFunc != NULL, "Expected non-null freeFunc pointer");
+	
 	if (state && state->freeFunc && ptr)
 	{
 		state->freeFunc(state->memOpaque, ptr);
@@ -53,13 +59,15 @@ static _vncmp_inline void _stateMemFree(const comp_state_t * state, void* ptr)
 */
 static void* _gzAllocCallback(void* opaque, uint32_t items, uint32_t size)
 {
+	DEBUG_ASSERT2(opaque != NULL, "Expected non-null opaque pointer");
+	
 	if (opaque == NULL || items == 0 || size == 0)
 	{
 		return NULL; // Return NULL for invalid parameters
 	}
 
-	comp_state_t* state = (comp_state_t*)opaque;
-	return state->allocFunc(state->memOpaque, items * size);
+	comp_state_t* state = (comp_state_t*)opaque;	
+	return _stateMemAlloc(state, items * size);
 }
 
 int DeflateAllocCompressor(comp_state_t* state)

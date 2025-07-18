@@ -35,16 +35,22 @@ struct zstd_stream_state
 
 static _vncmp_inline void* _stateMemAlloc(const comp_state_t * state, size_t size)
 {
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->allocFunc != NULL, "Expected non-null allocFunc pointer");
+	
 	if (!state || !state->allocFunc || size == 0)
 	{
 		return NULL; // Return NULL for invalid parameters
 	}
-
+	
 	return state->allocFunc(state->memOpaque, size);
 }
 
 static _vncmp_inline void _stateMemFree(const comp_state_t * state, void* ptr)
 {
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->freeFunc != NULL, "Expected non-null freeFunc pointer");
+	
 	if (state && state->freeFunc && ptr)
 	{
 		state->freeFunc(state->memOpaque, ptr);
