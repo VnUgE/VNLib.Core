@@ -61,32 +61,44 @@ filter_unconventional = false
 # Assigns commits to groups.
 # Optionally sets the commit's scope and can decide to exclude commits from further processing.
 commit_parsers = [
-    { message = "(?i)\\b(merge|merges|merging|squash|squashed|squashing)\\b", skip = true },
     { message = "^[a|A]dd", group = "Added" },
     { message = "^[s|S]upport", group = "Added" },
     { message = "^[r|R]emove", group = "Removed" },
     { message = "^[f|F]eat", group = "Added"},
-    { message = "^.*: add", group = "Added" },
-    { message = "^.*: support", group = "Added" },
-    { message = "^.*: remove", group = "Removed" },
-    { message = "^.*: delete", group = "Removed" },
     { message = "^test", group = "Fixed" },
     { message = "^[C|c]loses|^[C|c]lose|^[F|f]ixes|^[F|f]ix", group = "Fixed" },
     { message = "^.*: fix", group = "Fixed" },
+    { message = "^ci$", skip = true },
+    { message = "^ci:$", skip = true },
+    { message = "^ci\\(.*\\):", skip = true },
+    { message = "^ci:$", skip = true },
+    { message = "^ci\\(.*\\):", skip = true },
+    { message = "(?i)\\b(merge|merges|merging|squash|squashed|squashing)\\b", skip = true },
+    { message = ".*\\[no ci\\].*", skip = true },
+    { body = ".*\\[no ci\\].*", skip = true },
+    { body = "$^", skip = true },  
+    { message = "^.*\\)!", breaking = true },
+    { message = "^style.*", skip = true },
+    { message = "^build(:|\\(.*\\):).*", skip = true },
     { message = "^.*", group = "Changed" },
-    { body = "$^", skip = true },   
-    { message = "^.*\\)!", breaking = true },  
+     { message = "^.*: add", group = "Added" },
+    { message = "^.*: support", group = "Added" },
+    { message = "^.*: remove", group = "Removed" },
+    { message = "^.*: delete", group = "Removed" }
 ]
 
 # Prevent commits that are breaking from being excluded by commit parsers.
 filter_commits = false
 # Order releases topologically instead of chronologically.
-topo_order = false
+topo_order = true
 # Order of commits in each group/release within the changelog.
 # Allowed values: newest, oldest
 sort_commits = "oldest"
 
 limit_commits = 100
+
+#exclude development tags from changelog
+ignore_tags = "[A|a]lpha"
 
 [bump]
 initial_tag = "0.1.1"

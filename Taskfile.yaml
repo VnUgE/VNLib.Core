@@ -11,26 +11,29 @@ version: '3'
 
 vars:
   BINARY_DIR: 'bin'
-  RELEASE_DIR: "./bin/release/{{.TARGET_FRAMEWORK}}/publish"
+  TARGET_FRAMEWORK: '{{ .TARGET_FRAMEWORK | default "net8.0" }}'
+  RELEASE_DIR: "./bin/release/{{ .TARGET_FRAMEWORK }}/publish"
   TARGET_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
 
 tasks:
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: '{{ .USER_WORKING_DIR }}'
     cmds:
      #remove uncessary files from the release dir
-     - powershell -Command "Get-ChildItem -Recurse '{{.RELEASE_DIR}}/' -Include *.pdb,*.xml | Remove-Item"
+     - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
 
-     - task: post_parallel
+     - task: pack-parallel
 
-  post_parallel:
+  pack-parallel:
     internal: true
     deps:
      - task: packsource
+     
      - task: postbuild
        vars: { BUILD_MODE: debug }
+     
      - task: postbuild
        vars: { BUILD_MODE: release }
 
@@ -39,16 +42,15 @@ tasks:
     internal: true
     vars:
       #the build output directory
-      BUILD_OUT: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/publish"     
-
+      BUILD_OUT: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/publish"
     cmds:
-     - powershell cp ../build.readme.txt '{{.BUILD_OUT}}/readme.txt'
+     - cmd: powershell cp ../build.readme.txt '{{ .BUILD_OUT }}/readme.txt'
 
      #tar outputs
-     - cd "{{ .BUILD_OUT }}" && tar -czf "{{ .TARGET_DIR }}/{{ .BUILD_MODE }}.tgz" .
+     - cmd: cd "{{ .BUILD_OUT }}" && tar -czf "{{ .TARGET_DIR }}/{{ .BUILD_MODE }}.tgz" .
  
   packsource:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: '{{ .USER_WORKING_DIR }}'
     internal: true
     cmds:
     #copy source code to target
@@ -61,8 +63,8 @@ tasks:
 
 #Remove the output dirs on clean
   clean:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: '{{ .USER_WORKING_DIR }}'
     ignore_error: true
     cmds:
     - for: [ bin/, obj/ ]
-      cmd: powershell -Command "rm -Recurse -Force '{{.ITEM}}'"
+      cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
