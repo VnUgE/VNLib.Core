@@ -199,6 +199,7 @@ int64_t BrGetCompressedSize(_In_ const comp_state_t* state, uint64_t length, int
 	size_t size;
 
 	(void)sizeof(flush);
+	(void)sizeof(state);
 
 	/*
 	* When the flush flag is set, the caller is requesting the
