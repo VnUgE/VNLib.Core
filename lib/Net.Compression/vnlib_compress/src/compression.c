@@ -50,7 +50,7 @@
 * If the native heap is desired, pull the header in and specify the extern
 * symbol for the heap api functions, since it should be linked statically
 */
-#ifdef NATIVE_HEAP_API	
+#ifdef VNLIB_CUSTOM_MALLOC_ENABLE	
 	/* Since static linking is enabled, heapapi must have extern symbol not dllimport */
 	#define VNLIB_HEAP_API extern	
 	#include <NativeHeapApi.h>
