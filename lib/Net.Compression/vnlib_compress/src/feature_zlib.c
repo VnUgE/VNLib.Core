@@ -60,14 +60,22 @@ static _vncmp_inline void _stateMemFree(const comp_state_t* state, void* ptr)
 static void* _gzAllocCallback(void* opaque, uint32_t items, uint32_t size)
 {
 	DEBUG_ASSERT2(opaque != NULL, "Expected non-null opaque pointer");
-	
-	if (opaque == NULL || items == 0 || size == 0)
-	{
-		return NULL; // Return NULL for invalid parameters
-	}
 
-	comp_state_t* state = (comp_state_t*)opaque;	
-	return _stateMemAlloc(state, items * size);
+	return _stateMemAlloc((const comp_state_t*)opaque, items * size);
+}
+
+/**
+ * Also need a helper free callback function because for alloc we passed the context
+ * as the opaque pointer for alloc, so we need to deref the original opaque pointer 
+ * to pass to the original free function.
+ */
+
+static void _gzFreeCallback(void* opaque, void* address)
+{
+	DEBUG_ASSERT2(opaque != NULL, "Expected non-null opaque pointer");
+	DEBUG_ASSERT2(address != NULL, "Expected non-null address pointer");
+
+	_stateMemFree((const comp_state_t*)opaque, address);
 }
 
 int DeflateAllocCompressor(comp_state_t* state)
@@ -88,7 +96,7 @@ int DeflateAllocCompressor(comp_state_t* state)
 	}
 
 	stream->zalloc = &_gzAllocCallback;
-	stream->zfree = state->freeFunc;
+	stream->zfree = &_gzFreeCallback;
 	/* Store the entire state structure to access the callback functions */
 	stream->opaque = state;
 
@@ -128,7 +136,7 @@ int DeflateAllocCompressor(comp_state_t* state)
 	* the max window size to 16 
 	*/
 
-	if(state->type & COMP_TYPE_GZIP)
+	if (state->type & COMP_TYPE_GZIP)
 	{
 		result = deflateInit2(
 			stream, 
