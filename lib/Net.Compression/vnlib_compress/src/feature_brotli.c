@@ -22,11 +22,6 @@
 #include <brotli/encode.h>
 #include "feature_brotli.h"
 
-#define validateCompState(state) \
-	CHECK_NULL_PTR(state); \
-	if (!state->compressor) return ERR_BR_INVALID_STATE; \
-
-
 int BrAllocCompressor(comp_state_t* state)
 {
 	BrotliEncoderState* comp;
@@ -42,6 +37,10 @@ int BrAllocCompressor(comp_state_t* state)
 		return ERR_COMP_LEVEL_NOT_SUPPORTED;
 	}
 	
+	/*
+	* The alloc/free functions should be set, but brotli doesn't care,
+	* it will use its own memory allocator if they are not set.
+	*/
 	comp = BrotliEncoderCreateInstance(
 		state->allocFunc, 
 		state->freeFunc,
@@ -108,7 +107,7 @@ void BrFreeCompressor(comp_state_t* state)
 	/*
 	* Free the compressor instance if it exists
 	*/
-	if (state->compressor)
+	if (state && state->compressor)
 	{
 		BrotliEncoderDestroyInstance((BrotliEncoderState*)state->compressor);
 		state->compressor = NULL;
@@ -125,9 +124,8 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 	uint8_t* nextOut;
 
 	DEBUG_ASSERT2(operation != NULL, "Expected non-null operation parameter");
-
-	/* Validate inputs */
-	validateCompState(state)
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
+	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
 
 	/* Clear the result read / written fields */
 	operation->bytesRead = 0;
@@ -159,8 +157,7 @@ int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operat
 	availableIn = operation->bytesInLength;
 	availableOut = operation->bytesOutLength;
 	nextIn = operation->bytesIn;
-	nextOut = operation->bytesOut;
-	
+	nextOut = operation->bytesOut;	
 
 	/*
 	* Compress block as stream and store the result 
@@ -202,12 +199,11 @@ int64_t BrGetCompressedSize(_In_ const comp_state_t* state, uint64_t length, int
 	size_t size;
 
 	(void)sizeof(flush);
+
 	/*
 	* When the flush flag is set, the caller is requesting the
 	* entire size of the compressed data, which can include metadata
 	*/
-
-	validateCompState(state)
 
 	if (length <= 0)
 	{

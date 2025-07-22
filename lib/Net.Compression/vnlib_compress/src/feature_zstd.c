@@ -33,7 +33,7 @@ struct zstd_stream_state
 };
 
 
-static _vncmp_inline void* _stateMemAlloc(const comp_state_t * state, size_t size)
+static _vncmp_inline void* _stateMemAlloc(const comp_state_t* state, size_t size)
 {
 	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
 	DEBUG_ASSERT2(state->allocFunc != NULL, "Expected non-null allocFunc pointer");
@@ -46,7 +46,7 @@ static _vncmp_inline void* _stateMemAlloc(const comp_state_t * state, size_t siz
 	return state->allocFunc(state->memOpaque, size);
 }
 
-static _vncmp_inline void _stateMemFree(const comp_state_t * state, void* ptr)
+static _vncmp_inline void _stateMemFree(const comp_state_t* state, void* ptr)
 {
 	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
 	DEBUG_ASSERT2(state->freeFunc != NULL, "Expected non-null freeFunc pointer");
@@ -168,6 +168,7 @@ int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* oper
 
 	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
 	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
+	DEBUG_ASSERT2(operation != NULL, "Expected non-null operation parameter");
 
 	/* Clear the result read/written fields */
 	operation->bytesRead = 0;
