@@ -27,7 +27,10 @@ body = """
         {% if commit.breaking -%}
             **Breaking Change:** \
         {% endif -%}
-        {{ commit.message | split(pat="\n") | first | upper_first | trim }}\
+        {{ commit.message | split(pat="\n") | first | upper_first | trim }} \
+        {% if commit.scope -%}
+           - ({{ commit.scope }})\
+        {% endif -%}
     {% endfor %}
 {% endfor %}\n
 """
@@ -56,35 +59,55 @@ trim = true
 # See https://www.conventionalcommits.org
 conventional_commits = true
 # Exclude commits that do not match the conventional commits specification.
-filter_unconventional = false
+filter_unconventional = true
+# Protect all breaking commits from being filtered
+protect_breaking_commits = true
 # An array of regex based parsers for extracting data from the commit message.
 # Assigns commits to groups.
 # Optionally sets the commit's scope and can decide to exclude commits from further processing.
 commit_parsers = [
-    { message = "^[a|A]dd", group = "Added" },
-    { message = "^[s|S]upport", group = "Added" },
-    { message = "^[r|R]emove", group = "Removed" },
-    { message = "^[f|F]eat", group = "Added"},
-    { message = "^test", group = "Fixed" },
-    { message = "^[C|c]loses|^[C|c]lose|^[F|f]ixes|^[F|f]ix", group = "Fixed" },
-    { message = "^.*: fix", group = "Fixed" },
-    { message = "^ci$", skip = true },
-    { message = "^ci:$", skip = true },
-    { message = "^ci\\(.*\\):", skip = true },
-    { message = "^ci:$", skip = true },
-    { message = "^ci\\(.*\\):", skip = true },
-    { message = "(?i)\\b(merge|merges|merging|squash|squashed|squashing)\\b", skip = true },
-    { message = ".*\\[no ci\\].*", skip = true },
-    { body = ".*\\[no ci\\].*", skip = true },
-    { body = "$^", skip = true },  
+
+    # Breaking changes (must come first to catch before other parsers)
     { message = "^.*\\)!", breaking = true },
+
+    # Features and additions
+    { message = "^feat(\\(.*\\))?:", group = "Added" },
+    { message = "^add(\\(.*\\))?:", group = "Added" },
+    { message = "^support(\\(.*\\))?:", group = "Added" },
+    { message = "^[f|F]eat", group = "Added"},
+
+    # Fixes
+    { message = "^[C|c]loses|^[C|c]lose|^[F|f]ixes|^[F|f]ix", group = "Fixed" },
+    { message = "^test", group = "Fixed" },
+
+    # Build Changes, and skip any remaining build commits as well
+    { message = "^build(:|\\(.*\\):)? ?[Cc]orrect.*", skip = true },
+    { message = "^build(:|\\(.*\\):)? ?[Ff]ix.*", skip = true },
+    { message = "^build(:|\\(.*\\):).*", group = "Changed" },
+
+    # Changes
+    { message = "^refactor(:|\\(.*\\):).*", group = "Changed" },
+    { message = "^chore\\(deps\\):", group = "Changed" },
+
+    # Removals
+    { message = "^remove(\\(.*\\))?:", group = "Removed" },
+    { message = "^delete(\\(.*\\))?:", group = "Removed" },
+    { message = "^chore(:|\\(.*\\):)? ?[Rr]emove", group = "Removed" },
+    { message = "^chore(:|\\(.*\\):)? ?[Dd]elete", group = "Removed" },
+
+    # Performance upgrades
+    { message = "^perf(\\(.*\\))?:", group = "Performance" },
+
+    #skip ci and specific chore tasks
+    { message = ".*\\[no ci\\].*", skip = true },
+    { message = "^review:", skip = true },
+    { message = "^ci(:|\\(.*\\):| )", skip = true },
+    { message = "update changelog", skip = true },
+    { message = "^chore.*", skip = true },
     { message = "^style.*", skip = true },
-    { message = "^build(:|\\(.*\\):).*", skip = true },
-    { message = "^.*", group = "Changed" },
-     { message = "^.*: add", group = "Added" },
-    { message = "^.*: support", group = "Added" },
-    { message = "^.*: remove", group = "Removed" },
-    { message = "^.*: delete", group = "Removed" }
+
+    # If the spelling is incorrect, it will be automatically fixed.
+    { pattern = '.*', replace_command = 'typos --write-changes -' },
 ]
 
 # Prevent commits that are breaking from being excluded by commit parsers.
