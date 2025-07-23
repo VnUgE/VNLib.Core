@@ -39,6 +39,7 @@
 #define _VNCMP_COMPRESSION_H_
 
 #include <stdint.h>
+#include <stddef.h>
 #include "platform.h"
 
 
@@ -89,6 +90,9 @@
 #define ERR_COMPRESSION_FAILED			-13
 #define ERR_OVERFLOW					-14
 
+#define CHECK_NULL_PTR(ptr) if(!ptr) return ERR_INVALID_PTR;
+#define CHECK_ARG_RANGE(x, min, max) if(x < min || x > max) return ERR_OUT_OF_BOUNDS;
+
 /*
 * Enumerated list of supported compression types for user selection
 * at runtime.
@@ -132,19 +136,30 @@ typedef enum CompressionLevel
 	COMP_LEVEL_SMALLEST_SIZE	= 3
 } CompressionLevel;
 
+typedef void* (*vnlib_mem_alloc) (void* opaque, size_t size);
+typedef void  (*vnlib_mem_free) (void* opaque, void* address);
 
-typedef enum CompressorStatus {
-	COMPRESSOR_STATUS_READY			= 0x00,
-	COMPRESSOR_STATUS_INITALIZED	= 0x01,
-	COMPRESSOR_STATUS_NEEDS_FLUSH	= 0x02
-} CompressorStatus;
-
-typedef struct _vn_cmp_state_struct{	
+typedef struct _vn_cmp_state_struct {	
 
 	/*
 	  Pointer to the underlying compressor implementation.
 	*/
 	void* compressor;
+
+	/* 
+		Opaque pointer for custom memory allocation 
+	*/
+	void* memOpaque;
+
+	/*
+	  Memory allocation function for the compressor.
+    */
+	vnlib_mem_alloc allocFunc;
+
+	/*
+		Memory deallocation function for the compressor.
+	*/
+	vnlib_mem_free freeFunc;
 
 	/*
 		Indicates the type of underlying compressor.
@@ -160,8 +175,7 @@ typedef struct _vn_cmp_state_struct{
 	/*
 		Indicates the suggested block size for the underlying compressor.
 	*/
-	uint32_t blockSize;
-
+	uint32_t blockSize;  
 
 } comp_state_t;
 

@@ -6,5 +6,6 @@
   "description": "Integrates the MonoCypher native library into a wrapper utility library for usage in VNLib.Hashing.Portable for Blake2, Argon2 and more coming",
   "copyright": "Copyright \u00A9 2025 Vaughn Nugent",
   "company": "Vaughn Nugent",
-  "repository": "https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Cryptography/monocypher"
+  "repository": "https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Cryptography/monocypher",
+  "output_files": "msvc-x64-debug-vnlib_monocypher.tgz,msvc-x64-release-vnlib_monocypher.tgz,src.tgz"
 }

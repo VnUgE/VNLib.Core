@@ -1,12 +1,10 @@
 # VNLib.Net.Compression
 
-Provides a cross platform (w/ cmake) native compression DLL for Brotli, Deflate, and Gzip compression encodings for dynamic HTTP response streaming of arbitrary data. This directory also provides a managed implementation with support for runtime loading.
+Provides a cross platform (w/ cmake) native compression DLL (vnlib_compress) for Brotli, Deflate, Gzip, and Zstd compression encodings for dynamic HTTP response streaming of arbitrary data. This directory also provides a managed C# implementation with support for runtime loading into vnlib.plugins.runtime applications.
 
-The native library relies on source code (which are statically compiled) for Brotli and Zlib. The original repositories for both libraries will do, but I use the Cloudflare fork of Zlib for testing. You should consult my documentation below for how and where to get the source for these libraries. 
-
+The native library relies on source code (which are statically compiled) for Brotli, Zlib, and Zstd. The original repositories for all libraries will do, but I use the Cloudflare fork of Zlib for testing. You should consult my documentation below for how and where to get the source for these libraries. 
 
 ## Builds
-Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my website (link below).All tar-gzip (.tgz) files will have an associated checksum and PGP signature of the desired download file.
 
 ## Docs and Guides
 Documentation, specifications, and setup guides are available on my website.

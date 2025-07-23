@@ -182,7 +182,9 @@ namespace VNLib.Net.Http.Core.Response
              */
 
             //Write the response data to the base stream
-            return responseBlock.IsEmpty ? ValueTask.CompletedTask : transport.Stream.WriteAsync(responseBlock);
+            return responseBlock.IsEmpty 
+                ? ValueTask.CompletedTask 
+                : transport.Stream.WriteAsync(responseBlock);
         }
 
         /// <summary>
@@ -285,13 +287,9 @@ namespace VNLib.Net.Http.Core.Response
         internal ValueTask CloseAsync()
         {
             //If headers haven't been sent yet, send them and there must be no content
-            if (!HeadersSent)
-            {
-                //Finalize headers
-                return EndFlushHeadersAsync();
-            }
-
-            return ValueTask.CompletedTask;
+            return HeadersSent 
+                ? ValueTask.CompletedTask 
+                : EndFlushHeadersAsync();
         }
 
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task

@@ -148,7 +148,7 @@ namespace VNLib.Net.Http
             KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
 
             //Map transport listeners to their virtual hosts
-            Transports = MapListeners(bindings.ToArray());
+            Transports = MapListeners([.. bindings]);
 
             //Cache supported compression methods, or none if compressor is null
             SupportedCompressionMethods = config.CompressorManager == null 

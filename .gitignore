@@ -369,3 +369,6 @@ MigrationBackup/
 #allow mimalloc included win binaries
 !lib/Utils.Memory/mimalloc/bin/mimalloc-*
 lib/Net.Compression/vnlib_compress/third-party/*
+
+#enable the souce directory called "build" from zstd vendored source 
+!lib/Net.Compression/vnlib_compress/zstd/build/*

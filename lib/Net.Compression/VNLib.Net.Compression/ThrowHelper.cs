@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -36,7 +36,7 @@ namespace VNLib.Net.Compression
         {
             ErrInvalidPtr = -1,
             ErrOutOfMemory = -2,
-            
+
             ErrCompTypeNotSupported = -9,
             ErrCompLevelNotSupported = -10,
             ErrInvalidInput = -11,
@@ -58,7 +58,7 @@ namespace VNLib.Net.Compression
         public static void ThrowIfError(long result)
         {
             //Check for no error
-            if(result >= 0)
+            if (result >= 0)
             {
                 return;
             }
