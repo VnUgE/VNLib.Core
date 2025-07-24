@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -22,28 +22,28 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
 using System.IO;
 using System.Threading.Tasks;
 
 using VNLib.Utils.IO;
 
-#pragma warning disable CA2215 // Dispose methods should call base class dispose
-
 namespace VNLib.Net.Http.Core
 {
-    internal sealed class AlternateProtocolTransportStreamWrapper : BackingStream<Stream>
+    internal sealed class AlternateProtocolTransportStreamWrapper(Stream transport) : BackingStream<Stream>
     {
-        public AlternateProtocolTransportStreamWrapper(Stream transport) => BaseStream = transport;
+        protected override Stream BaseStream { get; } = transport;
 
         //Do not allow the caller to dispose the transport stream
 
+        ///<inheritdoc/>
         protected override void Dispose(bool disposing)
         { }
 
+        ///<inheritdoc/>
         public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
         
+        ///<inheritdoc/>
         public override void Close()
-        {}
+        { }
     }
 }
