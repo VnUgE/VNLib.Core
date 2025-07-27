@@ -126,24 +126,33 @@ namespace VNLib.Utils.Extensions
 
         /// <summary>
         /// Shortcut extension to <see cref="JsonElement.GetProperty(string)"/> and returns a string 
+        /// only if the property exists and is a string value.
         /// </summary>
         /// <param name="element"></param>
         /// <param name="propertyName">The name of the property to get the string value of</param>
-        /// <returns>If the property exists, returns the string stored at that property</returns>
+        /// <returns>If the property exists, and it a string json kind, returns the string stored at that property</returns>
         public static string? GetPropString(this JsonElement element, string propertyName)
         {
-            return element.TryGetProperty(propertyName, out JsonElement el) ? el.GetString() : null;
+            // Try to get the propery element and ensure it is a string
+            return element.TryGetProperty(propertyName, out JsonElement el) 
+                && el.ValueKind == JsonValueKind.String 
+                ? el.GetString() 
+                : null;
         }
 
         /// <summary>
         /// Shortcut extension to <see cref="JsonElement.GetProperty(string)"/> and returns a string 
+        /// only if the property exists and is a string value.
         /// </summary>
         /// <param name="conf"></param>
         /// <param name="propertyName">The name of the property to get the string value of</param>
-        /// <returns>If the property exists, returns the string stored at that property</returns>
+        /// <returns>If the property exists, and it a string json kind, returns the string stored at that property</returns>
         public static string? GetPropString(this IReadOnlyDictionary<string, JsonElement> conf, string propertyName)
         {
-            return conf.TryGetValue(propertyName, out JsonElement el) ? el.GetString() : null;
+            return conf.TryGetValue(propertyName, out JsonElement el)
+                && el.ValueKind == JsonValueKind.String
+                ? el.GetString()
+                : null;
         }
 
         /// <summary>
@@ -154,9 +163,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>If the property exists, returns the string stored at that property</returns>
         [Obsolete("Use the IReadOnlyDictionary overload instead, this will be removed in a future release.")]
         public static string? GetPropString(this IDictionary<string, JsonElement> conf, string propertyName)
-        {
-            return GetPropString((IReadOnlyDictionary<string, JsonElement> )conf, propertyName);
-        }
+            => GetPropString((IReadOnlyDictionary<string, JsonElement>)conf, propertyName);
 
         /// <summary>
         /// Merges the current <see cref="JsonDocument"/> with another <see cref="JsonDocument"/> to 
