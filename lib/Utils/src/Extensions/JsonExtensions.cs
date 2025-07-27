@@ -162,7 +162,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="propertyName">The name of the property to get the string value of</param>
         /// <returns>If the property exists, returns the string stored at that property</returns>
         [Obsolete("Use the IReadOnlyDictionary overload instead, this will be removed in a future release.")]
-        public static string? GetPropString(this IDictionary<string, JsonElement> conf, string propertyName)
+        public static string? GetPropString(this IDictionary<string, JsonElement> conf, string propertyName) 
             => GetPropString((IReadOnlyDictionary<string, JsonElement>)conf, propertyName);
 
         /// <summary>
@@ -179,26 +179,46 @@ namespace VNLib.Utils.Extensions
             ArgumentNullException.ThrowIfNull(initial);
             ArgumentNullException.ThrowIfNull(other);
 
-            //Open a new memory buffer
-            using VnMemoryStream ms = new();
-            //Encapuslate the memory stream in a writer
+            return Merge(
+                initial.RootElement, 
+                other.RootElement, 
+                initalName, 
+                secondName
+            );
+        }
+
+        /// <summary>
+        /// Merges the current <see cref="JsonElement"/> with another <see cref="JsonElement"/> to 
+        /// create a new document of combined properties
+        /// </summary>
+        /// <param name="initial"></param>
+        /// <param name="other">The <see cref="JsonElement"/> to combine with the first document</param>
+        /// <param name="initalName">The name of the new element containing the initial document data</param>
+        /// <param name="secondName">The name of the new element containing the additional document data</param>
+        /// <returns>A new document with a parent root containing the combined objects</returns>
+        public static JsonDocument Merge(this in JsonElement initial, in JsonElement other, string initalName, string secondName)
+        {
+            //Open a new memory buffer to write to
+            using VnMemoryStream ms = new();         
+           
             using (Utf8JsonWriter writer = new(ms))
-            {
-                //Write the starting 
+            {                
                 writer.WriteStartObject();
-                //Write the first object name
-                writer.WritePropertyName(initalName);
-                //Write the inital docuemnt to the stream
+
+                //Write the first object property
+                writer.WritePropertyName(initalName);               
                 initial.WriteTo(writer);
+
                 //Write the second object property
-                writer.WritePropertyName(secondName);
-                //Write the merging document to the stream
+                writer.WritePropertyName(secondName);               
                 other.WriteTo(writer);
-                //End the parent element
+               
                 writer.WriteEndObject();
             }
+
             //rewind the buffer
             _ = ms.Seek(0, System.IO.SeekOrigin.Begin);
+
             //Parse the stream into the new document and return it
             return JsonDocument.Parse(ms);
         }
