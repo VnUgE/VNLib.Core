@@ -171,7 +171,7 @@ namespace VNLib.WebServer.Transport
                 KeepaliveInterval       = baseConfig.KeepaliveInterval,
                 MaxRecvBufferData       = baseConfig.MaxRecvBufferData,
                 ReuseSocket             = !NoReuseSocket,                   //Default to always reuse socket if allowed
-                OnSocketCreated         = OnSocketConfiguring,
+                OnSocketCreated         = OnSocketConfiguring(iface),
                 BufferPool              = MemoryPoolManager.GetTcpPool(args.ZeroAllocations, MemoryUtil.Shared)
             };
 
@@ -200,14 +200,27 @@ namespace VNLib.WebServer.Transport
         }
 
 
-        private void OnSocketConfiguring(Socket serverSock)
+        private Action<Socket> OnSocketConfiguring(TransportInterface iface)
         {
             TcpConfigJson baseConf = _conf.Instance;
 
-            serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, baseConf.NoDelay);
-            serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, baseConf.TcpSendBufferSize);
-            serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, baseConf.TcpRecvBufferSize);
-            serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, ReuseAddress);
+            //NoDelay is not supported on TLS connections and may be enabled with global config or local config
+            bool noDelay = iface.TcpNoDelay ?? baseConf.NoDelay; //Use the global config value
+
+            //If tls then we should disable no delay
+            if (iface.Ssl && noDelay)
+            {
+                tcpLogger.Warn("TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);                
+            }
+
+            return serverSock =>
+            {
+                //Set the socket options for the server socket
+                serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, noDelay);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, baseConf.TcpSendBufferSize);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, baseConf.TcpRecvBufferSize);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, ReuseAddress);
+            };
         }
     }
 }
