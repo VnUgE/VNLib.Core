@@ -19,9 +19,9 @@
     "multipart_max_buf_size": 20480,    //The size of the buffer to use when parsing multipart/form data uploads
     "multipart_max_size": 80240,        //The maxium ammount of data (in bytes) allows for mulitpart/form data file uploads
     "max_entity_size": 1024000,         //Absolute maximum size (in bytes) of the request entity body (exludes headers)    
-    "header_buf_size": 8128,            //The buffer size to use when parsing headers (also the maxium request header size allowed) 
     "max_request_header_count": 50,     //The maxium number of headers allowed in an HTTP request message
     "max_connections": 5000,            //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed   
+    "request_header_buf_size": 8128,    //The buffer size to use when parsing headers (also the maxium request header size allowed) 
     "response_header_buf_size": 16384,  //The size (in bytes) of the buffer used to store all response header data
     "max_uploads_per_request": 10,      //Max number of file (or multi-part) uploads allowed per request
     "keepalive_ms": 1000000,            //Keepalive ms for HTTP1.1 keepalive connections
@@ -39,11 +39,10 @@
   //Collection of objects to define hosts+interfaces to build server listeners from
   "virtual_hosts": [
     {
-      //A flag that enables or disables this virtual host
-      "enabled": true,
 
-      //The directory path for files served by this endpoint
-      "path": "path/to/website/root",
+      "enabled": true,         //A flag that enables or disables this virtual host
+    
+      "path": "path/to/website/root",    //The directory path for files served by this endpoint
 
       //The hostname to listen for, "*" as wildcard, and "[system]" as the default hostname for the current machine. Must be unique
       "hostnames": [ "*", "localhost" ],

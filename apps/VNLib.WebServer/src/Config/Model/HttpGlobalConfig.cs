@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -22,6 +22,7 @@
 * along with VNLib.WebServer. If not, see http://www.gnu.org/licenses/.
 */
 
+using System;
 using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
@@ -87,9 +88,20 @@ namespace VNLib.WebServer.Config.Model
 
         /// <summary>
         /// The size of the buffer used to store request headers.
+        /// </summary>       
+        [JsonPropertyName("request_header_buf_size")]
+        public int RequestHeaderBufSize { get; set; }
+
+        /// <summary>
+        /// This property is deprecated and will be removed in a future version.
         /// </summary>
         [JsonPropertyName("header_buf_size")]
-        public int HeaderBufSize { get; set; }
+        [Obsolete("Use RequestHeaderBufSize instead. This property will be removed in a future version.")]
+        public int HeaderBufferSize
+        {
+            get => RequestHeaderBufSize;
+            init => RequestHeaderBufSize = value;
+        }
 
         /// <summary>
         /// The size of the buffer used to store response headers.
@@ -124,7 +136,7 @@ namespace VNLib.WebServer.Config.Model
             Validate.EnsureRange(MaxRequestHeaderCount, 0, 1024);
             Validate.EnsureRange(MaxConnections, 0, int.MaxValue);
             Validate.EnsureRange(MaxUploadsPerRequest, 0, 1024);
-            Validate.EnsureRange(HeaderBufSize, 0, int.MaxValue);
+            Validate.EnsureRange(RequestHeaderBufSize, 0, int.MaxValue);
             Validate.EnsureRange(ResponseHeaderBufSize, 0, int.MaxValue);
             Validate.EnsureRange(MultipartMaxBufSize, 0, int.MaxValue);
 
