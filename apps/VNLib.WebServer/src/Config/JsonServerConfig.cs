@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -33,13 +33,19 @@ using VNLib.Utils.IO;
 
 namespace VNLib.WebServer.Config
 {
-
     internal sealed class JsonServerConfig(JsonDocument doc) : IServerConfig
     {
         private static readonly JsonSerializerOptions _ops = new()
         {
             AllowTrailingCommas = true,
             ReadCommentHandling = JsonCommentHandling.Skip,
+        };
+
+        //Allow comments
+        private static readonly JsonDocumentOptions _jdo = new()
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
         };
 
         ///<inheritdoc/>
@@ -76,99 +82,147 @@ namespace VNLib.WebServer.Config
 
         public static JsonServerConfig? FromFile(string filename)
         {
-            string nameOnly = Path.GetFileName(filename);
-          
             if (!FileOperations.FileExists(filename))
             {
                 Console.WriteLine("Configuration file {0} does not exist", filename);
                 return null;
             }
 
-            using Stream fileStream = File.OpenRead(filename);
+            using FileStream fileStream = File.OpenRead(filename);
 
-            if (filename.EndsWith(".json"))
-            {
-                Console.WriteLine("Loading json configuration file from {0}", nameOnly);
-                return FromStream(fileStream, yaml: false);
-            }
-            else if (filename.EndsWith(".yaml") || filename.EndsWith(".yml"))
-            {
-                Console.WriteLine("Loading yaml configuration file from {0}", nameOnly);
-                return FromStream(fileStream, yaml: true);
-            }
-            else
-            {
-                Console.WriteLine("Unknown file type for configuration file {0}", nameOnly);
-                return null;
-            }
+            // Use the file name to get the config type
+            ConfigFileType type = GetConfigFileType(filename);
+
+            Console.WriteLine($"Loading {type} configuration file from {filename}");
+
+            return FromStream(fileStream, type);            
         }
 
+       
         public static JsonServerConfig? FromStdin()
         {
             Console.WriteLine("Reading JSON configuration from stdin");
 
             using Stream stdIn = Console.OpenStandardInput();
 
-            return FromStream(stdIn, false);
+            // For now, we have to default to JSON from stdin
+            return FromStream(stdIn, ConfigFileType.Json);
+        }      
+
+        private static JsonServerConfig? FromStream(Stream stream, ConfigFileType type)
+        {
+            return ReadConfigToJson(stream, type) is JsonDocument doc
+                ? new JsonServerConfig(doc)
+                : null;
         }
 
-        private static JsonServerConfig? FromStream(Stream stream, bool yaml)
+        /// <summary>
+        /// A helper function that will attempt to parse a json or yaml file stream
+        /// into a <see cref="JsonDocument"/>.
+        /// </summary>
+        /// <param name="stream">The open file to read syncronously</param>
+        /// <returns>The parsed document if read successfully</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static JsonDocument? ReadConfigFileToJson(FileStream stream)
         {
-            if (yaml)
+            ArgumentNullException.ThrowIfNull(stream);
+
+            // Get the config type from the file extension
+            ConfigFileType type = GetConfigFileType(stream.Name);
+
+            return ReadConfigToJson(stream, type);
+        }       
+
+        /// <summary>
+        /// A helper function that will attempt to parse a json or yaml data stream
+        /// into a <see cref="JsonDocument"/>.
+        /// </summary>
+        /// <param name="stream">The open file to read syncronously</param>
+        /// <returns>The parsed document if read successfully</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static JsonDocument? ReadConfigToJson(Stream stream, ConfigFileType configType)
+        {
+            if (!stream.CanRead)
             {
-                using StreamReader reader = new (
-                    stream,
-                    encoding: System.Text.Encoding.UTF8,
-                    detectEncodingFromByteOrderMarks: false,
-                    leaveOpen: true
-                );
-
-                object? yamlObject = new DeserializerBuilder()
-                    .WithNodeTypeResolver(new NumberTypeResolver())
-                    .Build()
-                    .Deserialize(reader);
-
-                ISerializer serializer = new SerializerBuilder()
-                    .JsonCompatible()
-                    .Build();
-
-                using VnMemoryStream ms = new();
-                using (StreamWriter sw = new(ms, leaveOpen: true))
-                {
-                    serializer.Serialize(sw, yamlObject);
-                }
-
-                ms.Seek(0, SeekOrigin.Begin);
-
-                return new JsonServerConfig(JsonDocument.Parse(ms));
+                throw new ArgumentException("Stream must be readable", nameof(stream));
             }
-            else
-            {
-                try
-                {
-                    //Allow comments
-                    JsonDocumentOptions jdo = new()
-                    {
-                        CommentHandling = JsonCommentHandling.Skip,
-                        AllowTrailingCommas = true,
-                    };
 
-                    //Default to json
-                    return new JsonServerConfig(JsonDocument.Parse(stream, jdo));
-                }
-                catch(JsonException je)
-                {
-                    Console.WriteLine(
-                        "ERROR: Failed to parse json configuration. Error occured at line {0}, byte position {1}", 
-                        je.LineNumber, 
-                        je.BytePositionInLine
-                    );
-                }
+            switch (configType)
+            {
+                case ConfigFileType.Json:
+                    {
+                        try
+                        {
+                            //Default to json
+                            return JsonDocument.Parse(stream, _jdo);
+                        }
+                        catch (JsonException je)
+                        {
+                            Console.WriteLine(
+                                "ERROR: Failed to parse json configuration. Error occured at line {0}, byte position {1}",
+                                je.LineNumber,
+                                je.BytePositionInLine
+                            );
+                        }
+                    }
+                    break;
+
+                case ConfigFileType.Yaml:
+                    {
+                        using StreamReader reader = new (
+                            stream,
+                            encoding: System.Text.Encoding.UTF8,
+                            detectEncodingFromByteOrderMarks: false,
+                            leaveOpen: true
+                        );
+
+                        object? yamlObject = new DeserializerBuilder()
+                            .WithNodeTypeResolver(new NumberTypeResolver())
+                            .Build()
+                            .Deserialize(reader);
+
+                        ISerializer serializer = new SerializerBuilder()
+                            .JsonCompatible()
+                            .Build();
+
+                        using VnMemoryStream ms = new();
+                        using (StreamWriter sw = new(ms, leaveOpen: true))
+                        {
+                            serializer.Serialize(sw, yamlObject);
+                        }
+
+                        ms.Seek(0, SeekOrigin.Begin);
+
+                        return JsonDocument.Parse(ms, _jdo);
+                    }
             }
 
             return null;
         }
 
+        /// <summary>
+        /// A list of supported file extensions for configuration files.
+        /// </summary>
+        public static readonly string[] SupportedFileExtensions =
+        [
+            ".json5",
+            ".json",
+            ".yaml",
+            ".yml"
+        ];
+
+        private static ConfigFileType GetConfigFileType(string filename)
+        {
+            string ext = Path.GetExtension(filename).ToLowerInvariant();
+            return ext switch
+            {
+                ".json5" => ConfigFileType.Json,
+                ".json" => ConfigFileType.Json,
+                ".yaml" => ConfigFileType.Yaml,
+                ".yml" => ConfigFileType.Yaml,
+                _ => ConfigFileType.Unknown
+            };
+        }
 
         public class NumberTypeResolver : INodeTypeResolver
         {
@@ -176,7 +230,7 @@ namespace VNLib.WebServer.Config
             {
                 if (nodeEvent is Scalar scalar)
                 {
-                    if(long.TryParse(scalar.Value, out _))
+                    if (long.TryParse(scalar.Value, out _))
                     {
                         currentType = typeof(int);
                         return true;
