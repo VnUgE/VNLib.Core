@@ -11,6 +11,7 @@ set(_MI_PROJ_NAME "vnlib_mimalloc")
 
 option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)
 option(ENABLE_STATIC_FPIC "Enable fPIC for static library" ON)
+option(MI_SECURE "Enable secure allocator configuration" OFF)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
