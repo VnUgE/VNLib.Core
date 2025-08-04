@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -170,10 +170,10 @@ namespace VNLib.Plugins.Runtime
                 {
                     PlugingAssemblyConfig pConf = new(Builder.PluginConfig!)
                     {
-                        AssemblyFile = pluginPath,
-                        WatchForReload = Builder.HotReload,
-                        ReloadDelay = Builder.ReloadDelay,
-                        Unloadable = Builder.HotReload
+                        AssemblyFile    = pluginPath,
+                        WatchForReload  = Builder.HotReload,
+                        ReloadDelay     = Builder.ReloadDelay,
+                        Unloadable      = Builder.HotReload
                     };
 
                     //Get assembly loader from the configration

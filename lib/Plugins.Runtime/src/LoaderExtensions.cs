@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -53,20 +53,15 @@ namespace VNLib.Plugins.Runtime
          * Class that manages a collection registration for a specific type 
          * dependency, and redirects the event calls for the consumed service
          */
-        private sealed class TypedRegistration<T> : IPluginEventListener where T: class
+        private sealed class TypedRegistration<T>(ITypedPluginConsumer<T> consumerEvents, Type type)
+            : IPluginEventListener where T : class
         {
-            private readonly ITypedPluginConsumer<T> _consumerEvents;
+            private readonly ITypedPluginConsumer<T> _consumerEvents = consumerEvents;
 
             private T? _service;
-            private readonly Type _type;
+            private readonly Type _type = type;
 
-            public TypedRegistration(ITypedPluginConsumer<T> consumerEvents, Type type)
-            {
-                _consumerEvents = consumerEvents;
-                _type = type;
-            }
-            
-
+            ///<inheritdoc/>
             public void OnPluginLoaded(PluginController controller, object? state)
             {
                 //Get the service from the loaded plugins
@@ -99,12 +94,12 @@ namespace VNLib.Plugins.Runtime
         /// <param name="consumer">The typed plugin instance event consumer</param>
         /// <returns>A <see cref="PluginEventRegistration"/> handle that manages this event registration</returns>
         /// <exception cref="ArgumentException"></exception>
-        public static PluginEventRegistration RegisterForType<T>(this PluginController collection, ITypedPluginConsumer<T> consumer) where T: class
+        public static PluginEventRegistration RegisterForType<T>(this PluginController collection, ITypedPluginConsumer<T> consumer) where T : class
         {
             Type serviceType = typeof(T);
 
             //Confim the type is exposed by this collection
-            if(!ExposesType(collection, serviceType))
+            if (!ExposesType(collection, serviceType))
             {
                 throw new ArgumentException("The requested type is not exposed in this assembly");
             }
@@ -126,7 +121,7 @@ namespace VNLib.Plugins.Runtime
             reg.Register(listener, state);
             return new(reg, listener);
         }
-       
+
         /// <summary>
         /// Determines if the current <see cref="PluginController"/>
         /// exposes the desired type on is <see cref="IPlugin"/>
@@ -149,7 +144,7 @@ namespace VNLib.Plugins.Runtime
         /// <typeparam name="T">The type the plugin must derrive from</typeparam>
         /// <param name="collection"></param>
         /// <returns>The instance of your custom type casted, or null if not found or could not be casted</returns>
-        public static T? GetExposedTypes<T>(this PluginController collection) where T: class
+        public static T? GetExposedTypes<T>(this PluginController collection) where T : class
         {
             LivePlugin? plugin = collection.Plugins
                 .Where(static pl => typeof(T).IsAssignableFrom(pl.PluginType))
@@ -168,10 +163,7 @@ namespace VNLib.Plugins.Runtime
         {
             ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
 
-            foreach(RuntimePluginLoader loader in runtime.Plugins)
-            {
-                loader.InitializeController();
-            }
+            runtime.Plugins.ForEach(static loader => loader.InitializeController());           
         }
 
         /// <summary>
@@ -182,8 +174,8 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="AggregateException"></exception>
         public static void InvokeLoad(this IPluginStack runtime, bool concurrent)
-        {           
-            List<Exception> exceptions = new ();
+        {
+            List<Exception> exceptions = new();
 
             //Add load exceptions into the list
             void onError(RuntimePluginLoader loader, Exception ex) => exceptions.Add(ex);
@@ -192,7 +184,7 @@ namespace VNLib.Plugins.Runtime
             InvokeLoad(runtime, concurrent, onError);
 
             //If any exceptions occured, throw them now
-            if(exceptions.Count > 0)
+            if (exceptions.Count > 0)
             {
                 throw new AggregateException(exceptions);
             }
@@ -228,7 +220,7 @@ namespace VNLib.Plugins.Runtime
             else
             {
                 //Load sequentially
-                foreach(RuntimePluginLoader loader in runtime.Plugins)
+                foreach (RuntimePluginLoader loader in runtime.Plugins)
                 {
                     try
                     {
@@ -270,7 +262,7 @@ namespace VNLib.Plugins.Runtime
             //try unloading all plugins and their loaders, dont invoke GC on each unload
             runtime.Plugins.TryForeach(static p => p.UnloadAll(false));
 
-            //Invoke a gc 
+            //Invoke a gc once completely unloaded
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
@@ -283,12 +275,12 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="AggregateException"></exception>
         public static void ReloadAll(this IPluginStack runtime)
         {
-            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
+            ArgumentNullException.ThrowIfNull(runtime);
 
             //try reloading all plugins
             runtime.Plugins.TryForeach(static p => p.ReloadPlugins(false));
 
-            //Invoke a gc
+            //Invoke a gc once completely reloaded
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
@@ -302,14 +294,13 @@ namespace VNLib.Plugins.Runtime
         /// <exception cref="ArgumentNullException"></exception>
         public static void RegsiterListener(this IPluginStack runtime, IPluginEventListener listener, object? state = null)
         {
-            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
-            ArgumentNullException.ThrowIfNull(listener, nameof(listener));
+            ArgumentNullException.ThrowIfNull(runtime);
+            ArgumentNullException.ThrowIfNull(listener);           
 
-            //Register for all plugins
-            foreach (PluginController controller in runtime.Plugins.Select(static p => p.Controller))
-            {
-                controller.Register(listener, state);
-            }
+            //Register  for all plugins
+            runtime.Plugins
+                .Select(static p => p.Controller)
+                .ForEach(controller => controller.Register(listener, state));
         }
 
         /// <summary>
@@ -318,16 +309,16 @@ namespace VNLib.Plugins.Runtime
         /// <param name="runtime"></param>
         /// <param name="listener">The listener instance to unregister</param>
         /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="AggregateException"></exception>
         public static void UnregsiterListener(this IPluginStack runtime, IPluginEventListener listener)
         {
-            ArgumentNullException.ThrowIfNull(runtime, nameof(runtime));
-            ArgumentNullException.ThrowIfNull(listener, nameof(listener));
+            ArgumentNullException.ThrowIfNull(runtime);
+            ArgumentNullException.ThrowIfNull(listener);
 
             //Unregister for all plugins
-            foreach (PluginController controller in runtime.Plugins.Select(static p => p.Controller))
-            {
-                controller.Unregister(listener);
-            }
+            runtime.Plugins
+                .Select(static p => p.Controller)
+                .TryForeach(controller => controller.Unregister(listener));           
         }
 
         /// <summary>
@@ -340,8 +331,8 @@ namespace VNLib.Plugins.Runtime
         public static PluginStackBuilder WithLocalJsonConfig(
             this PluginStackBuilder builder,
             in JsonElement? hostConfig
-        ) 
-            => WithJsonConfig(builder, in hostConfig, null);
+        )
+            => WithJsonConfigFile(builder, in hostConfig, getPluginJsonFile: null);
 
         /// <summary>
         /// Configures the plugin stack to retrieve plugin-local json configuration files 
@@ -372,7 +363,7 @@ namespace VNLib.Plugins.Runtime
             }
 
             //Use the alternate directory finder
-            return WithJsonConfig(builder, in hostConfig, AltDirConfigFileFinder);
+            return WithJsonConfigFile(builder, in hostConfig, AltDirConfigFileFinder);
         }
 
         /// <summary>
@@ -383,41 +374,35 @@ namespace VNLib.Plugins.Runtime
         /// <param name="getPluginJsonFile">An optional callback function that finds the plugin json config file from its assembly path</param>
         /// <param name="hostConfig">An optional configuration element to pass to the plugin's host config element</param>
         /// <returns>The current builder instance for chaining</returns>
-        public static PluginStackBuilder WithJsonConfig(
-            this PluginStackBuilder builder, 
-            in JsonElement? hostConfig, 
+        public static PluginStackBuilder WithJsonConfigFile(
+            this PluginStackBuilder builder,
+            in JsonElement? hostConfig,
             Func<IPluginAssemblyLoadConfig, string>? getPluginJsonFile
         )
         {
-            ArgumentNullException.ThrowIfNull(builder, nameof(builder));
-
-            //Set default callback if not specified
+            // Fallback to the default file name callback if none is provided
             getPluginJsonFile ??= GetDefaultFileNameCallback;
 
-            LocalFilePluginConfigReader reader;
+            return WithJsonConfig(builder, in hostConfig, GetPluginJsonConfig);
 
-            //Host config is optional
-            if (hostConfig.HasValue)
+            // Local function that retrieves the plugin json configuration file and 
+            // parses it into a JsonDocument
+            void GetPluginJsonConfig(IPluginAssemblyLoadConfig asmConfig, Stream output)
             {
-                //Clone the host config into binary
-                using VnMemoryStream ms = new();
-                using (Utf8JsonWriter writer = new(ms))
+                string fileName = getPluginJsonFile(asmConfig);
+
+                if (FileOperations.FileExists(fileName))
                 {
-                    hostConfig.Value.WriteTo(writer);
+                    using FileStream pluginConfFileData = new(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                    IoExtensions.CopyTo(pluginConfFileData, output);
                 }
-
-                //Create a reader from the binary
-                reader = new LocalFilePluginConfigReader(ms.ToArray(), getPluginJsonFile);
+                else
+                {
+                    byte[] empty = Encoding.UTF8.GetBytes("{}");
+                    output.Write(empty);
+                }
             }
-            else
-            {
-                //Empty json
-                byte[] emptyJson = Encoding.UTF8.GetBytes("{}");
-                reader = new LocalFilePluginConfigReader(emptyJson, getPluginJsonFile);
-            }
-
-            //Store binary
-            return builder.WithConfigurationReader(reader);
 
             static string GetDefaultFileNameCallback(IPluginAssemblyLoadConfig asmConfig)
             {
@@ -428,6 +413,43 @@ namespace VNLib.Plugins.Runtime
                 return Path.ChangeExtension(asmConfig.AssemblyFile, ".json");
             }
         }
+
+        /// <summary>
+        /// A lower level method that allows you to specify a custom callback that retrieves 
+        /// the plugin json configuration data and writes it to the output stream.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="hostConfig">The host configuration element to be merged</param>
+        /// <param name="getPluginJsonData">The callback function that will accept the stream to write data to</param>
+        /// <returns>The current builder instance for chaining</returns>
+        public static PluginStackBuilder WithJsonConfig(
+            this PluginStackBuilder builder,
+            in JsonElement? hostConfig,
+            Action<IPluginAssemblyLoadConfig, Stream> getPluginJsonData
+        )
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            ArgumentNullException.ThrowIfNull(getPluginJsonData);
+
+            JsonElement el;
+
+            //Host config is optional
+            if (hostConfig.HasValue)
+            {
+                el = hostConfig.Value;
+            }
+            else
+            {
+                using JsonDocument empty = JsonDocument.Parse("{}");
+                el = empty.RootElement.Clone();
+            }
+
+            //Create a reader from the binary
+            LocalFilePluginConfigReader reader = new(in el, getPluginJsonData);
+
+            return builder.WithConfigurationReader(reader);
+        }
+
 
         /// <summary>
         /// Sets an empty/null configuration reader for the plugin stack. No 
@@ -449,7 +471,7 @@ namespace VNLib.Plugins.Runtime
         /// <param name="builder"></param>
         /// <returns>The current builder instance for chaining</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static PluginStackBuilder WithSearchDirectories(this PluginStackBuilder builder, string[] paths) 
+        public static PluginStackBuilder WithSearchDirectories(this PluginStackBuilder builder, string[] paths)
             => WithSearchDirectories(builder, paths.Select(static p => new DirectoryInfo(p)).ToArray());
 
         /// <summary>
@@ -463,11 +485,11 @@ namespace VNLib.Plugins.Runtime
         {
             ArgumentNullException.ThrowIfNull(builder);
             ArgumentNullException.ThrowIfNull(dirs);
-          
+
             builder.WithDiscoveryManager(discoveryManager: new PluginDirectorySearcher(dirs));
             return builder;
         }
-       
+
 
         /// <summary>
         /// Registers a new <see cref="SharedPluginServiceProvider"/> for the current plugin stack
@@ -492,7 +514,8 @@ namespace VNLib.Plugins.Runtime
         /// </summary>
         /// <param name="stack"></param>
         /// <returns>An enumeration of all <see cref="LivePlugin"/> wrappers</returns>
-        public static IEnumerable<LivePlugin> GetAllPlugins(this IPluginStack stack) => stack.Plugins.SelectMany(static p => p.Controller.Plugins);
+        public static IEnumerable<LivePlugin> GetAllPlugins(this IPluginStack stack)
+            => stack.Plugins.SelectMany(static p => p.Controller.Plugins);
 
         private sealed record class PluginDirectorySearcher(DirectoryInfo[] SearchDirs) : IPluginDiscoveryManager
         {
@@ -509,7 +532,7 @@ namespace VNLib.Plugins.Runtime
                 IEnumerable<DirectoryInfo> dirs = SearchDirs.SelectMany(static p => p.EnumerateDirectories("*", SearchOption.TopDirectoryOnly));
 
                 //Search all directories for plugins and return the paths
-                return GetPluginPaths(dirs).ToArray();
+                return [.. GetPluginPaths(dirs)];
             }
 
             private static IEnumerable<string> GetPluginPaths(IEnumerable<DirectoryInfo> dirs)
@@ -537,9 +560,12 @@ namespace VNLib.Plugins.Runtime
          * The json file is local for the specific plugin and is not shared between plugins. The host 
          * configuration is also required
          */
-        private sealed record class LocalFilePluginConfigReader(ReadOnlyMemory<byte> HostJson, Func<IPluginAssemblyLoadConfig, string> GetConfigFilePathCallback) 
+        private sealed record class LocalFilePluginConfigReader(ref readonly JsonElement HostJson, Action<IPluginAssemblyLoadConfig, Stream> GetConfigFilePathCallback)
             : IPluginConfigReader
         {
+
+            private readonly JsonElement _hostClonedConfig = HostJson.Clone();
+
             public void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream configData)
             {
                 //Allow comments and trailing commas
@@ -549,36 +575,22 @@ namespace VNLib.Plugins.Runtime
                     CommentHandling = JsonCommentHandling.Skip,
                 };
 
-                //Get the plugin config file name
-                string pluginConfigFile = GetConfigFilePathCallback(asmConfig);
+                using VnMemoryStream pluginConfigData = new();
+                GetConfigFilePathCallback.Invoke(asmConfig, pluginConfigData);
 
-                using JsonDocument hostConfig = JsonDocument.Parse(HostJson, jdo);
-             
-                if (FileOperations.FileExists(pluginConfigFile))
-                {
-                    //Open file stream to read data
-                    using FileStream pluginConfFileData = File.OpenRead(pluginConfigFile);
+                pluginConfigData.Seek(0, SeekOrigin.Begin);
 
-                    using JsonDocument pluginConf = JsonDocument.Parse(pluginConfFileData, jdo);
-                  
-                    using JsonDocument merged = hostConfig.Merge(pluginConf,"host", "plugin");
+                using JsonDocument pluginConf = JsonDocument.Parse(pluginConfigData, jdo);
 
-                    //Write the merged config to the output stream
-                    using Utf8JsonWriter writer = new(configData);
-                    merged.WriteTo(writer);
-                }
-                else
-                {
-                    byte[] pluginConfig = Encoding.UTF8.GetBytes("{}");
+                using JsonDocument merged = _hostClonedConfig.Merge(
+                    pluginConf.RootElement,
+                    initalName: "host",
+                    secondName: "plugin"
+                );
 
-                    using JsonDocument pluginConf = JsonDocument.Parse(pluginConfig, jdo);
-
-                    using JsonDocument merged = hostConfig.Merge(pluginConf, "host", "plugin");
-
-                    //Write the merged config to the output stream
-                    using Utf8JsonWriter writer = new(configData);
-                    merged.WriteTo(writer);
-                }
+                //Write the merged config to the output stream
+                using Utf8JsonWriter writer = new(configData);
+                merged.WriteTo(writer);
             }
         }
 
@@ -589,6 +601,6 @@ namespace VNLib.Plugins.Runtime
             {
                 //Do nothing
             }
-        }    
+        }
     }
 }
