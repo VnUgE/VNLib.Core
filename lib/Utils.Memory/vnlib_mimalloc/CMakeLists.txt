@@ -129,14 +129,17 @@ include_directories(vendor/include)
 #								 #
 ##################################
 
-set(MI_BUILD_TESTS OFF)
-set(MI_BUILD_STATIC ON)
-set(MI_BUILD_SHARED OFF)
-set(MI_BUILD_OBJECT OFF)
-set(MI_BUILD_TESTS OFF)
-set(MI_XMALLOC OFF)			#Do not allow process abort when alloc fails, we don't need it 
-set(MI_OVERRIDE OFF)
-set(MI_WIN_REDIRECT OFF)
+set(MI_BUILD_TESTS OFF CACHE BOOL "Disable mimalloc tests" FORCE)
+set(MI_BUILD_STATIC ON CACHE BOOL "Enable mimalloc static library" FORCE)
+set(MI_BUILD_SHARED OFF CACHE BOOL "Disable mimalloc shared library" FORCE)
+set(MI_BUILD_OBJECT OFF CACHE BOOL "Disable mimalloc object library" FORCE)
+set(MI_BUILD_TESTS OFF CACHE BOOL "Disable mimalloc tests" FORCE)
+#Do not allow process abort when alloc fails, we don't need it 
+set(MI_XMALLOC OFF CACHE BOOL "Disable mimalloc xmalloc" FORCE)
+set(MI_OVERRIDE OFF CACHE BOOL "Disable malloc overrides" FORCE)
+set(MI_WIN_REDIRECT OFF CACHE BOOL "Disable Windows redirection" FORCE)
+set(MI_OSX_INTERPOSE OFF CACHE BOOL "Disable OSX interpose" FORCE)
+set(MI_OSX_ZONE OFF CACHE BOOL "Disable OSX zone" FORCE)
 
 add_subdirectory(
 	${CMAKE_CURRENT_SOURCE_DIR}/vendor
