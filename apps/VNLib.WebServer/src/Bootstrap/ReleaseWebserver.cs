@@ -23,23 +23,23 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
-using System.Collections.Generic;
 
-using VNLib.Utils.Memory;
-using VNLib.Utils.Logging;
 using VNLib.Net.Http;
 using VNLib.Plugins.Runtime;
-
+using VNLib.Utils.Logging;
+using VNLib.Utils.Memory;
+using VNLib.WebServer.Compression;
 using VNLib.WebServer.Config;
 using VNLib.WebServer.Config.Model;
-using VNLib.WebServer.Plugins;
-using VNLib.WebServer.Compression;
 using VNLib.WebServer.Middlewares;
+using VNLib.WebServer.Plugins;
 using VNLib.WebServer.RuntimeLoading;
 using VNLib.WebServer.VirtualHosts;
+
 using static VNLib.WebServer.Entry;
 
 namespace VNLib.WebServer.Bootstrap
@@ -61,6 +61,7 @@ namespace VNLib.WebServer.Bootstrap
  |      Plugin configuration:
  | Enabled: {enabled}
  | Directory: {dir}
+ | Config Directory: {configDir}
  | Hot Reload: {hr}
  | Reload Delay: {delay}s
 ----------------------------------";
@@ -80,15 +81,15 @@ namespace VNLib.WebServer.Bootstrap
             ServerPluginConfig? conf = config.GetConfigProperty<ServerPluginConfig>(PLUGINS_CONFIG_PROP_NAME);
             if (conf is null)
             {
-                logger.AppLog.Debug("No plugin configuration found");
+                logger.AppLog.Debug("No plugin configuration found, plugins will not be loaded.");
                 return null;
             }
 
             if (!conf.Enabled)
             {
-                logger.AppLog.Information("Plugin loading disabled via configuration flag");
+                logger.AppLog.Information("Plugin loading disabled via configuration flag.");
                 return null;
-            }
+            }          
 
             //Init new plugin stack builder
             PluginStackBuilder pluginBuilder = PluginStackBuilder.Create()
@@ -96,17 +97,19 @@ namespace VNLib.WebServer.Bootstrap
                                     .WithSearchDirectories([ conf.Path ])
                                     .WithLoaderFactory(PluginAsemblyLoading.Create);
 
+            bool configDir = !string.IsNullOrWhiteSpace(conf.ConfigDir);
+
             //Setup plugin config data
-            if (!string.IsNullOrWhiteSpace(conf.ConfigDir))
+            if (configDir)
             {
-                pluginBuilder.WithJsonConfigDir(
+                pluginBuilder.WithPluginConfig(
                     hostConfig: config.GetDocumentRoot(), 
                     configDir: new (conf.ConfigDir)
                 );
             }
             else
             {
-                pluginBuilder.WithLocalJsonConfig(config.GetDocumentRoot());
+                pluginBuilder.WithPluginConfig(config.GetDocumentRoot());               
             }
 
             if (conf.HotReload)
@@ -120,6 +123,7 @@ namespace VNLib.WebServer.Bootstrap
                 PLUGIN_DATA_TEMPLATE,
                 true,
                 conf.Path,
+                configDir ? conf.ConfigDir : "(local)",
                 conf.HotReload,
                 conf.ReloadDelaySec
             );
@@ -286,7 +290,7 @@ namespace VNLib.WebServer.Bootstrap
                 throw new ServerConfigurationException("Failed to parse IP address", fe);
             }
 
-            return configs.ToArray();
+            return [.. configs];
         }
 
         private VirtualHostServerConfig[] GetVirtualHosts()
