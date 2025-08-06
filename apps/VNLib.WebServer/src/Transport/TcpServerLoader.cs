@@ -207,7 +207,7 @@ namespace VNLib.WebServer.Transport
             //NoDelay is not supported on TLS connections and may be enabled with global config or local config
             bool noDelay = iface.TcpNoDelay ?? baseConf.NoDelay; //Use the global config value
 
-            //If tls then we should disable no delay
+            //If tls and nodelay warn the user
             if (iface.Ssl && noDelay)
             {
                 tcpLogger.Warn("TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);                
