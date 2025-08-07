@@ -138,7 +138,7 @@ namespace VNLib.Net.Http.Core
         public ref readonly HttpEncodedSegment FinalChunkSegment => ref ParentServer.Config.FinalChunkBytes;
      
 
-        int _bytesRead;
+        int _PreBufferedByteCount;
 
         /*
          * The following functions operate in tandem. Data should be buffered
@@ -161,9 +161,9 @@ namespace VNLib.Net.Http.Core
              * Specal function to set available data
              * NOTE: this can be dangerous as the buffer is 
              */
-            reader.SetAvailableData(_bytesRead);
+            reader.SetAvailableData(_PreBufferedByteCount);
 
-            Debug.Assert(reader.Available == _bytesRead);
+            Debug.Assert(reader.Available == _PreBufferedByteCount);
         }
 
         public async ValueTask BufferTransportAsync(CancellationToken cancellation)
@@ -179,13 +179,13 @@ namespace VNLib.Net.Http.Core
              * buffer size MUST be respected.
              */
 
-            _bytesRead = 0;
+            _PreBufferedByteCount = 0;
 
             Memory<byte> dataBuffer = Buffers.GetInitStreamBuffer();
 
-            _bytesRead = await Transport.Stream.ReadAsync(dataBuffer, cancellation);
+            _PreBufferedByteCount = await Transport.Stream.ReadAsync(dataBuffer, cancellation);
 
-            Debug.Assert(_bytesRead <= dataBuffer.Length);
+            Debug.Assert(_PreBufferedByteCount <= dataBuffer.Length);
         }
 
         #endregion
@@ -193,13 +193,13 @@ namespace VNLib.Net.Http.Core
         #region LifeCycle Hooks
 
         ///<inheritdoc/>
-        public void InitializeContext(ITransportContext ctx, IHttpMemoryPool pool)
+        public void InitializeContext(ITransportContext ctx)
         {
             _ctx = ctx;
 
             //Alloc buffers during context init incase exception occurs in user-code
             Buffers.AllocateBuffer(
-                allocator: pool, 
+                allocator: ParentServer.Config.MemoryPool, 
                 config: in ParentServer.BufferConfig
             );
 
@@ -208,13 +208,13 @@ namespace VNLib.Net.Http.Core
         } 
 
         ///<inheritdoc/>
-        public void BeginRequest(ITransportContext ctx)
+        public void BeginRequest()
         {
             //Clear all flags
             ContextFlags.ClearAll();
 
             //Lifecycle on new request
-            Request.Initialize(ctx, ParentServer.Config.DefaultHttpVersion);
+            Request.Initialize(_ctx!, ParentServer.Config.DefaultHttpVersion);
             Response.OnNewRequest();
         }
 
@@ -224,7 +224,7 @@ namespace VNLib.Net.Http.Core
         ///<inheritdoc/>
         public void EndRequest()
         {
-            _bytesRead = 0; //Must reset after every request
+            _PreBufferedByteCount = 0; //Must reset after every request
 
             Request.OnComplete();
             Response.OnComplete();

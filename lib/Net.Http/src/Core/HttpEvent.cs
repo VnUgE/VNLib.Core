@@ -28,10 +28,9 @@ using System.Net;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-using VNLib.Net.Http.Core;
 using VNLib.Net.Http.Core.Response;
 
-namespace VNLib.Net.Http
+namespace VNLib.Net.Http.Core
 {
     internal sealed class HttpEvent(HttpContext ctx) : MarshalByRefObject, IHttpEvent
     {
@@ -41,9 +40,9 @@ namespace VNLib.Net.Http
 
         ///<inheritdoc/>
         IConnectionInfo IHttpEvent.Server => _ci;
-        
+
         ///<inheritdoc/>
-        IHttpServer IHttpEvent.OriginServer => Context.ParentServer;       
+        IHttpServer IHttpEvent.OriginServer => Context.ParentServer;
 
         ///<inheritdoc/>
         IReadOnlyDictionary<string, string> IHttpEvent.QueryArgs => Context.Request.QueryArgs;
@@ -60,18 +59,18 @@ namespace VNLib.Net.Http
         ///<inheritdoc/>
         void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler)
         {
-            if(Context.AlternateProtocol != null)
+            if (Context.AlternateProtocol != null)
             {
                 throw new InvalidOperationException("A protocol handler was already specified");
             }
 
             ArgumentNullException.ThrowIfNull(protocolHandler);
-            
+
             //Set 101 status code
             Context.Respond(HttpStatusCode.SwitchingProtocols);
             Context.AlternateProtocol = protocolHandler;
         }
-       
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void IHttpEvent.CloseResponse(HttpStatusCode code) => Context.Respond(code);
@@ -94,10 +93,10 @@ namespace VNLib.Net.Http
                 //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 stream.Dispose();
                 return;
-            }           
-            
+            }
+
             //Finally store the stream input
-            if(!Context.ResponseBody.TrySetResponseBody(stream, length))
+            if (!Context.ResponseBody.TrySetResponseBody(stream, length))
             {
                 throw new InvalidOperationException("A response body has already been set");
             }
@@ -124,7 +123,7 @@ namespace VNLib.Net.Http
                 //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 entity.Close();
                 return;
-            }          
+            }
 
             //Store the memory reader input
             if (!Context.ResponseBody.TrySetResponseBody(entity))
@@ -155,7 +154,7 @@ namespace VNLib.Net.Http
                 //Stream is disposed because it is assumed we now own the lifecycle of the stream
                 stream.Dispose();
                 return;
-            }          
+            }
 
             //Finally store the stream input
             if (!Context.ResponseBody.TrySetResponseBody(stream, length))

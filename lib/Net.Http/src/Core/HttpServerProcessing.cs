@@ -76,7 +76,7 @@ namespace VNLib.Net.Http
                 do
                 {
                     //Attempt to buffer a new (or keepalive) connection async
-                    await context.BufferTransportAsync(transportContext, stopToken.Token);
+                    await context.BufferTransportAsync(stopToken.Token);
 
                     //Return read timeout to active connection timeout after data is received
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
