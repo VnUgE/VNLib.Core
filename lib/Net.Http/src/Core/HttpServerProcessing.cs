@@ -54,9 +54,9 @@ namespace VNLib.Net.Http
         )
         {
             Interlocked.Increment(ref OpenConnectionCount);
-           
+
             HttpContext? context = ContextStore.Rent();
-            
+
             try
             {
                 Stream stream = transportContext.ConnectionStream;
@@ -71,16 +71,16 @@ namespace VNLib.Net.Http
                 stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
 
                 context.InitializeContext(transportContext);
-                
+
                 //Keepalive loop
                 do
                 {
                     //Attempt to buffer a new (or keepalive) connection async
-                    await context.BufferTransportAsync(stopToken.Token);
+                    await context.BufferTransportAsync(transportContext, stopToken.Token);
 
                     //Return read timeout to active connection timeout after data is received
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
-                    
+
                     bool keepAlive = await ProcessHttpEventAsync(listenState, context);
 
                     //If not keepalive, exit the listening loop and clean up connection
@@ -91,7 +91,7 @@ namespace VNLib.Net.Http
 
                     //Timeout reset to keepalive timeout waiting for more data on the transport
                     stream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
-                    
+
                 } while (true);
 
                 /*
@@ -120,7 +120,7 @@ namespace VNLib.Net.Http
                      */
 
 #pragma warning disable CA2000 // Dispose objects before losing scope
-                    AlternateProtocolTransportStreamWrapper apWrapper = new(transport:stream);
+                    AlternateProtocolTransportStreamWrapper apWrapper = new(transport: stream);
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
                     //Listen on the alternate protocol
@@ -129,11 +129,11 @@ namespace VNLib.Net.Http
                 }
             }
             //Catch wrapped socket exceptions
-            catch(IOException ioe) when(ioe.InnerException is SocketException se)
+            catch (IOException ioe) when (ioe.InnerException is SocketException se)
             {
                 WriteSocketExecption(se);
             }
-            catch(SocketException se)
+            catch (SocketException se)
             {
                 WriteSocketExecption(se);
             }
@@ -146,25 +146,25 @@ namespace VNLib.Net.Http
             {
                 _config.ServerLog.Debug("Failed to receive transport data within a timeout period {m} connection closed", oce.Message);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _config.ServerLog.Error(ex);
             }
-           
+
             Interlocked.Decrement(ref OpenConnectionCount);
-            
+
             //Return the context for normal operation (alternate protocol will return before now so it will be null)
-            if(context != null)
+            if (context != null)
             {
                 ContextStore.Return(context);
             }
-          
+
             //All done, time to close transport and exit
             try
             {
                 await transportContext.CloseConnectionAsync();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _config.ServerLog.Error(ex);
             }
@@ -196,6 +196,7 @@ namespace VNLib.Net.Http
                 //Check status code for socket error, if so, return false to close the connection
                 if (status >= 1000)
                 {
+                    _config.ServerLog.Debug("Failed to parse request, error: {s}. Force closing transport", status);
                     return false;
                 }
 

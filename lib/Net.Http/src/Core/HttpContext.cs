@@ -150,10 +150,8 @@ namespace VNLib.Net.Http.Core
 
         public void GetReader(out TransportReader reader)
         {
-            Debug.Assert(_ctx != null, "Request to transport reader was called by the connection context was null");
-
             reader = new(
-                _ctx!.ConnectionStream,
+                Transport.Stream,
                 Buffers.RequestHeaderParseBuffer,
                 ParentServer.Config.HttpEncoding,
                 ParentServer.Config.HeaderLineTermination
@@ -181,13 +179,11 @@ namespace VNLib.Net.Http.Core
              * buffer size MUST be respected.
              */
 
-            Debug.Assert(_ctx != null, "Request to buffer transport was called by the connection context was null");
-
             _bytesRead = 0;
 
             Memory<byte> dataBuffer = Buffers.GetInitStreamBuffer();
 
-            _bytesRead = await _ctx!.ConnectionStream.ReadAsync(dataBuffer, cancellation);
+            _bytesRead = await Transport.Stream.ReadAsync(dataBuffer, cancellation);
 
             Debug.Assert(_bytesRead <= dataBuffer.Length);
         }
@@ -197,13 +193,13 @@ namespace VNLib.Net.Http.Core
         #region LifeCycle Hooks
 
         ///<inheritdoc/>
-        public void InitializeContext(ITransportContext ctx)
+        public void InitializeContext(ITransportContext ctx, IHttpMemoryPool pool)
         {
             _ctx = ctx;
 
             //Alloc buffers during context init incase exception occurs in user-code
             Buffers.AllocateBuffer(
-                allocator: ParentServer.Config.MemoryPool, 
+                allocator: pool, 
                 config: in ParentServer.BufferConfig
             );
 
@@ -212,22 +208,19 @@ namespace VNLib.Net.Http.Core
         } 
 
         ///<inheritdoc/>
-        public void BeginRequest()
+        public void BeginRequest(ITransportContext ctx)
         {
             //Clear all flags
             ContextFlags.ClearAll();
 
             //Lifecycle on new request
-            Request.Initialize(_ctx!, ParentServer.Config.DefaultHttpVersion);
+            Request.Initialize(ctx, ParentServer.Config.DefaultHttpVersion);
             Response.OnNewRequest();
         }
 
         ///<inheritdoc/>
-        public Task FlushTransportAsync()
-        {
-            return _ctx!.ConnectionStream.FlushAsync();
-        }
-
+        public Task FlushTransportAsync() => Transport.FlushAsync();
+        
         ///<inheritdoc/>
         public void EndRequest()
         {

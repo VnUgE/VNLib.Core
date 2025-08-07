@@ -46,15 +46,22 @@ namespace VNLib.Net.Http.Core.Buffering
 
         public void FreeBuffer()
         {
-            _handle.Unpin();
+            _handle.Handle.Dispose();
             _handle = default;
         }
 
         public void SetBuffer(Memory<byte> buffer)
         {
             Debug.Assert(_handle.Size == 0, "Buffer was not feed correctly");
-            _handle = new(buffer);
+
+            _handle = default;
+
+            _handle.Memory = buffer;
+            _handle.Size = buffer.Length;
+            _handle.Handle = buffer.Pin();
+            _handle.Pointer = MemoryUtil.GetIntptr(in _handle.Handle);
         }
+
 
         ///<inheritdoc/>
         public int Size => _handle.Size;
@@ -70,8 +77,7 @@ namespace VNLib.Net.Http.Core.Buffering
             ArgumentOutOfRangeException.ThrowIfNegative(offset);
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, _handle.Size);
 
-            //Add offset to ref
-            return ref Unsafe.Add(ref _handle.GetRef(), offset);
+            return ref MemoryUtil.GetRef<byte>(_handle.Pointer, (nuint)offset);
         }
 
         ///<inheritdoc/>
@@ -80,40 +86,21 @@ namespace VNLib.Net.Http.Core.Buffering
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual Span<byte> GetBinSpan(int offset, int size) 
-            => (offset + size) < _handle.Size 
-            ? _handle.GetSpan(offset, size) 
-            : throw new ArgumentOutOfRangeException(nameof(offset));
-
+        public virtual Span<byte> GetBinSpan(int offset, int size)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(offset);
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(_handle.Size - offset, size);
+           
+            return MemoryUtil.GetSpan<byte>(IntPtr.Add(_handle.Pointer, offset), size);
+        }
 
         private struct HandleState
         {
-            private MemoryHandle _handle;
-            private readonly IntPtr _pointer;
-            
-            public readonly int Size;
-            public readonly Memory<byte> Memory;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public HandleState(Memory<byte> mem)
-            {
-                Memory = mem;
-                Size = mem.Length;
-                _handle = mem.Pin();
-                _pointer = MemoryUtil.GetIntptr(ref _handle);
-            }
-
-            public readonly void Unpin() => _handle.Dispose();
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public readonly Span<byte> GetSpan(int offset, int size)
-            {
-                Debug.Assert((offset + size) < Size, "Call to GetSpan failed because the offset/size was out of valid range");
-                return MemoryUtil.GetSpan<byte>(IntPtr.Add(_pointer, offset), size);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public readonly ref byte GetRef() => ref MemoryUtil.GetRef<byte>(_pointer);
+            public MemoryHandle Handle;
+            public IntPtr Pointer;
+            public int Size;
+            public Memory<byte> Memory;
         }
     }
 }
