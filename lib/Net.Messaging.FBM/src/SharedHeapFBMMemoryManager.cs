@@ -33,17 +33,17 @@ namespace VNLib.Net.Messaging.FBM
 {
     /// <summary>
     /// A default/fallback implementation of a <see cref="IFBMMemoryManager"/> that 
-    /// uses an <see cref="IUnmangedHeap"/> to allocate buffers from
+    /// uses an <see cref="IUnmanagedHeap"/> to allocate buffers from
     /// </summary>
     /// <remarks>
     /// Initializes a new instance of <see cref="SharedHeapFBMMemoryManager"/> allocating
-    /// memory from the specified <see cref="IUnmangedHeap"/>
+    /// memory from the specified <see cref="IUnmanagedHeap"/>
     /// </remarks>
     /// <param name="heap">The heap to allocate memory from</param>
     /// <exception cref="ArgumentNullException"></exception>
-    public sealed class SharedHeapFBMMemoryManager(IUnmangedHeap heap) : IFBMMemoryManager
+    public sealed class SharedHeapFBMMemoryManager(IUnmanagedHeap heap) : IFBMMemoryManager
     {
-        private readonly IUnmangedHeap _heap = heap ?? throw new ArgumentNullException(nameof(heap));
+        private readonly IUnmanagedHeap _heap = heap ?? throw new ArgumentNullException(nameof(heap));
 
         ///<inheritdoc/>
         public void AllocBuffer(IFBMSpanOnlyMemoryHandle state, int size)
@@ -66,7 +66,7 @@ namespace VNLib.Net.Messaging.FBM
         public IFBMSpanOnlyMemoryHandle InitSpanOnly() => new FBMSpanOnlyMemHandle(_heap);
 
         ///<inheritdoc/>
-        public bool TryGetHeap([NotNullWhen(true)] out IUnmangedHeap? heap)
+        public bool TryGetHeap([NotNullWhen(true)] out IUnmanagedHeap? heap)
         {
             heap = _heap;
             return true;
@@ -79,7 +79,7 @@ namespace VNLib.Net.Messaging.FBM
             void FreeBuffer();
         }
 
-        private sealed record class FBMMemHandle(IUnmangedHeap Heap) : IFBMMemoryHandle, IFBMBufferHolder
+        private sealed record class FBMMemHandle(IUnmanagedHeap Heap) : IFBMMemoryHandle, IFBMBufferHolder
         {
             private MemoryManager<byte>? _memHandle;
 
@@ -116,7 +116,7 @@ namespace VNLib.Net.Messaging.FBM
             }
         }
 
-        private sealed record class FBMSpanOnlyMemHandle(IUnmangedHeap Heap) : IFBMSpanOnlyMemoryHandle, IFBMBufferHolder
+        private sealed record class FBMSpanOnlyMemHandle(IUnmanagedHeap Heap) : IFBMSpanOnlyMemoryHandle, IFBMBufferHolder
         {
             private MemoryHandle<byte>? _handle;
 

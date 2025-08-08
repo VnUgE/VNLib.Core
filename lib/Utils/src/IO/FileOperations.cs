@@ -59,7 +59,7 @@ namespace VNLib.Utils.IO
         /// <returns>True if the file can be opened, false otherwise</returns>
         public static bool FileExists(string filePath)
         {
-            //If windows is detected, use the unmanged function
+            //If windows is detected, use the Unmanaged function
             if (!IsWindows)
             {
                 return File.Exists(filePath);
@@ -79,7 +79,7 @@ namespace VNLib.Utils.IO
         /// <exception cref="UnauthorizedAccessException"></exception>
         public static FileAttributes GetAttributes(string filePath)
         {
-            //If windows is detected, use the unmanged function
+            //If windows is detected, use the Unmanaged function
             if (!IsWindows)
             {
                 return File.GetAttributes(filePath);

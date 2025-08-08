@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: IUnmangedHeap.cs 
+* File: IUnmanagedHeap.cs 
 *
-* IUnmangedHeap.cs is part of VNLib.Utils which is part of the larger 
+* IUnmanagedHeap.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -27,9 +27,9 @@ using System;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Abstraction for handling (allocating, resizing, and freeing) blocks of unmanaged memory from an unmanged heap
+    /// Abstraction for handling (allocating, resizing, and freeing) blocks of unmanaged memory from an Unmanaged heap
     /// </summary>
-    public interface IUnmangedHeap : IDisposable
+    public interface IUnmanagedHeap : IDisposable
     {
         /// <summary>
         /// The creation flags the heap was initialized with
