@@ -158,13 +158,32 @@ namespace VNLib.WebServer.Transport
         
         private ITransportProvider GetProviderForInterface(TransportInterface iface)
         {
-            if (!uint.TryParse(ThreadCountArg, out uint threadCount))
-            {
-                threadCount = (uint)Environment.ProcessorCount;
-            }
 
             TcpConfigJson baseConfig = _conf.Instance;
-           
+
+            //NoDelay is not supported on TLS connections and may be enabled with global config or local config
+            bool noDelay = iface.TcpNoDelay ?? baseConfig.NoDelay; //Use the global config value
+
+            //If tls and nodelay warn the user
+            if (iface.Ssl && noDelay)
+            {
+                tcpLogger.Warn("Socket option TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);
+            }
+
+            //Print warning message, since inline scheduler is an avanced feature
+            if (iface.Ssl && UseInlineScheduler)
+            {
+                tcpLogger.Debug("[WARN]: Inline scheduler is not available on server {server} when using TLS", iface);
+            }
+
+#if !DEBUG
+            //If debug logging is not enabled, disable the debug tcp log
+            if (!EnableTransportLogging)
+            {
+                tcpLogger.Debug("[WARN]: Transport trace/log is only available when complied with DEBUG");
+            }
+#endif
+
             TCPConfig tcpConf = new()
             {
                 LocalEndPoint           = iface.GetEndpoint(),
@@ -178,56 +197,47 @@ namespace VNLib.WebServer.Transport
                 KeepaliveInterval       = baseConfig.KeepaliveInterval,
                 MaxRecvBufferData       = baseConfig.MaxRecvBufferData,
                 ReuseSocket             = baseConfig.ReuseSocket,
-                OnSocketCreated         = OnSocketConfiguring(iface),
+                OnSocketCreated         = OnSocketConfiguring,
                 BufferPool              = MemoryPoolManager.GetTcpPool(args.ZeroAllocations, MemoryUtil.Shared)
             };
 
-            //Print warning message, since inline scheduler is an avanced feature
-            if (iface.Ssl && UseInlineScheduler)
-            {
-                tcpLogger.Debug("[WARN]: Inline scheduler is not available on server {server} when using TLS", tcpConf.LocalEndPoint);
-            }
-
-            tcpLogger.Verbose(TransportLogTemplate,
-                iface,
-                baseConfig.TcpRecvBufferSize,
-                baseConfig.TcpSendBufferSize,
-                iface.Ssl,
-                threadCount,
-                tcpConf.MaxConnections,
-                tcpConf.BackLog,
-                tcpConf.TcpKeepAliveTime > 0 ? $"{tcpConf.TcpKeepAliveTime} sec" : "Disabled"
-            );
+            PrintTcpInfo(tcpLogger, baseConfig, iface);
 
             //Init new tcp server with/without ssl
             return iface.Ssl
                 ? TcpTransport.CreateServer(in tcpConf, ssl: new HostAwareServerSslOptions(iface))
                 : TcpTransport.CreateServer(in tcpConf, UseInlineScheduler);
 
-        }
-
-
-        private Action<Socket> OnSocketConfiguring(TransportInterface iface)
-        {
-            TcpConfigJson baseConf = _conf.Instance;
-
-            //NoDelay is not supported on TLS connections and may be enabled with global config or local config
-            bool noDelay = iface.TcpNoDelay ?? baseConf.NoDelay; //Use the global config value
-
-            //If tls and nodelay warn the user
-            if (iface.Ssl && noDelay)
-            {
-                tcpLogger.Warn("TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);                
-            }
-
-            return serverSock =>
-            {
+            // Callback to configure the server socket after it has been created
+            void OnSocketConfiguring(Socket serverSock)
+            {  
                 //Set the socket options for the server socket
                 serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, noDelay);
-                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, baseConf.TcpSendBufferSize);
-                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, baseConf.TcpRecvBufferSize);
-                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, ReuseAddress);
-            };
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, baseConfig.TcpSendBufferSize);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, baseConfig.TcpRecvBufferSize);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, baseConfig.ReuseAddress);
+            }
+        }
+
+        private static void PrintTcpInfo(ILogProvider logger, TcpConfigJson global, TransportInterface iface)
+        {
+            VariableLogFormatter builder = new(logger, LogLevel.Verbose);
+
+            builder.Append("TCPConfig: ");
+            builder.AppendFormat("{iface} | ", iface);
+            builder.AppendFormat("tls={tls} | ", iface.Ssl);
+            builder.AppendFormat("threads={thds} | ", global.AcceptThreads);
+            builder.AppendFormat("raddr={raddr} | ", global.ReuseAddress);
+            builder.AppendFormat("rport={rport} | ", global.ReusePort);
+            builder.AppendFormat("rsock={rsock} | ", global.ReuseSocket);
+            builder.AppendFormat("rxbuf={rxbuf} | ", global.TcpRecvBufferSize);
+            builder.AppendFormat("txbuf={txbuf} | ", global.TcpSendBufferSize);
+            builder.AppendFormat("nodel={nodel} | ", iface.TcpNoDelay ?? global.NoDelay);
+            builder.AppendFormat("mxcon={mxcon} | ", global.MaxConnections);
+            builder.AppendFormat("backlog={blog} | ", global.BackLog);
+            builder.AppendFormat("keepalive={keepalive}", (global.TcpKeepAliveTime > 0 ? $"{global.TcpKeepAliveTime} sec" : "Disabled"));
+
+            builder.Flush();
         }
     }
 }

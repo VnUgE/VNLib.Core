@@ -138,7 +138,7 @@ namespace VNLib.WebServer.Config.Model
 
         public override bool Equals(object? obj) => obj is TransportInterface iface && GetHashCode() == iface.GetHashCode();
 
-        public override string ToString() => $"[{Address}:{Port}]";
+        public override string ToString() => $"{Address}:{Port}\\tcp";
 
     }
 }
