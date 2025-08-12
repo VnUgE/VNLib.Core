@@ -10,6 +10,7 @@
     "max_connections": 50000,     //Per listener instance
     "backlog": 1000,              //OS socket backlog,
     "no_delay": false,            //OS socket no delay (TCP_NODELAY) to disable Nagle's algorithm
+    "reuse_address": true,        //OS socket reuse address (SO_REUSEADDR) to allow multiple listeners on the same port
 
     "tx_buffer": 65536,           //OS socket send buffer size
     "rx_buffer": 65536            //OS socket recv buffer size

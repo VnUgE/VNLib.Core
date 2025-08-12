@@ -46,6 +46,11 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("no_delay")]
         public bool NoDelay { get; set; } = false;
 
+        /// <summary>
+        /// If true, the server will use the SO_REUSEADDR socket option.
+        /// </summary>
+        [JsonPropertyName("reuse_address")]
+        public bool ReuseAddress { get; set; } = true;
         /*
          * Buffer sizes are a pain, this is a good default size for medium bandwith connections (100mbps)
          * using the BDP calculations
