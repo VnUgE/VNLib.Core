@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -22,12 +22,26 @@
 * along with VNLib.WebServer. If not, see http://www.gnu.org/licenses/.
 */
 
+using System;
 using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
     internal sealed class TcpConfigJson : IJsonOnDeserialized
     {
+        /// <summary>
+        /// Number of worker threads (accept events) to accept incoming connections.
+        /// </summary>
+        [JsonIgnore]
+        public uint AcceptThreads { get; set; } = (uint)Environment.ProcessorCount;
+
+        /// <summary>
+        /// A value that indicates if socket objects should be reused after a 
+        /// connection is closed.
+        /// </summary>
+        [JsonIgnore]
+        public bool ReuseSocket { get; set; } = true;
+
         [JsonPropertyName("keepalive_sec")]
         public int TcpKeepAliveTime { get; set; } = 4;
 
@@ -51,6 +65,13 @@ namespace VNLib.WebServer.Config.Model
         /// </summary>
         [JsonPropertyName("reuse_address")]
         public bool ReuseAddress { get; set; } = true;
+
+        /// <summary>
+        /// If true, the server will use the SO_REUSEPORT socket option.
+        /// </summary>
+        [JsonPropertyName("reuse_port")]
+        public bool ReusePort { get; set; } = false;
+
         /*
          * Buffer sizes are a pain, this is a good default size for medium bandwith connections (100mbps)
          * using the BDP calculations
