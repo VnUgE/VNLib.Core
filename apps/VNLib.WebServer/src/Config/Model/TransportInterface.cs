@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -43,6 +43,14 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("address")]
         public string? Address { get; set; }
 
+        /// <summary>
+        /// Enables TCP_NODELAY option for the socket. This is useful for
+        /// reducing latency by disabling Nagle's algorithm, which can delay
+        /// small packets to coalesce them into larger packets.
+        /// </summary>
+        [JsonPropertyName("tcp_no_delay")]
+        public bool? TcpNoDelay { get; set; }
+
         [JsonPropertyName("certificate")]
         public string? Cert { get; set; }
 
@@ -59,7 +67,7 @@ namespace VNLib.WebServer.Config.Model
         public string? PrivKeyPassword { get; set; }
 
         [JsonPropertyName("use_os_ciphers")]
-        public bool UseOsCiphers { get; set; }
+        public bool UseOsCiphers { get; set; }       
 
         public IPEndPoint GetEndpoint()
         {
@@ -130,7 +138,7 @@ namespace VNLib.WebServer.Config.Model
 
         public override bool Equals(object? obj) => obj is TransportInterface iface && GetHashCode() == iface.GetHashCode();
 
-        public override string ToString() => $"[{Address}:{Port}]";
+        public override string ToString() => $"{Address}:{Port}\\tcp";
 
     }
 }

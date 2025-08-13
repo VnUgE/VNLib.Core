@@ -17,6 +17,20 @@ vars:
 
 tasks:
 
+  default:
+    desc: 'When run from a library directory, builds the managed project'
+    dir: "{{ .USER_WORKING_DIR }}"
+    vars:
+      CONFIGURATION: '{{ .CONFIGURATION | default "release" }}'
+    cmds:
+     - cmd: cd src/ && 
+        dotnet build 
+        --configuration {{ .CONFIGURATION }} 
+        --verbosity detailed
+        {{ .MS_ARGS }} 
+        {{ .CLI_ARGS }}
+    
+
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
     dir: '{{ .USER_WORKING_DIR }}'
