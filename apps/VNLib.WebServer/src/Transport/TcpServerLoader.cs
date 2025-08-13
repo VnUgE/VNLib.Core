@@ -52,8 +52,12 @@ namespace VNLib.WebServer.Transport
             TcpConfigJson conf = hostConfig.GetConfigProperty<TcpConfigJson>(Entry.TCP_CONF_PROP_NAME) ?? new TcpConfigJson();
 
             conf.ReuseAddress |= args.HasArgument("--reuse-address");
-            conf.ReusePort    |= args.HasArgument("--reuse-port");          //TODO: currently not supported
-            conf.ReuseSocket  |= !args.HasArgument("--no-reuse-socket");    //Always attempt to reuse socket unless explicitly disabled
+            conf.ReusePort    |= args.HasArgument("--reuse-port");          //TODO: port reuse currently not supported
+            
+            if (args.HasArgument("--no-reuse-socket"))
+            {
+                conf.ReuseSocket = false; //Explicitly disable reuse socket
+            }
 
             string? ThreadCountArg = args.GetArgument("-t") ?? args.GetArgument("--threads");
             if (uint.TryParse(ThreadCountArg, out uint threadCount))
