@@ -49,19 +49,45 @@ namespace VNLib.Utils.IO
         [return:MarshalAs(UnmanagedType.I4)]
         private static unsafe partial int GetFileAttributes([MarshalAs(UnmanagedType.LPWStr)] string path);
 
-        static readonly bool IsWindows = OperatingSystem.IsWindows();
+        //Impl for linux
+
+        const int LIBC_R_OK = 4; // Read permission
+        const int LIBC_W_OK = 2; // Write permission
+        const int LIBC_X_OK = 1; // Execute permission
+        const int LIBC_F_OK = 0; // Check for existence only
+
+        [LibraryImport("libc", EntryPoint = "access", StringMarshalling = StringMarshalling.Utf8)]        
+        [return:MarshalAs(UnmanagedType.I4)]
+        private static unsafe partial int Access([MarshalAs(UnmanagedType.LPStr)] string path, int mode);
+
 
         /// <summary>
-        /// Determines if a file exists. If application is current running in the Windows operating system, Shlwapi.PathFileExists is invoked,
-        /// otherwise <see cref="File.Exists(string?)"/> is invoked
+        /// Attempts to check if a file exists at the specified path in an operating system optimized way. 
+        /// Uses windows API on Windows and libc on Linux. All other operating systems will use the standard .NET File.Exists method.
         /// </summary>
-        /// <param name="filePath">the path to the file</param>
+        /// <param name="filePath">The path to the file</param>
         /// <returns>True if the file can be opened, false otherwise</returns>
+        /// <exception cref="ArgumentException">If the path is null or an empty string</exception>
         public static bool FileExists(string filePath)
         {
+            ArgumentException.ThrowIfNullOrEmpty(filePath);
+
+            //Normalize the file path to an absolute path
+            filePath = Path.GetFullPath(filePath);
+
             //If windows is detected, use the unmanged function
-            if (!IsWindows)
+            if (OperatingSystem.IsWindows())
             {
+                //Invoke the winapi file function
+                return PathFileExists(filePath);
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                //Invoke the libc access function to check if the file exists
+                //If the result is 0, the file exists
+                return Access(filePath, LIBC_F_OK) == 0;
+            }
+
                 return File.Exists(filePath);
             }
 
