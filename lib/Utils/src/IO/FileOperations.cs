@@ -25,6 +25,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace VNLib.Utils.IO
 {  
@@ -91,8 +92,46 @@ namespace VNLib.Utils.IO
                 return File.Exists(filePath);
             }
 
-            //Invoke the winapi file function
-            return PathFileExists(filePath);
+        /// <summary>
+        /// Checks if a file can be accessed and if the specified access permissions are granted.
+        /// </summary>
+        /// <param name="filePath">The system file path to read</param>
+        /// <param name="access">The <see cref="FileAccess"/> mode to check permissions for</param>
+        /// <returns>True if the file exists and the current user has permissions to access with the desired access modes</returns>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        /// <remarks>
+        /// This method is only supported on Linux operating systems. Please read the security notes from GNU on using 
+        /// the <a href="https://man7.org/linux/man-pages/man2/access.2.html">access</a> function 
+        /// </remarks>
+        [SupportedOSPlatform("linux")]
+        public static bool CanAccess(string filePath, FileAccess access)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(filePath);
+
+            if (!OperatingSystem.IsLinux())
+            {
+                throw new NotSupportedException("File access checks are only supported on Linux at this time.");
+            }
+
+            int flags = LIBC_F_OK; // Default to existence check
+
+            // Check for read permission
+            if ((access & FileAccess.Read) > 0)
+            {
+                flags |= LIBC_R_OK;
+            }
+
+            // Check for write permission
+            if ((access & FileAccess.Write) > 0)
+            {
+                flags |= LIBC_W_OK;
+            }
+
+            // Normalize the file path to an absolute path
+            filePath = Path.GetFullPath(filePath);
+
+            return Access(filePath, flags) == 0;
         }
 
         /// <summary>
