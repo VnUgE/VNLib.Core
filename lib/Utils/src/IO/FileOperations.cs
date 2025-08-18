@@ -89,8 +89,8 @@ namespace VNLib.Utils.IO
                 return Access(filePath, LIBC_F_OK) == 0;
             }
 
-                return File.Exists(filePath);
-            }
+            return File.Exists(filePath);
+        }
 
         /// <summary>
         /// Checks if a file can be accessed and if the specified access permissions are granted.
@@ -145,22 +145,22 @@ namespace VNLib.Utils.IO
         public static FileAttributes GetAttributes(string filePath)
         {
             //If windows is detected, use the unmanged function
-            if (!IsWindows)
+            if (OperatingSystem.IsWindows())
             {
-                return File.GetAttributes(filePath);
-            }
+                //Invoke the winapi file function and cast the returned int value to file attributes
+                int attr = GetFileAttributes(filePath);
 
-            //Invoke the winapi file function and cast the returned int value to file attributes
-            int attr = GetFileAttributes(filePath);
+                //Check for error
+                if (attr == INVALID_FILE_ATTRIBUTES)
+                {
+                    throw new FileNotFoundException("The requested file was not found", filePath);
+                }
 
-            //Check for error
-            if (attr == INVALID_FILE_ATTRIBUTES)
-            {
-                throw new FileNotFoundException("The requested file was not found", filePath);
-            }
+                //Cast to file attributes and return
+                return (FileAttributes)attr;
+            }          
 
-            //Cast to file attributes and return
-            return (FileAttributes)attr;
+            return File.GetAttributes(filePath);
         }
     }
 }
