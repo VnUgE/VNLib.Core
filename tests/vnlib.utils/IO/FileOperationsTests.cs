@@ -87,11 +87,15 @@ namespace VNLib.Utils.IO.Tests
         public void GetAttributesReturnsAttributesForExistingFileTest()
         {
             FileAttributes attrs = FileOperations.GetAttributes(_tempFilePath);
+            FileAttributes expected = File.GetAttributes(_tempFilePath);
 
             Assert.IsTrue(
                 (attrs & FileAttributes.Normal) == FileAttributes.Normal || (attrs & FileAttributes.Archive) == FileAttributes.Archive,
                 message: "Expected Normal or Archive attribute on test file"
             );
+
+            // Test against native File.GetAttributes result
+            Assert.AreEqual(expected, attrs, message: "File attributes should match those returned by File.GetAttributes");
         }
 
         [TestMethod()]
@@ -158,31 +162,47 @@ namespace VNLib.Utils.IO.Tests
                 return;
             }
 
-            // /etc/passwd is expected to be world-readable on most Linux systems
-            const string passwdPath = "/etc/passwd";
+            // Try setting readonly access to a file
+            string testFile = Path.GetTempFileName();
 
-            Assert.IsTrue(
-                File.Exists(passwdPath),
-                message: "/etc/passwd should exist on a Linux system"
-            );
+            try
+            {
+                File.WriteAllText(testFile, "test");
+                FileAttributes attrs = File.GetAttributes(testFile);
 
-            // Read should be allowed for non-root users
-            Assert.IsTrue(
-                FileOperations.CanAccess(passwdPath, FileAccess.Read),
-                message: "CanAccess should report read access for /etc/passwd"
-            );
+                // Check that before setting readonly, we had read/write access
+                Assert.IsTrue(
+                    (attrs & FileAttributes.Normal) > 0 || (attrs & FileAttributes.Archive) > 0,
+                    message: "Test access file should exist and have Normal or Archive attribute"
+                );
 
-            // Write should normally not be allowed for an unprivileged user
-            Assert.IsFalse(
-                FileOperations.CanAccess(passwdPath, FileAccess.Write),
-                message: "CanAccess should report no write access for /etc/passwd for unprivileged user"
-            );
+                File.SetAttributes(testFile, attrs | FileAttributes.ReadOnly);
 
-            // Write + read should normally not be allowed for an unprivileged user
-            Assert.IsFalse(
-                FileOperations.CanAccess(passwdPath, FileAccess.ReadWrite),
-                message: "CanAccess should report no r+w access for /etc/passwd for unprivileged user"
-            );
+                // Read should be allowed since the file is readonly
+                Assert.IsTrue(
+                    FileOperations.CanAccess(testFile, FileAccess.Read),
+                    message: "CanAccess should report read access for test file"
+                );
+
+                // Write is not allowed since the file has been made readonly
+                Assert.IsFalse(
+                    FileOperations.CanAccess(testFile, FileAccess.Write),
+                    message: "CanAccess should report no write access for test file for unprivileged user"
+                );
+
+                // Write + read is not allowed since the file has been made readonly
+                Assert.IsFalse(
+                    FileOperations.CanAccess(testFile, FileAccess.ReadWrite),
+                    message: "CanAccess should report no r+w access for test file for unprivileged user"
+                );
+            }
+            finally
+            {
+                if (File.Exists(testFile))
+                {
+                    File.Delete(testFile);
+                }
+            }
         }
 
         /*
