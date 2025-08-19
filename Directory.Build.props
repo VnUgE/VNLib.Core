@@ -1,0 +1,12 @@
+<Project>
+   <PropertyGroup>
+      <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+      <BuildInParallel>true</BuildInParallel>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation> 
+      <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+
+      <!-- Ignore underscores in public constant fields -->
+      <NoWarn>CS1591</NoWarn>
+
+   </PropertyGroup>
+</Project>
