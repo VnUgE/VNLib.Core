@@ -28,9 +28,12 @@ body = """
             **Breaking Change:** \
         {% endif -%}
         {{ commit.message | split(pat="\n") | first | upper_first | trim }} \
+        - \
         {% if commit.scope -%}
-           - ({{ commit.scope }})\
+           ({{ commit.scope }}) \
         {% endif -%}
+        [{{ commit.id | truncate(length=7, end="") }}]\
+        (https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id={{ commit.id }})\ 
     {% endfor %}
 {% endfor %}\n
 """

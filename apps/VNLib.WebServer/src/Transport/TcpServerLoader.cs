@@ -23,23 +23,22 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
-using System.Collections.Generic;
 
-using VNLib.Utils.Memory;
-using VNLib.Utils.Logging;
-using VNLib.Utils.Resources;
 using VNLib.Net.Http;
 using VNLib.Net.Transport.Tcp;
-
-using VNLib.WebServer.Config;
-using VNLib.WebServer.RuntimeLoading;
-using VNLib.WebServer.Config.Model;
-using VNLib.WebServer.VirtualHosts;
-
 using VNLib.Plugins.Essentials.ServiceStack;
 using VNLib.Plugins.Essentials.ServiceStack.Construction;
+using VNLib.Utils.Logging;
+using VNLib.Utils.Memory;
+using VNLib.Utils.Resources;
+using VNLib.WebServer.Bootstrap;
+using VNLib.WebServer.Config;
+using VNLib.WebServer.Config.Model;
+using VNLib.WebServer.RuntimeLoading;
+using VNLib.WebServer.VirtualHosts;
 
 namespace VNLib.WebServer.Transport
 {
@@ -47,18 +46,30 @@ namespace VNLib.WebServer.Transport
     {
         const int CacheQuotaDefault = 0;    //Disable cache quota by default, allows unlimited cache
 
-        const string TransportLogTemplate = @"Interface (TCP/IP): {iface} RX: {rx} TX: {tx} TLS: {tls} threads: {threads} max-cons: {max} Backlog: {blog} Keepalive: {keepalive}";
 
         private readonly LazyInitializer<TcpConfigJson> _conf = new(() =>
         {
-            return hostConfig.GetConfigProperty<TcpConfigJson>(Entry.TCP_CONF_PROP_NAME) ?? new TcpConfigJson();
+            TcpConfigJson conf = hostConfig.GetConfigProperty<TcpConfigJson>(Entry.TCP_CONF_PROP_NAME) ?? new TcpConfigJson();
+
+            conf.ReuseAddress |= args.HasArgument("--reuse-address");
+            conf.ReusePort    |= args.HasArgument("--reuse-port");          //TODO: port reuse currently not supported
+            
+            if (args.HasArgument("--no-reuse-socket"))
+            {
+                conf.ReuseSocket = false; //Explicitly disable reuse socket
+            }
+
+            string? ThreadCountArg = args.GetArgument("-t") ?? args.GetArgument("--threads");
+            if (uint.TryParse(ThreadCountArg, out uint threadCount))
+            {
+                conf.AcceptThreads = threadCount;
+            }
+
+            return conf;
         });
 
-        private readonly string? ThreadCountArg         = args.GetArgument("-t") ?? args.GetArgument("--threads");
         private readonly bool UseInlineScheduler        = args.HasArgument("--inline-scheduler");
         private readonly bool EnableTransportLogging    = args.HasArgument("--log-transport");
-        private readonly bool NoReuseSocket             = args.HasArgument("--no-reuse-socket");
-        private readonly bool ReuseAddress              = args.HasArgument("--reuse-address");
 
         /// <summary>
         /// The user confiugred TCP transmission buffer size
@@ -151,17 +162,36 @@ namespace VNLib.WebServer.Transport
         
         private ITransportProvider GetProviderForInterface(TransportInterface iface)
         {
-            if (!uint.TryParse(ThreadCountArg, out uint threadCount))
-            {
-                threadCount = (uint)Environment.ProcessorCount;
-            }
 
             TcpConfigJson baseConfig = _conf.Instance;
-           
+
+            //NoDelay is not supported on TLS connections and may be enabled with global config or local config
+            bool noDelay = iface.TcpNoDelay ?? baseConfig.NoDelay; //Use the global config value
+
+            //If tls and nodelay warn the user
+            if (iface.Ssl && noDelay)
+            {
+                tcpLogger.Warn("Socket option TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);
+            }
+
+            //Print warning message, since inline scheduler is an avanced feature
+            if (iface.Ssl && UseInlineScheduler)
+            {
+                tcpLogger.Debug("[WARN]: Inline scheduler is not available on server {server} when using TLS", iface);
+            }
+
+#if !DEBUG
+            //If debug logging is not enabled, disable the debug tcp log
+            if (!EnableTransportLogging)
+            {
+                tcpLogger.Debug("[WARN]: Transport trace/log is only available when complied with DEBUG");
+            }
+#endif
+
             TCPConfig tcpConf = new()
             {
                 LocalEndPoint           = iface.GetEndpoint(),
-                AcceptThreads           = threadCount,
+                AcceptThreads           = baseConfig.AcceptThreads,
                 CacheQuota              = CacheQuotaDefault,
                 Log                     = tcpLogger,
                 DebugTcpLog             = EnableTransportLogging,           //Only available in debug logging
@@ -170,44 +200,48 @@ namespace VNLib.WebServer.Transport
                 TcpKeepAliveTime        = baseConfig.TcpKeepAliveTime,
                 KeepaliveInterval       = baseConfig.KeepaliveInterval,
                 MaxRecvBufferData       = baseConfig.MaxRecvBufferData,
-                ReuseSocket             = !NoReuseSocket,                   //Default to always reuse socket if allowed
+                ReuseSocket             = baseConfig.ReuseSocket,
                 OnSocketCreated         = OnSocketConfiguring,
                 BufferPool              = MemoryPoolManager.GetTcpPool(args.ZeroAllocations, MemoryUtil.Shared)
             };
 
-            //Print warning message, since inline scheduler is an avanced feature
-            if (iface.Ssl && UseInlineScheduler)
-            {
-                tcpLogger.Debug("[WARN]: Inline scheduler is not available on server {server} when using TLS", tcpConf.LocalEndPoint);
-            }
-
-            tcpLogger.Verbose(TransportLogTemplate,
-                iface,
-                baseConfig.TcpRecvBufferSize,
-                baseConfig.TcpSendBufferSize,
-                iface.Ssl,
-                threadCount,
-                tcpConf.MaxConnections,
-                tcpConf.BackLog,
-                tcpConf.TcpKeepAliveTime > 0 ? $"{tcpConf.TcpKeepAliveTime} sec" : "Disabled"
-            );
+            PrintTcpInfo(tcpLogger, baseConfig, iface);
 
             //Init new tcp server with/without ssl
             return iface.Ssl
                 ? TcpTransport.CreateServer(in tcpConf, ssl: new HostAwareServerSslOptions(iface))
                 : TcpTransport.CreateServer(in tcpConf, UseInlineScheduler);
 
+            // Callback to configure the server socket after it has been created
+            void OnSocketConfiguring(Socket serverSock)
+            {  
+                //Set the socket options for the server socket
+                serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, noDelay);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, baseConfig.TcpSendBufferSize);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, baseConfig.TcpRecvBufferSize);
+                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, baseConfig.ReuseAddress);
+            }
         }
 
-
-        private void OnSocketConfiguring(Socket serverSock)
+        private static void PrintTcpInfo(ILogProvider logger, TcpConfigJson global, TransportInterface iface)
         {
-            TcpConfigJson baseConf = _conf.Instance;
+            VariableLogFormatter builder = new(logger, LogLevel.Verbose);
 
-            serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, baseConf.NoDelay);
-            serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendBuffer, baseConf.TcpSendBufferSize);
-            serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveBuffer, baseConf.TcpRecvBufferSize);
-            serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, ReuseAddress);
+            builder.Append("TCPConfig: ");
+            builder.AppendFormat("{iface} | ", iface);
+            builder.AppendFormat("tls={tls} | ", iface.Ssl);
+            builder.AppendFormat("threads={thds} | ", global.AcceptThreads);
+            builder.AppendFormat("raddr={raddr} | ", global.ReuseAddress);
+            builder.AppendFormat("rport={rport} | ", global.ReusePort);
+            builder.AppendFormat("rsock={rsock} | ", global.ReuseSocket);
+            builder.AppendFormat("rxbuf={rxbuf} | ", global.TcpRecvBufferSize);
+            builder.AppendFormat("txbuf={txbuf} | ", global.TcpSendBufferSize);
+            builder.AppendFormat("nodel={nodel} | ", iface.TcpNoDelay ?? global.NoDelay);
+            builder.AppendFormat("mxcon={mxcon} | ", global.MaxConnections);
+            builder.AppendFormat("backlog={blog} | ", global.BackLog);
+            builder.AppendFormat("keepalive={keepalive}", (global.TcpKeepAliveTime > 0 ? $"{global.TcpKeepAliveTime} sec" : "Disabled"));
+
+            builder.Flush();
         }
     }
 }
