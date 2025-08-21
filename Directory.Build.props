@@ -10,8 +10,9 @@
 
         CS0618: Errors when using obsolete APIs.
         CS9113: Unread function parameters
+        IDE0251: Apply readonly modifier to parameters
       -->
-      <WarningsAsErrors>CS0618;</WarningsAsErrors>
+      <WarningsAsErrors>CS0618;IDE0251</WarningsAsErrors>
       
       <!-- Ignore underscores in public constant fields -->
       <NoWarn>CS1591</NoWarn>
