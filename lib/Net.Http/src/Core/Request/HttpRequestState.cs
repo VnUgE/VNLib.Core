@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: HttpRequest.cs 
+* File: HttpRequestState.cs 
 *
-* HttpRequest.cs is part of VNLib.Net.Http which is part of the larger 
+* HttpRequestState.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -25,7 +25,7 @@
 using System;
 using System.Net;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Request
 {
 
     /// <summary>

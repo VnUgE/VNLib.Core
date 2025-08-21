@@ -55,7 +55,7 @@ namespace VNLib.Net.Http
         {
             Interlocked.Increment(ref OpenConnectionCount);
 
-            HttpContext? context = ContextStore.Rent();
+            HttpContext? context = _contextStore.Rent();
 
             try
             {
@@ -90,7 +90,7 @@ namespace VNLib.Net.Http
                     }
 
                     //Timeout reset to keepalive timeout waiting for more data on the transport
-                    stream.ReadTimeout = (int)_config.ConnectionKeepAlive.TotalMilliseconds;
+                    stream.ReadTimeout = _keepAliveTimeoutSeconds;
 
                 } while (true);
 
@@ -106,7 +106,7 @@ namespace VNLib.Net.Http
                     IAlternateProtocol ap = context.AlternateProtocol;
 
                     //Release the context before listening to free it back to the pool
-                    ContextStore.Return(context);
+                    _contextStore.Return(context);
                     context = null;
 
                     //Remove transport timeouts
@@ -156,7 +156,7 @@ namespace VNLib.Net.Http
             //Return the context for normal operation (alternate protocol will return before now so it will be null)
             if (context != null)
             {
-                ContextStore.Return(context);
+                _contextStore.Return(context);
             }
 
             //All done, time to close transport and exit
@@ -186,24 +186,32 @@ namespace VNLib.Net.Http
 
             try
             {
-                HttpPerfCounter.StartCounter(ref counter);
+                int parseStatus;
 
-                //Try to parse the http request (may throw exceptions, let them propagate to the transport layer)
-                int status = (int)ParseRequest(context);
+                {
+                    HttpPerfCounter.StartCounter(ref counter);
 
-                HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Parse");
+                    //Try to parse the http request (may throw exceptions, let them propagate to the transport layer)
+                    parseStatus = (int)ParseRequest(context);
+
+                    HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Parse");
+                }
 
                 //Check status code for socket error, if so, return false to close the connection
-                if (status >= 1000)
+                if (parseStatus >= 1000)
                 {
-                    _config.ServerLog.Debug("Failed to parse request, error: {s}. Force closing transport", status);
+                    if (_config.ServerLog.IsEnabled(LogLevel.Debug))
+                    {
+                        _config.ServerLog.Debug("Failed to parse request, error: {s}. Force closing transport", parseStatus);
+                    }
+
                     return false;
                 }
 
                 bool keepalive = true;
 
                 //Handle an error parsing the request
-                if (!PreProcessRequest(context, (HttpStatusCode)status, ref keepalive))
+                if (!PreProcessRequest(context, (HttpStatusCode)parseStatus, ref keepalive))
                 {
                     return false;
                 }
@@ -237,13 +245,14 @@ namespace VNLib.Net.Http
                 }
 #endif
 
-                HttpPerfCounter.StartCounter(ref counter);
+                {
+                    HttpPerfCounter.StartCounter(ref counter);
 
-                await context.WriteResponseAsync();
+                    await context.WriteResponseAsync();
 
-                await context.FlushTransportAsync();
+                    await context.FlushTransportAsync();
 
-                HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
+                    HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
                 }
 
                 /*
@@ -393,7 +402,7 @@ namespace VNLib.Net.Http
                 Debug.Assert(context.Request.State.HttpVersion == HttpVersion.Http11, "Request parsing allowed keepalive for a non http1.1 connection, this is a bug");
 
                 context.Response.Headers.Set(HttpResponseHeader.Connection, "keep-alive");
-                context.Response.Headers.Set(HttpResponseHeader.KeepAlive, KeepAliveTimeoutHeaderValue);
+                context.Response.Headers.Set(HttpResponseHeader.KeepAlive, _keepAliveTimeoutHeaderValue);
             }
             else
             {

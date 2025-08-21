@@ -100,13 +100,17 @@ namespace VNLib.Net.Http
         /// <summary>
         /// The cached HTTP1/1 keepalive timeout header value
         /// </summary>
-        private readonly string KeepAliveTimeoutHeaderValue;
+        private readonly string _keepAliveTimeoutHeaderValue;
+
+        /// <summary>
+        /// A cached value of the keep alive timeout in seconds.
+        /// </summary>
+        private readonly int _keepAliveTimeoutSeconds;
 
         /// <summary>
         /// Reusable store for obtaining <see cref="HttpContext"/> 
         /// </summary>
-        private readonly ObjectRental<HttpContext> ContextStore;
-      
+        private readonly ObjectRental<HttpContext> _contextStore;
         #endregion
 
         /// <summary>
@@ -152,7 +156,7 @@ namespace VNLib.Net.Http
             Transports = MapListeners([.. bindings]);
 
             //Cache supported compression methods, or none if compressor is null
-            SupportedCompressionMethods = config.CompressorManager == null 
+            SupportedCompressionMethods = config.CompressorManager is null
                 ? CompressionMethod.None 
                 : config.CompressorManager.GetSupportedMethods();
 
@@ -383,11 +387,11 @@ namespace VNLib.Net.Http
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
-        public void CacheClear() => ContextStore.CacheClear();
+        public void CacheClear() => _contextStore.CacheClear();
 
         /// <inheritdoc/>
         /// <exception cref="ObjectDisposedException"></exception>
-        public void CacheHardClear() => ContextStore.CacheHardClear();
+        public void CacheHardClear() => _contextStore.CacheHardClear();
 
         /// <summary>
         /// Writes the specialized log for a socket exception

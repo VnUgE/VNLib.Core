@@ -30,7 +30,7 @@ using VNLib.Utils;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Request
 {
     internal sealed class HttpRequest(TransportManager transport, ushort maxUploads) : IHttpLifeCycle
 #if DEBUG
