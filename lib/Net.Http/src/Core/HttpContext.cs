@@ -33,6 +33,7 @@ using VNLib.Utils.Memory.Caching;
 using VNLib.Net.Http.Core.Buffering;
 using VNLib.Net.Http.Core.Compression;
 using VNLib.Net.Http.Core.Response;
+using VNLib.Net.Http.Core.Request;
 
 namespace VNLib.Net.Http.Core
 {
@@ -84,26 +85,12 @@ namespace VNLib.Net.Http.Core
         private readonly ManagedHttpCompressor? _compressor;
         private ITransportContext? _ctx;
         
-        public HttpContext(HttpServer server, CompressionMethod supportedMethods)
+        public HttpContext(HttpServer server, ManagedHttpCompressor? compressor)
         {
             ParentServer = server;
+            _compressor = compressor;
 
             ContextFlags = new(0);
-
-            /*
-             * We can alloc a new compressor if the server supports compression.
-             * If no compression is supported, the compressor will never be accessed
-             * and never needs to be allocated
-             */
-            if (supportedMethods != CompressionMethod.None)
-            {
-                Debug.Assert(server.Config.CompressorManager != null, "Expected non-null compressor manager");
-                _compressor = new ManagedHttpCompressor(server.Config.CompressorManager);
-            }
-            else
-            {
-                _compressor = null;
-            }
 
             Transport = new();
 

@@ -62,6 +62,7 @@ using VNLib.Utils.Logging;
 using VNLib.Utils.Memory.Caching;
 
 using VNLib.Net.Http.Core;
+using VNLib.Net.Http.Core.Compression;
 
 namespace VNLib.Net.Http
 {
@@ -156,7 +157,22 @@ namespace VNLib.Net.Http
                 : config.CompressorManager.GetSupportedMethods();
 
             //Create a new context store
-            ContextStore = ObjectRental.CreateReusable(() => new HttpContext(this, SupportedCompressionMethods));
+            _contextStore = ObjectRental.CreateReusable(ContextCtor);
+        }
+
+        private HttpContext ContextCtor()
+        {
+            /*
+             * We can alloc a new compressor if the server supports compression.
+             * If no compression is supported, the compressor will never be accessed
+             * and never needs to be allocated
+             */
+
+            ManagedHttpCompressor? compressor = _config.CompressorManager is not null
+                ? new ManagedHttpCompressor(_config.CompressorManager)
+                : null;
+
+            return new HttpContext(this, compressor);
         }
 
         private static void ValidateConfig(in HttpConfig conf)

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -89,7 +89,7 @@ namespace VNLib.Net.Http.Core
              * It will be known at startup whether compression is supported, if not this is 
              * essentially a constant. 
              */
-            if (ParentServer.SupportedCompressionMethods != CompressionMethod.None)
+            if (_compressor is not null)
             {
                 //Determine if compression should be used
                 bool compressionDisabled = 
@@ -140,9 +140,9 @@ namespace VNLib.Net.Http.Core
              * User submitted a 0 length response body, let hooks clean-up 
              * any resources. Simply flush headers and exit
              */
-            else if(length == 0)
+            else if (length == 0)
             {
-                
+
                 Response.FlushHeaders();
                 return Task.CompletedTask;
             }
@@ -152,7 +152,7 @@ namespace VNLib.Net.Http.Core
                 return WriteEntityDataAsync(length, compMethod);
             }
         }
-      
+
         private async Task WriteEntityDataAsync(long length, CompressionMethod compMethod)
         {
             //Determine if buffer is required
@@ -184,7 +184,6 @@ namespace VNLib.Net.Http.Core
                 await ResponseBody.WriteEntityAsync(_compressor, output, buffer);
             }
         }
-
 
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
 
