@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -25,7 +25,6 @@
 using System;
 using System.Net;
 using System.Linq;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -34,15 +33,11 @@ using VNLib.Utils.IO;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 
-namespace VNLib.Net.Http.Core
+namespace VNLib.Net.Http.Core.Request
 {
 
     internal static class Http11ParseExtensions
     {
-        /// <summary>
-        /// An internal HTTP character binary pool for HTTP specific internal buffers
-        /// </summary>
-        public static ArrayPool<byte> InputDataBufferPool { get; } = ArrayPool<byte>.Create();
 
         /// <summary>
         /// Stores the state of an HTTP/1.1 parsing operation
@@ -82,7 +77,13 @@ namespace VNLib.Net.Http.Core
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         /// <exception cref="UriFormatException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1ParseRequestLine(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, Span<char> lineBuf, bool usingTls)
+        public static HttpStatusCode Http1ParseRequestLine(
+            this HttpRequest Request,
+            ref Http1ParseState parseState,
+            ref TransportReader reader,
+            Span<char> lineBuf,
+            bool usingTls
+        )
         {
             /*
              * Evil mutable struct, get a local mutable reference to the request's 
@@ -104,7 +105,7 @@ namespace VNLib.Net.Http.Core
                 //empty request
                 return (HttpStatusCode)1000;
             }
-            
+
             //true up the request line to actual size
             requestLine = lineBuf[..(int)requestResult].Trim();
 
@@ -120,15 +121,15 @@ namespace VNLib.Net.Http.Core
             {
                 return HttpStatusCode.MethodNotAllowed;
             }
-            
+
             //location string should be from end of verb to HTTP/ NOTE: Only supports http... this is an http server
-            
+
             //Client must specify an http version prepended by a single whitespace(rfc2612)
             if ((endloc = requestLine.LastIndexOf(" HTTP/", StringComparison.OrdinalIgnoreCase)) == -1)
             {
                 return HttpStatusCode.HttpVersionNotSupported;
             }
-            
+
             //Try to parse the requested http version, only supported versions
             if ((reqState.HttpVersion = HttpHelpers.ParseHttpVersion(requestLine[endloc..])) == HttpVersion.None)
             {
@@ -185,7 +186,13 @@ namespace VNLib.Net.Http.Core
         /// <param name="lineBuf">The buffer read data from the transport with</param>
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1ParseHeaders(this HttpRequest Request, ref Http1ParseState parseState, ref TransportReader reader, ref readonly HttpConfig Config, Span<char> lineBuf)
+        public static HttpStatusCode Http1ParseHeaders(
+            this HttpRequest Request,
+            ref Http1ParseState parseState,
+            ref TransportReader reader,
+            ref readonly HttpConfig Config,
+            Span<char> lineBuf
+        )
         {
             /*
             * Evil mutable struct, get a local mutable reference to the request's 
@@ -199,7 +206,7 @@ namespace VNLib.Net.Http.Core
                 bool hostFound = false;
                 ERRNO charsRead;
                 ReadOnlySpan<char> headerName, requestHeaderValue;
-                
+
                 /*
                  * This loop will read "lines" from the transport/reader buffer as headers
                  * and store them in the rented character buffer with 0 allocations.
@@ -242,8 +249,8 @@ namespace VNLib.Net.Http.Core
                     if (charsRead < 0 || headerCount > Config.MaxRequestHeaderCount)
                     {
                         return HttpStatusCode.RequestHeaderFieldsTooLarge;
-                    }                    
-                    
+                    }
+
                     {
                         //Get the true size of the read header line as a readonly span 
                         ReadOnlySpan<char> header = lineBuf[..(int)charsRead];
@@ -267,12 +274,12 @@ namespace VNLib.Net.Http.Core
                         {
                             continue;
                         }
-                        
+
                         //Store header and its value (sections before and after colon)
                         headerName = header[..colon].TrimCRLF();
                         requestHeaderValue = header[(colon + 1)..].TrimCRLF();
                     }
-                   
+
                     //Hash the header key and lookup the request header value
                     switch (HttpHelpers.GetRequestHeaderEnumFromValue(headerName))
                     {
@@ -303,7 +310,7 @@ namespace VNLib.Net.Http.Core
                         case HttpRequestHeader.ContentLength:
                             {
                                 //Content length has already been calculated, ERROR, rfc 7230
-                                if(parseState.ContentLength > 0)
+                                if (parseState.ContentLength > 0)
                                 {
                                     Config.ServerLog.Debug("Message warning, recieved multiple content length headers");
                                     return HttpStatusCode.BadRequest;
@@ -318,7 +325,7 @@ namespace VNLib.Net.Http.Core
                                 {
                                     return HttpStatusCode.BadRequest;
                                 }
-                                
+
                                 //Request size it too large to service
                                 if (parseState.ContentLength > Config.MaxUploadSize)
                                 {
@@ -336,13 +343,13 @@ namespace VNLib.Net.Http.Core
 
                                 //Slicing before the colon should always provide a useable hostname, so allocate a string for it
                                 string hostOnly = requestHeaderValue.SliceBeforeParam(':').Trim().ToString();
-                                
+
                                 //Verify that the host is usable
                                 if (Uri.CheckHostName(hostOnly) == UriHostNameType.Unknown)
                                 {
                                     return HttpStatusCode.BadRequest;
                                 }
-                                
+
                                 //Verify that the host matches the host header if absolue uri is set
                                 if (parseState.AbsoluteUri != null)
                                 {
@@ -358,7 +365,7 @@ namespace VNLib.Net.Http.Core
                                  */
 
                                 parseState.Location.Host = hostOnly;
-                                
+
                                 //If the port span is empty, no colon was found or the port is invalid
                                 if (!port.IsEmpty)
                                 {
@@ -413,7 +420,7 @@ namespace VNLib.Net.Http.Core
                                 //Use rfc 7233 -> https://www.rfc-editor.org/rfc/rfc7233
 
                                 //MUST ignore range header if not a GET method
-                                if(reqState.Method != HttpMethod.GET)
+                                if (reqState.Method != HttpMethod.GET)
                                 {
                                     //Ignore the header and continue parsing headers
                                     break;
@@ -456,12 +463,12 @@ namespace VNLib.Net.Http.Core
                                     if (hasStartRange)
                                     {
                                         //Validate explicit range
-                                        if(!HttpRange.IsValidRangeValue(startRangeValue, endRangeValue))
+                                        if (!HttpRange.IsValidRangeValue(startRangeValue, endRangeValue))
                                         {
                                             //If range is invalid were supposed to ignore it and continue
                                             break;
                                         }
-                                      
+
                                         reqState.Range = HttpRange.FullRange(startRangeValue, endRangeValue);
                                     }
                                     else
@@ -469,14 +476,14 @@ namespace VNLib.Net.Http.Core
                                         reqState.Range = HttpRange.FromEnd(endRangeValue);
                                     }
                                 }
-                                else if(hasStartRange)
+                                else if (hasStartRange)
                                 {
                                     //Valid start range only, so from start range
                                     reqState.Range = HttpRange.FromStart(startRangeValue);
                                 }
                                 //No valid range values
                             }
-                           
+
                             break;
                         case HttpRequestHeader.UserAgent:
                             //Store user-agent
@@ -513,7 +520,7 @@ namespace VNLib.Net.Http.Core
                 {
                     return HttpStatusCode.BadRequest;
                 }
-                
+
             }
             //Catch an arugment exception within the header add function to cause a bad request result
             catch (ArgumentException)
@@ -522,12 +529,12 @@ namespace VNLib.Net.Http.Core
             }
 
             //Store absolute uri if set
-            if(parseState.AbsoluteUri != null)
+            if (parseState.AbsoluteUri != null)
             {
                 reqState.Location = parseState.AbsoluteUri;
             }
             //Check the final location to make sure data was properly sent
-            else if(string.IsNullOrWhiteSpace(parseState.Location.Host)
+            else if (string.IsNullOrWhiteSpace(parseState.Location.Host)
                 || string.IsNullOrWhiteSpace(parseState.Location.Scheme)
                 || string.IsNullOrWhiteSpace(parseState.Location.Path)
             )
@@ -555,7 +562,7 @@ namespace VNLib.Net.Http.Core
                 )
                 {
                     Query = parseState.Location.Query,
-                }.Uri;                
+                }.Uri;
             }
 
             return 0;
@@ -571,9 +578,9 @@ namespace VNLib.Net.Http.Core
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         public static HttpStatusCode Http1PrepareEntityBody(
-            this HttpRequest Request, 
-            ref Http1ParseState parseState, 
-            ref TransportReader reader, 
+            this HttpRequest Request,
+            ref Http1ParseState parseState,
+            ref TransportReader reader,
             ref readonly HttpConfig Config
         )
         {
@@ -607,7 +614,7 @@ namespace VNLib.Net.Http.Core
                     return 0;
                 }
             }
-            
+
             //Check for chuncked transfer encoding
             ReadOnlySpan<char> transfer = Request.Headers[HttpRequestHeader.TransferEncoding];
 
@@ -631,15 +638,12 @@ namespace VNLib.Net.Http.Core
                     return HttpStatusCode.BadRequest;
                 }
 
-                //Handle chunked transfer encoding (not implemented yet)
+                //TODO: Handle chunked transfer encoding (not implemented yet)
                 return HttpStatusCode.NotImplemented;
             }
             //Make sure non-zero cl header was provided
             else if (parseState.ContentLength > 0)
             {
-                //clamp max available to max content length
-                int available = Math.Clamp(reader.Available, 0, (int)parseState.ContentLength);
-
                 /*
                  * The reader may still have available content data following the headers segment
                  * that is part of the entity body data. This data must be read and stored in the
@@ -649,18 +653,11 @@ namespace VNLib.Net.Http.Core
                  * with null
                  */
 
-                ref InitDataBuffer? initData = ref Request.InputStream.Prepare(parseState.ContentLength);
+                TransportBufferRemainder remainder = reader.ReleaseBufferRemainder();
 
-                if (available > 0)
-                {
-                    //Alloc the buffer and asign it
-                    initData = InitDataBuffer.AllocBuffer(InputDataBufferPool, available);
+                Request.InputStream.Prepare(parseState.ContentLength, in remainder);
 
-                    //Read remaining data into the buffer's data segment
-                    _ = reader.ReadRemaining(initData.Value.DataSegment);
-                }
-
-                //Notify request that an entity body has been set
+                //Notify request that an entity body has been set, always true if content length > 0
                 reqState.HasEntityBody = true;
             }
             //Success!

@@ -128,7 +128,20 @@ namespace VNLib.Net.Http.Core
             //Return the number of bytes of available space from the end of the current window
             return (nint)(MaxBufferSize - windowSize);
         }
-        
+
+        /// <summary>
+        /// Releases the remaining internal buffer as an <see cref="TransportBufferRemainder"/> structure
+        /// for optimized transport reading
+        /// </summary>
+        /// <returns>A structure that contains information about the remaining data</returns>
+        public readonly TransportBufferRemainder ReleaseBufferRemainder()
+        {
+            return new TransportBufferRemainder(
+                buffer, 
+                offset: (int)_position.WindowStart, 
+                size: Available
+            );
+        }
 
         private readonly record struct BufferPosition
         {
