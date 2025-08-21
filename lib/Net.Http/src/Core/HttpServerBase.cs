@@ -150,7 +150,8 @@ namespace VNLib.Net.Http
             _bufferConfig = config.BufferConfig;
             
             //Compile and store the timeout keepalive header
-            KeepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
+            _keepAliveTimeoutHeaderValue = $"timeout={(int)_config.ConnectionKeepAlive.TotalSeconds}";
+            _keepAliveTimeoutSeconds = (int)_config.ConnectionKeepAlive.TotalSeconds;
 
             //Map transport listeners to their virtual hosts
             Transports = MapListeners([.. bindings]);
