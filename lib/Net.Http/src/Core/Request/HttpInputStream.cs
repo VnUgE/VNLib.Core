@@ -60,6 +60,12 @@ namespace VNLib.Net.Http.Core.Request
         }
 
         /// <summary>
+        /// Gets a value that indicates whether there is data remaining in the input stream
+        /// </summary>
+        /// <returns>A value indicating whether there is data remaining in the input stream</returns>
+        internal bool DataRemaining() => Remaining > 0;
+
+        /// <summary>
         /// Prepares the input stream for reading from the transport with the specified content length
         /// and initial data buffer
         /// </summary>
@@ -98,7 +104,7 @@ namespace VNLib.Net.Http.Core.Request
         /// Always returns true
         /// </summary>
         public override bool CanRead => true;
-        
+
         /// <summary>
         /// Stream is not seekable, but is always true for 
         /// stream compatibility reasons 
@@ -114,7 +120,7 @@ namespace VNLib.Net.Http.Core.Request
         /// Gets the total size of the entity body (aka Content-Length)
         /// </summary>
         public override long Length => _state.ContentLength;
-        
+
         /// <summary>
         /// Gets the number of bytes currently read from the entity body, setting the 
         /// position is a NOOP
@@ -169,7 +175,7 @@ namespace VNLib.Net.Http.Core.Request
 
             //Return number of bytes written to the buffer
             return writer.Written;
-        }        
+        }
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
@@ -194,21 +200,21 @@ namespace VNLib.Net.Http.Core.Request
             {
                 //Read as much as possible from internal buffer
                 int read = ReadBufferedData(ref _state, writer.Remaining.Span);
-               
+
                 writer.Advance(read);
             }
 
             //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
-            {                
+            {
                 int read = await transport.Stream.ReadAsync(writer.Remaining, cancellationToken)
                     .ConfigureAwait(true);
-                
+
                 writer.Advance(read);
 
                 _state.Position += read;
             }
-          
+
             return writer.Written;
         }
 
@@ -225,53 +231,55 @@ namespace VNLib.Net.Http.Core.Request
                 return ValueTask.CompletedTask;
             }
 
-            //See if all data has already been buffered
-            if(_initalData.HasValue && remaining <= _initalData.Value.Remaining)
+            /*
+             * Fast path optimization, if all data has already been buffered
+             * we can just update the position and return. This means if 
+             * the content length is less than or equal to the internal buffer size
+             * we can skip the async discard operation.
+             * 
+             * Otherwise we need to read from the stream until all data is discarded.
+             */
+
+            if (_state.ContentLength <= _state.Buffer.Size)
             {
-                //All data has been buffred, so just clear the buffer
-                _state.Position = Length;
+                Debug.Assert(_state.ContentLength == _state.Buffer.Size, "Buffer size should never be larger than available content length");
+
+                DiscardInternalBuffer(ref _state);
+
                 return ValueTask.CompletedTask;
             }
-            //We must actaully disacrd data from the stream
             else
             {
+                DiscardInternalBuffer(ref _state);
+
                 return DiscardStreamDataAsync();
             }
         }
 
         private async ValueTask DiscardStreamDataAsync()
         {
-            DiscardInternalBuffer();
-
             int read, bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
 
             while (bytesToRead > 0)
             {
                 //Read data to the discard buffer until reading is completed (read == 0)
-                read = await transport.Stream!.ReadAsync(HttpServer.WriteOnlyScratchBuffer.Slice(0, bytesToRead), CancellationToken.None)
+                read = await transport.Stream!.ReadAsync(HttpServer.WriteOnlyScratchBuffer[..bytesToRead], CancellationToken.None)
                     .ConfigureAwait(true);
-               
-                _state.Position += read;
-               
-                bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
-            }
-        }
 
-        private void DiscardInternalBuffer()
-        {
-            if (_initalData.HasValue)
-            {
-                //Update the stream position with remaining data
-                _state.Position += _initalData.Value.DiscardRemaining();
+                if (read == 0)
+                {
+                    break; // No more data to read, exit the loop, DO NOT update the position
+                }
+
+                _state.Position += read;
+
+                bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
             }
         }
 
         /// <summary>
         /// Seek is not a supported operation, a seek request is ignored and nothin happens
         /// </summary>
-        /// <param name="offset"></param>
-        /// <param name="origin"></param>
-        /// <returns></returns>
         public override long Seek(long offset, SeekOrigin origin) => _state.Position;
 
         ///<inheritdoc/>

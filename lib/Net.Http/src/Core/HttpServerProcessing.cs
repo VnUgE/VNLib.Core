@@ -244,6 +244,22 @@ namespace VNLib.Net.Http
                 await context.FlushTransportAsync();
 
                 HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
+                }
+
+                /*
+                 * If data is remaining after sending, it means that the request was truncated
+                 * so check if the request has any remaining data in the input stream
+                 */
+                if (context.Request.InputStream.DataRemaining())
+                {
+                    //Log the truncated request
+                    _config.ServerLog.Warn(
+                        "Request was truncated invalid input data, closing connection: {r}", 
+                        context.Request.State.RemoteEndPoint
+                    );
+
+                    return false; //Truncated request, close connection unsafe to reuse
+                }
 
                 /*
                  * If an alternate protocol was specified, we need to break the keepalive loop
