@@ -125,17 +125,17 @@ namespace VNLib.Plugins.Essentials
         const int SESS_INDEX = 0;
         const int ROUTER_INDEX = 1;
         const int SEC_INDEX = 2;
-        
+
         /// <summary>
         /// The internal service pool for the processor
         /// </summary>
         protected readonly HttpProcessorServicePool ServicePool = new([
             //Order must match the indexes above
-            typeof(ISessionProvider),           
-            typeof(IPageRouter), 
+            typeof(ISessionProvider),
+            typeof(IPageRouter),
             typeof(IAccountSecurityProvider)
         ]);
-      
+
 
         /*
          * Fields are not marked as volatile because they should not 
@@ -147,7 +147,7 @@ namespace VNLib.Plugins.Essentials
         private IAccountSecurityProvider? _accountSec;
         private ISessionProvider? _sessions;
         private IPageRouter? _router;
-      
+
         ///<inheritdoc/>
         public IAccountSecurityProvider? AccountSecurity
         {
@@ -175,7 +175,7 @@ namespace VNLib.Plugins.Essentials
             HttpEntity entity = new(httpEvent, this);
 
             //Set ambient processor context
-            _currentProcessor.Value = this; 
+            _currentProcessor.Value = this;
 
             try
             {
@@ -206,7 +206,7 @@ namespace VNLib.Plugins.Essentials
                     }
 
                     //Exec middleware
-                    if(!await _middleware.ProcessAsync(entity))
+                    if (!await _middleware.ProcessAsync(entity))
                     {
                         goto RespondAndExit;
                     }
@@ -249,7 +249,7 @@ namespace VNLib.Plugins.Essentials
                     //Call post processor method
                     PostProcessEntity(entity, ref entity.EventArgs);
                 }
-                finally 
+                finally
                 {
                     //Capture all session release exceptions 
                     try
@@ -403,7 +403,7 @@ namespace VNLib.Plugins.Essentials
 
                 //Get the content type of he file
                 ContentType fileType = HttpHelpers.GetContentTypeFromFile(filename);
-                
+
                 if (!entity.Server.Accepts(fileType))
                 {
                     //Unacceptable
@@ -457,9 +457,9 @@ namespace VNLib.Plugins.Essentials
                         {
                             //Seek the stream to the specified start position
                             dfs.Seek(startOffset, SeekOrigin.Begin);
-                           
+
                             entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
-                            
+
                             entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, dfs.Length - dfs.Position);
                         }
                         break;
@@ -475,9 +475,9 @@ namespace VNLib.Plugins.Essentials
                         {
                             //Seek the stream to the specified end position, server auto range will handle the rest
                             dfs.Seek(-endOffset, SeekOrigin.End);
-                            
+
                             entity.SetContentRangeHeader(entity.Server.Range, dfs.Length);
-                            
+
                             entity.CloseResponse(HttpStatusCode.PartialContent, fileType, dfs, dfs.Length - dfs.Position);
                         }
                         break;
@@ -514,7 +514,7 @@ namespace VNLib.Plugins.Essentials
                 entity.CloseResponse(code);
             }
         }
-      
+
         /// <summary>
         /// Gets the <see cref="FileProcessArgs"/> that will finalize the response from the 
         /// given <see cref="VfReturnType"/>
@@ -574,7 +574,7 @@ namespace VNLib.Plugins.Essentials
 
             args = FileProcessArgs.VirtualSkip;
         }
-      
+
         /// <summary>
         /// Determines the best <see cref="FileProcessArgs"/> processing response for the given connection.
         /// Alternativley may respond to the entity directly.
@@ -584,7 +584,7 @@ namespace VNLib.Plugins.Essentials
         /// <returns>The results to return to the file processor, this method must return an argument</returns>
         protected virtual ValueTask<FileProcessArgs> RouteFileAsync(IPageRouter? router, HttpEntity entity)
         {
-            if(router != null)
+            if (router != null)
             {
                 //Route file async from the router reference
                 return router.RouteAsync(entity);
@@ -593,7 +593,7 @@ namespace VNLib.Plugins.Essentials
             {
                 return ValueTask.FromResult(FileProcessArgs.Continue);
             }
-        }      
+        }
 
         /// <summary>
         /// Finds the file specified by the request and the server root the user has requested.
@@ -603,9 +603,9 @@ namespace VNLib.Plugins.Essentials
         public bool FindResourceInRoot(string resourcePath, bool fullyQualified, out string path)
         {
             //Special case where user's can specify a fullly qualified path (meant to reach a remote file, eg UNC/network share or other disk)
-            if (fullyQualified 
-                && Path.IsPathRooted(resourcePath) 
-                && Path.IsPathFullyQualified(resourcePath) 
+            if (fullyQualified
+                && Path.IsPathRooted(resourcePath)
+                && Path.IsPathFullyQualified(resourcePath)
                 && FileOperations.FileExists(resourcePath)
             )
             {
@@ -705,7 +705,7 @@ namespace VNLib.Plugins.Essentials
                 ArgumentNullException.ThrowIfNull(service);
 
                 //Make sure the instance is of the correct type
-                if(instance is not null && !service.IsInstanceOfType(instance))
+                if (instance is not null && !service.IsInstanceOfType(instance))
                 {
                     throw new ArgumentException("The instance does not match the service type");
                 }
@@ -752,9 +752,9 @@ namespace VNLib.Plugins.Essentials
             private static WeakReference<object?>[] CreateServiceArray(int size)
             {
                 WeakReference<object?>[] arr = new WeakReference<object?>[size];
-                Array.Fill(arr, new (null));
+                Array.Fill(arr, new(null));
                 return arr;
             }
         }
-    }    
+    }
 }
