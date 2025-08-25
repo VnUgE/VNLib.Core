@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2023 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: HttpControlMask.cs 
+* File: CookieSameSite.cs 
 *
-* HttpControlMask.cs is part of VNLib.Net.Http which is part of the larger 
+* CookieSameSite.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -25,20 +25,21 @@
 namespace VNLib.Net.Http
 {
     /// <summary>
-    /// Contains HttpServer related function masks for altering http server
-    /// behavior
+    /// Specifies an HTTP cookie SameSite type
     /// </summary>
-    public static class HttpControlMask
+    public enum CookieSameSite 
     {
         /// <summary>
-        /// Tells the http server that dynamic response compression should be disabled
+        /// Cookie samesite property lax mode
         /// </summary>
-        public const ulong CompressionDisabled = 0x01UL;
-
+        Lax, 
         /// <summary>
-        /// Tells the server not to set a 0 content length header when sending a response that does 
-        /// not have an entity body to send. 
+        /// Cookie samesite property, None mode
         /// </summary>
-        public const ulong ImplictContentLengthDisabled = 0x02UL;
+        None, 
+        /// <summary>
+        /// Cookie samesite property, strict mode
+        /// </summary>
+        Strict
     }
 }

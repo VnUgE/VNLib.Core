@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: HttpRequestExtensions.cs 
+* File: HttpRequestHelpers.cs 
 *
-* HttpRequestExtensions.cs is part of VNLib.Net.Http which is part of the larger 
+* HttpRequestHelpers.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -37,7 +37,7 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Net.Http.Core.Request
 {
 
-    internal static class HttpRequestExtensions
+    internal static class HttpRequestHelpers
     {
         /// <summary>
         /// Gets the <see cref="CompressionMethod"/> that the connection accepts
@@ -47,7 +47,7 @@ namespace VNLib.Net.Http.Core.Request
         /// <param name="serverSupported">The server supported methods</param>
         /// <returns>A <see cref="CompressionMethod"/> with a value the connection support</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static CompressionMethod GetCompressionSupport(this HttpRequest request, CompressionMethod serverSupported)
+        public static CompressionMethod GetCompressionSupport(HttpRequest request, CompressionMethod serverSupported)
         {
             string? acceptEncoding = request.Headers[HttpRequestHeader.AcceptEncoding];
 
@@ -60,6 +60,11 @@ namespace VNLib.Net.Http.Core.Request
             if (acceptEncoding == null)
             {
                 return CompressionMethod.None;
+            }
+            else if (serverSupported.HasFlag(CompressionMethod.Zstd)
+                && acceptEncoding.Contains("zstd", StringComparison.OrdinalIgnoreCase))
+            {
+                return CompressionMethod.Zstd;
             }
             else if (serverSupported.HasFlag(CompressionMethod.Gzip)
                 && acceptEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
@@ -75,12 +80,7 @@ namespace VNLib.Net.Http.Core.Request
                 && acceptEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
             {
                 return CompressionMethod.Brotli;
-            }
-            else if (serverSupported.HasFlag(CompressionMethod.Zstd)
-                && acceptEncoding.Contains("zstd", StringComparison.OrdinalIgnoreCase))
-            {
-                return CompressionMethod.Zstd;
-            }
+            }            
             else
             {
                 return CompressionMethod.None;
@@ -128,26 +128,15 @@ namespace VNLib.Net.Http.Core.Request
             }
             return false;
         }
+       
 
         /// <summary>
-        /// Initializes the <see cref="HttpRequest"/> for the current request
+        /// Parses the request input stream based on the content type and stores
+        /// the data in the request args or uploads collection
         /// </summary>
-        /// <param name="context"></param>
-        /// <exception cref="IOException"></exception>
-        /// <exception cref="OverflowException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        internal static ValueTask InitRequestBodyAsync(this HttpContext context)
-        {
-            //Parse query
-            ParseQueryArgs(context.Request);
-
-            //Decode requests from body
-            return !context.Request.State.HasEntityBody 
-                ? ValueTask.CompletedTask 
-                : ParseInputStream(context);
-        }
-
-        private static async ValueTask ParseInputStream(HttpContext context)
+        /// <param name="context">The http contect to process</param>
+        /// <returns>A value task that resolves when the body has been processed</returns>
+        internal static async ValueTask ParseInputStream(HttpContext context)
         {
             HttpRequest request = context.Request;
             IHttpContextInformation info = context;
@@ -403,11 +392,13 @@ namespace VNLib.Net.Http.Core.Request
             //trim, allocate strings, and store in the request arg dict
             Request.RequestArgs[key.TrimCRLF().ToString()] = value.TrimCRLF().ToString();
         }
-
-        /*
-         * Parses query parameters from the request location query
-         */
-        private static void ParseQueryArgs(HttpRequest Request)
+    
+        /// <summary>
+        /// Parses the query arguments from the request location query string and stores them 
+        /// in the <see cref="HttpRequest.QueryArgs"/> dictionary.
+        /// </summary>
+        /// <param name="Request">The request object to process</param>
+        internal static void ProcessQueryArgs(HttpRequest Request)
         {
             //if the request has query args, parse and store them
             ReadOnlySpan<char> queryString = Request.State.Location.Query;
