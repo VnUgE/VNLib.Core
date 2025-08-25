@@ -64,7 +64,11 @@ namespace VNLib.Net.Http.Core.Buffering
 
 
         ///<inheritdoc/>
-        public int Size => _handle.Size;
+        public int Size
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _handle.Size;
+        }
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -75,7 +79,7 @@ namespace VNLib.Net.Http.Core.Buffering
         public virtual ref byte DangerousGetBinRef(int offset)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(offset);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, _handle.Size);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, Size);
 
             return ref MemoryUtil.GetRef<byte>(_handle.Pointer, (nuint)offset);
         }
@@ -90,7 +94,7 @@ namespace VNLib.Net.Http.Core.Buffering
         {
             ArgumentOutOfRangeException.ThrowIfNegative(offset);
             ArgumentOutOfRangeException.ThrowIfNegative(size);
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(_handle.Size - offset, size);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(size + offset, Size);
            
             return MemoryUtil.GetSpan<byte>(IntPtr.Add(_handle.Pointer, offset), size);
         }
