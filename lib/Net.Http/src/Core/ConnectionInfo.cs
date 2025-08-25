@@ -26,6 +26,7 @@ using System;
 using System.Net;
 using System.Text;
 using System.Collections.Generic;
+
 using VNLib.Net.Http.Core.Request;
 
 namespace VNLib.Net.Http.Core
@@ -102,12 +103,15 @@ namespace VNLib.Net.Http.Core
         {
             //Update the context referrence
             Context = ctx;
+            
             //Create new header collection
             Headers = new VnHeaderCollection(ctx);
+            
             //set co value
-            CrossOrigin = ctx.Request.IsCrossOrigin();
+            CrossOrigin = HttpRequestHelpers.IsCrossOrigin(ctx.Request);
+            
             //Set websocket status
-            IsWebSocketRequest = ctx.Request.IsWebSocketRequest();
+            IsWebSocketRequest = HttpRequestHelpers.IsWebSocketRequest(ctx.Request);
         }
 
 #nullable disable

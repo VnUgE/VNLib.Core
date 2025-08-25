@@ -104,7 +104,7 @@ namespace VNLib.Net.Http.Core
                 if (!compressionDisabled)
                 {
                     //Get first compression method or none if disabled
-                    compMethod = Request.GetCompressionSupport(ParentServer.SupportedCompressionMethods);
+                    compMethod = HttpRequestHelpers.GetCompressionSupport(Request, ParentServer.SupportedCompressionMethods);
 
                     //Set response compression encoding headers
                     switch (compMethod)
