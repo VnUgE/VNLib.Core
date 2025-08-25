@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -64,13 +64,14 @@ namespace VNLib.Net.Http
             {
                 //dispose the cancelation registration
                 await Registration.DisposeAsync();
+
                 //Dispose cancel source
                 CancelSource.Dispose();
             }
         }
 
         /// <summary>
-        /// Is the current socket connected using transport security
+        /// Is the current connection using transport security
         /// </summary>
         public required virtual bool IsSecure { get; init; }
 

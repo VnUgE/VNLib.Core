@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -28,48 +28,57 @@ using System.Collections.Generic;
 
 namespace VNLib.Net.Http.Core
 {
-    internal sealed class VnHeaderCollection : IHeaderCollection
+    internal sealed class VnHeaderCollection(HttpContext context) : IHeaderCollection
     {
-        private VnWebHeaderCollection _RequestHeaders;
-        private VnWebHeaderCollection _ResponseHeaders;
+        private VnWebHeaderCollection _requestHeaders = context.Request.Headers;
+        private VnWebHeaderCollection _responseHeaders = context.Response.Headers;
 
+        ///<inheritdoc/>
+        IEnumerable<KeyValuePair<string, string>> IHeaderCollection.RequestHeaders => _requestHeaders!;
 
-        IEnumerable<KeyValuePair<string, string>> IHeaderCollection.RequestHeaders => _RequestHeaders!;
+        ///<inheritdoc/>
+        IEnumerable<KeyValuePair<string, string>> IHeaderCollection.ResponseHeaders => _responseHeaders!;
 
-        IEnumerable<KeyValuePair<string, string>> IHeaderCollection.ResponseHeaders => _ResponseHeaders!;
-
-        internal VnHeaderCollection(HttpContext context)
-        {
-            _RequestHeaders = context.Request.Headers;
-            _ResponseHeaders = context.Response.Headers;
-        }
-
+        ///<inheritdoc/>
         string? IHeaderCollection.this[string index]
         {
-            get => _RequestHeaders[index];
-            set => _ResponseHeaders[index] = value;
+            get => _requestHeaders[index];
+            set => _responseHeaders[index] = value;
         }
 
+        ///<inheritdoc/>
         string IHeaderCollection.this[HttpResponseHeader index]
         {
-            set => _ResponseHeaders[index] = value;
+            set => _responseHeaders[index] = value;
         }
 
-        string? IHeaderCollection.this[HttpRequestHeader index] => _RequestHeaders[index];
+        ///<inheritdoc/>
+        string? IHeaderCollection.this[HttpRequestHeader index]
+        {
+            get => _requestHeaders[index];
+        }
 
-        bool IHeaderCollection.HeaderSet(HttpResponseHeader header) => !string.IsNullOrEmpty(_ResponseHeaders[header]);
+        ///<inheritdoc/>
+        bool IHeaderCollection.HeaderSet(HttpResponseHeader header) 
+            => !string.IsNullOrEmpty(_responseHeaders[header]);
 
-        bool IHeaderCollection.HeaderSet(HttpRequestHeader header) => !string.IsNullOrEmpty(_RequestHeaders[header]);
+        ///<inheritdoc/>
+        bool IHeaderCollection.HeaderSet(HttpRequestHeader header) 
+            => !string.IsNullOrEmpty(_requestHeaders[header]);
 
-        void IHeaderCollection.Append(HttpResponseHeader header, string? value) => _ResponseHeaders.Add(header, value);
+        ///<inheritdoc/>
+        void IHeaderCollection.Append(HttpResponseHeader header, string? value) 
+            => _responseHeaders.Add(header, value);
 
-        void IHeaderCollection.Append(string header, string? value) => _ResponseHeaders.Add(header, value);
+        ///<inheritdoc/>
+        void IHeaderCollection.Append(string header, string? value) 
+            => _responseHeaders.Add(header, value);
 
 #nullable disable
         internal void Clear()
         {
-            _RequestHeaders = null;
-            _ResponseHeaders = null;
+            _requestHeaders = null;
+            _responseHeaders = null;
         }
     }
 }
