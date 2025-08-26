@@ -47,14 +47,16 @@ namespace VNLib.Net.Compression
         CompressionLevel GetCompressionLevel();
 
         /// <summary>
-        /// Flushes all remaining data in the compressor to the output buffer
+        /// Flushes all remaining data in the compressor to the output buffer. Call this method
+        /// until it returns 0 to ensure all data is flushed.
         /// </summary>
         /// <param name="buffer">The output buffer to write flushed compressor data to</param>
         /// <returns>The number of bytes written to the output buffer</returns>
         int Flush(Memory<byte> buffer);
 
         /// <summary>
-        /// Flushes all remaining data in the compressor to the output buffer
+        /// Flushes all remaining data in the compressor to the output buffer. Call this method
+        /// until it returns 0 to ensure all data is flushed.
         /// </summary>
         /// <param name="buffer">The output buffer to write flushed compressor data to</param>
         /// <returns>The number of bytes written to the output buffer</returns>

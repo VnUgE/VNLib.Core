@@ -9,6 +9,8 @@
     "max_recv_size": 655360,      //640k absolute maximum recv buffer (defaults to OS socket buffer size)
     "max_connections": 50000,     //Per listener instance
     "backlog": 1000,              //OS socket backlog,
+    "no_delay": false,            //OS socket no delay (TCP_NODELAY) to disable Nagle's algorithm
+    "reuse_address": true,        //OS socket reuse address (SO_REUSEADDR) to allow multiple listeners on the same port
 
     "tx_buffer": 65536,           //OS socket send buffer size
     "rx_buffer": 65536            //OS socket recv buffer size
@@ -19,9 +21,9 @@
     "multipart_max_buf_size": 20480,    //The size of the buffer to use when parsing multipart/form data uploads
     "multipart_max_size": 80240,        //The maxium ammount of data (in bytes) allows for mulitpart/form data file uploads
     "max_entity_size": 1024000,         //Absolute maximum size (in bytes) of the request entity body (exludes headers)    
-    "header_buf_size": 8128,            //The buffer size to use when parsing headers (also the maxium request header size allowed) 
     "max_request_header_count": 50,     //The maxium number of headers allowed in an HTTP request message
     "max_connections": 5000,            //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed   
+    "request_header_buf_size": 8128,    //The buffer size to use when parsing headers (also the maxium request header size allowed) 
     "response_header_buf_size": 16384,  //The size (in bytes) of the buffer used to store all response header data
     "max_uploads_per_request": 10,      //Max number of file (or multi-part) uploads allowed per request
     "keepalive_ms": 1000000,            //Keepalive ms for HTTP1.1 keepalive connections
@@ -39,11 +41,10 @@
   //Collection of objects to define hosts+interfaces to build server listeners from
   "virtual_hosts": [
     {
-      //A flag that enables or disables this virtual host
-      "enabled": true,
 
-      //The directory path for files served by this endpoint
-      "path": "path/to/website/root",
+      "enabled": true,         //A flag that enables or disables this virtual host
+    
+      "path": "path/to/website/root",    //The directory path for files served by this endpoint
 
       //The hostname to listen for, "*" as wildcard, and "[system]" as the default hostname for the current machine. Must be unique
       "hostnames": [ "*", "localhost" ],
@@ -69,7 +70,10 @@
           "private_key": "/path/to/private_key.pem",  //A pem encoded private key, REQUIRED if using a PEM certificate, may be encrypted with a password
           "password": "plain-text-password",          //An optional password for the ssl private key
           "client_cert_required": false,              //requires that any client connecting to this host present a valid certificate
-          "use_os_ciphers": false                     //Use the OS's ciphers instead of the hard-coded ciphers
+          "use_os_ciphers": false,                    //Use the OS's ciphers instead of the hard-coded ciphers
+
+          //Tcp options
+          "tcp_no_delay":  null                       // If true, disables Nagle's algorithm for this interface, null to use the global setting 
         }
       ],
 
