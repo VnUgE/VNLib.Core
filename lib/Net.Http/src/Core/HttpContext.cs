@@ -229,7 +229,7 @@ namespace VNLib.Net.Http.Core
             Debug.Assert(reader.Available == _preBufferedByteCount);
         }
 
-        public async ValueTask BufferTransportAsync(CancellationToken cancellation)
+        public async ValueTask<int> BufferTransportAsync(CancellationToken cancellation)
         {
             /*
              * This function allows for pre-buffering of the transport
@@ -251,6 +251,8 @@ namespace VNLib.Net.Http.Core
                 .ConfigureAwait(false);
 
             Debug.Assert(_preBufferedByteCount <= dataBuffer.Length);
+
+            return _preBufferedByteCount;
         }
 
         #endregion

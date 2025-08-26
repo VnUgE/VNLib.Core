@@ -72,27 +72,27 @@ namespace VNLib.Net.Http
 
                 context.InitializeContext(transportContext);
 
+                bool keepAlive;
+
                 //Keepalive loop
                 do
                 {
-                    //Attempt to buffer a new (or keepalive) connection async
-                    await context.BufferTransportAsync(stopToken.Token);
-
-                    //Return read timeout to active connection timeout after data is received
-                    stream.ReadTimeout = _config.ActiveConnectionRecvTimeout;
-
-                    bool keepAlive = await ProcessHttpEventAsync(listenState, context);
-
-                    //If not keepalive, exit the listening loop and clean up connection
-                    if (!keepAlive)
+                    int read = await context.BufferTransportAsync(stopToken.Token)
+                                            .ConfigureAwait(false);
+                    if (read == 0)
                     {
+                        //Connection closed by remote
                         break;
                     }
 
-                    //Timeout reset to keepalive timeout waiting for more data on the transport
-                    stream.ReadTimeout = _keepAliveTimeoutSeconds;
+                    stream.ReadTimeout = _config.ActiveConnectionRecvTimeout; //Return read timeout to active connection timeout after data is received
 
-                } while (true);
+                    keepAlive = await ProcessHttpEventAsync(listenState, context);                    
+
+                    stream.ReadTimeout = _keepAliveTimeoutSeconds;  //Timeout reset to keepalive timeout waiting for more data on the transport
+
+                } // Continue if keepalive is enabled and no alternate protocol was requested
+                while (keepAlive && context.AlternateProtocol == null);
 
                 /*
                  * If keepalive loop breaks, its possible that the connection
@@ -102,8 +102,7 @@ namespace VNLib.Net.Http
                  */
                 if (context.AlternateProtocol != null)
                 {
-                    //Save the current ap
-                    IAlternateProtocol ap = context.AlternateProtocol;
+                    IAlternateProtocol ap = context.AlternateProtocol;  //Save the alternate protocol so we can return the context to the pool
 
                     //Release the context before listening to free it back to the pool
                     _contextStore.Return(context);
