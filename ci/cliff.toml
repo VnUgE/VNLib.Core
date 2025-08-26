@@ -91,6 +91,7 @@ commit_parsers = [
     # Changes
     { message = "^refactor(:|\\(.*\\):).*", group = "Changed" },
     { message = "^chore\\(deps\\):", group = "Changed" },
+    { message = "^doc(s?)(:|\\(.*\\):).*", group = "Changed" },
 
     # Removals
     { message = "^remove(\\(.*\\))?:", group = "Removed" },
