@@ -61,11 +61,7 @@ namespace VNLib.Net.Http.Core.Request
             {
                 return CompressionMethod.None;
             }
-            else if (serverSupported.HasFlag(CompressionMethod.Zstd)
-                && acceptEncoding.Contains("zstd", StringComparison.OrdinalIgnoreCase))
-            {
-                return CompressionMethod.Zstd;
-            }
+          
             else if (serverSupported.HasFlag(CompressionMethod.Gzip)
                 && acceptEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase))
             {
@@ -80,7 +76,13 @@ namespace VNLib.Net.Http.Core.Request
                 && acceptEncoding.Contains("br", StringComparison.OrdinalIgnoreCase))
             {
                 return CompressionMethod.Brotli;
-            }            
+            }
+            // Zstd is still early and not fully tested, so it's not preferred yet
+            else if (serverSupported.HasFlag(CompressionMethod.Zstd)
+              && acceptEncoding.Contains("zstd", StringComparison.OrdinalIgnoreCase))
+            {
+                return CompressionMethod.Zstd;
+            }
             else
             {
                 return CompressionMethod.None;
