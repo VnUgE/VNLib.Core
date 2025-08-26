@@ -641,6 +641,7 @@ namespace VNLib.Net.Http
         [Conditional("DEBUG")]
         private void WriteConnectionDebugLog(HttpContext context)
         {
+#if DEBUG
             //Alloc debug buffer
             using IMemoryHandle<char> debugBuffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
 
@@ -653,6 +654,7 @@ namespace VNLib.Net.Http
             context.Response.Compile(ref writer);
 
             _config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
+#endif
         }
     }
 }
