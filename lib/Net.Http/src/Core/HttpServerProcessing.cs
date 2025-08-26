@@ -272,6 +272,9 @@ namespace VNLib.Net.Http
 
                     HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
             }
+
+                return !context.ContextFlags.IsSet(HttpControlMask.KeepAliveDisabled);
+            }
             finally
             {
                 //Clean end request
