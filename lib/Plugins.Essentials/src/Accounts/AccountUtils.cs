@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -97,7 +97,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             ArgumentNullException.ThrowIfNull(user);
             ArgumentNullException.ThrowIfNull(manager);
 
-            using PrivateString ps = PrivateString.ToPrivateString(password, false);
+            using PrivateString ps = PrivateString.ToPrivateString(password, ownsString: false);
             
             return await manager
                 .ValidatePasswordAsync(user, ps, flags, cancellation)
@@ -125,7 +125,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             ArgumentNullException.ThrowIfNull(user);
             ArgumentNullException.ThrowIfNull(manager);
 
-            using PrivateString ps = PrivateString.ToPrivateString(password, false);
+            using PrivateString ps = PrivateString.ToPrivateString(password, ownsString: false);
             
             return await manager
                 .UpdatePasswordAsync(user, ps, cancellation)
@@ -154,7 +154,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             ArgumentNullException.ThrowIfNull(user);
             ArgumentNullException.ThrowIfNull(manager);
 
-            using PrivateString ps = PrivateString.ToPrivateString(password, false);
+            using PrivateString ps = PrivateString.ToPrivateString(password, ownsString: false);
 
             return await manager
                 .UpdatePasswordAsync(user, ps, hashingProvider, cancellation)
@@ -204,7 +204,10 @@ namespace VNLib.Plugins.Essentials.Accounts
             ArgumentNullException.ThrowIfNull(password);
             
             //Casting PrivateStrings to spans will reference the base string directly
-            return provider.Verify(passHash.ToReadOnlySpan(), password.ToReadOnlySpan());
+            return provider.Verify(
+                passHash: passHash.ToReadOnlySpan(),
+                password: password.ToReadOnlySpan()
+            );
         }
 
         /// <summary>

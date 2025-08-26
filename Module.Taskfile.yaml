@@ -12,18 +12,13 @@ version: '3'
 
 vars:  
   ARCHIVE_FILE_NAME: '{{ .ARCHIVE_FILE_NAME | default "archive.tgz" }}'
-  MS_ARGS: 
-    /p:RunAnalyzersDuringBuild=false
-    /p:BuildInParallel=true 
-    /p:MultiProcessorCompilation=true 
-    /p:ErrorOnDuplicatePublishOutputFiles=false
 
 tasks:
 
   default:
     desc: 'Builds the managed libraries in this module for development'
     cmds:
-     - cmd: dotnet build -c debug {{ .MS_ARGS }} {{ .CLI_ARGS }}
+     - cmd: dotnet build -c debug {{ .CLI_ARGS }}
 
   #called by build pipeline to sync repo
   update:
@@ -54,7 +49,6 @@ tasks:
       PACK_OUT: '{{ .OUTPUT_DIR }}/{{ .HEAD_SHA }}/pkg'
       INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
       MS_ARGS: '
-        {{ .MS_ARGS }} 
         --nologo
         /p:UseCommonOutputDirectory=true 
         /p:IntermediateOutputPath="{{ .INT_DIR }}"'
@@ -101,15 +95,12 @@ tasks:
        silent: true
 
      - cmd: dotnet build 
-        {{ .MS_ARGS }}
-         /p:NoWarn=CS1591 
         --nologo
         --configuration debug
         --verbosity normal
+        --no-incremental       
 
      - cmd: dotnet test
-        {{ .CLI_ARGS }}
-        {{ .MS_ARGS }}
         --no-build
         --nologo
         --logger "console;verbosity=detailed"
@@ -121,9 +112,10 @@ tasks:
         --environment VNLIB_COMPRESS_DLL_PATH="{{ .VNCOMPRESS_LIB_PATH }}"
         --environment VNLIB_MONOCYPHER_DLL_PATH="{{ .MONOCYPHER_LIB_PATH }}"
         --environment VNLIB_ARGON2_DLL_PATH="{{ .ARGON2_LIB_PATH }}"
+        {{ .CLI_ARGS }}
 
      #run the web server tests without XML comment warnings
-     - cmd: cd apps/VNLib.WebServer && task test -- '/p:NoWarn=CS1591'
+     - cmd: cd apps/VNLib.WebServer && task test
 
 #called by build pipeline to clean module
   clean:
@@ -131,7 +123,7 @@ tasks:
     ignore_error: true
     cmds:
     #clean solution
-     - cmd: dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
+     - cmd: dotnet clean
      - cmd: powershell rm '{{ .ARCHIVE_FILE_NAME }}' --Force 
      - task: clean-native
 
