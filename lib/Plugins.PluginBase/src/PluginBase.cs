@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.PluginBase
@@ -124,10 +124,10 @@ namespace VNLib.Plugins
 
             //reader for the config value
             Utf8JsonReader reader = new(config);
-           
+
             Configuration = JsonDocument.ParseValue(ref reader);
         }
-       
+
         /// <summary>
         /// Responsible for initalizing the log provider. The host should invoke this method
         /// directly after the configuration is initialized
@@ -224,7 +224,7 @@ namespace VNLib.Plugins
             {
                 ProcessHostCommand(cmd);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.Error(ex);
             }
@@ -253,10 +253,10 @@ namespace VNLib.Plugins
             {
                 //Cancel the token
                 Cts.Cancel();
-                
+
                 //Cleanup
                 CleanupPlugin();
-                
+
                 throw;
             }
         }
@@ -264,10 +264,10 @@ namespace VNLib.Plugins
         ///<inheritdoc/>
         void IPlugin.Unload()
         {
-            try 
+            try
             {
                 Cts.Cancel();
-                
+
                 OnUnLoad();
 
                 WaitForTasks();
@@ -279,13 +279,13 @@ namespace VNLib.Plugins
         }
 
         private void CleanupPlugin()
-        {            
+        {
             Configuration?.Dispose();
-          
+
             (Log as IDisposable)?.Dispose();
-            
+
             _services.Clear();
-           
+
             DeferredTasks.Clear();
         }
 
@@ -293,26 +293,26 @@ namespace VNLib.Plugins
         {
             const int WARNING_INTERVAL = 1500;
 
-            void OnTimerElapsed(object state)
+            void OnTimerElapsed(object? state)
             {
                 //Write time errors to log
                 Log.Warn("One or more deferred background tasks are taking a long time to complete");
             }
 
-            if(DeferredTasks.Count > 0)
+            if (DeferredTasks.Count > 0)
             {
                 //Startup timer to warn if tasks are taking a long time to complete
-                using Timer t = new(OnTimerElapsed, this, WARNING_INTERVAL, WARNING_INTERVAL);
-                
+                using Timer t = new(OnTimerElapsed, null, WARNING_INTERVAL, WARNING_INTERVAL);
+
                 Task[] tasks;
                 lock (DeferredTasks)
                 {
                     //Copy tasks to array
                     tasks = DeferredTasks.ToArray();
                 }
-                
+
                 //Wait for all tasks to complete for a maxium of 10 seconds
-                if(!Task.WaitAll(tasks, TimeSpan.FromSeconds(10)))
+                if (!Task.WaitAll(tasks, TimeSpan.FromSeconds(10)))
                 {
                     Log.Error("Tasks failed to complete in the allotted timeout period");
                 }
@@ -346,9 +346,9 @@ namespace VNLib.Plugins
         /// </para>
         /// </summary>
         protected abstract void OnLoad();
-        
+
         /// <summary>
-        /// Invoked when all endpoints have been removed from service. All managed and unmanged resources should be released.
+        /// Invoked when all endpoints have been removed from service. All managed and Unmanaged resources should be released.
         /// </summary>
         protected abstract void OnUnLoad();
 
