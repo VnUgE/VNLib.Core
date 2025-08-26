@@ -81,7 +81,11 @@ namespace VNLib.Net.Http.Core.Request
              */
             int maxRemainder = (int)Math.Clamp(remainder.Size, 0, contentLength);
 
-            _state.Buffer = new(remainder.Buffer, remainder.Offset, maxRemainder);
+            _state.Buffer = new(
+                remainder.Buffer,
+                startOfData: remainder.Offset,
+                size: maxRemainder
+            );
 
             // Some sanity checks
             Debug.Assert(BufferRemaining(in _state) == _state.Buffer.Size, "Buffer remaining size does not match remainder size");
@@ -227,7 +231,7 @@ namespace VNLib.Net.Http.Core.Request
         /// is considered faulty and the number of bytes that were not read is returned.
         /// </remarks>
         public ValueTask<long> DiscardRemainingAsync()
-            {
+        {
             /*
              * Fast path optimization, if all data has already been buffered
              * we can just update the position and return. This means if 
@@ -337,6 +341,10 @@ namespace VNLib.Net.Http.Core.Request
 
             Debug.Assert(state.Buffer.Buffer != null, "Buffer should not be null when data is in buffer");
 
+            // Sanity check, should never read more data than is available in the buffer
+            // BufferRemaining above should guard against this
+            Debug.Assert(bytesToRead + state.Position <= state.Buffer.Size, "Should never read more data than is available in the buffer");
+
             //Read as much as possible from internal buffer
             MemoryUtil.Memmove(
                 src: in state.Buffer.GetBufferRef(),
@@ -360,7 +368,7 @@ namespace VNLib.Net.Http.Core.Request
             public InputBufferState Buffer;
         }
 
-        private readonly struct InputBufferState(IHttpHeaderParseBuffer buffer, int offset, int size)
+        private readonly struct InputBufferState(IHttpHeaderParseBuffer buffer, int startOfData, int size)
         {
             /*
              * A note on variables:
@@ -371,19 +379,22 @@ namespace VNLib.Net.Http.Core.Request
              * Size: The total size of readable data in the buffer
              */
 
+            /// <summary>
+            /// The number of bytes buffered and available to be read
+            /// </summary>
             public readonly int Size = size;
             public readonly IHttpHeaderParseBuffer Buffer = buffer;
 
             /// <summary>
             /// Gets the start position of the data segment in the buffer 
-            /// which takes the offset into account
+            /// which takes the internal offset into account
             /// </summary>
             /// <returns>
             /// A reference to the start of the data segment in the buffer offset by 
             /// the current position
             /// </returns>
             public readonly ref readonly byte GetBufferRef()
-                => ref Buffer.DangerousGetBinRef(offset);
+                => ref Buffer.DangerousGetBinRef(startOfData);
         }
     }
 }

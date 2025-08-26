@@ -23,17 +23,18 @@
 */
 
 using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
-using VNLib.Utils;
-using VNLib.Utils.Memory.Caching;
 using VNLib.Net.Http.Core.Buffering;
 using VNLib.Net.Http.Core.Compression;
-using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.Request;
+using VNLib.Net.Http.Core.Response;
+using VNLib.Utils;
+using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Http.Core
 {
@@ -81,7 +82,7 @@ namespace VNLib.Net.Http.Core
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
 
-        private readonly TransportManager Transport;
+        private readonly TransportManager _transport;
         private readonly ManagedHttpCompressor? _compressor;
         private ITransportContext? _ctx;
         
@@ -92,14 +93,14 @@ namespace VNLib.Net.Http.Core
 
             ContextFlags = new(0);
 
-            Transport = new();
+            _transport = new();
 
             //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
             Buffers = new(in server.BufferConfig, _compressor != null);
          
-            Request = new (Transport, server.Config.MaxUploadsPerRequest);
+            Request = new (_transport, server.Config.MaxUploadsPerRequest);
            
-            Response = new (this, Transport, Buffers);
+            Response = new (this, _transport, Buffers);
           
             ResponseBody = new ResponseWriter();
         }
@@ -200,7 +201,7 @@ namespace VNLib.Net.Http.Core
         public ref readonly HttpEncodedSegment FinalChunkSegment => ref ParentServer.Config.FinalChunkBytes;
      
 
-        int _PreBufferedByteCount;
+        int _preBufferedByteCount;
 
         /*
          * The following functions operate in tandem. Data should be buffered
@@ -213,7 +214,7 @@ namespace VNLib.Net.Http.Core
         public void GetReader(out TransportReader reader)
         {
             reader = new(
-                Transport.Stream,
+                _transport.Stream,
                 Buffers.RequestHeaderParseBuffer,
                 ParentServer.Config.HttpEncoding,
                 ParentServer.Config.HeaderLineTermination
@@ -223,9 +224,9 @@ namespace VNLib.Net.Http.Core
              * Specal function to set available data
              * NOTE: this can be dangerous as the buffer is 
              */
-            reader.SetAvailableData(_PreBufferedByteCount);
+            reader.SetAvailableData(_preBufferedByteCount);
 
-            Debug.Assert(reader.Available == _PreBufferedByteCount);
+            Debug.Assert(reader.Available == _preBufferedByteCount);
         }
 
         public async ValueTask BufferTransportAsync(CancellationToken cancellation)
@@ -241,7 +242,7 @@ namespace VNLib.Net.Http.Core
              * buffer size MUST be respected.
              */
 
-            _PreBufferedByteCount = 0;
+            _preBufferedByteCount = 0;
 
             Memory<byte> dataBuffer = Buffers.GetInitStreamBuffer();
 
@@ -250,8 +251,6 @@ namespace VNLib.Net.Http.Core
                 .ConfigureAwait(false);
 
             Debug.Assert(_preBufferedByteCount <= dataBuffer.Length);
-
-            Debug.Assert(_PreBufferedByteCount <= dataBuffer.Length);
         }
 
         #endregion

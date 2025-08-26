@@ -23,21 +23,21 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Threading;
 using System.Net.Sockets;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 
-using VNLib.Utils.Memory;
-using VNLib.Utils.Logging;
-using VNLib.Utils.Extensions;
 using VNLib.Net.Http.Core;
-using VNLib.Net.Http.Core.Response;
 using VNLib.Net.Http.Core.PerfCounter;
 using VNLib.Net.Http.Core.Request;
+using VNLib.Net.Http.Core.Response;
+using VNLib.Utils.Extensions;
+using VNLib.Utils.Logging;
+using VNLib.Utils.Memory;
 
 namespace VNLib.Net.Http
 {
@@ -171,11 +171,12 @@ namespace VNLib.Net.Http
         }
 
 
-        /// <summary>
-        /// Main event handler for all incoming connections
-        /// </summary>
-        /// <param name="listenState"></param>
-        /// <param name="context">Reusable context object</param>
+        /*
+         * Main even handler. Processes a single http request/response cycle
+         * from start to finish. Returning true indicates that the connection
+         * can be kept alive and reused for another request.
+         */
+
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private async Task<bool> ProcessHttpEventAsync(ListenerState listenState, HttpContext context)
         {
@@ -197,53 +198,24 @@ namespace VNLib.Net.Http
                     HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Parse");
                 }
 
-                //Check status code for socket error, if so, return false to close the connection
-                if (parseStatus >= 1000)
-                {
-                    if (_config.ServerLog.IsEnabled(LogLevel.Debug))
-                    {
-                        _config.ServerLog.Debug("Failed to parse request, error: {s}. Force closing transport", parseStatus);
-                    }
-
-                    return false;
-                }
-
-                bool keepalive = true;
-
-                //Handle an error parsing the request
-                if (!PreProcessRequest(context, (HttpStatusCode)parseStatus, ref keepalive))
+                    if (!parseStatus)
                 {
                     return false;
                 }
-
-                bool processSuccess = await ProcessRequestAsync(listenState, context);
-
-#if DEBUG
-                static void WriteConnectionDebugLog(HttpServer server, HttpContext context)
-                {
-                    //Alloc debug buffer
-                    using IMemoryHandle<char> debugBuffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
-
-                    ForwardOnlyWriter<char> writer = new (debugBuffer.Span);
-
-                    //Request
-                    context.Request.Compile(ref writer);
-
-                    //newline
-                    writer.AppendSmall("\r\n");
-
-                    //Response
-                    context.Response.Compile(ref writer);
-
-                    server._config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
                 }
 
-                //Write debug response log
+
+                await ProcessRequestAsync(listenState, context);
+
+                // Safe to set the connection header now
+                SetResponseConnectionHeader(context);
+
+
+                // Debug log the request if enabled, only runs on debug builds
                 if (_config.RequestDebugLog != null)
                 {
-                    WriteConnectionDebugLog(this, context);
+                    WriteConnectionDebugLog(context);
                 }
-#endif
 
                 {
                     /*
@@ -308,22 +280,13 @@ namespace VNLib.Net.Http
             }
         }
 
-        /// <summary>
-        /// Reads data synchronously from the transport and attempts to parse an HTTP message and 
-        /// built a request. 
-        /// </summary>
-        /// <param name="ctx"></param>
-        /// <returns>0 if the request was successfully parsed, the <see cref="HttpStatusCode"/> 
-        /// to return to the client because the entity could not be processed</returns>
-        /// <remarks>
-        /// <para>
-        /// This method is synchronous for multiple memory optimization reasons,
-        /// and performance is not expected to be reduced as the transport layer should 
-        /// <br></br>
-        /// only raise an event when a socket has data available to be read, and entity
-        /// header sections are expected to fit within a single TCP buffer. 
-        /// </para>
-        /// </remarks>
+        /*
+         * Parses an incoming http request from the transport, and validates the request
+         * after basic processing. 
+         * 
+         * This function assumes that all request/response state has been reset to 
+         * safe defaults before being called.
+         */
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private HttpStatusCode ParseRequest(HttpContext ctx)
         {
@@ -530,8 +493,49 @@ namespace VNLib.Net.Http
              * 
              * For now I will allow it.
              */
-            return true;
+        }       
+
+        private void SetResponseConnectionHeader(HttpContext context)
+        {
+            //Set connection header (only for http1.1)
+
+            if (context.ContextFlags.IsSet(HttpControlMask.KeepAliveDisabled))
+            {
+                //Set connection closed
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
+            }
+            else
+            {
+                /*
+                * Request parsing only sets the keepalive flag if the connection is http1.1
+                * so we can verify this in an assert
+                */
+                Debug.Assert(
+                    context.Request.State.HttpVersion == HttpVersion.Http11,
+                    "Request parsing allowed keepalive for a non http1.1 connection, this is a bug"
+                );
+
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "keep-alive");
+                context.Response.Headers.Set(HttpResponseHeader.KeepAlive, _keepAliveTimeoutHeaderValue);
+            }
         }
  
+
+        [Conditional("DEBUG")]
+        private void WriteConnectionDebugLog(HttpContext context)
+        {
+            //Alloc debug buffer
+            using IMemoryHandle<char> debugBuffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
+
+            ForwardOnlyWriter<char> writer = new (debugBuffer.Span);
+          
+            context.Request.Compile(ref writer);
+           
+            writer.AppendSmall("\r\n");
+            
+            context.Response.Compile(ref writer);
+
+            _config.RequestDebugLog!.Verbose("\r\n{dbg}", writer.ToString());
+        }
     }
 }
