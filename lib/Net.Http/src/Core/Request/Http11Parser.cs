@@ -35,8 +35,7 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Http.Core.Request
 {
-
-    internal static class Http11ParseExtensions
+    internal static class Http11Parser
     {
 
         /// <summary>
@@ -64,7 +63,6 @@ namespace VNLib.Net.Http.Core.Request
             public int Port;
         }
 
-
         /// <summary>
         /// Reads the first line from the transport stream using the specified buffer
         /// and parses the HTTP request line components: Method, resource, Http Version
@@ -77,11 +75,11 @@ namespace VNLib.Net.Http.Core.Request
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         /// <exception cref="UriFormatException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1ParseRequestLine(
-            this HttpRequest Request,
-            ref Http1ParseState parseState,
-            ref TransportReader reader,
-            Span<char> lineBuf,
+        public static HttpStatusCode ParseRequestLine(
+            HttpRequest Request, 
+            ref Http1ParseState parseState, 
+            ref TransportReader reader, 
+            Span<char> lineBuf, 
             bool usingTls
         )
         {
@@ -101,9 +99,8 @@ namespace VNLib.Net.Http.Core.Request
 
             //Must be able to parse the verb and location
             if (requestResult < 1)
-            {
-                //empty request
-                return (HttpStatusCode)1000;
+            {                
+                return (HttpStatusCode)1000; // Special code that a fault occurred
             }
 
             //true up the request line to actual size
@@ -122,7 +119,10 @@ namespace VNLib.Net.Http.Core.Request
                 return HttpStatusCode.MethodNotAllowed;
             }
 
-            //location string should be from end of verb to HTTP/ NOTE: Only supports http... this is an http server
+            /*
+             * location string should be from end of verb to HTTP/ NOTE: Only supports 
+             * http... this is an http server
+             */
 
             //Client must specify an http version prepended by a single whitespace(rfc2612)
             if ((endloc = requestLine.LastIndexOf(" HTTP/", StringComparison.OrdinalIgnoreCase)) == -1)
@@ -172,7 +172,7 @@ namespace VNLib.Net.Http.Core.Request
                 return 0;
             }
 
-            //Cannot service an unknonw location
+            //Cannot service an unknown location
             return HttpStatusCode.BadRequest;
         }
 
@@ -186,8 +186,8 @@ namespace VNLib.Net.Http.Core.Request
         /// <param name="lineBuf">The buffer read data from the transport with</param>
         /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1ParseHeaders(
-            this HttpRequest Request,
+        public static HttpStatusCode ParseHeaders(
+            HttpRequest Request,
             ref Http1ParseState parseState,
             ref TransportReader reader,
             ref readonly HttpConfig Config,
@@ -566,102 +566,6 @@ namespace VNLib.Net.Http.Core.Request
             }
 
             return 0;
-        }
-
-        /// <summary>
-        /// Prepares the entity body for the current HTTP1 request
-        /// </summary>
-        /// <param name="Request"></param>
-        /// <param name="Config">The current server <see cref="HttpConfig"/></param>
-        /// <param name="parseState">The HTTP1 parsing state</param>
-        /// <param name="reader">The <see cref="VnStreamReader"/> to read lines from the transport</param>
-        /// <returns>0 if the request line was successfully parsed, a status code if the request could not be processed</returns>
-        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static HttpStatusCode Http1PrepareEntityBody(
-            this HttpRequest Request,
-            ref Http1ParseState parseState,
-            ref TransportReader reader,
-            ref readonly HttpConfig Config
-        )
-        {
-            /*
-            * Evil mutable struct, get a local mutable reference to the request's 
-            * state structure in order to initialize state variables. 
-            */
-            ref HttpRequestState reqState = ref Request.GetMutableStateForInit();
-
-            //If the content type is multipart, make sure its not too large to ingest
-            if (reqState.ContentType == ContentType.MultiPart && parseState.ContentLength > Config.MaxFormDataUploadSize)
-            {
-                return HttpStatusCode.RequestEntityTooLarge;
-            }
-
-            //Only ingest the rest of the message body if the request is not a head, get, or trace methods
-            if ((reqState.Method & (HttpMethod.GET | HttpMethod.HEAD | HttpMethod.TRACE)) != 0)
-            {
-                //Bad format to include a message body with a GET, HEAD, or TRACE request
-                if (parseState.ContentLength > 0)
-                {
-                    Config.ServerLog.Debug(
-                        "Message body received from {ip} with GET, HEAD, or TRACE request, was considered an error and the request was dropped",
-                        reqState.RemoteEndPoint
-                    );
-                    return HttpStatusCode.BadRequest;
-                }
-                else
-                {
-                    //Success!
-                    return 0;
-                }
-            }
-
-            //Check for chuncked transfer encoding
-            ReadOnlySpan<char> transfer = Request.Headers[HttpRequestHeader.TransferEncoding];
-
-            if (!transfer.IsEmpty && transfer.Contains("chunked", StringComparison.OrdinalIgnoreCase))
-            {
-                //Not a valid http version for chunked transfer encoding
-                if (reqState.HttpVersion != HttpVersion.Http11)
-                {
-                    return HttpStatusCode.BadRequest;
-                }
-
-                /*
-                 * Was a content length also specified?
-                 * This is an issue and is likely an attack. I am choosing not to support 
-                 * the HTTP 1.1 standard and will deny reading the rest of the data from the 
-                 * transport. 
-                 */
-                if (parseState.ContentLength > 0)
-                {
-                    Config.ServerLog.Debug("Possible attempted desync, Content length + chunked encoding specified. RemoteEP: {ip}", reqState.RemoteEndPoint);
-                    return HttpStatusCode.BadRequest;
-                }
-
-                //TODO: Handle chunked transfer encoding (not implemented yet)
-                return HttpStatusCode.NotImplemented;
-            }
-            //Make sure non-zero cl header was provided
-            else if (parseState.ContentLength > 0)
-            {
-                /*
-                 * The reader may still have available content data following the headers segment
-                 * that is part of the entity body data. This data must be read and stored in the
-                 * input stream for the request.
-                 * 
-                 * If no data is available from the buffer, we can just prepare the input stream
-                 * with null
-                 */
-
-                TransportBufferRemainder remainder = reader.ReleaseBufferRemainder();
-
-                Request.InputStream.Prepare(parseState.ContentLength, in remainder);
-
-                //Notify request that an entity body has been set, always true if content length > 0
-                reqState.HasEntityBody = true;
-            }
-            //Success!
-            return 0;
-        }
+        }       
     }
 }
