@@ -72,7 +72,8 @@ namespace VNLib.Net.Http.Core
             }
 
             //Close response once send and discard are complete
-            await Response.CloseAsync();
+            await Response.CloseAsync()
+                .ConfigureAwait(false);
         }
 
         /// <summary>
@@ -167,7 +168,8 @@ namespace VNLib.Net.Http.Core
                 IDirectResponsWriter output = Response.GetDirectStream();
 
                 //Write response with optional forced length
-                await ResponseBody.WriteEntityAsync(output, buffer);
+                await ResponseBody.WriteEntityAsync(output, buffer)
+                    .ConfigureAwait(false);
             }
             else
             {
@@ -181,7 +183,8 @@ namespace VNLib.Net.Http.Core
                 _compressor.Init(compMethod);
 
                 //Write response
-                await ResponseBody.WriteEntityAsync(_compressor, output, buffer);
+                await ResponseBody.WriteEntityAsync(_compressor, output, buffer)
+                    .ConfigureAwait(false);
             }
         }
 

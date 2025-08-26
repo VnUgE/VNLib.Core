@@ -245,7 +245,11 @@ namespace VNLib.Net.Http.Core
 
             Memory<byte> dataBuffer = Buffers.GetInitStreamBuffer();
 
-            _PreBufferedByteCount = await Transport.Stream.ReadAsync(dataBuffer, cancellation);
+            _preBufferedByteCount = await _transport.Stream
+                .ReadAsync(dataBuffer, cancellation)
+                .ConfigureAwait(false);
+
+            Debug.Assert(_preBufferedByteCount <= dataBuffer.Length);
 
             Debug.Assert(_PreBufferedByteCount <= dataBuffer.Length);
         }

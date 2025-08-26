@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -314,7 +314,8 @@ namespace VNLib.Net.Http.Core.Response
                     if (CompressNextSegment(ref streamReader))
                     {
                         //Time to flush
-                        await writer.FlushAsync(false);
+                        await writer.FlushAsync(false)
+                            .ConfigureAwait(false);
                     }
 
                 } while (streamReader.WindowSize > 0);

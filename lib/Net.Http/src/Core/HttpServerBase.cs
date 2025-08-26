@@ -359,11 +359,12 @@ namespace VNLib.Net.Http
                 try
                 {
                     //Listen for new connection 
-                    ITransportContext ctx = await state.OriginServer.AcceptAsync(stopToken.Token);
+                    ITransportContext ctx = await state.OriginServer
+                        .AcceptAsync(stopToken.Token)
+                        .ConfigureAwait(false);
 
                     //Try to dispatch the received event
-                    _ = DataReceivedAsync(state, stopToken, ctx)
-                        .ConfigureAwait(false);
+                    _ = DataReceivedAsync(state, stopToken, ctx);
                 }
                 catch (OperationCanceledException)
                 {

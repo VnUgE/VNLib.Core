@@ -261,15 +261,16 @@ namespace VNLib.Net.Http.Core.Request
             }
         }
 
-        private async ValueTask DiscardStreamDataAsync()
+        private async ValueTask<long> DiscardStreamDataAsync()
         {
             int read, bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
 
             while (bytesToRead > 0)
             {
                 //Read data to the discard buffer until reading is completed (read == 0)
-                read = await transport.Stream!.ReadAsync(HttpServer.WriteOnlyScratchBuffer[..bytesToRead], CancellationToken.None)
-                    .ConfigureAwait(true);
+                read = await transport.Stream!
+                    .ReadAsync(HttpServer.WriteOnlyScratchBuffer[..bytesToRead], CancellationToken.None)
+                    .ConfigureAwait(false);
 
                 if (read == 0)
                 {
