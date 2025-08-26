@@ -60,12 +60,6 @@ namespace VNLib.Net.Http.Core.Request
         }
 
         /// <summary>
-        /// Gets a value that indicates whether there is data remaining in the input stream
-        /// </summary>
-        /// <returns>A value indicating whether there is data remaining in the input stream</returns>
-        internal bool DataRemaining() => Remaining > 0;
-
-        /// <summary>
         /// Prepares the input stream for reading from the transport with the specified content length
         /// and initial data buffer
         /// </summary>
@@ -226,16 +220,14 @@ namespace VNLib.Net.Http.Core.Request
         /// <summary>
         /// Asynchronously discards all remaining data in the stream 
         /// </summary>
-        /// <returns>A task that represents the discard operations</returns>
-        public ValueTask DiscardRemainingAsync()
-        {
-            long remaining = Remaining;
-
-            if (remaining == 0)
+        /// <returns>A task that resolves the remaining data after a discard operation. Should be 0 on success</returns>
+        /// <remarks>
+        /// A discard operation is successful iff all remaining data is read from the transport, 
+        /// and 0 is returned. If the transport ends before all assumed data is read, the connection
+        /// is considered faulty and the number of bytes that were not read is returned.
+        /// </remarks>
+        public ValueTask<long> DiscardRemainingAsync()
             {
-                return ValueTask.CompletedTask;
-            }
-
             /*
              * Fast path optimization, if all data has already been buffered
              * we can just update the position and return. This means if 
@@ -244,14 +236,17 @@ namespace VNLib.Net.Http.Core.Request
              * 
              * Otherwise we need to read from the stream until all data is discarded.
              */
-
-            if (_state.ContentLength <= _state.Buffer.Size)
+            if (Remaining == 0)
+            {
+                return ValueTask.FromResult(0L);
+            }
+            else if (_state.ContentLength <= _state.Buffer.Size)
             {
                 Debug.Assert(_state.ContentLength == _state.Buffer.Size, "Buffer size should never be larger than available content length");
 
                 DiscardInternalBuffer(ref _state);
 
-                return ValueTask.CompletedTask;
+                return ValueTask.FromResult(0L);
             }
             else
             {
@@ -281,6 +276,8 @@ namespace VNLib.Net.Http.Core.Request
 
                 bytesToRead = (int)Math.Min(HttpServer.WriteOnlyScratchBuffer.Length, Remaining);
             }
+
+            return Remaining;
         }
 
         /// <summary>

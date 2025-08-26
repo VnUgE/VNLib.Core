@@ -56,7 +56,7 @@ namespace VNLib.Net.Http.Core
                         //If headers havent been sent by this stage there is no content, so set length to 0
                         Response.Headers.Set(HttpResponseHeader.ContentLength, "0");
                     }
-                }
+                }              
             }
 
             //Close response once send and discard are complete

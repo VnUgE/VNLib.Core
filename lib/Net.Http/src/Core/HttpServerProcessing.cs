@@ -246,36 +246,60 @@ namespace VNLib.Net.Http
 #endif
 
                 {
+                    /*
+                     * For security purposes the discard task has been pulled into the processing
+                     * code and the parallel optimisation was removed. It was uncommon unless the wrong
+                     * endpoint was hit for this optimisation to improve performance during correct operations. 
+                     * 
+                     * For security it's important to ensure that the request body is fully read/discarded and 
+                     * the client is behaving correctly. If the client is misbehaving we want to close the connection
+                     * and not allow it to be reused.
+                     * 
+                     * When paralleling writes and reads if the discard failed it could leave the write in 
+                     * an undefined state, so this operatin needs to be done in serial before writing the response.
+                     * 
+                     * In the future we can consider altering the response and sending an HTTP level error 
+                     * but for now we will just drop the connection and clean up.
+                     * 
+                     */
+
                     HttpPerfCounter.StartCounter(ref counter);
 
-                    await context.WriteResponseAsync();
+                    long remainingRequestInput = await context.Request.InputStream
+                        .DiscardRemainingAsync()
+                        .ConfigureAwait(false);
 
-                    await context.FlushTransportAsync();
-
-                    HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
-                }
+                    HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP request discard");
 
                 /*
                  * If data is remaining after sending, it means that the request was truncated
-                 * so check if the request has any remaining data in the input stream
+                    * so check if the request has any remaining data in the input stream.
+                    * 
+                    * Result should always be 0 unless the client is misbehaving
                  */
-                if (context.Request.InputStream.DataRemaining())
+                    if (remainingRequestInput > 0)
                 {
                     //Log the truncated request
                     _config.ServerLog.Warn(
-                        "Request was truncated invalid input data, closing connection: {r}", 
+                            "Request body was truncated invalid input data, closing connection: {r}",
                         context.Request.State.RemoteEndPoint
                     );
 
                     return false; //Truncated request, close connection unsafe to reuse
                 }
+                }
 
-                /*
-                 * If an alternate protocol was specified, we need to break the keepalive loop
-                 * the handler will manage the alternate protocol
-                 */
+                {
 
-                return processSuccess & keepalive & context.AlternateProtocol == null;
+                    HttpPerfCounter.StartCounter(ref counter);
+
+                    await context.WriteAndCloseResponseAsync()
+                        .ConfigureAwait(false);
+
+                    await context.FlushTransportAsync()
+                        .ConfigureAwait(false);
+
+                    HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
             }
             finally
             {
