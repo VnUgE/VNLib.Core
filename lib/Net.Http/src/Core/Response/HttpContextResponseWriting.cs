@@ -37,23 +37,13 @@ namespace VNLib.Net.Http.Core
     internal partial class HttpContext
     {
         ///<inheritdoc/>
-        public async Task WriteResponseAsync()
+        public async Task WriteAndCloseResponseAsync()
         {
-            /*
-             * If exceptions are raised, the transport is unusable, the connection is terminated,
-             * and the release method will be called so the context can be reused
-             */
-
-            ValueTask discardTask = Request.InputStream.DiscardRemainingAsync();
-
             //See if response data needs to be written, if so we can parallel discard and write
             if (ResponseBody.HasData)
             {
-                //Parallel the write and discard
-                Task response = WriteResponseInternalAsync();
-
-                //in .NET 8.0 WhenAll is now allocation free, so no biggie 
-                await Task.WhenAll(discardTask.AsTask(), response);
+                await WriteResponseInternalAsync()
+                    .ConfigureAwait(false);
             }
             else
             {
@@ -67,8 +57,6 @@ namespace VNLib.Net.Http.Core
                         Response.Headers.Set(HttpResponseHeader.ContentLength, "0");
                     }
                 }
-
-                await discardTask;
             }
 
             //Close response once send and discard are complete
@@ -86,6 +74,7 @@ namespace VNLib.Net.Http.Core
 
             long length = ResponseBody.Length;
             CompressionMethod compMethod = CompressionMethod.None;
+
             /*
              * It will be known at startup whether compression is supported, if not this is 
              * essentially a constant. 

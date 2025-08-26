@@ -49,7 +49,7 @@ namespace VNLib.Net.Http.Core
         /// connection that begun the request
         /// </summary>
         /// <returns>A Task that completes when the response has completed</returns>
-        Task WriteResponseAsync();
+        Task WriteAndCloseResponseAsync();
 
         /// <summary>
         /// Flushes and pending data associated with the request to the transport
