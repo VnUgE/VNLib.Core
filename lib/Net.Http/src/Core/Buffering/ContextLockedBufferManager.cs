@@ -146,17 +146,21 @@ namespace VNLib.Net.Http.Core.Buffering
         ///<inheritdoc/>
         public IChunkAccumulatorBuffer ChunkAccumulatorBuffer => _chunkAccBuffer;
 
+        /// <summary>
+        /// Gets the shared buffer used for http request initialization
+        /// </summary>
+        /// <returns>A memory block buffer incoming transport data to be read by the parsing reader</returns>
         public Memory<byte> GetInitStreamBuffer()
         {
             /*
             * Since this buffer must be shared with char buffers, size 
-            * must be respected. Remember that split buffesr store binary
+            * must be respected. Remember that split buffers store binary
             * data at the head of the buffer and char data at the tail
             */
 
-            Memory<byte> dataBuffer = RequestHeaderParseBuffer.GetMemory();
+            Memory<byte> dataBuffer = _requestHeaderBuffer.GetMemory();
 
-            return dataBuffer[..RequestHeaderParseBuffer.BinSize];
+            return dataBuffer[.._requestHeaderBuffer.BinSize];
         }
 
 
