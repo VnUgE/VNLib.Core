@@ -177,6 +177,11 @@ namespace VNLib.Net.Http.Core.Request
             return writer.Written;
         }
 
+        /// <inheritdoc/>
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) 
+            => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        /// <inheritdoc/>
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             /*
