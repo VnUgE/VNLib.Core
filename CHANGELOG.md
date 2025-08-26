@@ -5,7 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.2-rc.8] - 2025-08-12
+## [0.1.2-rc.9] - 2025-08-26
+
+### Added
+
+- Adds public api function `CanAccess()` for Linunx platforms - (utils) [ba66248](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=ba662482d70cd9472bf70a18d6c2520dad1d253d)
+
+### Changed
+
+- Update `System.IO.Pipelines` to v9.0.8 for SimpleTCP - (deps) [9c3db83](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=9c3db83d8f3193baaf445dac9c5fccdcb0af5731)
+- Centralize MSBuild config via Directory.Build.props; drop MS_ARGS - [d28635e](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=d28635e3c35b3e8ea3cde845d77012dd055f4466)
+- Add warnings as errors for use of obsolete APIs for entire module - (props) [afbf2ce](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=afbf2ce9d8b6794df77c05c2c6a55d206e07eae0)
+- Enable IDE0251 analyzer warning as an error for readonly members. - [9b66d46](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=9b66d466fd5fc5a6edaef5babe353d75f3b6ab1b)
+- Clean up readability in `GetAttributes()` function. - (utils) [6f31028](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=6f31028dee21e1345d9bab6c3caa5ac26c1c4162)
+- Code cleanup of random formattng and code style updates, bulk commit - (lib) [5bb2eec](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=5bb2eec7d68381ccd13d710d6ce1390648a813be)
+- Improve documentation for `INativeCompressor` public interface - (compression) [e723539](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=e723539c897acb64c3c1beacd4adaeef2d9f1d13)
+
+### Fixed
+
+- Disable incremental builds during module testing - [628ee5c](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=628ee5c266dedc7d3275d2ea060c7d051d05cf11)
+- Improve native heap unmanaged API testing for all built-in heap implementations - (util) [0abf2ea](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=0abf2ea7154be36f068aa5e0e2abc0106a49cae2)
+- Add unit tests for the `FileOperations.cs` public api - (utils/io) [875b6f0](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=875b6f07857b6d8e36aaa8d99962d0e3c20f15d7)
+- Fix utils tests for linux containers running as root - (util/io) [11c65ab](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=11c65ab8dd6150d8628e90e8094b35f666547f02)
+- Disable recent tests for known denied `access()` on linux - (utils/io) [87c5dc0](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=87c5dc05219a4ac481796cf91a04ae0fdbce90fe)
+- Update MSTest dependencies - [671093e](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=671093ecb168c06816c9c4e3bec14a4ed9678b19)
+
+### Performance
+
+- Improve performance for `FileOperations.FileExists()` for Linux platforms using the `access()` libc api - (utils) [923288f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=923288f23d12ebe4759bed206d08e01520cff7cd)
+
+## [0.1.2-rc.8] - 2025-08-13
 
 ### Added
 
@@ -170,7 +199,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove argon2 docs & optional tcp resuse - [f836e09](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=f836e09981866f5c9f2ae46990d11b186a7d12bb)
 
-[0.1.2-rc.8]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=vv0.1.2-rc.8&id2=v0.1.2-rc.7
+[0.1.2-rc.9]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=vv0.1.2-rc.9&id2=v0.1.2-rc.8
+[0.1.2-rc.8]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.8&id2=v0.1.2-rc.7
 [0.1.2-rc.7]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.7&id2=v0.1.2-rc.6
 [0.1.2-rc.6]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.6&id2=v0.1.2-rc.5
 [0.1.2-rc.5]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.5&id2=v0.1.2-rc.4
