@@ -85,7 +85,7 @@ namespace VNLib.Net.Http.Core
         private readonly TransportManager _transport;
         private readonly ManagedHttpCompressor? _compressor;
         private ITransportContext? _ctx;
-        
+
         public HttpContext(HttpServer server, ManagedHttpCompressor? compressor)
         {
             ParentServer = server;
@@ -102,7 +102,7 @@ namespace VNLib.Net.Http.Core
            
             Response = new (this, _transport, Buffers);
           
-            ResponseBody = new ResponseWriter();
+            ResponseBody = new ResponseWriter();           
         }
 
         #region LifeCycle Hooks

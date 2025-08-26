@@ -399,21 +399,23 @@ namespace VNLib.Net.Http
             return true;
         }
 
+
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private async Task<bool> ProcessRequestAsync(ListenerState listenState, HttpContext context)
+        private async Task ProcessRequestAsync(ListenerState listenState, HttpContext context)
         {
             //Get the server root for the specified location or fallback to a wildcard host if one is selected
         
             if (!listenState.Roots.TryGetValue(context.Request.State.Location.DnsSafeHost, out IWebRoot? root))
             {
-                if (listenState.DefaultRoute is null)
-                {
-                    context.Respond(HttpStatusCode.NotFound);
-                    //make sure control leaves
-                    return true;
+                // If not found, fall back to wildcard host if one is set
+                root = listenState.DefaultRoute;
                 }
 
-                root = listenState.DefaultRoute;
+            // If still null, no root was found, return 404
+            if (root is null)
+            {
+                context.Respond(HttpStatusCode.NotFound);              
+                return;
             }
 
             //Check the expect header and return an early status code
@@ -424,19 +426,26 @@ namespace VNLib.Net.Http
             }
 
             /*
-             * Initialze the request body state, which may read/buffer the request
-             * entity body. When doing so, the only exceptions that should be 
-             * generated are IO, OutOfMemory, and Overflow. IOE should 
-             * be raised to the transport as it will only be thrown if the transport
-             * is in an unusable state.
+             * Defer reading/buffering the http entity body and query args until we know
+             * the request can be hanledled by user-code. This avoids wasting resources
+             * on requests that will be rejected by the server, fast path. 
              * 
-             * OOM and Overflow should only be raised if an over-sized entity
-             * body was allowed to be read in. The Parse method should have guarded
-             * form data size so oom or overflow would be bugs, and we can let 
-             * them get thrown
+             * Parsing the input stream may cause input buffering and transport reads. Exceptions
+             * may be raised and we rely on http hooks to cleanup the state.
+             * 
+             * Think of this stage as another layer. Further processing request data from
+             * headers and entity body. The entity body needs to be prepared for user code
+             * but again deferred until absolutly ready to process. If an error occurs 
+             * as mentioned, hooks will be responsible for cleaning up and the client
+             * will be terminated.
              */
 
-            await context.InitRequestBodyAsync();
+            HttpRequestHelpers.ProcessQueryArgs(context.Request);          
+
+            if (context.Request.State.HasEntityBody)
+            {
+                await HttpRequestHelpers.ParseInputStream(context);
+            }          
 
             /*
              * The event object should be cleared when it is no longer in use, IE before 
@@ -467,8 +476,8 @@ namespace VNLib.Net.Http
                     context.Response.Headers.Clear();
                 }
 
-                //Close connection
-                return false;
+                // Disable keepalive
+                context.ContextFlags.Set(HttpControlMask.KeepAliveDisabled);
             }
             //Transport exception
             catch (IOException ioe) when (ioe.InnerException is SocketException)
