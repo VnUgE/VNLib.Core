@@ -104,6 +104,81 @@ namespace VNLib.Net.Http.Core
             ResponseBody = new ResponseWriter();
         }
 
+        #region LifeCycle Hooks
+        // Hooks are written in the order they are called
+        // Shall remain near state objects reduced cognitive load
+
+        void IReusable.Prepare()
+        {
+            Request.OnPrepare();
+            Response.OnPrepare();
+            ResponseBody.OnPrepare();
+        }
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void InitializeContext(ITransportContext ctx)
+        {
+            _ctx = ctx;
+
+            //Alloc buffers during context init incase exception occurs in user-code
+            Buffers.AllocateBuffer(
+                allocator: ParentServer.Config.MemoryPool,
+                config: in ParentServer.BufferConfig
+            );
+
+            //Init new connection
+            _transport.OnNewConnection(ctx.ConnectionStream);
+        }
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void BeginRequest()
+        {
+            ContextFlags.ClearAll();
+
+            Debug.Assert(_ctx != null, "BeginRequest called before InitializeContext");
+
+            //Lifecycle on new request
+            Request.Initialize(_ctx!, ParentServer.Config.DefaultHttpVersion);
+
+            Request.OnNewRequest();
+            Response.OnNewRequest();
+            ResponseBody.OnNewRequest();
+        }
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EndRequest()
+        {
+            _preBufferedByteCount = 0; //Must reset after every request          
+
+            Request.OnComplete();
+            Response.OnComplete();
+            ResponseBody.OnComplete();
+
+            _compressor?.Free();
+        }
+
+        bool IReusable.Release()
+        {
+            _transport.OnRelease();
+
+            _ctx = null;
+
+            AlternateProtocol = null;
+
+            Request.OnRelease();
+            Response.OnRelease();
+            ResponseBody.OnRelease();
+
+            Buffers.FreeAll(ParentServer.Config.MemoryPool);
+
+            return true;
+        }
+
+        #endregion
+
         /// <summary>
         /// Gets a readonly reference to the transport security information
         /// </summary>
@@ -177,72 +252,8 @@ namespace VNLib.Net.Http.Core
 
         #endregion
 
-        #region LifeCycle Hooks
-
         ///<inheritdoc/>
-        public void InitializeContext(ITransportContext ctx)
-        {
-            _ctx = ctx;
-
-            //Alloc buffers during context init incase exception occurs in user-code
-            Buffers.AllocateBuffer(
-                allocator: ParentServer.Config.MemoryPool, 
-                config: in ParentServer.BufferConfig
-            );
-
-            //Init new connection
-            Transport.OnNewConnection(ctx.ConnectionStream);
-        } 
-
-        ///<inheritdoc/>
-        public void BeginRequest()
-        {
-            //Clear all flags
-            ContextFlags.ClearAll();
-
-            //Lifecycle on new request
-            Request.Initialize(_ctx!, ParentServer.Config.DefaultHttpVersion);
-            Response.OnNewRequest();
-        }
-
-        ///<inheritdoc/>
-        public Task FlushTransportAsync() => Transport.FlushAsync();
-        
-        ///<inheritdoc/>
-        public void EndRequest()
-        {
-            _PreBufferedByteCount = 0; //Must reset after every request
-
-            Request.OnComplete();
-            Response.OnComplete();
-            ResponseBody.OnComplete();
-
-            //Free compressor when a message flow is complete
-            _compressor?.Free();
-        }
-
-        void IReusable.Prepare()
-        {
-            Response.OnPrepare();
-        }        
-        
-        bool IReusable.Release()
-        {
-            Transport.OnRelease();
-
-            _ctx = null;
-
-            AlternateProtocol = null;
-
-            //Release response/requqests
-            Response.OnRelease();
-           
-            //Free buffers
-            Buffers.FreeAll(ParentServer.Config.MemoryPool);
-
-            return true;
-        }
-
-        #endregion
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Task FlushTransportAsync() => _transport.FlushAsync();
     }
 }

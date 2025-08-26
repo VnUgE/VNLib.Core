@@ -40,9 +40,35 @@ using VNLib.Net.Http.Core.Compression;
 
 namespace VNLib.Net.Http.Core.Response
 {
-    internal sealed class ResponseWriter : IHttpResponseBody
+    internal sealed class ResponseWriter : IHttpResponseBody, IHttpLifeCycle
     {
         private ResponsBodyDataState _userState;
+        private ReadOnlyMemory<byte> _readSegment;
+
+        #region LifeCycle Hooks
+        // Lifecycle hooks should be near state for less cognitive overhead        
+
+        /// <inheritdoc/>
+        public void OnPrepare() { }
+
+        /// <inheritdoc/>
+        public void OnNewRequest() { }
+
+        /// <inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OnComplete()
+        {
+            //Clear response containers
+            _userState.Dispose();
+            _userState = default;
+
+            _readSegment = default;
+        }
+      
+        /// <inheritdoc/>
+        public void OnRelease() { }
+
+        #endregion
 
         ///<inheritdoc/>
         public bool HasData => _userState.IsSet;
@@ -113,18 +139,6 @@ namespace VNLib.Net.Http.Core.Response
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void OnComplete()
-        {
-            //Clear response containers
-            _userState.Dispose();
-            _userState = default;
-
-            _readSegment = default;
-        }
-
-
-        private ReadOnlyMemory<byte> _readSegment;
 
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 

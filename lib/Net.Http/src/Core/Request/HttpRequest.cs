@@ -65,40 +65,14 @@ namespace VNLib.Net.Http.Core.Request
         private readonly FileUpload[] _uploads = new FileUpload[maxUploads];
         private readonly FileUpload[] _singleUpload = new FileUpload[1];
 
-        /// <summary>
-        /// Gets a mutable structure ref only used to initalize the request 
-        /// state.
-        /// </summary>
-        /// <returns>A mutable reference to the state structure for initalization purposes</returns>
-        internal ref HttpRequestState GetMutableStateForInit() => ref _state;
+        #region Lifecycle Hooks     
+        // Lifecycle hooks should be near state for reduced cognitive load
 
-        /// <summary>
-        /// A readonly reference to the internal request state once initialized
-        /// </summary>
-        internal ref readonly HttpRequestState State => ref _state;
+        /// <inheritdoc/>
+        public void OnPrepare() { }
 
-        void IHttpLifeCycle.OnPrepare()
-        { }
-
-        void IHttpLifeCycle.OnRelease()
-        { }
-        
-        void IHttpLifeCycle.OnNewRequest()
-        { }
-
-        /// <summary>
-        /// Initializes the <see cref="HttpRequest"/> for an incomming connection
-        /// </summary>
-        /// <param name="ctx">The <see cref="ITransportContext"/> to attach the request to</param>
-        /// <param name="defaultHttpVersion">The default http version</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Initialize(ITransportContext ctx, HttpVersion defaultHttpVersion)
-        {
-            _state.LocalEndPoint = ctx.LocalEndPoint;
-            _state.RemoteEndPoint = ctx.RemoteEndpoint;
-            //Set to default http version so the response can be configured properly
-            _state.HttpVersion = defaultHttpVersion;
-        }
+        /// <inheritdoc/>
+        public void OnNewRequest() { }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void OnComplete()
@@ -120,6 +94,7 @@ namespace VNLib.Net.Http.Core.Request
             AcceptLanguage.Clear();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void FreeUploadBuffers()
         {
             //Dispose all initialized files, should be much faster than using Array.Clear();
@@ -130,6 +105,37 @@ namespace VNLib.Net.Http.Core.Request
             }
 
             _singleUpload[0] = default;
+        }    
+
+        /// <inheritdoc/>
+        public void OnRelease() { }      
+
+        #endregion
+
+        /// <summary>
+        /// Gets a mutable structure ref only used to initalize the request 
+        /// state.
+        /// </summary>
+        /// <returns>A mutable reference to the state structure for initalization purposes</returns>
+        internal ref HttpRequestState GetMutableStateForInit() => ref _state;
+
+        /// <summary>
+        /// A readonly reference to the internal request state once initialized
+        /// </summary>
+        internal ref readonly HttpRequestState State => ref _state;
+
+        /// <summary>
+        /// Initializes the <see cref="HttpRequest"/> for an incomming connection
+        /// </summary>
+        /// <param name="ctx">The <see cref="ITransportContext"/> to attach the request to</param>
+        /// <param name="defaultHttpVersion">The default http version</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Initialize(ITransportContext ctx, HttpVersion defaultHttpVersion)
+        {
+            _state.LocalEndPoint = ctx.LocalEndPoint;
+            _state.RemoteEndPoint = ctx.RemoteEndpoint;
+            //Set to default http version so the response can be configured properly
+            _state.HttpVersion = defaultHttpVersion;
         }
 
         /// <summary>
@@ -188,7 +194,7 @@ namespace VNLib.Net.Http.Core.Request
             Array.Copy(_uploads, uploads, _state.UploadCount);
 
             return uploads;
-        }
+        }        
 
 #if DEBUG
 

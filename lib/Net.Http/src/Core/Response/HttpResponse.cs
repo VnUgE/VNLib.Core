@@ -70,7 +70,47 @@ namespace VNLib.Net.Http.Core.Response
         /// <summary>
         /// The current http status code value
         /// </summary>
-        internal HttpStatusCode StatusCode => _code;     
+        internal HttpStatusCode StatusCode => _code;
+
+        #region LifeCycle Hooks
+        // Lifecycle hooks should be near state for less cognitive overhead
+
+        ///<inheritdoc/>
+        public void OnPrepare() { }
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OnNewRequest()
+        {
+            //Default to okay status code
+            _code = HttpStatusCode.OK;
+
+            //Set new header writer on every new request
+            _headerWriterPosition = 0;
+        }
+
+        ///<inheritdoc/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void OnComplete()
+        {
+            //Clear headers and cookies
+            Headers.Clear();
+            Cookies.Clear();
+            //Reset status values
+            HeadersBegun = false;
+            HeadersSent = false;
+
+            //clear header writer
+            _headerWriterPosition = 0;
+
+            //Call child lifecycle hooks
+            ReusableChunkedStream.OnComplete();
+        }
+
+        ///<inheritdoc/>
+        public void OnRelease() => Cookies.TrimExcess(DefaultCookieCapacity);
+
+        #endregion
 
         /// <summary>
         /// Sets the status code of the response
@@ -292,46 +332,9 @@ namespace VNLib.Net.Http.Core.Response
                 : EndFlushHeadersAsync();
         }
 
+
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
 
-        ///<inheritdoc/>
-        public void OnPrepare()
-        { }
-
-        ///<inheritdoc/>
-        public void OnRelease()
-        {
-            Cookies.TrimExcess(DefaultCookieCapacity);
-        }
-
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void OnNewRequest()
-        {
-            //Default to okay status code
-            _code = HttpStatusCode.OK;
-
-            //Set new header writer on every new request
-            _headerWriterPosition = 0;
-        }
-
-        ///<inheritdoc/>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void OnComplete()
-        {
-            //Clear headers and cookies
-            Headers.Clear();
-            Cookies.Clear();
-            //Reset status values
-            HeadersBegun = false;
-            HeadersSent = false;
-
-            //clear header writer
-            _headerWriterPosition = 0;
-
-            //Call child lifecycle hooks
-            ReusableChunkedStream.OnComplete();
-        }
 
         private sealed class DirectStream(TransportManager transport) : IDirectResponsWriter
         {
