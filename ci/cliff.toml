@@ -91,6 +91,7 @@ commit_parsers = [
     # Changes
     { message = "^refactor(:|\\(.*\\):).*", group = "Changed" },
     { message = "^chore\\(deps\\):", group = "Changed" },
+    { message = "^doc(s?)(:|\\(.*\\):).*", group = "Changed" },
 
     # Removals
     { message = "^remove(\\(.*\\))?:", group = "Removed" },
@@ -100,6 +101,7 @@ commit_parsers = [
 
     # Performance upgrades
     { message = "^perf(\\(.*\\))?:", group = "Performance" },
+    { message = "^pref(\\(.*\\))?:", group = "Performance" },
 
     #skip ci and specific chore tasks
     { message = ".*\\[no ci\\].*", skip = true },
