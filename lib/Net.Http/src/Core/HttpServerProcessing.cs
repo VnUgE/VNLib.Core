@@ -88,7 +88,7 @@ namespace VNLib.Net.Http
                     stream.ReadTimeout = _config.ActiveConnectionRecvTimeout; //Return read timeout to active connection timeout after data is received
 
                     keepAlive = await ProcessHttpEventAsync(listenState, context);                    
-
+                    
                     stream.ReadTimeout = _keepAliveTimeoutSeconds;  //Timeout reset to keepalive timeout waiting for more data on the transport
 
                 } // Continue if keepalive is enabled and no alternate protocol was requested
@@ -186,23 +186,21 @@ namespace VNLib.Net.Http
 
             try
             {
-                int parseStatus;
 
                 {
                     HttpPerfCounter.StartCounter(ref counter);
 
                     //Try to parse the http request (may throw exceptions, let them propagate to the transport layer)
-                    parseStatus = (int)ParseRequest(context);
+                    bool parseStatus = ParseAndValidateRequest(context);
 
                     HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Parse");
-                }
 
                     if (!parseStatus)
-                {
-                    return false;
+                    {
+                        return false;
+                    }
                 }
-                }
-
+               
 
                 await ProcessRequestAsync(listenState, context);
 
@@ -242,22 +240,22 @@ namespace VNLib.Net.Http
 
                     HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP request discard");
 
-                /*
-                 * If data is remaining after sending, it means that the request was truncated
+                    /*
+                    * If data is remaining after sending, it means that the request was truncated
                     * so check if the request has any remaining data in the input stream.
                     * 
                     * Result should always be 0 unless the client is misbehaving
-                 */
+                    */
                     if (remainingRequestInput > 0)
-                {
-                    //Log the truncated request
-                    _config.ServerLog.Warn(
+                    {
+                        //Log the truncated request
+                        _config.ServerLog.Warn(
                             "Request body was truncated invalid input data, closing connection: {r}",
-                        context.Request.State.RemoteEndPoint
-                    );
+                            context.Request.State.RemoteEndPoint
+                        );
 
-                    return false; //Truncated request, close connection unsafe to reuse
-                }
+                        return false; //Truncated request, close connection unsafe to reuse
+                    }                  
                 }
 
                 {
@@ -271,7 +269,7 @@ namespace VNLib.Net.Http
                         .ConfigureAwait(false);
 
                     HttpPerfCounter.StopAndLog(ref counter, in _config, "HTTP Response");
-            }
+                }               
 
                 return !context.ContextFlags.IsSet(HttpControlMask.KeepAliveDisabled);
             }
@@ -290,118 +288,226 @@ namespace VNLib.Net.Http
          * safe defaults before being called.
          */
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private HttpStatusCode ParseRequest(HttpContext ctx)
+        private bool ParseAndValidateRequest(HttpContext context)
         {
-            //Get transport security info
-            ref readonly TransportSecurityInfo? secInfo = ref ctx.GetSecurityInfo();
-
-            if (secInfo.HasValue)
-            {
-                //TODO: future support for http2 and http3 over tls
-            }
-
-            ctx.GetReader(out TransportReader reader);
-
             HttpStatusCode code;
 
             try
             {
-                //Get the char span
-                Span<char> lineBuf = ctx.Buffers.RequestHeaderParseBuffer.GetCharSpan();
-                
-                Http11ParseExtensions.Http1ParseState parseState = new();
-                
-                if ((code = ctx.Request.Http1ParseRequestLine(ref parseState, ref reader, lineBuf, secInfo.HasValue)) > 0)
+                //Get transport security info
+                ref readonly TransportSecurityInfo? secInfo = ref context.GetSecurityInfo();
+
+                if (secInfo.HasValue)
                 {
-                    return code;
-                }
-              
-                if ((code = ctx.Request.Http1ParseHeaders(ref parseState, ref reader, in _config, lineBuf)) > 0)
-                {
-                    return code;
-                }
-                
-                if ((code = ctx.Request.Http1PrepareEntityBody(ref parseState, ref reader, in _config)) > 0)
-                {
-                    return code;
+                    //TODO: future support for http2 and http3 over tls               
                 }
 
-                //Success!
-                return 0;
+                context.GetReader(out TransportReader reader);
+
+                /*
+                 * Future http2+ support will be added here and will need to check
+                 * application layer protocol negotiation from the TLS handshake to help
+                 * decide which protocol to parse incoming data as.
+                 */
+
+                //Get the char span
+                Span<char> lineBuf = context.Buffers.RequestHeaderParseBuffer.GetCharSpan();
+
+                Http11Parser.Http1ParseState parseState = new();
+
+                code = Http11Parser.ParseRequestLine(context.Request, ref parseState, ref reader, lineBuf, secInfo.HasValue);
+                if (code > 0)
+                {
+                    goto ProcessFault;
+                }
+
+                code = Http11Parser.ParseHeaders(context.Request, ref parseState, ref reader, in _config, lineBuf);
+                if (code > 0)
+                {
+                    goto ProcessFault;
+                }
+
+                if (parseState.ContentLength > 0)
+                {
+                    /*
+                     * When the request has incoming entity body data, we need to prepare
+                     * the input stream to handle it. The transport reader may also have buffered 
+                     * some of the entity body data, so the reader will "relinquish" control of 
+                     * the header buffer to the input stream to avoid a copy.
+                     */
+
+                    TransportBufferRemainder remainder = reader.ReleaseBufferRemainder();
+
+                    context.Request.InputStream.Prepare(parseState.ContentLength, in remainder);
+
+                    //Notify request that an entity body has been set, always true if content length > 0
+                    ref HttpRequestState reqState = ref context.Request.GetMutableStateForInit();
+                    reqState.HasEntityBody = true;
+                }
+
             }
-            //Catch exahusted buffer request
+            //Catch exhausted buffer request
             catch (OutOfMemoryException)
             {
-                return HttpStatusCode.RequestHeaderFieldsTooLarge;
+                code = HttpStatusCode.RequestHeaderFieldsTooLarge;
             }
             catch (UriFormatException)
             {
-                return HttpStatusCode.BadRequest;
+                code = HttpStatusCode.BadRequest;
             }
-        }
 
-        private bool PreProcessRequest(HttpContext context, HttpStatusCode status, ref bool keepalive)
-        {
-            //Check status
-            if (status != 0)
+        ProcessFault:
+
+            // Check for below-http level fault
+            if ((int)code >= 1000)
             {
-                /*
-                * If the status of the parsing was not successfull the transnport is considered 
-                * an unknowns state and could still have data which could corrupt communications 
-                * or worse, contatin an attack. I am choosing to drop the transport and close the 
-                * connection if parsing the request fails
-                */
-                //Close the connection when we exit
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
-                //Return status code, if the the expect header was set, return expectation failed, otherwise return the result status code
-                context.Respond(context.Request.State.Expect ? HttpStatusCode.ExpectationFailed : status);
-                //exit and close connection (default result will close the context)
+                if (_config.ServerLog.IsEnabled(LogLevel.Debug))
+                {
+                    _config.ServerLog.Debug("Failed to parse request, error: {s}. Force closing transport", (int)code);
+                }
+
                 return false;
             }
+
+            /*
+             * Process an http-level fault, if code is not 0
+             */
+
+            if (code != 0)
+            {
+                /*
+                 * If the status of the parsing was not successful the transport is considered 
+                 * an unknown state and could still have data which could corrupt communications 
+                 * or worse, contain an attack. I am choosing to drop the transport and close the 
+                 * connection if parsing the request fails
+                 */
+
+                //Close the connection when we exit
+                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
+
+                //Return status code, if the the expect header was set, return expectation failed
+                if (context.Request.State.Expect)
+                {
+                    code = HttpStatusCode.ExpectationFailed;                    
+                }
+
+                goto ExitFault;
+            }
+
+            /******************************
+             *  
+             *  ENTITY REQUEST VALIDATION
+             *  
+             *  The following checks are to validate the request after parsing and 
+             *  are considered http-level faults and will cause a normal http error
+             *  
+             ******************************/
 
             //Make sure the server supports the http version
             if ((context.Request.State.HttpVersion & SupportedVersions) == 0)
             {
-                //Close the connection when we exit
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
-                context.Respond(HttpStatusCode.HttpVersionNotSupported);
-                return false;
+                code = HttpStatusCode.HttpVersionNotSupported;
+                goto ExitFault;
             }
 
             //Check open connection count (not super accurate, or might not be atomic)
             if (OpenConnectionCount > _config.MaxOpenConnections)
             {
                 //Close the connection and return 503
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
-                context.Respond(HttpStatusCode.ServiceUnavailable);
-                return false;
+                code = HttpStatusCode.ServiceUnavailable;
+                goto ExitFault;
             }
 
-            //Store keepalive value from request, and check if keepalives are enabled by the configuration
-            keepalive = context.Request.State.KeepAlive & _config.ConnectionKeepAlive > TimeSpan.Zero;
+            /*
+             * If the request method is GET, HEAD, or TRACE and a message body was sent
+             * we need to drop the request as this is considered a bad request by 
+             * the HTTP standard.
+             * 
+             * If status is already set, were going to exit on an existing fault, otherwise
+             * check for the bad request condition.
+             */
 
-            //Set connection header (only for http1.1)
-
-            if (keepalive)
+            if ((context.Request.State.Method & (HttpMethod.GET | HttpMethod.HEAD | HttpMethod.TRACE)) != 0)
             {
-                /*
-                * Request parsing only sets the keepalive flag if the connection is http1.1
-                * so we can verify this in an assert
-                */
-                Debug.Assert(context.Request.State.HttpVersion == HttpVersion.Http11, "Request parsing allowed keepalive for a non http1.1 connection, this is a bug");
+                if (context.Request.State.HasEntityBody)
+                {
+                    _config.ServerLog.Debug(
+                        "Message body received from {ip} with GET, HEAD, or TRACE request, was considered an error and the request was dropped",
+                        context.Request.State.RemoteEndPoint
+                    );
 
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "keep-alive");
-                context.Response.Headers.Set(HttpResponseHeader.KeepAlive, _keepAliveTimeoutHeaderValue);
+                    // Set status to bad request
+                    code = HttpStatusCode.BadRequest;
+                    goto ExitFault;
+                }
             }
-            else
+
             {
-                //Set connection closed
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
+                //Check for chunked transfer encoding
+                ReadOnlySpan<char> transfer = context.Request.Headers[HttpRequestHeader.TransferEncoding];
+
+                if (!transfer.IsEmpty && transfer.Contains("chunked", StringComparison.OrdinalIgnoreCase))
+                {
+                    //Not a valid http version for chunked transfer encoding
+                    if (context.Request.State.HttpVersion != HttpVersion.Http11)
+                    {
+                        code = HttpStatusCode.BadRequest;
+                        goto ExitFault;
+                    }
+
+                    /*
+                     * Was a content length also specified?
+                     * This is an issue and is likely an attack. I am choosing not to support 
+                     * the HTTP 1.1 standard and will deny reading the rest of the data from the 
+                     * transport. 
+                     */
+                    if (context.Request.InputStream.Length > 0)
+                    {
+                        _config.ServerLog.Debug(
+                            "Possible attempted desync, Content length + chunked encoding specified. RemoteEP: {ip}",
+                            context.Request.State.RemoteEndPoint
+                        );
+
+                        code = HttpStatusCode.BadRequest;
+                        goto ExitFault;
+                    }
+
+                    //TODO: Handle chunked transfer encoding (not implemented yet)
+                    code = HttpStatusCode.NotImplemented;
+                    goto ExitFault;
+                }
             }
+
+            // Form-data size guard
+            if (
+                context.Request.State.ContentType == ContentType.MultiPart
+                && context.Request.InputStream.Length > _config.MaxFormDataUploadSize
+            )
+            {
+                code = HttpStatusCode.RequestEntityTooLarge;
+                goto ExitFault;
+            }
+
+            /*
+             * Set the initial keepalive state. User code and internal code will rely on
+             * this flag to determine keepalive settings, during response processing.
+             */
+
+            context.ContextFlags.Set(
+                HttpControlMask.KeepAliveDisabled,
+                !(context.Request.State.KeepAlive & _keepAliveTimeoutSeconds > 0)
+            );
 
             return true;
-        }
 
+        ExitFault:
+
+            //Close the connection when we exit
+            context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
+            context.Respond(code);
+            return false;
+        }
+       
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private async Task ProcessRequestAsync(ListenerState listenState, HttpContext context)
@@ -412,7 +518,7 @@ namespace VNLib.Net.Http
             {
                 // If not found, fall back to wildcard host if one is set
                 root = listenState.DefaultRoute;
-                }
+            }
 
             // If still null, no root was found, return 404
             if (root is null)
@@ -503,7 +609,7 @@ namespace VNLib.Net.Http
              * The safest option would be terminate the connection, well see.
              * 
              * For now I will allow it.
-             */
+             */           
         }       
 
         private void SetResponseConnectionHeader(HttpContext context)
@@ -530,7 +636,7 @@ namespace VNLib.Net.Http
                 context.Response.Headers.Set(HttpResponseHeader.KeepAlive, _keepAliveTimeoutHeaderValue);
             }
         }
- 
+
 
         [Conditional("DEBUG")]
         private void WriteConnectionDebugLog(HttpContext context)
