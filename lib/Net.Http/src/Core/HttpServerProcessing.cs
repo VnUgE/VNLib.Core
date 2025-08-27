@@ -382,10 +382,7 @@ namespace VNLib.Net.Http
                  * connection if parsing the request fails
                  */
 
-                //Close the connection when we exit
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
-
-                //Return status code, if the the expect header was set, return expectation failed
+                //Return status code, if the expect header was set, return expectation failed
                 if (context.Request.State.Expect)
                 {
                     code = HttpStatusCode.ExpectationFailed;                    
