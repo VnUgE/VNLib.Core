@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -32,7 +32,7 @@ namespace VNLib.Utils.Resources
     public interface IExclusiveResource : IResource
     {
         /// <summary>
-        /// Releases the resource from use. Called when a <see cref="ExclusiveResourceHandle{T}"/> is disposed
+        /// Releases the resource from use.
         /// </summary>
         void Release();
     }

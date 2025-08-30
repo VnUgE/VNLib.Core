@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.SimpleTCP
@@ -63,7 +63,7 @@ namespace VNLib.Net.Transport.Tcp
             _recvArgs.DisconnectReuseSocket = _reuseSocket;
             _allArgs.DisconnectReuseSocket = _reuseSocket;
         }
-      
+
 
         public async ValueTask<SocketError> AcceptAsync(Socket serverSocket, int recvBuffSize, int sendBuffSize)
         {
@@ -79,14 +79,8 @@ namespace VNLib.Net.Transport.Tcp
                 _allArgs.SetBuffer(buffer);
             }
 
-            //Reuse socket if it's set
-            _allArgs.AcceptSocket = _socket;
-
-            //Begin the accept
-            SocketError error = await _allArgs.AcceptAsync(serverSocket);
-
-            //Clear the buffer reference
-            _allArgs.SetBuffer(default);
+            //Begin the accept, and attempt to reuse the socket if available
+            SocketError error = await _allArgs.AcceptAsync(serverSocket, _socket);
 
             if (error == SocketError.Success)
             {
@@ -136,7 +130,7 @@ namespace VNLib.Net.Transport.Tcp
              * so it needs to be cleaned up here so at least our args instance
              * can be reused.
              */
-            if(_reuseSocket && error != SocketError.Success)
+            if (_reuseSocket && error != SocketError.Success)
             {
                 _socket.Dispose();
                 _socket = null;
@@ -151,11 +145,10 @@ namespace VNLib.Net.Transport.Tcp
             //Socket must always be defined as this function is called from the pipeline
             Debug.Assert(_socket != null, "Socket is not connected");
 
-            //Get memory from readonly memory and set the send buffer
+            //Get memory from readonly memory so it can be sent using asyncargs
             Memory<byte> asMemory = MemoryMarshal.AsMemory(buffer);
-            _allArgs.SetBuffer(asMemory);
 
-            return _allArgs.SendAsync(_socket, socketFlags);
+            return _allArgs.SendAsync(_socket, asMemory, socketFlags);
         }
 
         ///<inheritdoc/>
@@ -164,8 +157,7 @@ namespace VNLib.Net.Transport.Tcp
             //Socket must always be defined as this function is called from the pipeline
             Debug.Assert(_socket != null, "Socket is not connected");
 
-            _recvArgs.SetBuffer(buffer);
-            return _recvArgs.ReceiveAsync(_socket, socketFlags);
+            return _recvArgs.ReceiveAsync(_socket, buffer, socketFlags);
         }
 
         void IReusable.Prepare()
@@ -194,7 +186,7 @@ namespace VNLib.Net.Transport.Tcp
             }
 
             return SocketWorker.Release();
-        } 
+        }
 
         ///<inheritdoc/>
         Stream ITcpConnectionDescriptor.GetStream() => SocketWorker.NetworkStream;
@@ -220,7 +212,7 @@ namespace VNLib.Net.Transport.Tcp
             SocketWorker.DisposeInternal();
         }
 
-        private sealed class AwaitableValueSocketEventArgs : 
+        private sealed class AwaitableValueSocketEventArgs :
             SocketAsyncEventArgs,
             IValueTaskSource<SocketError>,
             IValueTaskSource<int>
@@ -252,7 +244,7 @@ namespace VNLib.Net.Transport.Tcp
                         //Clear buffer after async op
                         SetBuffer(default);
 
-                        //If the operation was successfull, set the number of bytes transferred
+                        //If the operation was successful, set the number of bytes transferred
                         if (SocketError == SocketError.Success)
                         {
                             AsyncTaskCore.SetResult(e.BytesTransferred);
@@ -285,25 +277,18 @@ namespace VNLib.Net.Transport.Tcp
             /// Begins an asynchronous accept operation on the current (bound) socket 
             /// </summary>
             /// <param name="sock">The server socket to accept the connection</param>
+            /// <param name="reusedSocket">Optional socket to reuse for the accept operation</param>
             /// <returns>True if the IO operation is pending</returns>
-            public ValueTask<SocketError> AcceptAsync(Socket sock)
+            public ValueTask<SocketError> AcceptAsync(Socket sock, Socket? reusedSocket)
             {
-                //Store the semaphore in the user token event args 
-                SocketError = SocketError.Success;
-                SocketFlags = SocketFlags.None;
+                OnBeforeOperation(SocketFlags.None);
 
-                //Reset task source
-                AsyncTaskCore = default;
+                AcceptSocket = reusedSocket;
 
-                if(sock.AcceptAsync(this))
-                {
-                    //Async op pending, return the task
-                    return new ValueTask<SocketError>(this, AsyncTaskCore.Version);
-                }
-
-                //Sync op completed
-                return ValueTask.FromResult(SocketError);               
-            }          
+                return sock.AcceptAsync(this)
+                    ? new ValueTask<SocketError>(this, AsyncTaskCore.Version)
+                    : ValueTask.FromResult(SocketError);
+            }
 
             /// <summary>
             /// Begins an async disconnect operation on a currentl connected socket
@@ -311,69 +296,48 @@ namespace VNLib.Net.Transport.Tcp
             /// <returns>True if the operation is pending</returns>
             public ValueTask<SocketError> DisconnectAsync(Socket serverSock)
             {
-                //Clear flags
-                SocketError = SocketError.Success;
-                
-                //Reset task source
-                AsyncTaskCore = default;
-                
-                //accept async
-                if (serverSock.DisconnectAsync(this))
-                {
-                    //Async disconnect
-                    return new ValueTask<SocketError>(this, AsyncTaskCore.Version);
-                }
+                OnBeforeOperation(SocketFlags.None);
 
-                return ValueTask.FromResult(SocketError);
+                return serverSock.DisconnectAsync(this)
+                    ? new ValueTask<SocketError>(this, AsyncTaskCore.Version)
+                    : ValueTask.FromResult(SocketError);
             }
-        
 
-            public ValueTask<int> SendAsync(Socket socket, SocketFlags flags)
+
+            public ValueTask<int> SendAsync(Socket socket, Memory<byte> buffer, SocketFlags flags)
             {
-                //Store the semaphore in the user token event args 
-                SocketError = SocketError.Success;
-                SocketFlags = flags;
+                OnBeforeOperation(flags);
 
-                //Clear task source
-                AsyncTaskCore = default;
+                SetBuffer(buffer);
 
                 if (socket.SendAsync(this))
                 {
-                    //Async accept
+                    //Async send
                     return new ValueTask<int>(this, AsyncTaskCore.Version);
                 }
 
-                //clear buffer
-                SetBuffer(default);
-
-                //Sync send
+                // Syncronous send
                 return GetSyncTxRxResult();
             }
 
-            public ValueTask<int> ReceiveAsync(Socket socket, SocketFlags flags)
+            public ValueTask<int> ReceiveAsync(Socket socket, Memory<byte> buffer, SocketFlags flags)
             {
-                //Store the semaphore in the user token event args 
-                SocketError = SocketError.Success;
-                SocketFlags = flags;
+                OnBeforeOperation(flags);
 
-                //Clear task source
-                AsyncTaskCore = default;
+                SetBuffer(buffer);
 
                 if (socket.ReceiveAsync(this))
                 {
-                    //Async accept
+                    //Async receive
                     return new ValueTask<int>(this, AsyncTaskCore.Version);
                 }
 
-                //Clear buffer
-                SetBuffer(default);
-
+                // Syncronous receive
                 return GetSyncTxRxResult();
             }
 
             private ValueTask<int> GetSyncTxRxResult()
             {
-                //Sync send
                 return SocketError switch
                 {
                     SocketError.Success => ValueTask.FromResult(BytesTransferred),
@@ -381,6 +345,13 @@ namespace VNLib.Net.Transport.Tcp
                 };
             }
 
+            private void OnBeforeOperation(SocketFlags flags)
+            {
+                //Reset the task source, flags, and internal error state
+                AsyncTaskCore.Reset();
+                SocketError = SocketError.Success;
+                SocketFlags = flags;
+            }
 
             ///<inheritdoc/>
             public SocketError GetResult(short token) => (SocketError)AsyncTaskCore.GetResult(token);
@@ -389,12 +360,11 @@ namespace VNLib.Net.Transport.Tcp
             public ValueTaskSourceStatus GetStatus(short token) => AsyncTaskCore.GetStatus(token);
 
             ///<inheritdoc/>
-            public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) 
+            public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags)
                 => AsyncTaskCore.OnCompleted(continuation, state, token, flags);
 
             ///<inheritdoc/>
             int IValueTaskSource<int>.GetResult(short token) => AsyncTaskCore.GetResult(token);
         }
     }
-    
 }

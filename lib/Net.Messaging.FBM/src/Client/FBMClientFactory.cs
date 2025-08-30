@@ -32,7 +32,7 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// An FBMClient factory that creates immutable clients from fbm 
     /// websockets
     /// </summary>
-    public sealed class FBMClientFactory: ICacheHolder
+    public sealed class FBMClientFactory : ICacheHolder
     {
         private readonly ObjectRental<FBMRequest> _internalRequestPool;
         private readonly FBMClientConfig _config;
@@ -79,10 +79,10 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <returns>The initialized FBM client instance</returns>
         public FBMClient CreateClient()
-        {  
+        {
             return new(
-                config: in _config, 
-                websocket: _socketMan.CreateWebsocket(in _config), 
+                config: in _config,
+                websocket: _socketMan.CreateWebsocket(in _config),
                 requestRental: _internalRequestPool
             );
         }

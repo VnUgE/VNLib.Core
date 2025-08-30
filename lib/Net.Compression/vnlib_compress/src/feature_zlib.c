@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -27,26 +27,58 @@
 #include <zlib.h>
 #include "feature_zlib.h"
 
-#define validateCompState(state) \
-	if (!state) return ERR_INVALID_PTR; \
-	if (!state->compressor) return ERR_GZ_INVALID_STATE; \
+static _vncmp_inline void* _stateMemAlloc(const comp_state_t* state, size_t size)
+{
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->allocFunc != NULL, "Expected non-null allocFunc pointer");
+	
+	if (!state || !state->allocFunc || size == 0)
+	{
+		return NULL; // Return NULL for invalid parameters
+	}
+	
+	return state->allocFunc(state->memOpaque, size);
+}
+
+static _vncmp_inline void _stateMemFree(const comp_state_t* state, void* ptr)
+{
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->freeFunc != NULL, "Expected non-null freeFunc pointer");
+	
+	if (state && state->freeFunc && ptr)
+	{
+		state->freeFunc(state->memOpaque, ptr);
+	}
+}
 
 /*
-* Stream memory management functions
+* Helper alloc callback function for zlib to match the zlib API
+* 
+* The alloc function will store a pointer to the comp_state_t
+* structure, it can be recovered to access the custom allocator
 */
 static void* _gzAllocCallback(void* opaque, uint32_t items, uint32_t size)
 {
-	(void)sizeof(opaque);
-	return vnmalloc(items, size);
+	DEBUG_ASSERT2(opaque != NULL, "Expected non-null opaque pointer");
+
+	return _stateMemAlloc((const comp_state_t*)opaque, items * size);
 }
+
+/**
+ * Also need a helper free callback function because for alloc we passed the context
+ * as the opaque pointer for alloc, so we need to deref the original opaque pointer 
+ * to pass to the original free function.
+ */
 
 static void _gzFreeCallback(void* opaque, void* address)
 {
-	(void)sizeof(opaque);
-	vnfree(address);
+	DEBUG_ASSERT2(opaque != NULL, "Expected non-null opaque pointer");
+	DEBUG_ASSERT2(address != NULL, "Expected non-null address pointer");
+
+	_stateMemFree((const comp_state_t*)opaque, address);
 }
 
-int DeflateAllocCompressor(_cmp_state_t* state)
+int DeflateAllocCompressor(comp_state_t* state)
 {	
 	int result, compLevel;
 
@@ -56,7 +88,7 @@ int DeflateAllocCompressor(_cmp_state_t* state)
 	* Allocate the z-stream state on the heap so we can
 	* store it in the compressor state
 	*/
-	z_stream* stream = (z_stream*)vncalloc(1, sizeof(z_stream));
+	z_stream* stream = (z_stream*)_stateMemAlloc(state, sizeof(z_stream));
 
 	if (!stream) 
 	{
@@ -65,13 +97,13 @@ int DeflateAllocCompressor(_cmp_state_t* state)
 
 	stream->zalloc = &_gzAllocCallback;
 	stream->zfree = &_gzFreeCallback;
-	stream->opaque = Z_NULL;
+	/* Store the entire state structure to access the callback functions */
+	stream->opaque = state;
 
 	/*
 	* Initialize the z-stream state with the 
 	* desired compression level
 	*/
-
 
 	switch (state->level)
 	{
@@ -104,7 +136,7 @@ int DeflateAllocCompressor(_cmp_state_t* state)
 	* the max window size to 16 
 	*/
 
-	if(state->type & COMP_TYPE_GZIP)
+	if (state->type & COMP_TYPE_GZIP)
 	{
 		result = deflateInit2(
 			stream, 
@@ -136,7 +168,7 @@ int DeflateAllocCompressor(_cmp_state_t* state)
 
 	if (result != Z_OK)
 	{
-		vnfree(stream);
+		_stateMemFree(state, stream);
 		return result;
 	}
 
@@ -147,7 +179,7 @@ int DeflateAllocCompressor(_cmp_state_t* state)
 	return VNCMP_SUCCESS;
 }
 
-int DeflateFreeCompressor(_cmp_state_t* state)
+int DeflateFreeCompressor(comp_state_t* state)
 {
 	int result;
 
@@ -156,7 +188,7 @@ int DeflateFreeCompressor(_cmp_state_t* state)
 	/*
 	* Free the z-stream state, only if the compressor is initialized
 	*/
-	if (state->compressor) 
+	if (state && state->compressor) 
 	{
 		/*
 		* Attempt to end the deflate stream, and store the status code
@@ -169,7 +201,7 @@ int DeflateFreeCompressor(_cmp_state_t* state)
 		* stream failed to end.
 		*/
 
-		vnfree(state->compressor);
+		_stateMemFree(state, state->compressor);
 		state->compressor = NULL;
 
 		/*
@@ -187,18 +219,20 @@ int DeflateFreeCompressor(_cmp_state_t* state)
 	return VNCMP_SUCCESS;
 }
 
-int DeflateCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation)
+int DeflateCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operation)
 {
 	int result;
 
-	validateCompState(state)
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
+	DEBUG_ASSERT2(operation != NULL, "Expected non-null operation parameter");
 	
 	/* Clear the result read/written fields */
 	operation->bytesRead = 0;
 	operation->bytesWritten = 0;
 
 	/*
-	* If the input is empty a flush is not requested, they we are waiting for
+	* If the input is empty a flush is not requested, then we are waiting for
 	* more input and this was just an empty call. Should be a no-op
 	*/
 
@@ -261,7 +295,7 @@ int DeflateCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* o
 	return result;
 }
 
-int64_t DeflateGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush)
+int64_t DeflateGetCompressedSize(_In_ const comp_state_t* state, uint64_t length, int32_t flush)
 {
 	uint64_t compressedSize;
 
@@ -270,14 +304,15 @@ int64_t DeflateGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length
 	* entire size of the compressed data, which can include metadata
 	*/
 
-	validateCompState(state)
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
+	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
 
 	if (length <= 0)
 	{
 		return 0;
 	}
 
-	if(flush)
+	if (flush)
 	{
 		/*
 		* TODO: actualy determine the size of the compressed data

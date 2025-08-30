@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_compress
@@ -22,32 +22,7 @@
 #include <brotli/encode.h>
 #include "feature_brotli.h"
 
-#define validateCompState(state) \
-	CHECK_NULL_PTR(state); \
-	if (!state->compressor) return ERR_BR_INVALID_STATE; \
-
-/*
-* Stream memory management functions
-*/
-static void* _brAllocCallback(void* opaque, size_t size)
-{
-	(void)sizeof(opaque);
-	return vnmalloc(size, 1);
-}
-
-static void _brFreeCallback(void* opaque, void* address)
-{
-	(void)sizeof(opaque);
-	
-	/*Brotli may pass a null address to the free callback*/
-	if (address)
-	{
-		vnfree(address);
-	}
-}
-
-
-int BrAllocCompressor(_cmp_state_t* state)
+int BrAllocCompressor(comp_state_t* state)
 {
 	BrotliEncoderState* comp;
 
@@ -62,10 +37,14 @@ int BrAllocCompressor(_cmp_state_t* state)
 		return ERR_COMP_LEVEL_NOT_SUPPORTED;
 	}
 	
+	/*
+	* The alloc/free functions should be set, but brotli doesn't care,
+	* it will use its own memory allocator if they are not set.
+	*/
 	comp = BrotliEncoderCreateInstance(
-		&_brAllocCallback, 
-		&_brFreeCallback,
-		NULL
+		state->allocFunc, 
+		state->freeFunc,
+		state->memOpaque
 	);
 
 	if (!comp)
@@ -121,33 +100,32 @@ int BrAllocCompressor(_cmp_state_t* state)
 	return VNCMP_SUCCESS;
 }
 
-void BrFreeCompressor(_cmp_state_t* state)
+void BrFreeCompressor(comp_state_t* state)
 {
 	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");	
 
 	/*
 	* Free the compressor instance if it exists
 	*/
-	if (state->compressor)
+	if (state && state->compressor)
 	{
 		BrotliEncoderDestroyInstance((BrotliEncoderState*)state->compressor);
 		state->compressor = NULL;
 	}
 }
 
-int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operation)
+int BrCompressBlock(_In_ const comp_state_t* state, CompressionOperation* operation)
 {
 	BrotliEncoderOperation brOperation;
 	BROTLI_BOOL brResult;
 
-	size_t availableIn, availableOut, totalOut;
+	size_t availableIn, availableOut;
 	const uint8_t* nextIn;
 	uint8_t* nextOut;
 
 	DEBUG_ASSERT2(operation != NULL, "Expected non-null operation parameter");
-
-	/* Validate inputs */
-	validateCompState(state)
+	DEBUG_ASSERT2(state != NULL, "Expected non-null compressor state");
+	DEBUG_ASSERT2(state->compressor != NULL, "Expected non-null compressor structure pointer");
 
 	/* Clear the result read / written fields */
 	operation->bytesRead = 0;
@@ -167,14 +145,9 @@ int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operat
 	* Determine the operation to perform
 	*/
 
-	if (operation->flush) 
-	{
-		brOperation = BROTLI_OPERATION_FINISH;
-	}
-	else
-	{
-		brOperation = BROTLI_OPERATION_PROCESS;
-	}
+	brOperation = operation->flush 
+		? BROTLI_OPERATION_FINISH 
+		: BROTLI_OPERATION_PROCESS;
 
 	/*
 	* Update lengths and data pointers from input/output spans
@@ -184,8 +157,7 @@ int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operat
 	availableIn = operation->bytesInLength;
 	availableOut = operation->bytesOutLength;
 	nextIn = operation->bytesIn;
-	nextOut = operation->bytesOut;
-	
+	nextOut = operation->bytesOut;	
 
 	/*
 	* Compress block as stream and store the result 
@@ -199,7 +171,7 @@ int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operat
 		&nextIn,
 		&availableOut,
 		&nextOut,
-		&totalOut
+		NULL
 	);
 	
 	/*
@@ -222,17 +194,17 @@ int BrCompressBlock(_In_ const _cmp_state_t* state, CompressionOperation* operat
 }
 
 
-int64_t BrGetCompressedSize(_In_ const _cmp_state_t* state, uint64_t length, int32_t flush)
+int64_t BrGetCompressedSize(_In_ const comp_state_t* state, uint64_t length, int32_t flush)
 {
 	size_t size;
 
 	(void)sizeof(flush);
+	(void)sizeof(state);
+
 	/*
 	* When the flush flag is set, the caller is requesting the
 	* entire size of the compressed data, which can include metadata
 	*/
-
-	validateCompState(state)
 
 	if (length <= 0)
 	{

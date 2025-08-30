@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -51,7 +51,7 @@ namespace VNLib.Net.Messaging.FBM
         /// Gets the default header character encoding instance
         /// </summary>
         public static Encoding DefaultEncoding { get; } = Encoding.UTF8;
-        
+
         /// <summary>
         /// The FBM protocol header line termination symbols
         /// </summary>
@@ -74,19 +74,19 @@ namespace VNLib.Net.Messaging.FBM
             {
                 return -1;
             }
-            
+
             //The first byte should be the header id
             HeaderCommand headerId = (HeaderCommand)line[0];
-            
+
             //Make sure the headerid is set
             if (headerId != HeaderCommand.MessageId)
             {
                 return -2;
             }
-            
+
             //Get the messageid after the header byte
             ReadOnlySpan<byte> messageIdSegment = line.Slice(1, sizeof(int));
-            
+
             //get the messageid from the messageid segment
             return BinaryPrimitives.ReadInt32BigEndian(messageIdSegment);
         }
@@ -106,12 +106,12 @@ namespace VNLib.Net.Messaging.FBM
 
             //Write the message id as a big-endian message
             BinaryPrimitives.WriteInt32BigEndian(buffer[1..], messageid);
-            
+
             //Write the header and message id + the trailing termination
             accumulator.Append(buffer);
 
             WriteTermination(accumulator);
-        }       
+        }
 
         /// <summary>
         /// Gets the remaining data after the current position of the stream.
@@ -119,7 +119,8 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="response">The stream to segment</param>
         /// <returns>The remaining data segment</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ReadOnlySpan<byte> GetRemainingData(VnMemoryStream response) => response.AsSpan()[(int)response.Position..];
+        public static ReadOnlySpan<byte> GetRemainingData(VnMemoryStream response)
+            => response.AsSpan()[(int)response.Position..];
 
         /// <summary>
         /// Reads the next available line from the response message
@@ -154,7 +155,7 @@ namespace VNLib.Net.Messaging.FBM
         internal static HeaderParseError ParseHeaders(VnMemoryStream vms, IFBMHeaderBuffer buffer, ICollection<FBMMessageHeader> headers, Encoding encoding)
         {
             HeaderParseError status = HeaderParseError.None;
-            
+
             //Get a sliding window writer over the enitre buffer
             ForwardOnlyWriter<char> writer = new(buffer.GetSpan());
 
@@ -222,32 +223,16 @@ namespace VNLib.Net.Messaging.FBM
         {
             //Get the data following the header byte
             ReadOnlySpan<byte> value = line[1..];
+
             //Calculate the character account
             int charCount = encoding.GetCharCount(value);
-            //Determine if the output buffer is large enough
-            if (charCount > output.Length)
-            {
-                return -1;
-            }
-            //Decode the characters and return the char count
-            _ = encoding.GetChars(value, output);
-            return charCount;
-        }      
 
-        /// <summary>
-        /// Ends the header section of the request and appends the message body to 
-        /// the end of the request
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="body">The message body to send with request</param>
-        /// <exception cref="OutOfMemoryException"></exception>
-        public static void WriteBody(IDataAccumulator<byte> buffer, ReadOnlySpan<byte> body)
-        {
-            //start with termination
-            WriteTermination(buffer);
-            //Write the body
-            buffer.Append(body);
+            //Determine if the output buffer is large enough
+            return charCount > output.Length
+                ? (ERRNO)(-1)
+                : (ERRNO)encoding.GetChars(value, output);
         }
+       
 
         /// <summary>
         /// Rounds the requested byte size up to the 1kb 
@@ -270,7 +255,8 @@ namespace VNLib.Net.Messaging.FBM
         /// </summary>
         /// <param name="buffer"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void WriteTermination(IDataAccumulator<byte> buffer) => buffer.Append(Termination.Span);
+        public static void WriteTermination(IDataAccumulator<byte> buffer)
+            => buffer.Append(Termination.Span);
 
         /// <summary>
         /// Appends an arbitrary header to the current request buffer
@@ -282,7 +268,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <exception cref="ArgumentException"></exception>
         public static void WriteHeader(IDataAccumulator<byte> buffer, byte header, ReadOnlySpan<char> value, Encoding encoding)
         {
-            if(header == 0)
+            if (header == 0)
             {
                 throw new ArgumentException("A header command of 0 is illegal", nameof(header));
             }

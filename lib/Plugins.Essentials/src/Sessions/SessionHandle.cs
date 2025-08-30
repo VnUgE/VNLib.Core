@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -72,28 +72,35 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// </summary>
         /// <param name="sessionData">The session data instance</param>
         /// <param name="callback">A callback that is invoked when the handle is released</param>
-        public SessionHandle(ISession sessionData, SessionReleaseCallback callback) : this(sessionData, FileProcessArgs.Continue, callback)
+        public SessionHandle(ISession sessionData, SessionReleaseCallback callback) 
+            : this(sessionData, FileProcessArgs.Continue, callback)
         {}
 
         /// <summary>
         /// Releases the session from use
         /// </summary>
         /// <param name="event">The current connection event object</param>
-        public readonly ValueTask ReleaseAsync(IHttpEvent @event) => callback?.Invoke(SessionData!, @event) ?? ValueTask.CompletedTask;
+        public readonly ValueTask ReleaseAsync(IHttpEvent @event) 
+            => callback?.Invoke(SessionData!, @event) ?? ValueTask.CompletedTask;
 
         ///<inheritdoc/>
-        public override bool Equals([NotNullWhen(true)] object? obj) => obj is SessionHandle handle && Equals(handle);
+        public override bool Equals([NotNullWhen(true)] object? obj) 
+            => obj is SessionHandle handle && Equals(handle);
 
         ///<inheritdoc/>
-        public bool Equals(SessionHandle other) => GetHashCode() == other.GetHashCode();
+        public bool Equals(SessionHandle other) 
+            => GetHashCode() == other.GetHashCode();
 
         ///<inheritdoc/>
-        public override int GetHashCode() => HashCode.Combine(SessionData, EntityStatus, callback);
+        public override int GetHashCode() 
+            => HashCode.Combine(SessionData, EntityStatus, callback);
 
         ///<inheritdoc/>
-        public static bool operator ==(SessionHandle left, SessionHandle right) => left.Equals(right);
+        public static bool operator ==(SessionHandle left, SessionHandle right) 
+            => left.Equals(right);
 
         ///<inheritdoc/>
-        public static bool operator !=(SessionHandle left, SessionHandle right) => !(left == right);
+        public static bool operator !=(SessionHandle left, SessionHandle right) 
+            => !(left == right);
     }
 }

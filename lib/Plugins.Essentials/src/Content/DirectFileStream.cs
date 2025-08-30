@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -115,6 +115,11 @@ namespace VNLib.Plugins.Essentials.Content
         /// <param name="fileName">The name of the file to open</param>
         /// <returns>The new direct file-stream</returns>
         public static DirectFileStream Open(string fileName) 
-            => new(File.OpenHandle(fileName, options: FileOptions.SequentialScan | FileOptions.Asynchronous));
+            => new(File.OpenHandle(
+                fileName, 
+                mode: FileMode.Open,
+                access: FileAccess.Read,
+                options: FileOptions.SequentialScan | FileOptions.Asynchronous
+            ));
     }
 }

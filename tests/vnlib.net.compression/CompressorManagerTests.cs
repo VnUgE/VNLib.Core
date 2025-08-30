@@ -34,7 +34,7 @@ namespace VNLib.Net.Compression.Tests
 
             //Test for supported methods
             TestCompressionForSupportedMethods(cp);
-        }       
+        }
 
         [TestMethod()]
         public void InitCompressorTest()
@@ -92,7 +92,7 @@ namespace VNLib.Net.Compression.Tests
             }
         }
 
-        private static void TestSingleCompressor(LibTestComp comp, CompressionMethod method, CompressionLevel level, byte[] testData) 
+        private static void TestSingleCompressor(LibTestComp comp, CompressionMethod method, CompressionLevel level, byte[] testData)
         {
             byte[] outputBlock = new byte[8 * 1024];
             long nativeTicks;
@@ -125,7 +125,7 @@ namespace VNLib.Net.Compression.Tests
                 {
                     //Include deinit
                     comp.DeinitCompressor();
-                    stopwatch.Stop();                    
+                    stopwatch.Stop();
                 }
             }
 
@@ -189,7 +189,7 @@ namespace VNLib.Net.Compression.Tests
 
             return Encoding.UTF8.GetString(ms.AsSpan());
         }
-       
+
 
         private static void TestCompressionForSupportedMethods(ITestCompressor testCompressor)
         {
@@ -216,6 +216,13 @@ namespace VNLib.Net.Compression.Tests
             {
                 TestCompressorMethod(testCompressor, CompressionMethod.Gzip);
             }
+
+            //Test for zstd support
+            if ((methods & CompressionMethod.Zstd) > 0)
+            {
+                //TODO: Zstd support is not implemented yet
+                //TestCompressorMethod(testCompressor, CompressionMethod.Zstd);
+            }
         }
 
         private static void TestSupportedMethods(ITestCompressor compressor)
@@ -226,6 +233,10 @@ namespace VNLib.Net.Compression.Tests
             //test out of range, this should be a native lib error
             Assert.ThrowsExactly<NotSupportedException>(() => { compressor.InitCompressor((CompressionMethod)4500); });
 
+            Assert.ThrowsExactly<InvalidOperationException>(() => compressor.CompressBlock(default, default));
+            Assert.ThrowsExactly<InvalidOperationException>(() => compressor.Flush(default));
+            Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
+
             //Test all 3 compression methods
             CompressionMethod supported = compressor.GetSupportedMethods();
 
@@ -234,6 +245,8 @@ namespace VNLib.Net.Compression.Tests
                 //Make sure no error occurs with supported comp
                 compressor.InitCompressor(CompressionMethod.Gzip);
                 compressor.DeinitCompressor();
+
+                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
             }
 
             if ((supported & CompressionMethod.Brotli) > 0)
@@ -241,6 +254,8 @@ namespace VNLib.Net.Compression.Tests
                 //Make sure no error occurs with supported comp
                 compressor.InitCompressor(CompressionMethod.Brotli);
                 compressor.DeinitCompressor();
+
+                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
             }
 
             if ((supported & CompressionMethod.Deflate) > 0)
@@ -248,6 +263,16 @@ namespace VNLib.Net.Compression.Tests
                 //Make sure no error occurs with supported comp
                 compressor.InitCompressor(CompressionMethod.Deflate);
                 compressor.DeinitCompressor();
+
+                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
+            }
+            
+            if ((supported & CompressionMethod.Zstd) > 0)
+            {
+                compressor.InitCompressor(CompressionMethod.Zstd);
+                compressor.DeinitCompressor();
+
+                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
             }
 
             Debug.WriteLine($"Compressor library supports {supported}");
@@ -263,7 +288,7 @@ namespace VNLib.Net.Compression.Tests
          */
 
         private static void TestCompressorMethod(ITestCompressor compressor, CompressionMethod method)
-        {           
+        {
 
             //Time to initialize the compressor
             int blockSize = compressor.InitCompressor(method);
@@ -288,7 +313,7 @@ namespace VNLib.Net.Compression.Tests
                 ForwardOnlyMemoryReader<byte> reader = new(buffer);
 
                 //try to compress the data in chunks
-                while(reader.WindowSize > 0)
+                while (reader.WindowSize > 0)
                 {
                     //Compress data
                     CompressionResult result = compressor.CompressBlock(reader.Window, output);
@@ -302,8 +327,8 @@ namespace VNLib.Net.Compression.Tests
 
                 //Flush
                 int flushed = 100;
-                while(flushed > 0)
-                { 
+                while (flushed > 0)
+                {
                     flushed = compressor.Flush(output);
 
                     //Write the compressed data to the output stream
@@ -340,7 +365,7 @@ namespace VNLib.Net.Compression.Tests
             return output.ToArray();
         }
 
-        private static Stream GetDecompStream(Stream input, CompressionMethod method) 
+        private static Stream GetDecompStream(Stream input, CompressionMethod method)
         {
             return method switch
             {
@@ -394,19 +419,19 @@ Page Size: {Environment.SystemPageSize}
 
         sealed class ManagerTestComp(object Compressor, CompressorManager Manager) : ITestCompressor
         {
-            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) 
+            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output)
                 => Manager.CompressBlock(Compressor, input, output);
 
-            public void DeinitCompressor() 
+            public void DeinitCompressor()
                 => Manager.DeinitCompressor(Compressor);
 
             public int Flush(Memory<byte> buffer)
                 => Manager.Flush(Compressor, buffer);
 
-            public CompressionMethod GetSupportedMethods() 
+            public CompressionMethod GetSupportedMethods()
                 => Manager.GetSupportedMethods();
 
-            public int InitCompressor(CompressionMethod level) 
+            public int InitCompressor(CompressionMethod level)
                 => Manager.InitCompressor(Compressor, level);
 
         }
@@ -415,24 +440,41 @@ Page Size: {Environment.SystemPageSize}
         {
             private INativeCompressor? _comp;
 
-            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output) 
-                => _comp!.Compress(input, output);
+            public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output)
+            {
+                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
+                return _comp.Compress(input, output);
+            }
 
-            public CompressionResult CompressBlock(ReadOnlySpan<byte> input, Span<byte> output) 
-                => _comp!.Compress(input, output);
+            public CompressionResult CompressBlock(ReadOnlySpan<byte> input, Span<byte> output)
+            {
+                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
+                return _comp!.Compress(input, output);
+            }
 
             public void DeinitCompressor()
             {
-                _comp!.Dispose();
+                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
+
+                _comp.Dispose();
                 _comp = null;
             }
 
-            public int Flush(Memory<byte> buffer) => _comp!.Flush(buffer);
+            public int Flush(Memory<byte> buffer)
+            {
+                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
+                return _comp.Flush(buffer);
+            }
 
             public CompressionMethod GetSupportedMethods() => Library.GetSupportedMethods();
 
             public int InitCompressor(CompressionMethod method)
             {
+                if (_comp != null)
+                {
+                    throw new InvalidOperationException("Test compressor has already been allocated");
+                }
+
                 _comp = Library.AllocCompressor(method, Level);
                 return (int)_comp.GetBlockSize();
             }

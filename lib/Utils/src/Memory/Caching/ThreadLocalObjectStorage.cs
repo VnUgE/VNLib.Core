@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -35,6 +35,10 @@ namespace VNLib.Utils.Memory.Caching
     /// <typeparam name="T">The data type to store</typeparam>
     public class ThreadLocalObjectStorage<T> : ObjectRental<T> where T: class
     {
+        
+        /// <summary>
+        /// The thread-local storage container for objects of type T
+        /// </summary>
         protected ThreadLocal<T> Store { get; }
 
         internal ThreadLocalObjectStorage(Func<T> constructor, Action<T>? rentCb, Func<T, bool>? returnCb)

@@ -12,25 +12,35 @@ version: '3'
 
 vars:  
   ARCHIVE_FILE_NAME: '{{ .ARCHIVE_FILE_NAME | default "archive.tgz" }}'
-  MS_ARGS: 
-    /p:RunAnalyzersDuringBuild=false
-    /p:BuildInParallel=true 
-    /p:MultiProcessorCompilation=true 
-    /p:ErrorOnDuplicatePublishOutputFiles=false
 
 tasks:
 
   default:
     desc: 'Builds the managed libraries in this module for development'
     cmds:
-     - cmd: dotnet build -c debug {{ .MS_ARGS }} {{ .CLI_ARGS }}
+     - cmd: dotnet build -c debug {{ .CLI_ARGS }}
 
-#called by build pipeline to sync repo
+  #called by build pipeline to sync repo
   update:
     cmds:
      - cmd: git reset --hard  #clean up any local changes
      - cmd: git remote update
      - cmd: git pull origin {{ .BRANCH_NAME }} --verify-signatures 
+  
+  tag-current-commit:
+    desc: 'Tags the current commit with the current build version from gitversion'  
+    vars:
+    #get the current build version from gitversion
+      BUILD_VERSION:
+        sh: dotnet gitversion /showvariable FullSemver
+    #ensure the current branch is master
+    status:
+      #see if tag already exists otherwise error on windows
+      - git tag --list v{{ .BUILD_VERSION }} | findstr . >nul
+    cmds:
+     - cmd: echo "Tagging current commit with version v{{ .BUILD_VERSION }}"
+     - cmd: git tag -s -a v{{ .BUILD_VERSION }} -m "CI Build version {{ .BUILD_VERSION }}"
+     - cmd: git push origin v{{ .BUILD_VERSION }}
 
 #called by build pipeline to build module
   build:
@@ -39,7 +49,6 @@ tasks:
       PACK_OUT: '{{ .OUTPUT_DIR }}/{{ .HEAD_SHA }}/pkg'
       INT_DIR: '{{ .SCRATCH_DIR }}/obj/{{ .MODULE_NAME }}/'
       MS_ARGS: '
-        {{ .MS_ARGS }} 
         --nologo
         /p:UseCommonOutputDirectory=true 
         /p:IntermediateOutputPath="{{ .INT_DIR }}"'
@@ -86,15 +95,12 @@ tasks:
        silent: true
 
      - cmd: dotnet build 
-        {{ .MS_ARGS }}
-         /p:NoWarn=CS1591 
         --nologo
         --configuration debug
         --verbosity normal
+        --no-incremental       
 
      - cmd: dotnet test
-        {{ .CLI_ARGS }}
-        {{ .MS_ARGS }}
         --no-build
         --nologo
         --logger "console;verbosity=detailed"
@@ -106,9 +112,10 @@ tasks:
         --environment VNLIB_COMPRESS_DLL_PATH="{{ .VNCOMPRESS_LIB_PATH }}"
         --environment VNLIB_MONOCYPHER_DLL_PATH="{{ .MONOCYPHER_LIB_PATH }}"
         --environment VNLIB_ARGON2_DLL_PATH="{{ .ARGON2_LIB_PATH }}"
+        {{ .CLI_ARGS }}
 
      #run the web server tests without XML comment warnings
-     - cmd: cd apps/VNLib.WebServer && task test -- '/p:NoWarn=CS1591'
+     - cmd: cd apps/VNLib.WebServer && task test
 
 #called by build pipeline to clean module
   clean:
@@ -116,7 +123,7 @@ tasks:
     ignore_error: true
     cmds:
     #clean solution
-     - cmd: dotnet clean /p:BuildInParallel=true /p:MultiProcessorCompilation=true
+     - cmd: dotnet clean
      - cmd: powershell rm '{{ .ARCHIVE_FILE_NAME }}' --Force 
      - task: clean-native
 
@@ -128,18 +135,14 @@ tasks:
         lib/Utils.Memory/vnlib_rpmalloc
         lib/Utils.Memory/vnlib_mimalloc
         lib/Utils.Cryptography/monocypher
-        lib/Utils.Cryptography/argon2'
-    deps: 
-     #build native libs for development in parallel
+        lib/Utils.Cryptography/argon2
+        lib/Net.Compression/vnlib_compress'
+    deps:
      - for: { var: NATIVE_LIB_DIRS }
        task:  run-dev-init
        vars: { ITEM: '{{ .ITEM }}' }
+
     cmds:
-     # build the compress library after the other native libraries 
-     # because it depends on rpmalloc by default
-     - task: run-dev-init
-       vars: { ITEM: 'lib/Net.Compression/vnlib_compress' }
-     
      - cmd: dotnet restore
 
      - cmd: echo "Module developer initialization complete"
@@ -147,6 +150,8 @@ tasks:
 
   run-dev-init:
     internal: true
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: '{{ .numCpu }}'
     cmds:
      - cmd: cd '{{ .ITEM }}' && task dev-init
 
@@ -162,3 +167,12 @@ tasks:
     cmds:
      - for: { var: NATIVE_LIB_DIRS }
        cmd: cd {{ .ITEM }} && task clean
+
+  write-changelog:
+    cmds:
+     - cmd: git-cliff
+         --verbose
+         --config ci/cliff.toml
+         --output 'CHANGELOG.md'
+         --tag v{{ .VERSION }}
+         {{ .CLI_ARGS }}

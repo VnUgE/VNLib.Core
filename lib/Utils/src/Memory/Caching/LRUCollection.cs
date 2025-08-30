@@ -210,9 +210,8 @@ namespace VNLib.Utils.Memory.Caching
         /// <returns>True if the key was found in the store and the value equals the stored value, false otherwise</returns>
         public virtual bool Contains(ref readonly KeyValuePair<TKey, TValue> item)
         {
-            return LookupTable.TryGetValue(item.Key, out LinkedListNode<KeyValuePair<TKey, TValue>>? lookup)
-                ? lookup.ValueRef.Value?.Equals(item.Value) ?? false
-                : false;
+            return LookupTable.TryGetValue(item.Key, out LinkedListNode<KeyValuePair<TKey, TValue>>? lookup) 
+                && (lookup.ValueRef.Value?.Equals(item.Value) ?? false);
         }
 
         ///<inheritdoc/>

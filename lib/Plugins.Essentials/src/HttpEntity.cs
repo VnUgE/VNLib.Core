@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -38,7 +38,7 @@ using VNLib.Plugins.Essentials.Extensions;
 
 /*
  * HttpEntity was converted to an object as during profiling
- * it was almost always heap allcated due to async opertaions
+ * it was almost always heap allocated due to async operations
  * or other object tracking issues. So to reduce the number of
  * allocations (at the cost of larger objects) basic profiling 
  * showed less GC load and less collections when SessionInfo 
@@ -71,7 +71,7 @@ namespace VNLib.Plugins.Essentials
         /// <param name="root">The processor the connection has originated from</param>
         /// <param name="session">An optional session handle to attach to the entity</param>
         public HttpEntity(IHttpEvent evnt, IWebProcessor root, ref readonly SessionHandle session)
-            :this(evnt, root)
+            : this(evnt, root)
         {
             //Assign optional session and attempt to attach it
             EventSessionHandle = session;
@@ -84,7 +84,7 @@ namespace VNLib.Plugins.Essentials
             RequestedRoot = root;
             //Init event cts
             EventCts = new(root.Options.ExecutionTimeout);
-          
+
             //See if the connection is coming from an downstream server
             IsBehindDownStreamServer = root.Options.DownStreamServers.Contains(entity.Server.RemoteEndpoint.Address);
             /*
@@ -220,14 +220,15 @@ namespace VNLib.Plugins.Essentials
              * Finally not all memory streams allow fetching the internal 
              * buffer, so check that it can be aquired.
              */
-            if (stream is MemoryStream ms 
+            if (
+                stream is MemoryStream ms
                 && length < int.MaxValue
                 && ms.TryGetBuffer(out ArraySegment<byte> arrSeg)
             )
             {
                 Entity.CloseResponse(
-                    code, 
-                    type, 
+                    code,
+                    type,
                     entity: new MemStreamWrapper(in arrSeg, ms, (int)length)
                 );
 
@@ -246,7 +247,7 @@ namespace VNLib.Plugins.Essentials
                    code,
                    type,
                    entity: new VnStreamWrapper(vms, (int)length)
-               );
+                );
 
                 return;
             }
@@ -256,7 +257,7 @@ namespace VNLib.Plugins.Essentials
              * sequential segments without buffering. It avoids a user-space copy and async reading
              * performance without the file being opened as async.
              */
-            if(stream is FileStream fs)
+            if (stream is FileStream fs)
             {
                 Entity.CloseResponse(
                     code,
@@ -346,7 +347,7 @@ namespace VNLib.Plugins.Essentials
         }
 
 
-        private sealed class MemStreamWrapper(ref readonly ArraySegment<byte> data, MemoryStream stream, int length) : IMemoryResponseReader 
+        private sealed class MemStreamWrapper(ref readonly ArraySegment<byte> data, MemoryStream stream, int length) : IMemoryResponseReader
         {
             readonly ArraySegment<byte> _data = data;
             readonly int length = length;

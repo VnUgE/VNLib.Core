@@ -70,20 +70,25 @@ namespace VNLib.Net.Http.Core.Response
         /// <summary>
         /// The current http status code value
         /// </summary>
-        internal HttpStatusCode StatusCode => _code;
+        internal HttpStatusCode StatusCode => _code;     
 
         /// <summary>
         /// Sets the status code of the response
         /// </summary>
-        /// <exception cref="InvalidOperationException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetStatusCode(HttpStatusCode code)
         {
-            if (HeadersBegun)
-            {
-                throw new InvalidOperationException("Status code has already been sent");
-            }
+            /*
+             * Since the server's internals control the flow of the HTTP reqeust/response
+             * lifecycle, it's an internal error if the headers have been sent but the status 
+             * code gets modified. 
+             * 
+             * In the condition where this happens, it's also not important to raise an exception, 
+             * because it doesn't break anything, it basically becomes a no-op because the status
+             * code is already sent
+             */
 
+            Debug.Assert(!HeadersBegun, "Attempted to set status code after the response had begun");
             _code = code;
         }
 
@@ -92,7 +97,8 @@ namespace VNLib.Net.Http.Core.Response
         /// </summary>
         /// <param name="cookie">Cookie to add</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void AddCookie(ref readonly HttpResponseCookie cookie) => Cookies[cookie.Name] = cookie;
+        internal void AddCookie(ref readonly HttpResponseCookie cookie) 
+            => Cookies[cookie.Name] = cookie;
 
         /// <summary>
         /// Compiles and flushes all headers to the header accumulator ready for sending
@@ -176,7 +182,9 @@ namespace VNLib.Net.Http.Core.Response
              */
 
             //Write the response data to the base stream
-            return responseBlock.IsEmpty ? ValueTask.CompletedTask : transport.Stream.WriteAsync(responseBlock);
+            return responseBlock.IsEmpty 
+                ? ValueTask.CompletedTask 
+                : transport.Stream.WriteAsync(responseBlock);
         }
 
         /// <summary>
@@ -193,7 +201,6 @@ namespace VNLib.Net.Http.Core.Response
             {
                 //Add chunked header
                 Headers.Set(HttpResponseHeader.TransferEncoding, "chunked");
-
             }
             else
             {
@@ -280,13 +287,9 @@ namespace VNLib.Net.Http.Core.Response
         internal ValueTask CloseAsync()
         {
             //If headers haven't been sent yet, send them and there must be no content
-            if (!HeadersSent)
-            {
-                //Finalize headers
-                return EndFlushHeadersAsync();
-            }
-
-            return ValueTask.CompletedTask;
+            return HeadersSent 
+                ? ValueTask.CompletedTask 
+                : EndFlushHeadersAsync();
         }
 
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task

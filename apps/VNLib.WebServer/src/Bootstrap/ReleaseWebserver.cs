@@ -168,7 +168,7 @@ namespace VNLib.WebServer.Bootstrap
                     //Buffer config update
                     BufferConfig = new()
                     {
-                        RequestHeaderBufferSize     = gConf.HeaderBufSize,
+                        RequestHeaderBufferSize     = gConf.RequestHeaderBufSize,
                         ResponseHeaderBufferSize    = gConf.ResponseHeaderBufSize,
                         FormDataBufferSize          = gConf.MultipartMaxBufSize,
 

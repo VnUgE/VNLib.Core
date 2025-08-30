@@ -96,7 +96,7 @@ namespace VNLib.Utils.Extensions
                 bufferSize = (int)Math.Min(source.Length, bufferSize);
             }
 
-            using MemoryManager<byte> buffer = heap.DirectAlloc<byte>(bufferSize);            
+            using MemoryManager<byte> buffer = heap.AllocMemory<byte>(bufferSize);            
 
             await CopyToAsync(source, dest, buffer.Memory, token);
         }
@@ -125,7 +125,7 @@ namespace VNLib.Utils.Extensions
                 bufferSize = (int)Math.Min(source.Length, bufferSize);
             }
             
-            using MemoryManager<byte> buffer = heap.DirectAlloc<byte>(bufferSize);
+            using MemoryManager<byte> buffer = heap.AllocMemory<byte>(bufferSize);
            
             await CopyToAsync(source, dest, buffer.Memory, count, token);
         }

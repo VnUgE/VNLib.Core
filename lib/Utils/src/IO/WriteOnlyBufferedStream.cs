@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -157,9 +157,19 @@ namespace VNLib.Utils.IO
             }
         }
 
-        ///<inheritdoc/>
+
+        /// <summary>
+        /// Writes a sequence of bytes to the current stream and advances the current position within this stream by the number of bytes written
+        /// </summary>
+        /// <param name="buffer">The buffer containing the data to write</param>
+        /// <param name="offset">The zero-based byte offset in buffer from which to begin copying bytes to the stream</param>
+        /// <param name="count">The maximum number of bytes to write</param>
         public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
-      
+
+        /// <summary>
+        /// Writes a sequence of bytes to the current stream and advances the current position within this stream by the number of bytes written
+        /// </summary>
+        /// <param name="buffer">A span of bytes to write to the stream</param>
         public override void Write(ReadOnlySpan<byte> buffer)
         {
             ForwardOnlyReader<byte> reader = new(buffer);
@@ -183,11 +193,25 @@ namespace VNLib.Utils.IO
             while (true);
         }
 
+        /// <summary>
+        /// Asynchronously writes a sequence of bytes to the current stream, advances the current position within this stream by the number of bytes written, and monitors cancellation requests
+        /// </summary>
+        /// <param name="buffer">The buffer to write data from</param>
+        /// <param name="offset">The zero-based byte offset in buffer from which to begin copying bytes to the stream</param>
+        /// <param name="count">The maximum number of bytes to write</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests</param>
+        /// <returns>A task that represents the asynchronous write operation</returns>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             return WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
         }
 
+        /// <summary>
+        /// Asynchronously writes a sequence of bytes to the current stream, advances the current position within this stream by the number of bytes written, and monitors cancellation requests
+        /// </summary>
+        /// <param name="buffer">The region of memory to write data from</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests</param>
+        /// <returns>A task that represents the asynchronous write operation</returns>
         public async override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
             ForwardOnlyMemoryReader<byte> reader = new(buffer);

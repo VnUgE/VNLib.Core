@@ -1,80 +1,77 @@
 ﻿
 # VNLib.Core
 
-<h4 align="left">
- <a href="https://github.com/VnUgE/vnlib.core">
+<p align="left">
+  <a href="https://github.com/VnUgE/vnlib.core">
     <img src="https://img.shields.io/github/repo-size/vnuge/vnlib.core" alt="repo-size" />
+  </a>
+  <a href="https://github.com/VnUgE/vnlib.core/tags">
+    <img src="https://img.shields.io/github/v/tag/vnuge/vnlib.core?include_prereleases&label=latest%20release" alt="Latest release"/>
   </a>
   <a href="https://www.vaughnnugent.com/Resources/Software/Modules/VNLib.Core-issues">
     <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fwww.vaughnnugent.com%2Fapi%2Fgit%2Fissues%3Fmodule%3DVNLib.Core&query=%24%5B'result'%5D.length&label=all%20issues" alt="Issues"/>
   </a>
-  <a href="https://github.com/VnUgE/vnlib.core/commits">
-    <img src="https://img.shields.io/github/last-commit/vnuge/vnlib.core/develop" alt="Latest commit"/>
-  </a>
-    <a href="https://www.vaughnnugent.com/Resources/Software/Modules/VNLib.Core">
+  <a href="https://www.vaughnnugent.com/Resources/Software/Modules/VNLib.Core">
     <img src="https://img.shields.io/website?url=https%3A%2F%2Fwww.vaughnnugent.com" alt="Website Status"/>
   </a>
-</h4>
+</p>
 
-*A mono-repo for "core" VNLib libraries and applications.*
+**VNLib.Core** is a foundational collection of libraries for the .NET ecosystem, written primarily in C#. It provides a suite of modular, high-performance components specifically designed for building robust server-side and long-running applications. To achieve maximum performance in critical areas, some libraries are implemented in native C, providing direct access to features like custom memory allocators and low-level cryptography. Unlike monolithic frameworks, VNLib.Core exposes its functionality as distinct, loosely-coupled building blocks—giving developers granular control from the networking stack to the application framework. 
 
-</br>
-<h3 align="center">
- <a href="https://www.vaughnnugent.com/resources/software/modules/VNLib.Core">
-   🏠 Project Home
-  </a>
-  <a href="https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Core">
-    📖 Documentation
-  </a> 
-  <a href="https://www.vaughnnugent.com/resources/software/modules">
-    📦 NuGet Feed
-  </a>
-</h3>
-</br>
+## Philosophy
 
-## What is VNLib.Core?
-VNLib is a collection of cross platform .NET/C#/C libraries that I maintain for many private and public projects. VNLib.Core is a subset of the larger collection of projects I have named VNLib. This repo contains libraries I consider to be utility only, or building blocks that are individually useful for other projects. You will likely see many or most of them used across may other VNLib type projects. These libraries are meant to be stand-alone, meaning that there are no required* external dependencies (except the [mscorelib](https://github.com/dotnet/runtime)). For example the [VNLib.Utils](lib/Utils/#) library is a standalone, 0 required dependency library that is useful for, logging, common extensions, and a significant collection of memory related utilities. 
+VNLib was created out of a dislike for closed, monolithic frameworks that offer a single, opinionated solution. A more lightweight and modular approach was needed—for example, using a full LAMP or ASP.NET stack for a simple home automation project is impractical. While forking a large project is possible, it often requires adopting a complex workflow and update cycle, which is not always feasible. VNLib approaches this problem differently.
 
-## Dependencies 
-Any libraries in this repository that contain external dependencies will be mentioned explicitly in the library's readme. I intend to limit this behavior, as it is the reason this repository exists.
+**Internal components are made public and abstract where possible.**
 
-## Licensing
-Projects contained in this repository are individually licensed, usually GNU copy-left but some are more open, or are modified and/or vendored projects. Builds will contain the required license txt files (along with third-party licenses) in the archive. 
+This means you can use the same building blocks that VNLib uses for your own project without adopting the entire framework. The trade-off is that internal APIs can evolve quickly, meaning VNLib cannot offer the same strict public API contract that other solutions can.
 
-## Index/NameSpaces
-**VNLib.**
-- [Utils](lib/Utils/#) - A mutli-use library focused on reducing complexity for working with native resources, memory, asynchronous patterns and data-structures, object/resource pooling, critical resource handling, and common logging abstractions.  
-- [Utils.Memory](lib/Utils.Memory/#) - Utilty libraries for native memory management framework for VNLib, includes mimalloc and rpmalloc forks.
-- [Utils.Cryptography](lib/Utils.Cryptography/#) - Contains vendored copies of recommended/referenced libraries and wrapper libraries such as Argon2 and Monocypher. 
-- [Hashing.Portable](lib/Hashing.Portable/#) - Common cryptographic/hashing relate operations in a single package with room to grow. Also Argon2 bindings
-- [Net.Http](lib/Net.Http/#) - High performance ^HTTP/1.1 application processing library, transport not included! For web or custom use, custom app layer protocols supported - roll your own web-sockets or SSE if you want! (See [Essentials](lib/Plugins.Essentials/#) library if you want to use mine! It's not bad.)
-- [Net.Transport.SimpleTCP](lib/Net.Transport.SimpleTCP/#) - A not-so-simple, performance oriented, low/no allocation, .NET/C# native, TCP listener library using the System.IO.Pipelines architecture with SSL/TLS support.
-- [Plugins.Essentials](lib/Plugins.Essentials/#) - Http processing layer library, provides essentials processing abstractions, extensions and data structures for quickly scaffolding extensible web/http based applications. Dynamic file processing, web sockets, stateful sessions, uses, accounts, permissions, dynamic file routing, and more.
-- [Plugins](lib/Plugins/#) - Base/shared library for implementing runtime loaded plugins to provide extensibility and development isolation.
-- [Plugins.Runtime](lib/Plugins.Runtime/#) - Scaffolding library for implementing and managing runtime loaded plugin (and unloading) instances safely in an application. Can be used standalone by an developer that wants a structured way of incorporating dynamically loaded plugins.
-- [Plugins.Essentials.ServiceStack](lib/Plugins.Essentials.ServiceStack/#) - A library for scaffolding structured web applications from the individual http and supporting libraries into a completely managed http service stack for an entire application. 
-- [Plugins.PluginBase](lib/Plugins.PluginBase/#) - Base library/api for plugin developers to build fully managed/supported runtime loaded plugins, without worrying about the plumbing, such as the IPlugin api, endpoint creation, and logging! This library is required if you wish to use most of the Plugin.Extensions libraries.
-- [Net.Messaging.FBM](lib/Net.Messaging.FBM/#) - Fixed Buffer Messaging protocol, high performance, request/response architecture, client & server library, built atop http and web-sockets. As implied, relies on fixed sized internal buffers that are negotiated to transfer data with minimal overhead for known messaging architectures.
-- [Net.Compression](lib/Net.Compression/#) - A cross platform native compression provider and IHttpCompressorManager configured for runtime dynamic loading for high performance native response data compression.
-- [Net.Rest.Client](lib/Net.Rest.Client/#) - A library for defining REST api clients via a fluent api by defining sites and endpoints, OAuth2 authenticator for RestSharp, and a simple RestSharp client pool.
-- [WebServer](apps/VNLib.WebServer/#) - A high performance, reference .NET 8 web server built the Essentials web framework for building fast, plugin-driven web/http services
+**Dependencies are treated as a liability, not a convenience.** Many modern projects suffer from a bloated and fragile dependency chain; VNLib actively works against this trend. The policy is to build components in-house whenever practical. If a third-party library is required, it is carefully vetted for its stability and minimal footprint, and is often vendored (included directly in the source) to insulate the project from upstream changes. This results in a lean, predictable, and more secure library for you to build upon.
 
-The **third-party** directory contains third-party libraries that are forked, modified, and vendored for use in VNLib projects that I will actively maintain.
+VNLib components may be opinionated for a given purpose, but they are meant to be individually useful. For example:
+- An ELF-linkable project can link against `vnlib_compress`, a self-contained, streaming compression library.
+- An ELF-linkable project can use the abstract, low-level dynamic memory allocation API defined in `NativeHeapApi.h` to plug in custom allocators.
+- A C# application can get safe, configurable access to unmanaged memory that can be easily configured by the host.
+- A project can use the FBM implementation of a semi-binary, request-response protocol over WebSockets or other full-duplex streaming transports.
 
-## Branches
-There are currently two branches I use, master and develop. Develop is the my default building branch, all changes are merged into master when I am satisfied. An internal PR is opened, reviewed and merged into master using squash commits to preserve master history and development speed. The develop branch will ALWAYS be ahead of the master branch.
+Finally, **VNLib is a namespace, not a single repository.** This `core` repository is one of many that make up the VNLib ecosystem. For development and organizational reasons, some modules exist in their own independent repositories.
 
-## How is the repo maintained?
-I use many internal tools to build and maintain these projects. I use [OneDev](https://code.onedev.io/) for my internal source control (as well as other git tools) and code updates are pushed to GitHub as part of a build process. I use [Task](https://taskfile.dev) in the build process to publish builds for all projects in this repository. Builds are publicly available on my website from the link below. I do *not* intend to expose my internal tools for security reasons. I prefer to keep my dependencies/processes internal, and will be relying on GitHub for as little as possible. 
+## Project Information & Resources
 
-## Contributing
-I'm not currently looking for code contributors for this project and others, and NO contributions will be accepted through GitHub directly. I would prefer you contact me via my contact information on my website if possible. 
+#### Quick Links
+The easiest way to access the .NET libraries is by adding the [VNLib NuGet feed](https://www.vaughnnugent.com/resources/software/modules#support-info-title) to your project.
 
-I am however interested in what you build with my libraries, especially web-plugins. You may consider viewing my plugin repos to see what I mean. Since I spend most of my time developing the core and extension libraries (and will continue to do) I don't have much time to focus on new plugin libraries used to build web functionality. Some ideas: content management, code documentation management, NuGet feed host (I have an simple internal one I built but its private for now), I **really** want a secure chat application, secure voice chat would be brilliant as well. If you have ideas or have built a plugin you want featured or reviewed, please feel free to get in touch.
+- [Project Homepage](https://www.vaughnnugent.com/resources/software/modules/vnlib.core)
+- [Issue Tracker](https://www.vaughnnugent.com/resources/software/modules/vnlib.core-issues) (GitHub issues are disabled)
+- [Package Downloads](https://www.vaughnnugent.com/resources/software/modules/vnlib.core?tab=downloads)
+- [Documentation and Guides](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_vnlib.core)
+
+#### Release Cycle & Distribution
+VNLib follows a Continuous Delivery model, which allows for rapid and incremental development, aiming for small weekly releases. Projects are distributed as individual packages, and official distributions include:
+- Pre-built binaries for most platforms that support Ahead-of-Time (AOT) compilation.
+- Component-level source code and build scripts.
+- SHA256 checksums and PGP cryptographic signatures for all packages.
+
+#### API Stability & Versioning
+As a fast-moving project, VNLib is effectively in a pre-release state.
+- **Public APIs are subject to change**, potentially with little warning in any given release.
+- Notable and breaking changes will be recorded in the [changelog](CHANGELOG.md) and commit messages.
+- Obsoleted APIs will be marked with the `[Obsolete]` attribute where possible and are expected to be removed in a future release. While advance warning will be given, a strict API stability guarantee cannot be provided at this time.
+
+#### Runtime Stability & Cross-Platform Support
+A core pillar of VNLib is runtime stability. Great care is taken to ensure that components are reliable and that functionality, once working, continues to work as expected.
+
+VNLib is designed to be cross-platform. Components should work on any platform that supports a C compiler or a modern .NET runtime. While integration testing is not performed on all operating systems, the architecture is platform-agnostic by design.
+
+#### Contributing
+Note that GitHub and Codeberg integrations are disabled. VNLib takes its independence seriously and does not use third-party platforms for development, issue tracking, or pull requests. Information about contributing to the project can be found on the official website. While the reach of free platforms is respected, project independence is a core value.
+
+The project is, however, very interested in seeing what is built with VNLib! If you have created a plugin or a project you would like to share, please get in touch via the contact information on the official website.
 
 ## Donations
-If you like this project and want to support it or motivate me for faster development you can donate with fiat or on-chain BTC for now.  
+If you find VNLib valuable and wish to support its development, please consider making a donation. Your support helps fund the ongoing work and maintenance of the ecosystem.
 
-Fiat: [Paypal](https://www.paypal.com/donate/?business=VKEDFD74QAQ72&no_recurring=0&item_name=By+donating+you+are+funding+my+love+for+producing+free+software+for+my+community.+&currency_code=USD)  
-On-Chain Bitcoin: `bc1qgj4fk6gdu8lnhd4zqzgxgcts0vlwcv3rqznxn9`  
-lnurl: ChipTuner@coinos.io  
+**Fiat:** [PayPal](https://www.paypal.com/donate/?business=VKEDFD74QAQ72&no_recurring=0&item_name=By+donating+you+are+funding+my+love+for+producing+free+software+for+my+community.+&currency_code=USD)  
+**On-Chain Bitcoin:** `bc1qgj4fk6gdu8lnhd4zqzgxgcts0vlwcv3rqznxn9`  
+**LNURL:** `ChipTuner@coinos.io`
+
