@@ -120,25 +120,22 @@ list(APPEND _RP_COMP_DEFS
 	# Add some debugging/tracing for debug mode
 	$<$<CONFIG:Debug>:ENABLE_TRACE=1>
 	$<$<CONFIG:Debug>:ENABLE_VALIDATE_ARGS=1>
+	$<$<CONFIG:Debug>:ENABLE_ASSERTS=1>	
 )
 
 if(ENABLE_GREEDY)
 
 	list(APPEND _RP_COMP_DEFS
-		# If greedy is enabled, add greedy options
-		ENABLE_UNLIMITED_CACHE=1
-		# On by default but we otherwise disable global cache to really reduce committed size
-		ENABLE_GLOBAL_CACHE=1
-		ENABLE_UNMAP
+		ENABLE_DECOMMIT=0  #disable decommit on greed allocator mode
+		ENABLE_UNMAP=0
 	)
 
 else()
 
 	list(APPEND _RP_COMP_DEFS
 		# Disable greedy definitions
-		ENABLE_UNLIMITED_CACHE=0
-		ENABLE_GLOBAL_CACHE=0
-		DISABLE_UNMAP=0					# Allow unmapping of pages during free instead of global cache
+		ENABLE_DECOMMIT=1  #decommit pages
+		ENABLE_UNMAP=1
 	)
 
 endif()
