@@ -61,6 +61,9 @@
 #include <windows.h>
 #include <fibersapi.h>
 static DWORD fls_key;
+	#if defined(ENABLE_VALIDATE_ARGS) && ENABLE_VALIDATE_ARGS > 0
+	#include <intsafe.h> // Required for SizeTMult 
+	#endif
 #endif
 #if PLATFORM_POSIX
 #include <sys/mman.h>
@@ -1915,7 +1918,7 @@ rprealloc(void* ptr, size_t size) {
 extern RPMALLOC_ALLOCATOR void*
 rpaligned_realloc(void* ptr, size_t alignment, size_t size, size_t oldsize, unsigned int flags) {
 #if ENABLE_VALIDATE_ARGS
-	if ((size + alignment < size) || (alignment > _memory_page_size)) {
+	if ((size + alignment < size) || (alignment > os_page_size)) {
 		errno = EINVAL;
 		return 0;
 	}
@@ -2327,7 +2330,7 @@ rpmalloc_heap_realloc(rpmalloc_heap_t* heap, void* ptr, size_t size, unsigned in
 RPMALLOC_ALLOCATOR void*
 rpmalloc_heap_aligned_realloc(rpmalloc_heap_t* heap, void* ptr, size_t alignment, size_t size, unsigned int flags) {
 #if ENABLE_VALIDATE_ARGS
-	if ((size + alignment < size) || (alignment > _memory_page_size)) {
+	if ((size + alignment < size) || (alignment > os_page_size)) {
 		errno = EINVAL;
 		return 0;
 	}

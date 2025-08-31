@@ -70,7 +70,7 @@ if(MSVC)
 		# Disable warnings for struct padding and spectre mitigation when WX is enabled
 		$<$<CONFIG:Debug>:/wd5045>
 		$<$<CONFIG:Debug>:/wd4820>
-		$<$<CONFIG:Debug>:/wd4574>
+		$<$<CONFIG:Debug>:/wd4574>		
 
 		# For debug configs
 		$<$<CONFIG:Debug>:/options:strict>
@@ -84,7 +84,6 @@ if(MSVC)
 	)
 
 	list(APPEND _RP_COMP_DEFS
-		_ENABLE_ATOMIC_ALIGNMENT_FIX
 		$<$<CONFIG:DEBUG>:DEBUG>
 		$<$<CONFIG:RELEASE>:RELEASE>
 	)
@@ -115,9 +114,8 @@ endif()
 # Enable required features
 list(APPEND _RP_COMP_DEFS
 	RPMALLOC_FIRST_CLASS_HEAPS=1
-	ENABLE_ADAPTIVE_THREAD_CACHE=1
-	ENABLE_THREAD_CACHE=1		# Always enable per-thread cache
 	ENABLE_OVERRIDE=0			# Disable malloc override, not needed for our uses
+	MAX_ALLOC_SIZE=999999999
 
 	# Add some debugging/tracing for debug mode
 	$<$<CONFIG:Debug>:ENABLE_TRACE=1>
