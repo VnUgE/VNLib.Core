@@ -115,7 +115,7 @@ endif()
 list(APPEND _RP_COMP_DEFS
 	RPMALLOC_FIRST_CLASS_HEAPS=1
 	ENABLE_OVERRIDE=0			# Disable malloc override, not needed for our uses
-	MAX_ALLOC_SIZE=999999999
+	MAX_ALLOC_SIZE=999999999    #When validation is enabled, this value is read and undefined, awaiting instructions
 
 	# Add some debugging/tracing for debug mode
 	$<$<CONFIG:Debug>:ENABLE_TRACE=1>
