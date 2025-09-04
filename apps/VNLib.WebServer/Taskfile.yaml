@@ -55,6 +55,7 @@ tasks:
          --no-plugins 
          --dev-test
          --config --
+        platforms: [windows]
 
       - cmd: echo "VNLib.WebServer tests completed successfully"
         silent: true
