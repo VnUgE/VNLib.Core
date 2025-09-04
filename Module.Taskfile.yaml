@@ -125,6 +125,8 @@ tasks:
   test-ci:
     desc: "Runs integration tests against the entire solution and all loaded test projects"
     cmds:
+      # run a full restore to ensure all dependencies are present
+      - cmd: dotnet restore --nologo --verbosity minimal
       - task: webserver-ci:test
 
 #called by build pipeline to clean module
