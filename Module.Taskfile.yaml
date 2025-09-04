@@ -10,6 +10,11 @@
 
 version: '3'
 
+includes:
+  webserver-ci:
+    taskfile: tests/vnlib.webserver/Taskfile.yaml
+    dir: tests/vnlib.webserver    
+
 vars:  
   ARCHIVE_FILE_NAME: '{{ .ARCHIVE_FILE_NAME | default "archive.tgz" }}'
 
@@ -98,14 +103,14 @@ tasks:
         --nologo
         --configuration debug
         --verbosity normal
-        --no-incremental       
+        --no-incremental
 
      - cmd: dotnet test
         --no-build
         --nologo
         --logger "console;verbosity=detailed"
         --configuration debug
-        --framework {{ .TARGET_FRAMEWORK | default "net8.0" }}    
+        --framework {{ .TARGET_FRAMEWORK | default "net8.0" }}
         --environment VNLIB_SHARED_HEAP_DIAGNOSTICS="1"
         --environment TEST_RPMALLOC_LIB_PATH="{{ .RPMALLOC_LIB_PATH }}"
         --environment TEST_MIMALLOC_LIB_PATH="{{ .MIMALLOC_LIB_PATH }}"
@@ -116,6 +121,11 @@ tasks:
 
      #run the web server tests without XML comment warnings
      - cmd: cd apps/VNLib.WebServer && task test
+
+  test-ci:
+    desc: "Runs integration tests against the entire solution and all loaded test projects"
+    cmds:
+      - task: webserver-ci:test
 
 #called by build pipeline to clean module
   clean:

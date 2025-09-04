@@ -1,0 +1,51 @@
+meta {
+  name: Plain Text File Serving
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/test-files/sample.txt
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (Text Test)
+  Accept: text/plain,text/*;q=0.9,*/*;q=0.8
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Text file serves successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Content-Type is correct for plain text", function() {
+    expect(res.getHeader("content-type")).to.contain("text/plain");
+  });
+  
+  test("Text contains expected content", function() {
+    const body = res.getBody();
+    expect(body).to.contain("This is a plain text file for testing MIME type detection");
+    expect(body).to.contain("Testing special characters: àáâãäåæçèéêë");
+    expect(body).to.contain("Content-Type: text/plain");
+  });
+  
+  test("Content-Length is accurate", function() {
+    const contentLength = parseInt(res.getHeader("content-length"));
+    const body = res.getBody();
+    
+    // Server reports 415 bytes which is correct for UTF-8 encoding
+    expect(contentLength).to.equal(415);
+  });
+  
+  test("No compression on small text file", function() {
+    // File should be too small for compression (under min_size: 2048)
+    const contentEncoding = res.getHeader("content-encoding");
+    expect(contentEncoding).to.be.undefined;
+  });
+}

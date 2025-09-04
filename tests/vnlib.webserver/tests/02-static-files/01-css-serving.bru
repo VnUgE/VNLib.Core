@@ -1,0 +1,49 @@
+meta {
+  name: CSS File Serving
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/assets/style.css
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (CSS Test)
+  Accept: text/css,*/*;q=0.1
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("CSS file serves successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Content-Type is correct for CSS", function() {
+    expect(res.getHeader("content-type")).to.contain("text/css");
+  });
+  
+  test("CSS contains expected styles", function() {
+    const body = res.getBody();
+    expect(body).to.contain("VNLib.WebServer Test CSS");
+    expect(body).to.contain(".container");
+    expect(body).to.contain("font-family:");
+  });
+  
+  test("Content-Length matches body size", function() {
+    const contentLength = parseInt(res.getHeader("content-length"));
+    const bodyLength = res.getBody().length;
+    expect(contentLength).to.equal(bodyLength);
+  });
+  
+  test("Cache headers are set for CSS", function() {
+    // Based on config: ".css": 86400
+    const cacheControl = res.getHeader("cache-control");
+    expect(cacheControl).to.not.be.undefined;
+  });
+}

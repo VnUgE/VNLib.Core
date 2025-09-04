@@ -1,0 +1,110 @@
+{
+  "tcp": {
+    "keepalive_sec": 0,
+    "keepalive_interval_sec": 0, //Disables tcp keepalive probes
+    "max_recv_size": 655360,
+    "max_connections": 1000,
+    "backlog": 100,
+    "no_delay": false,
+    "reuse_address": true,
+    "tx_buffer": 65536,
+    "rx_buffer": 65536
+  },
+
+  "http": {
+    "default_version": "HTTP/1.1",
+    "multipart_max_buf_size": 20480,
+    "multipart_max_size": 80240,
+    "max_entity_size": 1024000,
+    "max_request_header_count": 50,
+    "max_connections": 1000,
+    "request_header_buf_size": 8128,
+    "response_header_buf_size": 16384,
+    "max_uploads_per_request": 10,
+    "keepalive_ms": 30000,
+    "recv_timeout_ms": 5000,
+    "send_timeout_ms": 10000,
+    
+    "compression": {
+      "enabled": true,   //Use built-in brotli compression
+      "assembly": "",
+      "max_size": 512000,
+      "min_size": 2048
+    }
+  },
+
+  "virtual_hosts": [
+    {
+      "enabled": true,
+      "path": "www/",
+      "hostnames": [ "*", "localhost", "127.0.0.1" ],
+      "trace": false,
+      "force_port_check": false,
+
+      "interfaces": [
+        {
+          "address": "127.0.0.1",
+          "port": 9658,
+          "ssl": false,
+          "tcp_no_delay": null
+        }
+      ],
+
+      "deny_extensions": [ ".env", ".htaccess", ".php", ".gitignore", ".config" ],
+      "default_files": [ "index.html", "index.htm" ],
+
+      "headers": {
+        "X-Test-Server": "VNLib.WebServer",
+        "X-Test-Environment": "Integration-Test"
+      },
+
+      "cors": {
+        "enabled": true,
+        "deny_cors_connections": false,
+        "allowed_origins": [ "localhost:9658", "127.0.0.1:9658" ]
+      },
+
+      "error_files": [
+        {
+          "code": 404,
+          "path": "www/error-pages/404.html"
+        },
+        {
+          "code": 403,
+          "path": "www/error-pages/403.html"
+        }
+      ],
+
+      "cache_default_sec": 3600,
+
+      "file_http_max_age": {
+        ".html": 0,
+        ".css": 86400,
+        ".js": 86400,
+        ".png": 604800,
+        ".jpg": 604800,
+        ".jpeg": 604800,
+        ".gif": 604800,
+        ".txt": 3600
+      },
+
+      "max_execution_time_ms": 10000
+    }
+  ],
+
+  "plugins": {
+    "enabled": false  //no plugins for unit testing
+  },
+
+  "logs": {
+    "sys_log": {
+      "enabled": true,
+      "path": "logs/system.txt"
+    },
+
+    "app_log": {
+      "enabled": true,
+      "path": "logs/application.txt"
+    }
+  }
+}

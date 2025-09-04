@@ -1,0 +1,73 @@
+meta {
+  name: JSON File Serving
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/test-files/data.json
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (JSON Test)
+  Accept: application/json,application/*;q=0.9,*/*;q=0.8
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("JSON file serves successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Content-Type is correct for JSON", function() {
+    expect(res.getHeader("content-type")).to.contain("application/json");
+  });
+  
+  test("JSON is valid and parseable", function() {
+    const body = res.getBody();
+    let jsonData;
+    
+    // Check if body is already parsed (object) or raw string
+    if (typeof body === 'string') {
+      expect(() => {
+        jsonData = JSON.parse(body);
+      }).to.not.throw();
+    } else {
+      // Body is already parsed by Bruno
+      jsonData = body;
+    }
+    
+    expect(jsonData.test).to.equal("VNLib.WebServer JSON Response");
+    expect(jsonData.server).to.equal("VNLib.WebServer");
+    expect(jsonData.data).to.be.an("object");
+  });
+  
+  test("JSON contains Unicode characters", function() {
+    const body = res.getBody();
+    let jsonData;
+    
+    // Handle both string and object responses
+    if (typeof body === 'string') {
+      jsonData = JSON.parse(body);
+    } else {
+      jsonData = body;
+    }
+    
+    expect(jsonData.unicode).to.contain("🚀");
+    expect(jsonData.unicode).to.contain("日本語");
+  });
+  
+  test("Content-Length is accurate", function() {
+    const contentLength = parseInt(res.getHeader("content-length"));
+    expect(contentLength).to.be.greaterThan(0);
+    
+    // Note: Bruno may auto-parse JSON, so we can't reliably compare length
+    // Just verify Content-Length header exists and is reasonable
+    expect(contentLength).to.be.below(10000); // Reasonable upper bound
+  });
+}

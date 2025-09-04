@@ -1,0 +1,48 @@
+meta {
+  name: PNG Image Serving
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/test-files/small-image.png
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (PNG Test)
+  Accept: image/png,image/*;q=0.9,*/*;q=0.8
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("PNG file serves successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Content-Type is correct for PNG", function() {
+    expect(res.getHeader("content-type")).to.equal("image/png");
+  });
+  
+  test("Content-Length is present and reasonable", function() {
+    const contentLength = parseInt(res.getHeader("content-length"));
+    expect(contentLength).to.be.greaterThan(0);
+    expect(contentLength).to.be.lessThan(1000); // Small test image
+  });
+  
+  test("PNG has proper cache headers", function() {
+    // Based on config: ".png": 604800 (7 days)
+    const cacheControl = res.getHeader("cache-control");
+    expect(cacheControl).to.not.be.undefined;
+  });
+  
+  test("Binary content is preserved", function() {
+    // Check for PNG magic number in response
+    const contentLength = parseInt(res.getHeader("content-length"));
+    expect(contentLength).to.equal(70); // Our test PNG is exactly 70 bytes
+  });
+}

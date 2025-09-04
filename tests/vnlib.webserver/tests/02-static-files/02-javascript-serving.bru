@@ -1,0 +1,53 @@
+meta {
+  name: JavaScript File Serving
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/assets/script.js
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (JS Test)
+  Accept: application/javascript,text/javascript,*/*;q=0.1
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("JavaScript file serves successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Content-Type is correct for JavaScript", function() {
+    const contentType = res.getHeader("content-type");
+    // Accept either application/javascript or text/javascript
+    expect(contentType).to.satisfy(function(ct) {
+      return ct.includes("application/javascript") || ct.includes("text/javascript");
+    });
+  });
+  
+  test("JavaScript contains expected code", function() {
+    const body = res.getBody();
+    expect(body).to.contain("VNLib.WebServer test page loaded");
+    expect(body).to.contain("testHttpMethods");
+    expect(body).to.contain("DOMContentLoaded");
+  });
+  
+  test("Content-Length matches body size", function() {
+    const contentLength = parseInt(res.getHeader("content-length"));
+    const bodyLength = res.getBody().length;
+    expect(contentLength).to.equal(bodyLength);
+  });
+  
+  test("Cache headers are set for JS", function() {
+    // Based on config: ".js": 86400
+    const cacheControl = res.getHeader("cache-control");
+    expect(cacheControl).to.not.be.undefined;
+  });
+}

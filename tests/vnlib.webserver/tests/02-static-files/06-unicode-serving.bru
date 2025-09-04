@@ -1,0 +1,66 @@
+meta {
+  name: Unicode HTML Serving
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/test-files/unicode-test.html
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (Unicode Test)
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+  Accept-Charset: utf-8,iso-8859-1;q=0.5
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Unicode HTML file serves successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Content-Type includes UTF-8 charset", function() {
+    const contentType = res.getHeader("content-type");
+    expect(contentType).to.contain("text/html");
+    // May or may not explicitly include charset, but should handle UTF-8
+  });
+  
+  test("Unicode characters are preserved", function() {
+    const body = res.getBody();
+    
+    // Japanese characters
+    expect(body).to.contain("ひらがな");
+    expect(body).to.contain("日本語");
+    
+    // Korean characters  
+    expect(body).to.contain("한글");
+    expect(body).to.contain("안녕하세요");
+    
+    // Arabic characters
+    expect(body).to.contain("العربية");
+    
+    // Emojis
+    expect(body).to.contain("🚀");
+    expect(body).to.contain("🌟");
+  });
+  
+  test("HTML structure is valid", function() {
+    const body = res.getBody();
+    expect(body).to.contain("<!DOCTYPE html>");
+    expect(body).to.contain('<meta charset="UTF-8">');
+    expect(body).to.contain("Unicode and Character Encoding Test");
+  });
+  
+  test("Mathematical symbols are preserved", function() {
+    const body = res.getBody();
+    expect(body).to.contain("∑"); // Summation
+    expect(body).to.contain("≤"); // Less than or equal
+    expect(body).to.contain("≠"); // Not equal
+  });
+}

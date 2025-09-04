@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicode Test - VNLib.WebServer</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Unicode and Character Encoding Test</h1>
+    
+    <div class="test-section">
+        <h2>Latin Extended</h2>
+        <p>àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ</p>
+        <p>ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Japanese</h2>
+        <p>ひらがな: あいうえおかきくけこさしすせそ</p>
+        <p>カタカナ: アイウエオカキクケコサシスセソ</p>
+        <p>漢字: 日本語のテストページです</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Korean</h2>
+        <p>한글: 안녕하세요 VNLib 웹서버 테스트입니다</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Arabic</h2>
+        <p>العربية: مرحبا بكم في اختبار الخادم</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Cyrillic</h2>
+        <p>Русский: Добро пожаловать на тестовый сервер</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Symbols and Emojis</h2>
+        <p>🚀 🌟 ✨ 🔥 💎 🎯 🏆 🎉 🌈 ⚡</p>
+        <p>Mathematical: ∑ ∏ ∫ ∂ ∆ ∇ ≤ ≥ ≠ ≈ ± × ÷</p>
+        <p>Currency: $ € £ ¥ ₹ ₽ ₦ ₨ ₩ ₪</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Special Characters</h2>
+        <p>Quotes: "double" 'single' „german" «french» ‚low' '</p>
+        <p>Dashes: - – — ‒ ― </p>
+        <p>Other: © ® ™ § ¶ • … ‰ ° ′ ″</p>
+    </div>
+    
+    <script>
+        console.log('Unicode test page loaded');
+        console.log('Document charset:', document.characterSet);
+    </script>
+</body>
+</html>

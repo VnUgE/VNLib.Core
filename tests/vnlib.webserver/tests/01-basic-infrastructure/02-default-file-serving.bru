@@ -1,0 +1,44 @@
+meta {
+  name: Default File Serving (index.html)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (Default File Test)
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Default file serves index.html", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.contain("<!DOCTYPE html>");
+    expect(res.getBody()).to.contain("VNLib.WebServer Integration Test");
+  });
+  
+  test("Content-Length header is present and valid", function() {
+    const contentLength = res.getHeader("content-length");
+    expect(contentLength).to.not.be.undefined;
+    expect(parseInt(contentLength)).to.be.greaterThan(0);
+  });
+  
+  test("Content-Type is correctly set for HTML", function() {
+    const contentType = res.getHeader("content-type");
+    expect(contentType).to.contain("text/html");
+  });
+  
+  test("HTML contains expected meta tags", function() {
+    expect(res.getBody()).to.contain('<meta charset="UTF-8">');
+    expect(res.getBody()).to.contain('<title>VNLib.WebServer Test Page</title>');
+  });
+}

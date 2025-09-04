@@ -1,0 +1,42 @@
+meta {
+  name: 404 Not Found Handling
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/nonexistent-file.html
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (404 Test)
+  Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+}
+
+assert {
+  res.status: eq 404
+}
+
+tests {
+  test("Returns 404 for nonexistent file", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+  
+  test("Custom 404 page is served", function() {
+    const body = res.getBody();
+    expect(body).to.contain("404");
+    expect(body).to.contain("Page Not Found");
+    expect(body).to.contain("VNLib.WebServer");
+  });
+  
+  test("Content-Type is HTML for error page", function() {
+    expect(res.getHeader("content-type")).to.contain("text/html");
+  });
+  
+  test("Error page has proper structure", function() {
+    expect(res.getBody()).to.contain("<!DOCTYPE html>");
+    expect(res.getBody()).to.contain("error-container");
+  });
+}

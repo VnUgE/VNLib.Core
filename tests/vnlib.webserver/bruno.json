@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "name": "VNLib.WebServer Integration Tests",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git",
+    "logs",
+    "*.log"
+  ],
+  "environments": ["local"],
+  "baseUrl": "{{baseUrl}}"
+}

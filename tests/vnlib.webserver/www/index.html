@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNLib.WebServer Test Page</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>VNLib.WebServer Integration Test</h1>
+        <p>This is the default index page for integration testing.</p>
+        <p>Server Time: <span id="server-time">Loading...</span></p>
+        
+        <nav>
+            <h2>Test Resources</h2>
+            <ul>
+                <li><a href="test-files/sample.txt">Plain Text File</a></li>
+                <li><a href="test-files/data.json">JSON Data</a></li>
+                <li><a href="test-files/script.js">JavaScript File</a></li>
+                <li><a href="test-files/small-image.png">Small Image</a></li>
+                <li><a href="test-files/unicode-test.html">Unicode Test</a></li>
+                <li><a href="assets/">Assets Directory</a></li>
+            </ul>
+        </nav>
+
+        <section>
+            <h2>Test Scenarios</h2>
+            <ul>
+                <li>Default file serving (you're seeing this now)</li>
+                <li>MIME type detection</li>
+                <li>Static file serving</li>
+                <li>404 error handling</li>
+                <li>Directory traversal security</li>
+            </ul>
+        </section>
+    </div>
+    
+    <script src="assets/script.js"></script>
+</body>
+</html>

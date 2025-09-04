@@ -1,0 +1,11 @@
+This is a plain text file for testing MIME type detection.
+It contains multiple lines of text to test content serving.
+
+Line 3: Testing special characters: àáâãäåæçèéêë
+Line 4: Testing numbers: 1234567890
+Line 5: Testing symbols: !@#$%^&*()_+-=[]{}|;':",./<>?
+
+This file should be served with Content-Type: text/plain
+File size is intentionally small for testing purposes.
+
+End of test file.

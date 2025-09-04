@@ -1,0 +1,43 @@
+meta {
+  name: Server Connectivity
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/
+  body: none
+  auth: inherit
+}
+
+headers {
+  User-Agent: VNLib.WebServer-Test/1.0 (Bruno Integration Test)
+}
+
+assert {
+  res.status: eq 200
+  res.responseTime: lt 1000
+}
+
+tests {
+  test("Server responds successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains expected HTML", function() {
+    expect(res.getBody()).to.contain("VNLib.WebServer Integration Test");
+  });
+  
+  test("Content-Type is HTML", function() {
+    expect(res.getHeader("content-type")).to.contain("text/html");
+  });
+  
+  test("Custom headers are present", function() {
+    expect(res.getHeader("x-test-server")).to.equal("VNLib.WebServer");
+    expect(res.getHeader("x-test-environment")).to.equal("Integration-Test");
+  });
+  
+  test("Response time is reasonable", function() {
+    expect(res.getResponseTime()).to.be.below(1000);
+  });
+}

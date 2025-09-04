@@ -90,9 +90,9 @@ jobs:
     image: vnuge/vnbuild:ubuntu-latest
     interpreter: !DefaultInterpreter
       commands: |
-          cd @project_name@
-          task -t Module.Taskfile.yaml dev-init
-          task -t Module.Taskfile.yaml test
+        cd @project_name@
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -121,9 +121,9 @@ jobs:
     image: vnuge/vnbuild:fedora-latest
     interpreter: !DefaultInterpreter
       commands: |
-         cd @project_name@
-         task -t Module.Taskfile.yaml dev-init
-         task -t Module.Taskfile.yaml test
+        cd @project_name@
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -187,3 +187,35 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 14400
+
+- name: ci-tests
+  jobExecutor: windows
+  steps:
+  - !CommandStep
+    name: clone deps
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  - !CommandStep
+    name: run module ci tests
+    runInContainer: false
+    interpreter: !DefaultInterpreter
+      commands: |
+        task -t Module.Taskfile.yaml test-ci
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - !BranchUpdateTrigger
+    branches: develop
+  jobDependencies:
+  - jobName: Windows Tests
+    requireSuccessful: true
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600

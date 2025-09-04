@@ -1,0 +1,19 @@
+{
+  "test": "VNLib.WebServer JSON Response",
+  "timestamp": "2025-09-04T00:00:00Z",
+  "server": "VNLib.WebServer",
+  "version": "integration-test",
+  "data": {
+    "string": "Hello World",
+    "number": 42,
+    "boolean": true,
+    "null_value": null,
+    "array": [1, 2, 3, "four", "five"],
+    "nested": {
+      "key1": "value1",
+      "key2": "value2"
+    }
+  },
+  "unicode": "Testing Unicode: 🚀 🌟 ✨ 日本語 한국어 العربية",
+  "special_chars": "Testing: \"quotes\", 'apostrophes', \\ backslashes, \n newlines"
+}

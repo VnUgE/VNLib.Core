@@ -1,0 +1,44 @@
+
+# manually executed by the CI server/scripts to run webserver integration tests
+
+version: 3
+
+vars:
+  PM2_PROC_NAME: 'vnlib.webserver'
+
+tasks:
+
+  test:
+    desc: Called to run the integration test suite
+    cmds:
+      - task: start-test-server
+      - defer: { task: stop-test-server }
+      - cmd: powershell Start-Sleep -Seconds 2 # Wait for the server to start
+        platforms: [windows]
+      - task: run-ci-tests
+      - cmd: echo "All tests passed!"
+        silent: true
+
+  run-ci-tests:
+    desc: Runs the CI tests
+    cmds:
+      - cmd: bru run --env local
+
+  start-test-server:
+    desc: Starts the test server as a daemon process using PM2  
+    preconditions:
+      - pm2 --version # Ensure PM2 is installed
+    cmds:
+      - cmd: pm2 start ecosystem.config.js --env {{ lower OS }} 
+
+  stop-test-server:
+    desc: Stops the test server daemon gracefully
+    preconditions:
+      - pm2 --version # Ensure PM2 is installed
+    cmds:
+      - cmd: pm2 sendSignal SIGINT {{ .PM2_PROC_NAME }} # Gracefully stop the process
+      - cmd: pm2 stop --kill-timeout 2000 {{ .PM2_PROC_NAME }}
+      - cmd: pm2 flush
+      - cmd: pm2 delete {{ .PM2_PROC_NAME }} # Remove the process from PM2's list
+      - cmd: powershell Start-Sleep -Seconds 2 # Wait for the server to stop completely
+        platforms: [windows]
