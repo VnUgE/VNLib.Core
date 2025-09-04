@@ -205,6 +205,7 @@ jobs:
     runInContainer: false
     interpreter: !DefaultInterpreter
       commands: |
+        cd @project_name@ 
         task -t Module.Taskfile.yaml test-ci
     useTTY: true
     condition: SUCCESSFUL
