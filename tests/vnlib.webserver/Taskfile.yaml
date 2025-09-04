@@ -13,7 +13,7 @@ tasks:
     cmds:
       - task: start-test-server
       - defer: { task: stop-test-server }
-      - cmd: powershell Start-Sleep -Seconds 2 # Wait for the server to start
+      - cmd: powershell Start-Sleep -Seconds 5 # Wait for the server to start
         platforms: [windows]
       - task: run-ci-tests
       - cmd: echo "All tests passed!"
