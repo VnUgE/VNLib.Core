@@ -46,6 +46,16 @@ tasks:
          --config {{ .CONFIG_FILE }}
          --dev-test
 
+      # test streaming config over stin
+      - cmd: cd 'bin/debug/net8.0' && 
+         powershell Get-Content "{{ .CONFIG_FILE }}" |
+         dotnet VNLib.WebServer.dll 
+         --verbose 
+         --input-off 
+         --no-plugins 
+         --dev-test
+         --config --
+
       - cmd: echo "VNLib.WebServer tests completed successfully"
         silent: true
 
@@ -68,9 +78,6 @@ tasks:
     #build release mode after all debug builds
     - for: { var: TARGET_ARCHES }
       cmd: dotnet publish -c release -r {{ .ITEM }} {{ .MS_ARGS }}
-
-    #package as a tool
-    #- dotnet pack -c debug {{.MS_ARGS}} -o "{{.PACK_OUT}}/debug/" -p:PackageVersion={{.BUILD_VERSION}}  
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
