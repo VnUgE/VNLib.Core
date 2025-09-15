@@ -32,17 +32,10 @@ using YamlDotNet.Core.Events;
 
 using VNLib.Utils.IO;
 
-using Jobber.Config;
+namespace Jobber.Config;
 
-namespace Jobber.ConfigLoading;
 
-internal interface IJobberConfigProvider
-{
-    JobberConfig Config { get; }
-    JsonElement Root { get; }
-}
-
-internal sealed class JsonJobberConfig : IJobberConfigProvider
+internal sealed class JsonJobberConfig
 {
     private readonly JsonDocument _doc;
     public JobberConfig Config { get; }
@@ -66,16 +59,7 @@ internal sealed class JsonJobberConfig : IJobberConfigProvider
         using FileStream fs = File.OpenRead(path);
         return FromStream(fs, yaml);
     }
-
-    public static JsonJobberConfig? FromStdin()
-    {
-        Console.WriteLine("Reading configuration from stdin");
-
-        using Stream stdin = Console.OpenStandardInput();
-
-        return FromStream(stdin, false);
-    }
-
+ 
     private static JsonJobberConfig? FromStream(Stream stream, bool yaml)
     {
         try
@@ -99,11 +83,13 @@ internal sealed class JsonJobberConfig : IJobberConfigProvider
                     .JsonCompatible()
                     .Build();
 
-                using VnMemoryStream ms = new VnMemoryStream();
-                using (StreamWriter sw = new StreamWriter(ms, leaveOpen:true))
+                using VnMemoryStream ms = new ();
+
+                using (StreamWriter sw = new (ms, leaveOpen:true))
                 {
                     serializer.Serialize(sw, yamlObj);
                 }
+
                 ms.Seek(0, SeekOrigin.Begin);
                 doc = JsonDocument.Parse(ms, jdo);
             }
@@ -118,8 +104,10 @@ internal sealed class JsonJobberConfig : IJobberConfigProvider
                 Console.WriteLine("Failed to deserialize configuration");
                 return null;
             }
+
             // triggers validation
             cfg.OnDeserialized();
+
             return new JsonJobberConfig(doc, cfg);
         }
         catch (JsonException je)
@@ -133,7 +121,7 @@ internal sealed class JsonJobberConfig : IJobberConfigProvider
         return null;
     }
 
-    internal sealed class NumberTypeResolver : YamlDotNet.Serialization.INodeTypeResolver
+    internal sealed class NumberTypeResolver : INodeTypeResolver
     {
         public bool Resolve(NodeEvent? nodeEvent, ref Type currentType)
         {

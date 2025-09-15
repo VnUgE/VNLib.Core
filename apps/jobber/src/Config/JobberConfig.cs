@@ -26,87 +26,39 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Jobber.Config;
-
-internal sealed class JobberConfig : IJsonOnDeserialized
+namespace Jobber.Config
 {
-    [JsonPropertyName("stop_timeout_sec")]
-    public int StopTimeoutSeconds { get; set; } = 15;
 
-    [JsonPropertyName("services")]
-    public ServiceConfig[] Services { get; set; } = Array.Empty<ServiceConfig>();
-
-    public void OnDeserialized()
+    internal sealed class JobberConfig : IJsonOnDeserialized
     {
-        Validate.EnsureRange(StopTimeoutSeconds, 1, 600, "stop_timeout_sec out of range (1-600)");
-        Validate.Assert(Services.Length > 0, "At least one service must be defined");
+        [JsonPropertyName("stop_timeout_sec")]
+        public int StopTimeoutSeconds { get; set; } = 15;
 
-        HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (ServiceConfig s in Services)
+        [JsonPropertyName("services")]
+        public ServiceConfig[] Services { get; set; } = Array.Empty<ServiceConfig>();
+
+        public void OnDeserialized()
         {
-            Validate.EnsureNotNull(s.Name, "Service missing name");
-            Validate.Assert(names.Add(s.Name!), $"Duplicate service name '{s.Name}'");
-            s.Validate();
+            Validate.EnsureRange(
+                StopTimeoutSeconds,
+                1,
+                600,
+                "stop_timeout_sec out of range (1-600)"
+            );
+
+            Validate.Assert(
+                Services.Length > 0,
+                "At least one service must be defined"
+            );
+
+            HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (ServiceConfig s in Services)
+            {
+                Validate.EnsureNotNull(s.Name, "Service missing name");
+                Validate.Assert(names.Add(s.Name!), $"Duplicate service name '{s.Name}'");
+                s.Validate();
+            }
         }
-    }
-}
-
-internal sealed class ServiceConfig : IJsonOnDeserialized
-{
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-
-    [JsonPropertyName("command")]
-    public string? Command { get; set; }
-
-    [JsonPropertyName("args")]
-    public string[] Args { get; set; } = Array.Empty<string>();
-
-    [JsonPropertyName("working_dir")]
-    public string? WorkingDirectory { get; set; }
-
-    [JsonPropertyName("env")]
-    public Dictionary<string, string>? Environment { get; set; }
-
-    [JsonPropertyName("depends_on")]
-    public string[] DependsOn { get; set; } = Array.Empty<string>();
-
-    [JsonPropertyName("primary")]
-    public bool Primary { get; set; }
-
-    [JsonPropertyName("shutdown_with_dependents")]
-    public bool ShutdownWithDependents { get; set; }
-
-    [JsonPropertyName("tee")]
-    public TeeConfig? Tee { get; set; }
-
-    [JsonPropertyName("wait_for_exit")]
-    public bool WaitForExit { get; set; }
-
-    public void OnDeserialized() => Validate();
-
-    public void Validate()
-    {
-        Validate.EnsureNotNull(Command, $"Service '{Name}' missing command");
-        Tee?.Validate();
-    }
-}
-
-internal sealed class TeeConfig : IJsonOnDeserialized
-{
-    [JsonPropertyName("stdout")]
-    public string? StdOutPath { get; set; }
-
-    [JsonPropertyName("stderr")]
-    public string? StdErrPath { get; set; }
-
-    [JsonPropertyName("append")]
-    public bool Append { get; set; } = true;
-
-    public void OnDeserialized() => Validate();
-
-    public void Validate()
-    {
-        // no-op; add path validation if required
     }
 }

@@ -25,35 +25,36 @@
 using System;
 using System.Collections.Generic;
 
-using VNLib.Utils.IO;
+using VNLib.Utils;
 
-namespace Jobber.Runtime;
-
-/// <summary>
-/// Command-line argument helper for jobber
-/// </summary>
-internal sealed class ProcessArguments(IEnumerable<string> args) : ArgumentList(args), ArgumentList
+namespace Jobber.Runtime
 {
-    public bool Quiet => HasArgument("--quiet") || HasArgument("-q");
-    public bool Verbose => HasArgument("-v") || HasArgument("--verbose");
-    public bool Debug => HasArgument("-d") || HasArgument("--debug");
-    public bool DumpConfig => HasArgument("--dump-config");
-    public bool DryRun => HasArgument("--dry-run");
-    public bool List => HasArgument("--list");
 
-    public string? ConfigPath => GetArgument("--config");
-    public string? WaitForService => GetArgument("--wait");
-
-    public int? StopTimeoutOverride
+    /// <summary>
+    /// Command-line argument helper for jobber
+    /// </summary>
+    internal sealed class ProcessArguments(IEnumerable<string> args) : ArgumentList(args)
     {
-        get
+        public bool Quiet => HasArgument("--quiet") || HasArgument("-q");
+        public bool Verbose => HasArgument("-v") || HasArgument("--verbose");
+        public bool Debug => HasArgument("-d") || HasArgument("--debug");
+        public bool DryRun => HasArgument("--dry-run");
+        public bool List => HasArgument("--list");
+
+        public string? ConfigPath => GetArgument("--config");
+        public string? WaitForService => GetArgument("--wait");
+
+        public int? StopTimeoutOverride
         {
-            string? val = GetArgument("--stop-timeout");
-            if (val != null && int.TryParse(val, out int parsed))
+            get
             {
-                return parsed;
+                string? val = GetArgument("--stop-timeout");
+                if (val != null && int.TryParse(val, out int parsed))
+                {
+                    return parsed;
+                }
+                return null;
             }
-            return null;
         }
     }
 }
