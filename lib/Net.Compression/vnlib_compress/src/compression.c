@@ -45,6 +45,8 @@
 	#include "feature_zstd.h"
 #endif /* VNLIB_COMPRESSOR_ZSTD_ENABLED */
 
+#include <string.h>
+
 
 /*
 * If the native heap is desired, pull the header in and specify the extern
@@ -70,15 +72,6 @@ static void* vnmalloc(void* opaque, size_t num)
 #endif
 }
 
-static void* vncalloc(size_t num, size_t size)
-{
-#ifdef NATIVE_HEAP_API	/* Defined in the NativeHeapApi */
-	return heapAlloc(heapGetSharedHeapHandle(), num, size, 1);
-#else
-	return calloc(num, size);
-#endif
-}
-
 static void vnfree(void* opaque, void* ptr)
 {
 	(void)(sizeof(opaque));
@@ -91,6 +84,41 @@ static void vnfree(void* opaque, void* ptr)
 #else
 	free(ptr);
 #endif /* NATIVE_HEAP_API */
+}
+
+
+/* Clears/resets the compressor state for reuse */
+static _vncmp_inline void _stateClearCompressor(comp_state_t* state)
+{
+	if (state)
+	{
+		state->type = COMP_TYPE_NONE;
+		state->level = COMP_LEVEL_OPTIMAL;
+		state->blockSize = 0;
+		state->compressor = NULL;
+	}
+}
+
+static _vncmp_inline void* _intPtrCast(int result)
+{
+	/*
+	 * Using strict/pedantic error checking int gcc will cause a warning
+	 * when casting an int to a void* pointer. We are returning an error code
+	* and it is expected behavior
+	*/
+#ifdef  __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+		return (void*)result;
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4312)
+		return (void*)result;
+#pragma warning(pop)
+#else 
+		return (void*)result;
+#endif 
 }
 
 /*
@@ -138,30 +166,87 @@ VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressorBlockSize(_In_ cons
 	return (int64_t)((comp_state_t*)compressor)->blockSize;
 }
 
-VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType type, CompressionLevel level)
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocState(void** statePtr)
 {
+	return CompressionAllocState2(statePtr, &vnmalloc, &vnfree, NULL);
+}
+
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocState2(void** statePtr, vnlib_mem_alloc alloc, vnlib_mem_free free, void* opaque)
+{
+	if (!alloc || !free)
+	{
+		return ERR_INVALID_ARGUMENT;
+	}
+
+	statePtr = alloc(opaque, sizeof(comp_state_t));	
+	if (!statePtr)
+	{
+		return ERR_OUT_OF_MEMORY;
+	}
+
+	/* Zero the state memory */
+	memset(statePtr, 0, sizeof(comp_state_t));
+
+	comp_state_t* state = (comp_state_t*)statePtr;
+
+	state->allocFunc = alloc;
+	state->freeFunc = free;
+	state->memOpaque = opaque;	
+
+	return VNCMP_SUCCESS;
+}
+
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionFreeState(void* statePtr)
+{	
+	int result = VNCMP_SUCCESS;
+
+	comp_state_t* state = (comp_state_t*)statePtr;
+
+	CHECK_NULL_PTR(state);
+
+	/* Free the compressor if it is still allocated */
+	if (state->type != COMP_TYPE_NONE)
+	{		
+		result = CompressionFreeCompressor(statePtr);
+	}
+	
+	/* Free the state itself */
+	_stateMemFree(state, statePtr);
+
+	return result;
+}
+
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocCompressor(void* statePtr, CompressorType type, CompressionLevel level)
+{
+	int result = ERR_COMP_TYPE_NOT_SUPPORTED;
+
+	comp_state_t* state = (comp_state_t*)statePtr;
+
+	CHECK_NULL_PTR(statePtr);
+
 	/* Validate input arguments */
 	if (level < 0 || level > 9)
 	{
-		return (void*)ERR_COMP_LEVEL_NOT_SUPPORTED;
-	}
-
-	int result = ERR_COMP_TYPE_NOT_SUPPORTED;
-
-	comp_state_t* state = (comp_state_t*)vncalloc(1, sizeof(comp_state_t));
-
-	if (!state)
+		return ERR_COMP_LEVEL_NOT_SUPPORTED;
+	}	
+	
+	/* Check that the compressor isn't already allocated */
+	if (state->type != COMP_TYPE_NONE || state->compressor)
 	{
-		return (void*)ERR_OUT_OF_MEMORY;
+		/* Compressor already allocated */
+		return ERR_INVALID_ARGUMENT;
 	}
-
-	state->allocFunc = &vnmalloc;
-	state->freeFunc = &vnfree;
-	state->memOpaque = NULL;
 
 	/* Configure the comp state */
 	state->type = type;
-	state->level = level;	
+	state->level = level;
+
+	/* 
+	* The alloc/free functions should be guarunteed if the 
+	* user called proper alloc functions, so this is a sanity check 
+	*/
+	DEBUG_ASSERT2(state->allocFunc != NULL, "Expected non-null allocFunc pointer");
+	DEBUG_ASSERT2(state->freeFunc != NULL, "Expected non-null freeFunc pointer");
 
 	/*
 	* Compressor types are defined at compile time
@@ -197,93 +282,89 @@ VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType 
 		default:
 			break;
 	}
-	
 
-	/*
-		If result was successful return the context pointer, if
-		the creation failed, free the state if it was allocated
-		and return the error code.
-	*/
-
-	if (result > 0)
-	{
-		return (void*)state;
-	}
-	else
-	{
-		vnfree(NULL, state);
-
-	/*
-	* Using strict/pedantic error checking int gcc will cause a warning
-	* when casting an int to a void* pointer. We are returning an error code
-	* and it is expected behavior
-	*/
-#ifdef  __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-		return (void*)result;
-#pragma GCC diagnostic pop
-#elif defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable: 4312)
-		return (void*)result;
-#pragma warning(pop)
-#else 
-		return (void*)result;
-#endif 
-	}
+	return result;
 }
 
-VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(void* compressor)
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionFreeCompressor(void* statePtr)
 {	
-	CHECK_NULL_PTR(compressor);
-	
 	int errorCode = VNCMP_SUCCESS;
-	comp_state_t* comp = (comp_state_t*)compressor;	
 
-	switch (comp->type)
+	comp_state_t* state = (comp_state_t*)statePtr;
+
+	CHECK_NULL_PTR(state);		
+	
+	switch (state->type)
 	{
-		case COMP_TYPE_BROTLI:
+	case COMP_TYPE_BROTLI:
 #ifdef VNLIB_COMPRESSOR_BROTLI_ENABLED
-			BrFreeCompressor(comp);
+		BrFreeCompressor(state);
 #endif			
-			break;
+		break;
 
-		case COMP_TYPE_DEFLATE:		
-		case COMP_TYPE_GZIP:		
-			/*
-			* Releasing a deflate compressor will cause a deflate 
-			* end call, which can fail, we should send the error 
-			* to the caller and clean up as best we can.
-			*/
+	case COMP_TYPE_DEFLATE:
+	case COMP_TYPE_GZIP:
+		/*
+		* Releasing a deflate compressor will cause a deflate
+		* end call, which can fail, we should send the error
+		* to the caller and clean up as best we can.
+		*/
 #ifdef VNLIB_COMPRESSOR_ZLIB_ENABLED
-			errorCode = DeflateFreeCompressor(comp);			
+		errorCode = DeflateFreeCompressor(state);
 #endif		
-			break;
+		break;
 
-		case COMP_TYPE_ZSTD:
+	case COMP_TYPE_ZSTD:
 #ifdef VNLIB_COMPRESSOR_ZSTD_ENABLED
-			ZstdFreeCompressor(comp);
+		ZstdFreeCompressor(state);
 #endif
-			break;
+		break;
 
 		/*
 		* If compression type is none, there is nothing to do
 		* since its not technically an error, so just return
 		* true.
 		*/
-		
-		case COMP_TYPE_NONE:		
-		default:			
-			break;		
+
+	case COMP_TYPE_NONE:
+	default:
+		break;
 	}
 
-	/*
-	* Free the compressor state
-	*/
+	_stateClearCompressor(state);
 
-	vnfree(NULL, compressor);
 	return errorCode;
+}
+
+
+VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType type, CompressionLevel level)
+{
+	int result = ERR_COMP_TYPE_NOT_SUPPORTED;
+
+	void* state;
+
+	result = CompressionAllocState(&state);
+
+	/* Validate input arguments */
+	if (result != VNCMP_SUCCESS)
+	{
+		return _intPtrCast(result);
+	}
+
+	result = CompressionAllocCompressor(state, type, level);
+	if (result != VNCMP_SUCCESS)
+	{
+		CompressionFreeState(state);
+		return _intPtrCast(result);
+	}
+
+	return state;	
+}
+
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC FreeCompressor(void* compressor)
+{	
+	/* Freeing the state will also free the compressor if it's allocated */
+	return CompressionFreeState(compressor);
 }
 
 VNLIB_COMPRESS_EXPORT int64_t VNLIB_COMPRESS_CC GetCompressedSize(
