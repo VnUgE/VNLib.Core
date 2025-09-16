@@ -211,6 +211,31 @@ typedef struct CompressionOperationStruct {
 
 } CompressionOperation;
 
+
+static _vncmp_inline void* _stateMemAlloc(const comp_state_t* state, size_t size)
+{
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->allocFunc != NULL, "Expected non-null allocFunc pointer");
+
+	if (!state || !state->allocFunc || size == 0)
+	{
+		return NULL; // Return NULL for invalid parameters
+	}
+
+	return state->allocFunc(state->memOpaque, size);
+}
+
+static _vncmp_inline void _stateMemFree(const comp_state_t* state, void* ptr)
+{
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state parameter");
+	DEBUG_ASSERT2(state->freeFunc != NULL, "Expected non-null freeFunc pointer");
+
+	if (state && state->freeFunc && ptr)
+	{
+		state->freeFunc(state->memOpaque, ptr);
+	}
+}
+
 /*
 * Public API functions
 */
@@ -241,7 +266,17 @@ VNLIB_COMPRESS_EXPORT CompressorType VNLIB_COMPRESS_CC GetCompressorType(_In_ co
 VNLIB_COMPRESS_EXPORT CompressionLevel VNLIB_COMPRESS_CC GetCompressorLevel(_In_ const void* compressor);
 
 /*
+* OBSOLETE
+* 
 * Allocates a new compressor instance on the native heap of the desired compressor type.
+* Calling this function performs an implicit allocation of a compression state instance
+* and the desired compressor instance. The returned pointer is a pointer to the state
+* instance. The state instance must be freed using FreeCompressor when it is no longer
+* needed.
+* 
+* This function is considered obsolete. New applications should allocate a reusable state 
+* instance using CompressionAllocState or CompressionAllocState2. Then allocate a compressor instance
+* using CompressionAllocCompressor.
 * 
 * @param type The desired compressor type.
 * @param level The desired compression level.
@@ -251,7 +286,15 @@ could not be allocated.
 VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType type, CompressionLevel level);
 
 /*
-* Frees a previously allocated compressor instance.
+* OBSOLETE
+* 
+* This function is considered obsolete. New applications should free the state instance 
+* using CompressionFreeCompressor and the state instance using CompressionFreeState. You 
+* are encouraged to reuse the state instance to reduce memory allocations.
+* 
+* Frees a previously allocated compressor instance from AllocateCompressor. This will also
+* free the underlying compression state instance. The pointer passed to this function 
+* should not be used after this call.
 * 
 * @param compressor A pointer to the desired compressor instance to free.
 * @return The underlying compressor's native return code.
@@ -284,5 +327,70 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressBlock(
 	_In_ const void* compressor, 
 	CompressionOperation* operation
 );
+
+/* 
+*	V2 API
+* 
+* Separates the compressor instance from the state instance. and allows state instance 
+* to be reused with multiple compressors.
+*/
+
+/*
+* Allocates a new compression state instance on the default heap. Note that a compressor
+* must still be allocated using CompressionAllocCompressor before compression operations can
+* be performed.
+* 
+* @param statePtr A pointer to a pointer that will receive the newly allocated state instance.
+* @return VNCMP_SUCCESS if the state was successfully allocated, otherwise an error code.
+*/
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocState(void** statePtr);
+
+
+/*
+* Allocates a new compression state instance using the specified memory allocation callback functions. Note that a compressor
+* must still be allocated using CompressionAllocCompressor before compression operations can
+* be performed.
+* 
+* @param statePtr A pointer to a pointer that will receive the newly allocated state instance.
+* @param alloc A pointer to a memory allocation function that matches the vnlib_mem_alloc signature
+* @param free A pointer to a memory free function that matches the vnlib_mem_free signature
+* @param opaque An opaque pointer that will be passed to the alloc/free functions when called.
+* @return VNCMP_SUCCESS if the state was successfully allocated, otherwise an error code.
+*/
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocState2(void** statePtr, vnlib_mem_alloc alloc, vnlib_mem_free free, void* opaque);
+
+/*
+* Frees a previously allocated compression state instance. This will also free any allocated
+* compressor instance associated with the state, if it was not already freed.
+* 
+* @param statePtr A pointer to the state instance to free.
+* @return VNCMP_SUCCESS if the state was successfully freed, otherwise an error code.
+*/
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionFreeState(void* statePtr);
+
+/*
+* Allocates a new compressor instance of the specified type and compression level using
+* the specified state instance. The state instance must have been previously allocated
+* using CompressionAllocState or CompressionAllocState2.
+* 
+* @param statePtr A pointer to the state instance to use for allocation.
+* @param type The desired compressor type.
+* @param level The desired compression level.
+* @return VNCMP_SUCCESS if the compressor was successfully allocated, otherwise an error code.
+*/
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocCompressor(void* statePtr, CompressorType type, CompressionLevel level);
+
+/*
+* Frees a previously allocated compressor instance associated with the specified state instance.
+* The state instance itself is not freed. The state may be reused to allocate another compressor
+* instance after this call.
+* 
+* This function is safe to call even if no compressor instance is allocated, in which case
+* the function will simply return VNCMP_SUCCESS.
+* 
+* @param statePtr A pointer to the state instance whose compressor is to be freed.
+* @return VNCMP_SUCCESS if the compressor was successfully freed, otherwise an error code.
+*/
+VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionFreeCompressor(void* statePtr);
 
 #endif /* !VNLIB_COMPRESS_MAIN_H_ */
