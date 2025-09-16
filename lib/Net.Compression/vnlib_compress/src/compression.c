@@ -178,20 +178,21 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocState2(void** stateP
 		return ERR_INVALID_ARGUMENT;
 	}
 
-	statePtr = alloc(opaque, sizeof(comp_state_t));	
-	if (!statePtr)
+	comp_state_t* state = (comp_state_t*)alloc(opaque, sizeof(comp_state_t));
+	if (!state)
 	{
 		return ERR_OUT_OF_MEMORY;
 	}
 
 	/* Zero the state memory */
-	memset(statePtr, 0, sizeof(comp_state_t));
-
-	comp_state_t* state = (comp_state_t*)statePtr;
+	memset(state, 0, sizeof(comp_state_t));
 
 	state->allocFunc = alloc;
 	state->freeFunc = free;
 	state->memOpaque = opaque;	
+	/* No other state fields need to be initialized yet */
+
+	*statePtr = state;
 
 	return VNCMP_SUCCESS;
 }
@@ -350,6 +351,8 @@ VNLIB_COMPRESS_EXPORT void* VNLIB_COMPRESS_CC AllocateCompressor(CompressorType 
 	{
 		return _intPtrCast(result);
 	}
+
+	DEBUG_ASSERT2(state != NULL, "Expected non-null state pointer when successful result code");
 
 	result = CompressionAllocCompressor(state, type, level);
 	if (result != VNCMP_SUCCESS)
