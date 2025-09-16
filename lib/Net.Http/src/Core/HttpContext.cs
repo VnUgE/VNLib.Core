@@ -237,8 +237,8 @@ namespace VNLib.Net.Http.Core
             Response.OnComplete();
             ResponseBody.OnComplete();
 
-            //Free compressor when a message flow is complete
-            _compressor?.Free();
+            //Deinit compressor when request is complete so it can be reused
+            _compressor?.DeInit();
         }
 
         void IReusable.Prepare()
@@ -256,7 +256,10 @@ namespace VNLib.Net.Http.Core
 
             //Release response/requqests
             Response.OnRelease();
-           
+
+            // Free compressor state memory
+            _compressor?.Free();
+
             //Free buffers
             Buffers.FreeAll(ParentServer.Config.MemoryPool);
 

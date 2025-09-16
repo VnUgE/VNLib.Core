@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -51,7 +51,7 @@ namespace VNLib.Net.Http
         /// Allocates a new compressor state object that will be used for compression operations.
         /// </summary>
         /// <returns>The compressor state</returns>
-        object AllocCompressor();
+        object AllocCompressor();       
 
         /// <summary>
         /// Compresses a block of data using the compressor state. The input block size is 
@@ -73,7 +73,14 @@ namespace VNLib.Net.Http
         int Flush(object compressorState, Memory<byte> output);
 
         /// <summary>
-        /// Initializes the compressor state for a compression operation
+        /// Initializes the compressor state for a compression operation. A compressor is
+        /// guarunteed to be Deinitialized by a call to <see cref="DeinitCompressor(object)"/>
+        /// after a successful call to this method.
+        /// <para>
+        /// A compressor that has been commited may be initialized and de-intiialized multiple 
+        /// times with different compression methods. This allows the server to reuse
+        /// compressor instances for different compression methods.
+        /// </para>
         /// </summary>
         /// <param name="compressorState">The user-defined compression state</param>
         /// <param name="compMethod">The compression method</param>
@@ -87,5 +94,34 @@ namespace VNLib.Net.Http
         /// </summary>
         /// <param name="compressorState">The initialized compressor state</param>
         void DeinitCompressor(object compressorState);
+
+        /// <summary>
+        /// This function provides additional support for memory management optimizations.
+        /// These function hooks allow for the server to notify the compressor manager when
+        /// its ready to use/release memory for compression operations.
+        /// <para>
+        /// After a successful call to <see cref="AllocCompressor"/> this function may be called 
+        /// with a pairing call to <see cref="DecommitMemory(object)"/> multiple times to reuse 
+        /// the allocated structure. 
+        /// </para>
+        /// </summary>
+        /// <param name="compressorState">The previously allocated compressor instance</param>
+        void CommitMemory(object compressorState);
+
+        /// <summary>
+        /// This function provides additional support for memory management optimizations.
+        /// These function hooks allow for the server to notify the compressor manager when
+        /// its ready to use/release memory for compression operations.
+        /// <para>
+        /// This function is guarunteed to be called at most once, after a successful call to 
+        /// <see cref="CommitMemory(object)"/>
+        /// </para>
+        /// </summary>
+        /// <param name="compressorState">The previously allocated compressor instance</param>
+        /// <remarks>
+        /// NOTE: This function should avoid raising exceptions. If an exception is raised,
+        /// it may cause process to crash if not handled by the application.
+        /// </remarks>
+        void DecommitMemory(object compressorState);
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -39,15 +39,22 @@ namespace VNLib.Net.Http.Core.Compression
         int BlockSize { get; }
 
         /// <summary>
-        /// Frees the resources used by the compressor on a compression operation
+        /// Frees the resources used by the compressor after a successful call to <see cref="Init(CompressionMethod)"/>
+        /// Deinit is not required to be called before Free. Multiple calls to Free will result in no-ops.
         /// </summary>
         void Free();
 
         /// <summary>
-        /// Initializes the compressor for a compression operation
+        /// Initializes the compressor for a compression operation, and lazy allocates the compressor state if needed.
         /// </summary>
         /// <param name="compMethod">The compression mode to use</param>
         void Init(CompressionMethod compMethod);
+
+        /// <summary>
+        /// De-initializes the compressor, freeing any resources used during compression, and allowing
+        /// reuse of the compressor instance
+        /// </summary>
+        void DeInit();
 
         /// <summary>
         /// Compresses a block of input data and writes the result to the output buffer
