@@ -103,9 +103,22 @@ namespace VNLib.Net.Compression
         public SafeHandle AllocSafeCompressorHandle(CompressionMethod method, CompressionLevel level)
         {
             Check();
+
             //Alloc compressor then craete a safe handle
-            IntPtr comp = _library.AllocateCompressor(method, level);
-            return new SafeCompressorHandle(_library, comp);
+            IntPtr comp = _library.CompressionAllocState();
+
+            try
+            {
+                _library.CompressionAllocCompressor(comp, method, level);
+
+                return new SafeCompressorHandle(_library, comp);
+            }
+            catch
+            {
+                //Free the state if we failed to allocate the compressor
+                _library.CompressionFreeState(comp);
+                throw;
+            }
         }
 
         internal sealed record class Compressor(LibraryWrapper LibComp, SafeHandle CompressorHandle) : INativeCompressor

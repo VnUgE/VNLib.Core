@@ -116,20 +116,88 @@ namespace VNLib.Net.Compression
         ///<inheritdoc/>
         public object AllocCompressor() => new Compressor();
 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EnsureMemoryCommitted(Compressor compressor)
+        {
+            if (compressor.Instance == IntPtr.Zero)
+            {
+                compressor.Instance = _nativeLib!.CompressionAllocState();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EnsureMemoryFreed(Compressor compressor)
+        {
+            _nativeLib!.CompressionFreeState(compressor.Instance);
+            compressor.Instance = IntPtr.Zero;
+            compressor.SupportsCommitApi = false;
+        }
+
+       
+
+        /// <inheritdoc/>
+
+        public void CommitMemory(object compressorState)
+        {
+            DebugThrowIfNull(compressorState, nameof(compressorState));
+            Compressor compressor = Unsafe.As<Compressor>(compressorState);
+
+            EnsureMemoryCommitted(compressor);
+
+            compressor.SupportsCommitApi = true;   //Caller supports explicit commit/free
+        }
+        
+        /// <inheritdoc/>
+        public void DecommitMemory(object compressorState)
+        {
+            DebugThrowIfNull(compressorState, nameof(compressorState));
+            Compressor compressor = Unsafe.As<Compressor>(compressorState);
+
+            // Free the compressor state, will also free any compressor instance, will also guard for null pointers
+            EnsureMemoryFreed(compressor);           
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int InitCompressorInternal(Compressor compressor, CompressionMethod compMethod)
+        {
+            _nativeLib!.CompressionAllocCompressor(compressor.Instance, compMethod, _config.Level);
+            return (int)_nativeLib!.GetBlockSize(compressor.Instance);
+        }
+
         ///<inheritdoc/>
         public int InitCompressor(object compressorState, CompressionMethod compMethod)
         {
             DebugThrowIfNull(compressorState, nameof(compressorState));
             Compressor compressor = Unsafe.As<Compressor>(compressorState);
 
-            //Instance should be null during initialization calls
-            Debug.Assert(compressor.Instance == IntPtr.Zero, "Init was called but and old compressor instance was not properly freed");
+            /*
+             * If the flag for the new commit API it set, it means they have already committed memory
+             * and it's safe to allocate the compressor. If not, we need to ensure memory
+             * is committed before allocating the compressor to maintain backwards compatibility.
+             * 
+             * If the allocation fails, we need to free the memory if we allocated it
+             * ourselves to avoid memory leaks.
+             */
+            if (compressor.SupportsCommitApi)
+            {
+                return InitCompressorInternal(compressor, compMethod);
+            }
+            else
+            {
+                //Ensure memory is committed (legacy support)
+                EnsureMemoryCommitted(compressor);
 
-            //Alloc the compressor, let native lib raise exception for supported methods
-            compressor.Instance = _nativeLib!.AllocateCompressor(compMethod, _config.Level);
-
-            //Return the compressor block size
-            return (int)_nativeLib!.GetBlockSize(compressor.Instance);
+                try
+                {
+                    return InitCompressorInternal(compressor, compMethod);
+                }
+                catch
+                {
+                    EnsureMemoryFreed(compressor);
+                    throw;
+                }
+            }
         }
 
         ///<inheritdoc/>
@@ -143,11 +211,23 @@ namespace VNLib.Net.Compression
                 throw new InvalidOperationException("This compressor instance has not been initialized, cannot free compressor");
             }
 
-            //Free compressor instance
-            _nativeLib!.FreeCompressor(compressor.Instance);
+            /*
+             * Iff the caller uses the commit API, we can assume they will free the memory
+             * explicitly. If not, we need to free the memory here to avoid leaks. It maintains
+             * ABI backwards compatibility with older servers.
+             * 
+             * Calling memory free will cause the compressor instance to be freed as well in
+             * the native library.
+             */
 
-            //Clear pointer after successful free
-            compressor.Instance = IntPtr.Zero;
+            if (compressor.SupportsCommitApi)
+            {
+                _nativeLib!.CompressionFreeCompressor(compressor.Instance);
+            }
+            else
+            {
+                EnsureMemoryFreed(compressor);
+            }
         }
 
         ///<inheritdoc/>
@@ -207,7 +287,7 @@ namespace VNLib.Net.Compression
          */
 
         [Conditional("DEBUG")]
-        private static void DebugThrowIfNull<T>(T? obj, string name) => ArgumentNullException.ThrowIfNull(obj, name);
+        private static void DebugThrowIfNull<T>(T? obj, string name) => ArgumentNullException.ThrowIfNull(obj, name);    
 
         /*
          * A class to contain the compressor state
@@ -215,6 +295,24 @@ namespace VNLib.Net.Compression
         private sealed class Compressor
         {
             public IntPtr Instance;
+
+            /// <summary>
+            /// In order to make the new commit ABI backwards compatible with older compressors,
+            /// this value keeps track of how the memory was allocated. If a caller calls CommitMemory,
+            /// it means they support the new explicit api.
+            /// 
+            /// If the user doesn't support the commit API, memory must be freed on deinit call so state 
+            /// memory does not leak.
+            /// </summary>
+            public bool SupportsCommitApi;
+
+#if DEBUG
+            ~Compressor()
+            {
+                Debug.Assert(Instance == IntPtr.Zero, "Memory leak detected. Compressor state was not freed before finalization");
+            }
+#endif
+
         }
 
 

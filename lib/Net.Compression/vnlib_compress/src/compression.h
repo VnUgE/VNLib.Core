@@ -345,7 +345,6 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressBlock(
 */
 VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocState(void** statePtr);
 
-
 /*
 * Allocates a new compression state instance using the specified memory allocation callback functions. Note that a compressor
 * must still be allocated using CompressionAllocCompressor before compression operations can
