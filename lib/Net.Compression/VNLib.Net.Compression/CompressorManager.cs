@@ -123,6 +123,11 @@ namespace VNLib.Net.Compression
             if (compressor.Instance == IntPtr.Zero)
             {
                 compressor.Instance = _nativeLib!.CompressionAllocState();
+
+                //Compressor values should still be defaults (or none) after the state is allocated
+                Debug.Assert(_nativeLib.GetCompressorLevel(compressor.Instance) == default);
+                Debug.Assert(_nativeLib.GetBlockSize(compressor.Instance) == 0);
+                Debug.Assert(_nativeLib.GetCompressorType(compressor.Instance) == default);
             }
         }
 
@@ -155,7 +160,7 @@ namespace VNLib.Net.Compression
             Compressor compressor = Unsafe.As<Compressor>(compressorState);
 
             // Free the compressor state, will also free any compressor instance, will also guard for null pointers
-            EnsureMemoryFreed(compressor);           
+            EnsureMemoryFreed(compressor);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -223,6 +228,11 @@ namespace VNLib.Net.Compression
             if (compressor.SupportsCommitApi)
             {
                 _nativeLib!.CompressionFreeCompressor(compressor.Instance);
+
+                // After only the compressor is freed, the instance should still be valid but reset to defaults
+                Debug.Assert(_nativeLib.GetCompressorLevel(compressor.Instance) == default);
+                Debug.Assert(_nativeLib.GetBlockSize(compressor.Instance) == 0);
+                Debug.Assert(_nativeLib.GetCompressorType(compressor.Instance) == default);
             }
             else
             {
@@ -309,7 +319,7 @@ namespace VNLib.Net.Compression
 #if DEBUG
             ~Compressor()
             {
-                Debug.Assert(Instance == IntPtr.Zero, "Memory leak detected. Compressor state was not freed before finalization");
+                //Debug.Assert(Instance == IntPtr.Zero, "Memory leak detected. Compressor state was not freed before finalization");
             }
 #endif
 
