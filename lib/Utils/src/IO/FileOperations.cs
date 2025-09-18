@@ -57,6 +57,7 @@ namespace VNLib.Utils.IO
         const int LIBC_X_OK = 1; // Execute permission
         const int LIBC_F_OK = 0; // Check for existence only
 
+        [SupportedOSPlatform("linux")]
         [LibraryImport("libc", EntryPoint = "access", StringMarshalling = StringMarshalling.Utf8)]        
         [return:MarshalAs(UnmanagedType.I4)]
         private static unsafe partial int Access([MarshalAs(UnmanagedType.LPStr)] string path, int mode);
