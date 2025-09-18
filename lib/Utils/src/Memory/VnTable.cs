@@ -64,14 +64,14 @@ namespace VNLib.Utils.Memory
         /// Creates a new 2 dimensional table in unmanaged heap memory, using the specified heap.
         /// User should dispose of the table when no longer in use
         /// </summary>
-        /// <param name="heap"><see cref="IUnmangedHeap"/> to allocate table memory from</param>
+        /// <param name="heap"><see cref="IUnmanagedHeap"/> to allocate table memory from</param>
         /// <param name="rows">Number of rows in the table</param>
         /// <param name="cols">Number of columns in the table</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        public VnTable(IUnmangedHeap heap, uint rows, uint cols)
+        public VnTable(IUnmanagedHeap heap, uint rows, uint cols)
         {
             //empty table
             if (rows != 0 || cols != 0)

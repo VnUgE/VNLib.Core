@@ -438,7 +438,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             Config.MemoryManager.AllocBuffer(recvBuffer, Config.RecvBufferSize);
             try
             {
-                if (!Config.MemoryManager.TryGetHeap(out IUnmangedHeap? heap))
+                if (!Config.MemoryManager.TryGetHeap(out IUnmanagedHeap? heap))
                 {
                     throw new NotSupportedException("The memory manager must support using IUnmanagedHeaps");
                 }

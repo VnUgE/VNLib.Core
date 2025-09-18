@@ -78,12 +78,7 @@ namespace VNLib.Utils.IO
             filePath = Path.GetFullPath(filePath);
 
             //If windows is detected, use the unmanged function
-            if (OperatingSystem.IsWindows())
-            {
-                //Invoke the winapi file function
-                return PathFileExists(filePath);
-            }
-            else if (OperatingSystem.IsLinux())
+            if (!IsWindows)
             {
                 //Invoke the libc access function to check if the file exists
                 //If the result is 0, the file exists

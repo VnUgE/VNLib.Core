@@ -23,7 +23,7 @@ namespace VNLib.Utils.IO.Tests
             }
 
             //Test heap
-            using IUnmangedHeap privateHeap = MemoryUtil.InitializeNewHeapForProcess();
+            using IUnmanagedHeap privateHeap = MemoryUtil.InitializeNewHeapForProcess();
 
             using (VnMemoryStream vms = new(privateHeap, 1024, false))
             {
