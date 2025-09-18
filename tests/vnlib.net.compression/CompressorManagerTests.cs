@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -20,124 +21,328 @@ namespace VNLib.Net.Compression.Tests
     [TestClass()]
     public class CompressorManagerTests
     {
+        private const int SmallTestDataSize = 64 * 1024;        // 64KB
+        private const int LargeTestDataSize = 896 * 1024;       // 896KB - realistic web asset size
+        private const int PerformanceTestDataSize = 10 * 1024 * 1024; // 10MB for perf tests
         [TestMethod]
         public void NativeLibApiTest()
         {
-            //Load library
             using NativeCompressionLib lib = NativeCompressionLib.LoadDefault();
+            using LibTestComp compressor = new(lib, CompressionLevel.Fastest);
 
-            LibTestComp cp = new(lib, CompressionLevel.Fastest);
+            Debug.WriteLine("Testing native library API with compression level: Fastest");
 
-            Debug.WriteLine("Loading library with compression level: Fastest");
-
-            TestSupportedMethods(cp);
-
-            //Test for supported methods
-            TestCompressionForSupportedMethods(cp);
+            TestSupportedMethodsContract(compressor);
+            TestCompressionForAllSupportedMethods(compressor, SmallTestDataSize);
         }
 
         [TestMethod()]
-        public void InitCompressorTest()
+        public void CompressorManagerBasicTest()
         {
-            CompressorManager manager = InitCompressorUnderTest();
+            CompressorManager manager = CreateTestCompressorManager();
 
+            // Test null argument guards in DEBUG builds
+#if DEBUG
             Assert.ThrowsExactly<ArgumentNullException>(() => _ = manager.InitCompressor(null!, CompressionMethod.Deflate));
             Assert.ThrowsExactly<ArgumentNullException>(() => manager.DeinitCompressor(null!));
+            Assert.ThrowsExactly<ArgumentNullException>(() => manager.CommitMemory(null!));
+            Assert.ThrowsExactly<ArgumentNullException>(() => manager.DecommitMemory(null!));
+#endif
 
-            //Create a new testing wrapper
-            ManagerTestComp cp = new(manager.AllocCompressor(), manager);
+            ManagerTestComp compressor = new(manager.AllocCompressor(), manager);
 
-            //Test supported methods
-            TestSupportedMethods(cp);
+            TestSupportedMethodsContract(compressor);
+            TestCompressionForAllSupportedMethods(compressor, SmallTestDataSize);
+        }
 
-            //Test for supported methods
-            TestCompressionForSupportedMethods(cp);
+        [TestMethod]
+        public void CommitDecommitLifecycleTest()
+        {
+            CompressorManager manager = CreateTestCompressorManager();
+            object compressorState = manager.AllocCompressor();
+
+            // Test full commit/decommit lifecycle
+            manager.CommitMemory(compressorState);
+
+            try
+            {
+                // Test with each supported method
+                CompressionMethod supportedMethods = manager.GetSupportedMethods();
+
+                if ((supportedMethods & CompressionMethod.Gzip) != 0)
+                {
+                    TestCompressorMethodWithCommittedState(manager, compressorState, CompressionMethod.Gzip, LargeTestDataSize);
+                }
+
+                if ((supportedMethods & CompressionMethod.Deflate) != 0)
+                {
+                    TestCompressorMethodWithCommittedState(manager, compressorState, CompressionMethod.Deflate, LargeTestDataSize);
+                }
+
+                if ((supportedMethods & CompressionMethod.Brotli) != 0)
+                {
+                    TestCompressorMethodWithCommittedState(manager, compressorState, CompressionMethod.Brotli, LargeTestDataSize);
+                }
+
+                if ((supportedMethods & CompressionMethod.Zstd) != 0)
+                {
+                    // Todo support zstd
+                    // TestCompressorMethodWithCommittedState(manager, compressorState, CompressionMethod.Zstd, LargeTestDataSize);
+                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                }
+            }
+            finally
+            {
+                manager.DecommitMemory(compressorState);
+            }
+
+        }
+
+        [TestMethod]
+        public void ReuseCommittedStateAcrossMethodsTest()
+        {
+            CompressorManager manager = CreateTestCompressorManager();
+            object compressorState = manager.AllocCompressor();
+            CompressionMethod supportedMethods = manager.GetSupportedMethods();
+
+            manager.CommitMemory(compressorState);
+
+            try
+            {
+                byte[] testData = CreateTestData(LargeTestDataSize);
+
+                // Test reusing state across different methods
+
+                foreach (CompressionMethod method in GetSupportedMethodsArray(supportedMethods))
+                {
+                    if (method == CompressionMethod.Zstd)
+                    {
+                        Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                        continue;
+                    }
+
+                    TestSingleCompressionCycle(manager, compressorState, method, testData);
+                }               
+            }
+            finally
+            {
+                manager.DecommitMemory(compressorState);
+            }
+        }
+
+        [TestMethod]
+        public void CommitUnsupportedMethodRecoveryTest()
+        {
+            CompressorManager manager = CreateTestCompressorManager();
+            object compressorState = manager.AllocCompressor();
+            CompressionMethod supportedMethods = manager.GetSupportedMethods();
+
+            manager.CommitMemory(compressorState);
+
+            try
+            {
+                // Attempt to initialize with unsupported method
+                Assert.ThrowsExactly<NotSupportedException>(() => 
+                    manager.InitCompressor(compressorState, (CompressionMethod)4500)
+                );
+
+                // State should still be usable with supported method
+                CompressionMethod[] supportedArray = GetSupportedMethodsArray(supportedMethods);
+
+                if (supportedArray.Length > 0)
+                {
+                    byte[] testData = CreateTestData(SmallTestDataSize);
+
+                    TestSingleCompressionCycle(manager, compressorState, supportedArray[0], testData);
+                }
+            }
+            finally
+            {
+                manager.DecommitMemory(compressorState);
+            }
+        }
+
+        [TestMethod]
+        public void LegacyVsCommitOutputParityTest()
+        {
+            CompressorManager manager = CreateTestCompressorManager();
+            CompressionMethod supportedMethods = manager.GetSupportedMethods();
+        
+            byte[] testData = CreateTestData(LargeTestDataSize);          
+
+            foreach (CompressionMethod method in GetSupportedMethodsArray(supportedMethods))
+            {
+                if (method == CompressionMethod.Zstd)
+                {
+                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                    continue;
+                }
+
+                // Test legacy path (no explicit commit)
+                byte[] legacyCompressed = CompressDataWithManager(manager, method, testData, useCommitApi: false);
+                byte[] legacyDecompressed = DecompressData(legacyCompressed, method);
+
+                // Test commit path 
+                byte[] commitCompressed = CompressDataWithManager(manager, method, testData, useCommitApi: true);
+                byte[] commitDecompressed = DecompressData(commitCompressed, method);
+
+                // Both should decompress to original data
+                Assert.IsTrue(
+                    testData.SequenceEqual(legacyDecompressed), 
+                    $"Legacy path failed to preserve data for {method}"
+                );
+                
+                Assert.IsTrue(
+                    testData.SequenceEqual(commitDecompressed), 
+                    $"Commit path failed to preserve data for {method}"
+                );               
+            }
+        }
+
+        [TestMethod]
+        public void DoubleCommitIsSafeTest()
+        {
+            CompressorManager manager = CreateTestCompressorManager();
+            object compressorState = manager.AllocCompressor();
+
+            // First commit should succeed
+            manager.CommitMemory(compressorState);
+
+            // Second commit should be safe (idempotent)
+            manager.CommitMemory(compressorState);
+
+            try
+            {
+                // State should still be usable
+                CompressionMethod supportedMethods = manager.GetSupportedMethods();
+                CompressionMethod[] methodsArray = GetSupportedMethodsArray(supportedMethods);
+
+                if (methodsArray.Length > 0)
+                {
+                    byte[] testData = CreateTestData(SmallTestDataSize);
+                    TestSingleCompressionCycle(manager, compressorState, methodsArray[0], testData);
+                }
+            }
+            finally
+            {
+                manager.DecommitMemory(compressorState);
+
+                // After decommit, subsequent operations should also be safe
+                manager.DecommitMemory(compressorState);
+            }
         }
 
         [TestMethod()]
         public void CompressorPerformanceTest()
         {
-            //Set test level
             const CompressionLevel testLevel = CompressionLevel.Fastest;
-            const int testItterations = 5;
+            const int testIterations = 5;
 
             PrintSystemInformation();
 
-            //Load native library
             using NativeCompressionLib lib = NativeCompressionLib.LoadDefault();
 
-            //Huge array of random data to compress
-            byte[] testData = RandomNumberGenerator.GetBytes(10 * 1024 * 1024);
+            byte[] testData = CreateTestData(PerformanceTestDataSize);
 
-            LibTestComp cp = new(lib, testLevel);
+            using LibTestComp compressor = new(lib, testLevel);
 
-            CompressionMethod supported = cp.GetSupportedMethods();
+            CompressionMethod supported = compressor.GetSupportedMethods();
 
-            for (int itterations = 0; itterations < testItterations; itterations++)
+            for (int iteration = 0; iteration < testIterations; iteration++)
             {
                 if ((supported & CompressionMethod.Gzip) > 0)
                 {
-                    TestSingleCompressor(cp, CompressionMethod.Gzip, testLevel, testData);
+                    TestSingleCompressorPerformance(compressor, CompressionMethod.Gzip, testLevel, testData);
                 }
 
                 if ((supported & CompressionMethod.Deflate) > 0)
                 {
-                    TestSingleCompressor(cp, CompressionMethod.Deflate, testLevel, testData);
+                    TestSingleCompressorPerformance(compressor, CompressionMethod.Deflate, testLevel, testData);
                 }
 
                 if ((supported & CompressionMethod.Brotli) > 0)
                 {
-                    TestSingleCompressor(cp, CompressionMethod.Brotli, testLevel, testData);
+                    TestSingleCompressorPerformance(compressor, CompressionMethod.Brotli, testLevel, testData);
+                }
+
+                if ((supported & CompressionMethod.Zstd) > 0)
+                {
+                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
                 }
             }
         }
 
-        private static void TestSingleCompressor(LibTestComp comp, CompressionMethod method, CompressionLevel level, byte[] testData)
+        #region Helper Methods
+
+        /// <summary>
+        /// Creates a test data buffer of the specified size filled with random data
+        /// </summary>
+        private static byte[] CreateTestData(int size) => RandomNumberGenerator.GetBytes(size);
+
+        /// <summary>
+        /// Gets the JSON configuration for the compressor manager
+        /// </summary>
+        private static string GetCompressorConfig()
         {
-            byte[] outputBlock = new byte[8 * 1024];
+            using VnMemoryStream ms = new();
+            using (Utf8JsonWriter writer = new(ms))
+            {
+                writer.WriteStartObject();
+                writer.WriteStartObject("vnlib.net.compression");
+                writer.WriteNumber("level", 1);
+                // Note: lib_path is intentionally commented out to use default discovery
+                // writer.WriteString("lib_path", "vnlib_compress.dll");
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+
+            return Encoding.UTF8.GetString(ms.AsSpan());
+        }
+
+        /// <summary>
+        /// Tests single compressor performance comparing native vs managed implementations
+        /// </summary>
+        private static void TestSingleCompressorPerformance(LibTestComp compressor,  CompressionMethod method, CompressionLevel level, byte[] testData)
+        {
+            byte[] outputBuffer = new byte[8 * 1024];
             long nativeTicks;
 
-            Stopwatch stopwatch = new ();
+            Stopwatch stopwatch = new();
             {
-                //Start sw
                 stopwatch.Start();
-                comp.InitCompressor(method);
+
+                compressor.InitCompressor(method);
+
                 try
                 {
-                    ForwardOnlyReader<byte> reader = new(outputBlock);
+                    ForwardOnlyMemoryReader<byte> reader = new(testData);
 
-                    while (true)
+                    while (reader.WindowSize > 0)
                     {
-                        CompressionResult result = comp.CompressBlock(reader.Window, outputBlock);
+                        CompressionResult result = compressor.CompressBlock(reader.Window, outputBuffer);
                         reader.Advance(result.BytesRead);
-
-                        if (reader.WindowSize == 0)
-                        {
-                            break;
-                        }
                     }
 
-                    //Flush all data
-                    while (comp.Flush(outputBlock) != 0)
+                    // Flush all remaining data
+                    while (compressor.Flush(outputBuffer) != 0)
                     { }
                 }
                 finally
                 {
-                    //Include deinit
-                    comp.DeinitCompressor();
+                    compressor.DeinitCompressor();
+
                     stopwatch.Stop();
                 }
             }
 
             nativeTicks = stopwatch.ElapsedTicks;
 
-            //Switch to managed test
-            using (Stream compStream = GetEncodeStream(Stream.Null, method, level))
+            // Test managed implementation for comparison
+            using (Stream compStream = CreateCompressionStream(Stream.Null, method, level))
             {
                 stopwatch.Restart();
                 try
                 {
-                    //Write the block to the compression stream
                     compStream.Write(testData, 0, testData.Length);
                 }
                 finally
@@ -148,250 +353,230 @@ namespace VNLib.Net.Compression.Tests
 
             long streamMicroseconds = TicksToMicroseconds(stopwatch.ElapsedTicks);
             long nativeMicroseconds = TicksToMicroseconds(nativeTicks);
+            string winner = nativeMicroseconds < streamMicroseconds ? "native" : "managed";
 
-            string winner = nativeMicroseconds < streamMicroseconds ? "native" : "stream";
-
-            Debug.WriteLine($"{method}: {testData.Length} bytes, {nativeMicroseconds}misec vs {streamMicroseconds}misec. Winner {winner}");
+            Debug.WriteLine($"{method}: {testData.Length} bytes, {nativeMicroseconds}μs vs {streamMicroseconds}μs. Winner: {winner}");
         }
 
-        static long TicksToMicroseconds(long ticks) => ticks / (TimeSpan.TicksPerMillisecond / 1000);
+        /// <summary>
+        /// Converts ticks to microseconds for performance measurement
+        /// </summary>
+        private static long TicksToMicroseconds(long ticks) => ticks / (TimeSpan.TicksPerMillisecond / 1000);
 
-        private static CompressorManager InitCompressorUnderTest()
+        /// <summary>
+        /// Creates and configures a CompressorManager for testing
+        /// </summary>
+        private static CompressorManager CreateTestCompressorManager()
         {
             CompressorManager manager = new();
-
-            //Get the json config string
-            string config = GetCompConfig();
+            string config = GetCompressorConfig();
 
             using JsonDocument doc = JsonDocument.Parse(config);
-
-            //Attempt to load the native library
             manager.OnLoad(null, doc.RootElement);
 
             return manager;
         }
 
-        private static string GetCompConfig()
+        /// <summary>
+        /// Gets an array of supported compression methods from the flags enum
+        /// </summary>
+        private static CompressionMethod[] GetSupportedMethodsArray(CompressionMethod supportedMethods)
         {
-            using VnMemoryStream ms = new();
-            using (Utf8JsonWriter writer = new(ms))
+            List<CompressionMethod> methods = [];
+
+            if ((supportedMethods & CompressionMethod.Gzip) != 0)
             {
-                writer.WriteStartObject();
-
-                writer.WriteStartObject("vnlib.net.compression");
-
-                writer.WriteNumber("level", 1);
-                // writer.WriteString("lib_path", "vnlib_compress.dll");
-
-                writer.WriteEndObject();
-                writer.WriteEndObject();
+                methods.Add(CompressionMethod.Gzip);
             }
 
-            return Encoding.UTF8.GetString(ms.AsSpan());
+            if ((supportedMethods & CompressionMethod.Deflate) != 0)
+            {
+                methods.Add(CompressionMethod.Deflate);
+            }
+
+            if ((supportedMethods & CompressionMethod.Brotli) != 0)
+            {
+                methods.Add(CompressionMethod.Brotli);
+            }
+
+            if ((supportedMethods & CompressionMethod.Zstd) != 0)
+            {
+                methods.Add(CompressionMethod.Zstd);
+            }
+
+            return [.. methods];
         }
 
-
-        private static void TestCompressionForSupportedMethods(ITestCompressor testCompressor)
+        /// <summary>
+        /// Tests a single compression cycle with committed state
+        /// </summary>
+        private static void TestCompressorMethodWithCommittedState(
+            CompressorManager manager, 
+            object compressorState, 
+            CompressionMethod method, 
+            int dataSize
+        )
         {
-            //Get the compressor's supported methods
-            CompressionMethod methods = testCompressor.GetSupportedMethods();
-
-            //Make sure at least on method is supported by the native lib
-            Assert.AreNotEqual(CompressionMethod.None, methods);
-
-            //Test for brotli support
-            if ((methods & CompressionMethod.Brotli) > 0)
-            {
-                TestCompressorMethod(testCompressor, CompressionMethod.Brotli);
-            }
-
-            //Test for deflate support
-            if ((methods & CompressionMethod.Deflate) > 0)
-            {
-                TestCompressorMethod(testCompressor, CompressionMethod.Deflate);
-            }
-
-            //Test for gzip support
-            if ((methods & CompressionMethod.Gzip) > 0)
-            {
-                TestCompressorMethod(testCompressor, CompressionMethod.Gzip);
-            }
-
-            //Test for zstd support
-            if ((methods & CompressionMethod.Zstd) > 0)
-            {
-                //TODO: Zstd support is not implemented yet
-                //TestCompressorMethod(testCompressor, CompressionMethod.Zstd);
-            }
+            byte[] testData = CreateTestData(dataSize);
+            TestSingleCompressionCycle(manager, compressorState, method, testData);
         }
 
-        private static void TestSupportedMethods(ITestCompressor compressor)
+        /// <summary>
+        /// Performs a complete compression cycle with the given state and method
+        /// </summary>
+        private static void TestSingleCompressionCycle(
+            CompressorManager manager, 
+            object compressorState, 
+            CompressionMethod method, 
+            byte[] testData
+        )
         {
-            //Make sure error occurs with non-supported comp
-            Assert.ThrowsExactly<NotSupportedException>(() => { compressor.InitCompressor(CompressionMethod.None); });
-
-            //test out of range, this should be a native lib error
-            Assert.ThrowsExactly<NotSupportedException>(() => { compressor.InitCompressor((CompressionMethod)4500); });
-
-            Assert.ThrowsExactly<InvalidOperationException>(() => compressor.CompressBlock(default, default));
-            Assert.ThrowsExactly<InvalidOperationException>(() => compressor.Flush(default));
-            Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
-
-            //Test all 3 compression methods
-            CompressionMethod supported = compressor.GetSupportedMethods();
-
-            if ((supported & CompressionMethod.Gzip) > 0)
-            {
-                //Make sure no error occurs with supported comp
-                compressor.InitCompressor(CompressionMethod.Gzip);
-                compressor.DeinitCompressor();
-
-                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
-            }
-
-            if ((supported & CompressionMethod.Brotli) > 0)
-            {
-                //Make sure no error occurs with supported comp
-                compressor.InitCompressor(CompressionMethod.Brotli);
-                compressor.DeinitCompressor();
-
-                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
-            }
-
-            if ((supported & CompressionMethod.Deflate) > 0)
-            {
-                //Make sure no error occurs with supported comp
-                compressor.InitCompressor(CompressionMethod.Deflate);
-                compressor.DeinitCompressor();
-
-                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
-            }
-            
-            if ((supported & CompressionMethod.Zstd) > 0)
-            {
-                compressor.InitCompressor(CompressionMethod.Zstd);
-                compressor.DeinitCompressor();
-
-                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
-            }
-
-            Debug.WriteLine($"Compressor library supports {supported}");
-        }
-
-        /*
-         * This test method initalizes a new compressor instance of the desired type
-         * creates a test data buffer, compresses it using the compressor instance
-         * then decompresses the compressed data using a managed decompressor as 
-         * a reference and compares the results.
-         * 
-         * The decompression must be able to recover the original data.
-         */
-
-        private static void TestCompressorMethod(ITestCompressor compressor, CompressionMethod method)
-        {
-
-            //Time to initialize the compressor
-            int blockSize = compressor.InitCompressor(method);
-
-            /*
-             * Currently not worrying about block size in the native lib, so this 
-             * should cause tests to fail when block size is supported later on
-             */
-            Assert.AreEqual(0, blockSize);
+            int blockSize = manager.InitCompressor(compressorState, method);
+            Assert.AreEqual(0, blockSize, "Block size should be 0 for current implementation");
 
             try
             {
-                using VnMemoryStream outputStream = new();
+                byte[] compressedData = CompressDataWithManager(manager, compressorState, testData);
+                byte[] decompressedData = DecompressData(compressedData, method);
 
-                //Create a buffer to compress
-                byte[] buffer = new byte[1024000];
-                byte[] output = new byte[4096];
-
-                //fill with random data
-                RandomNumberGenerator.Fill(buffer);
-
-                ForwardOnlyMemoryReader<byte> reader = new(buffer);
-
-                //try to compress the data in chunks
-                while (reader.WindowSize > 0)
-                {
-                    //Compress data
-                    CompressionResult result = compressor.CompressBlock(reader.Window, output);
-
-                    //Write the compressed data to the output stream
-                    outputStream.Write(output, 0, result.BytesWritten);
-
-                    //Advance reader
-                    reader.Advance(result.BytesRead);
-                }
-
-                //Flush
-                int flushed = 100;
-                while (flushed > 0)
-                {
-                    flushed = compressor.Flush(output);
-
-                    //Write the compressed data to the output stream
-                    outputStream.Write(output.AsSpan()[0..flushed]);
-                }
-
-                //Verify the original data matches the decompressed data
-                byte[] decompressed = DecompressData(outputStream, method);
-
-                Assert.IsTrue(buffer.SequenceEqual(decompressed));
-
-                Debug.WriteLine($"Compressor type {method} successfully compressed valid data");
+                Assert.IsTrue(
+                    testData.SequenceEqual(decompressedData), 
+                    $"Data integrity failed for method {method}"
+                );
             }
             finally
             {
-                //Always deinitialize the compressor when done
-                compressor.DeinitCompressor();
+                manager.DeinitCompressor(compressorState);
             }
         }
 
+        /// <summary>
+        /// Compresses data using the manager and compressor state
+        /// </summary>
+        private static byte[] CompressDataWithManager(CompressorManager manager, object compressorState, byte[] inputData)
+        {
+            using VnMemoryStream outputStream = new();
+            byte[] outputBuffer = new byte[4096];
+
+            ForwardOnlyMemoryReader<byte> reader = new(inputData);
+
+            // Compress data in chunks
+            while (reader.WindowSize > 0)
+            {
+                CompressionResult result = manager.CompressBlock(
+                    compressorState, 
+                    reader.Window, 
+                    outputBuffer
+                );
+
+                outputStream.Write(outputBuffer, 0, result.BytesWritten);
+
+                reader.Advance(result.BytesRead);
+            }
+
+            // Flush remaining data
+            int flushed;
+            do
+            {
+                flushed = manager.Flush(compressorState, outputBuffer);
+                if (flushed > 0)
+                {
+                    outputStream.Write(outputBuffer.AsSpan()[0..flushed]);
+                }
+            } while (flushed > 0);
+
+            return outputStream.ToArray();
+        }
+
+        /// <summary>
+        /// Compresses data using legacy path (no explicit commit)
+        /// </summary>
+        private static byte[] CompressDataWithManager(
+            CompressorManager manager, 
+            CompressionMethod method, 
+            byte[] testData,
+            bool useCommitApi
+        )
+        {
+            object compressorState = manager.AllocCompressor();
+
+            if (useCommitApi) manager.CommitMemory(compressorState);
+
+            manager.InitCompressor(compressorState, method);
+
+            try
+            {
+                return CompressDataWithManager(manager, compressorState, testData);
+            }
+            finally
+            {
+                manager.DeinitCompressor(compressorState);
+
+                if (useCommitApi) manager.DecommitMemory(compressorState);
+            }
+        }
+      
+        /// <summary>
+        /// <summary>
+        /// Decompresses data from a memory stream using the specified method
+        /// </summary>
         private static byte[] DecompressData(VnMemoryStream inputStream, CompressionMethod method)
         {
             inputStream.Position = 0;
 
-            //Stream to write output data to
-            using VnMemoryStream output = new();
-
-            //Get the requested stream type to decompress the data
-            using (Stream gz = GetDecompStream(inputStream, method))
+            using VnMemoryStream outputStream = new();
+            using (Stream decompressionStream = CreateDecompressionStream(inputStream, method))
             {
-                gz.CopyTo(output);
+                decompressionStream.CopyTo(outputStream);
             }
 
-            return output.ToArray();
+            return outputStream.ToArray();
         }
 
-        private static Stream GetDecompStream(Stream input, CompressionMethod method)
+        /// <summary>
+        /// Decompresses data from a byte array using the specified method
+        /// </summary>
+        private static byte[] DecompressData(byte[] compressedData, CompressionMethod method)
+        {
+            using VnMemoryStream inputStream = new();
+            inputStream.Write(compressedData);
+            return DecompressData(inputStream, method);
+        }
+
+        /// <summary>
+        /// Creates a decompression stream for the specified method
+        /// </summary>
+        private static Stream CreateDecompressionStream(Stream input, CompressionMethod method)
         {
             return method switch
             {
                 CompressionMethod.Gzip => new GZipStream(input, CompressionMode.Decompress, true),
                 CompressionMethod.Deflate => new DeflateStream(input, CompressionMode.Decompress, true),
                 CompressionMethod.Brotli => new BrotliStream(input, CompressionMode.Decompress, true),
-                _ => throw new ArgumentException("Unsupported compression method", nameof(method)),
+                _ => throw new ArgumentException($"Unsupported compression method: {method}", nameof(method)),
             };
         }
 
-        private static Stream GetEncodeStream(Stream output, CompressionMethod method, CompressionLevel level)
+        /// <summary>
+        /// Creates a compression stream for the specified method and level
+        /// </summary>
+        private static Stream CreateCompressionStream(Stream output, CompressionMethod method, CompressionLevel level)
         {
             return method switch
             {
                 CompressionMethod.Gzip => new GZipStream(output, level, true),
                 CompressionMethod.Deflate => new DeflateStream(output, level, true),
                 CompressionMethod.Brotli => new BrotliStream(output, level, true),
-                _ => throw new ArgumentException("Unsupported compression method", nameof(method)),
+                _ => throw new ArgumentException($"Unsupported compression method: {method}", nameof(method)),
             };
         }
 
+        /// <summary>
+        /// Prints system information for performance test context
+        /// </summary>
         private static void PrintSystemInformation()
         {
-
-
-            string sysInfo = @$"
+            string systemInfo = $@"
 OS: {RuntimeInformation.OSDescription}
 Framework: {RuntimeInformation.FrameworkDescription}
 Processor: {RuntimeInformation.ProcessArchitecture}
@@ -401,9 +586,128 @@ Is 64 bit process: {Environment.Is64BitProcess}
 Processor Count: {Environment.ProcessorCount}
 Page Size: {Environment.SystemPageSize}
 ";
-            Debug.WriteLine(sysInfo);
+            Debug.WriteLine(systemInfo);
         }
 
+        #endregion
+
+        /// <summary>
+        /// Tests the contract for supported methods and basic state validation
+        /// </summary>
+        private static void TestSupportedMethodsContract(ITestCompressor compressor)
+        {
+            // Verify operations fail when not initialized
+            Assert.ThrowsExactly<InvalidOperationException>(() => compressor.CompressBlock(default, default));
+            Assert.ThrowsExactly<InvalidOperationException>(() => compressor.Flush(default));
+            Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
+
+            // Test unsupported methods
+            Assert.ThrowsExactly<NotSupportedException>(() => compressor.InitCompressor(CompressionMethod.None));
+            Assert.ThrowsExactly<NotSupportedException>(() => compressor.InitCompressor((CompressionMethod)4500));
+
+            CompressionMethod supported = compressor.GetSupportedMethods();
+            Assert.AreNotEqual(CompressionMethod.None, supported, "At least one compression method must be supported");
+
+            // Test basic init/deinit cycle for each supported method
+            TestBasicInitDeinitCycle(compressor, supported);
+
+            Debug.WriteLine($"Compressor supports: {supported}");
+        }
+
+        /// <summary>
+        /// Tests basic initialization and deinitialization for supported methods
+        /// </summary>
+        private static void TestBasicInitDeinitCycle(ITestCompressor compressor, CompressionMethod supportedMethods)
+        {
+            CompressionMethod[] methods = GetSupportedMethodsArray(supportedMethods);
+
+            foreach (CompressionMethod method in methods)
+            {
+                compressor.InitCompressor(method);
+                compressor.DeinitCompressor();
+
+                // Second deinit should fail
+                Assert.ThrowsExactly<InvalidOperationException>(compressor.DeinitCompressor);
+            }
+        }
+
+        /// <summary>
+        /// Tests compression for all supported methods
+        /// </summary>
+        private static void TestCompressionForAllSupportedMethods(ITestCompressor compressor, int dataSize)
+        {
+            CompressionMethod supportedMethods = compressor.GetSupportedMethods();
+
+            foreach (CompressionMethod method in GetSupportedMethodsArray(supportedMethods))
+            {
+                if (method == CompressionMethod.Zstd)
+                {
+                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                    continue;
+                }
+
+                TestCompressorMethod(compressor, method, dataSize);
+            }
+        }
+
+        /// <summary>
+        /// Tests a complete compression/decompression cycle for a specific method
+        /// </summary>
+        private static void TestCompressorMethod(ITestCompressor compressor, CompressionMethod method, int dataSize)
+        {
+            int blockSize = compressor.InitCompressor(method);
+            Assert.AreEqual(0, blockSize, "Block size should be 0 for current implementation");
+
+            try
+            {
+                using VnMemoryStream outputStream = new();
+                byte[] testData = CreateTestData(dataSize);
+                byte[] outputBuffer = new byte[4096];
+
+                ForwardOnlyMemoryReader<byte> reader = new(testData);
+
+                // Compress data in chunks
+                while (reader.WindowSize > 0)
+                {
+                    CompressionResult result = compressor.CompressBlock(reader.Window, outputBuffer);
+
+                    outputStream.Write(outputBuffer, 0, result.BytesWritten);
+
+                    reader.Advance(result.BytesRead);
+                }
+
+                // Flush remaining data
+                int flushed;
+                do
+                {
+                    flushed = compressor.Flush(outputBuffer);
+
+                    if (flushed > 0)
+                    {
+                        outputStream.Write(outputBuffer.AsSpan()[0..flushed]);
+                    }
+
+                } while (flushed > 0);
+
+                // Verify compressed data can be decompressed correctly
+                byte[] decompressedData = DecompressData(outputStream, method);
+                
+                Assert.IsTrue(
+                    testData.SequenceEqual(decompressedData), 
+                    $"Compression method {method} failed to preserve data integrity"
+                );
+            }
+            finally
+            {
+                compressor.DeinitCompressor();
+            }
+        }
+
+        #region Test Adapter Classes
+
+        /// <summary>
+        /// Test compressor interface for uniform testing
+        /// </summary>
         interface ITestCompressor
         {
             int InitCompressor(CompressionMethod method);
@@ -417,6 +721,9 @@ Page Size: {Environment.SystemPageSize}
             CompressionMethod GetSupportedMethods();
         }
 
+        /// <summary>
+        /// Test adapter for CompressorManager
+        /// </summary>
         sealed class ManagerTestComp(object Compressor, CompressorManager Manager) : ITestCompressor
         {
             public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output)
@@ -431,53 +738,67 @@ Page Size: {Environment.SystemPageSize}
             public CompressionMethod GetSupportedMethods()
                 => Manager.GetSupportedMethods();
 
-            public int InitCompressor(CompressionMethod level)
-                => Manager.InitCompressor(Compressor, level);
-
+            public int InitCompressor(CompressionMethod method)
+                => Manager.InitCompressor(Compressor, method);
         }
 
-        sealed class LibTestComp(NativeCompressionLib Library, CompressionLevel Level) : ITestCompressor
+        /// <summary>
+        /// Test adapter for NativeCompressionLib
+        /// </summary>
+        sealed class LibTestComp(NativeCompressionLib Library, CompressionLevel Level) : ITestCompressor, IDisposable
         {
-            private INativeCompressor? _comp;
+            /*
+             * This test compressor is disposable because it's possible during testing that the deinit function
+             * is not called while testing other aspects of the API. When using a native compressor (which is diposable)
+             * it's assumed that a normal dispose pattern will clean things up. So I think disposable is appropriate here.
+             */
+
+            private INativeCompressor? _compressor;
 
             public CompressionResult CompressBlock(ReadOnlyMemory<byte> input, Memory<byte> output)
             {
-                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
-                return _comp.Compress(input, output);
-            }
-
-            public CompressionResult CompressBlock(ReadOnlySpan<byte> input, Span<byte> output)
-            {
-                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
-                return _comp!.Compress(input, output);
+                _ = _compressor ?? throw new InvalidOperationException("Test compressor was not initialized yet");
+                return _compressor.Compress(input, output);
             }
 
             public void DeinitCompressor()
             {
-                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
+                _ = _compressor ?? throw new InvalidOperationException("Test compressor was not initialized yet");
 
-                _comp.Dispose();
-                _comp = null;
+                _compressor.Dispose();
+                _compressor = null;
             }
 
             public int Flush(Memory<byte> buffer)
             {
-                _ = _comp ?? throw new InvalidOperationException("Test compressor was not initialized yet");
-                return _comp.Flush(buffer);
+                _ = _compressor ?? throw new InvalidOperationException("Test compressor was not initialized yet");
+                return _compressor.Flush(buffer);
             }
 
-            public CompressionMethod GetSupportedMethods() => Library.GetSupportedMethods();
+            public CompressionMethod GetSupportedMethods() 
+                => Library.GetSupportedMethods();
 
             public int InitCompressor(CompressionMethod method)
             {
-                if (_comp != null)
+                if (_compressor != null)
                 {
                     throw new InvalidOperationException("Test compressor has already been allocated");
                 }
 
-                _comp = Library.AllocCompressor(method, Level);
-                return (int)_comp.GetBlockSize();
+                _compressor = Library.AllocCompressor(method, Level);
+                return (int)_compressor.GetBlockSize();
+            }
+
+            public void Dispose()
+            {
+                if (_compressor is not null)
+                {
+                    _compressor.Dispose();
+                    _compressor = null;
+                }    
             }
         }
+
+        #endregion
     }
 }
