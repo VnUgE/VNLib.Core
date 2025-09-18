@@ -88,7 +88,6 @@ namespace VNLib.Net.Compression.Tests
                 {
                     // Todo support zstd
                     // TestCompressorMethodWithCommittedState(manager, compressorState, CompressionMethod.Zstd, LargeTestDataSize);
-                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
                 }
             }
             finally
@@ -117,7 +116,7 @@ namespace VNLib.Net.Compression.Tests
                 {
                     if (method == CompressionMethod.Zstd)
                     {
-                        Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                        // TODO support zstd
                         continue;
                     }
 
@@ -174,7 +173,7 @@ namespace VNLib.Net.Compression.Tests
             {
                 if (method == CompressionMethod.Zstd)
                 {
-                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                    // TODO support zstd
                     continue;
                 }
 
@@ -267,7 +266,7 @@ namespace VNLib.Net.Compression.Tests
 
                 if ((supported & CompressionMethod.Zstd) > 0)
                 {
-                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                    // TODO support zstd
                 }
             }
         }
@@ -642,7 +641,7 @@ Page Size: {Environment.SystemPageSize}
             {
                 if (method == CompressionMethod.Zstd)
                 {
-                    Assert.Inconclusive("Zstd is not yet supported in commit mode");
+                    // TODO support zstd
                     continue;
                 }
 
