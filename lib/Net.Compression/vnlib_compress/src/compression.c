@@ -237,10 +237,7 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocCompressor(void* sta
 		/* Compressor already allocated */
 		return ERR_INVALID_ARGUMENT;
 	}
-
-	/* Configure the comp state */
-	state->type = type;
-	state->level = level;
+	
 
 	/* 
 	* The alloc/free functions should be guarunteed if the 
@@ -248,6 +245,13 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocCompressor(void* sta
 	*/
 	DEBUG_ASSERT2(state->allocFunc != NULL, "Expected non-null allocFunc pointer");
 	DEBUG_ASSERT2(state->freeFunc != NULL, "Expected non-null freeFunc pointer");
+
+	/* 
+	* Configure the comp state, these changes will need to be 
+	* undone if the allocation fails
+	*/
+	state->type = type;
+	state->level = level;
 
 	/*
 	* Compressor types are defined at compile time
@@ -282,6 +286,15 @@ VNLIB_COMPRESS_EXPORT int VNLIB_COMPRESS_CC CompressionAllocCompressor(void* sta
 		case COMP_TYPE_NONE:
 		default:
 			break;
+	}
+
+	/*
+	* If this failed, the state must return to it's initial state
+	* so the caller can try again or free the state.
+	*/
+	if (result != VNCMP_SUCCESS)
+	{
+		_stateClearCompressor(state);
 	}
 
 	return result;
