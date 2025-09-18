@@ -36,6 +36,8 @@ namespace VNLib.Net.Compression
         {
             ErrInvalidPtr = -1,
             ErrOutOfMemory = -2,
+            ErrOutOfBounds = -3,
+            ErrInvalidArgument = -4,
 
             ErrCompTypeNotSupported = -9,
             ErrCompLevelNotSupported = -10,
@@ -67,6 +69,8 @@ namespace VNLib.Net.Compression
             {
                 NativeErrorType.ErrInvalidPtr => new NativeCompressionException("A pointer to a compressor instance was null"),
                 NativeErrorType.ErrOutOfMemory => new NativeCompressionException("An operation falied because the system is out of memory"),
+                NativeErrorType.ErrOutOfBounds => new ArgumentOutOfRangeException("An operation failed because an argument or value was out of bounds"),
+                NativeErrorType.ErrInvalidArgument => new ArgumentException("An operation failed because an argument was invalid or the compressor is already allocated"),
                 NativeErrorType.ErrCompTypeNotSupported => new NotSupportedException("The desired compression method is not supported by the native library"),
                 NativeErrorType.ErrCompLevelNotSupported => new NotSupportedException("The desired compression level is not supported by the native library"),
                 NativeErrorType.ErrInvalidInput => new NativeCompressionException("The input buffer was null and the input size was greater than 0"),
