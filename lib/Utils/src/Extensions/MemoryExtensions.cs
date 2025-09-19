@@ -379,14 +379,14 @@ namespace VNLib.Utils.Extensions
         /// Wraps the current instance with a <see cref="MemoryPool{T}"/> wrapper
         /// to allow System.Memory buffer rentals.
         /// </summary>
-        /// <typeparam name="T">The Unmanaged data type to provide allocations from</typeparam>
+        /// <typeparam name="T">The unmanaged data type to provide allocations from</typeparam>
         /// <returns>The new <see cref="MemoryPool{T}"/> heap wrapper.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static MemoryPool<T> ToPool<T>(this IUnmanagedHeap heap, int maxBufferSize = int.MaxValue) where T : unmanaged
             => new PrivateBuffersMemoryPool<T>(heap, maxBufferSize);
 
         /// <summary>
-        /// Allocates a structure of the specified type on the current Unmanaged heap and optionally zero's its memory
+        /// Allocates a structure of the specified type on the current unmanaged heap and optionally zeros its memory
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap"></param>
@@ -400,7 +400,7 @@ namespace VNLib.Utils.Extensions
             => MemoryUtil.StructAlloc<T>(heap, zero);
 
         /// <summary>
-        /// Allocates a structure of the specified type on the current Unmanaged heap and optionally zero's its memory
+        /// Allocates a structure of the specified type on the current unmanaged heap and optionally zeros its memory
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap"></param>
@@ -437,9 +437,9 @@ namespace VNLib.Utils.Extensions
             => MemoryUtil.StructFreeRef(heap, ref structRef);
 
         /// <summary>
-        /// Allocates a block of unmanaged memory of the number of elements to store of an Unmanaged type
+    /// Allocates a block of unmanaged memory for the specified number of elements of an unmanaged type
         /// </summary>
-        /// <typeparam name="T">Unmanaged data type to create a block of</typeparam>
+    /// <typeparam name="T">The unmanaged element type</typeparam>
         /// <param name="heap"></param>
         /// <param name="elements">The size of the block (number of elements)</param>
         /// <param name="zero">A flag that zeros the allocated block before returned</param>
@@ -452,9 +452,9 @@ namespace VNLib.Utils.Extensions
             => MemoryUtil.SafeAlloc<T>(heap, elements, zero);
 
         /// <summary>
-        /// Allocates a block of unmanaged memory of the number of elements to store of an Unmanaged type
+    /// Allocates a block of unmanaged memory for the specified number of elements of an unmanaged type
         /// </summary>
-        /// <typeparam name="T">Unmanaged data type to create a block of</typeparam>
+    /// <typeparam name="T">The unmanaged element type</typeparam>
         /// <param name="heap"></param>
         /// <param name="elements">The size of the block (number of elements)</param>
         /// <param name="zero">A flag that zeros the allocated block before returned</param>

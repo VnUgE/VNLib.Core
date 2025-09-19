@@ -348,7 +348,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Allocates a structure of the specified type on the specified 
-        /// Unmanaged heap and optionally zero's it's memory
+        /// unmanaged heap and optionally zeros its memory
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap">The heap to allocate structure memory from</param>
@@ -366,8 +366,8 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Allocates a structure of the specified type on the specified 
-        /// Unmanaged heap and optionally zero's it's memory, then returns
-        /// and reference to the heap allocated structure.
+        /// unmanaged heap and optionally zeros its memory, then returns
+        /// a reference to the heap-allocated structure.
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap">The heap to allocate structure memory from</param>

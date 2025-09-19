@@ -49,7 +49,7 @@ namespace VNLib.Hashing
     /// <summary>
     /// Implements the Argon2 data hashing library in .NET for cross platform use.
     /// </summary>
-    /// <remarks>Buffers are allocted on a private <see cref="IUnmanagedHeap"/> instance.</remarks>
+    /// <remarks>Buffers are allocated on a private <see cref="IUnmanagedHeap"/> instance.</remarks>
     public static unsafe class VnArgon2
     {
         /// <summary>
