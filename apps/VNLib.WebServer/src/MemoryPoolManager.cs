@@ -41,14 +41,14 @@ namespace VNLib.WebServer
         /// Gets an unmanaged memory pool provider for the TCP server to alloc buffers from
         /// </summary>
         /// <returns>The memory pool</returns>
-        public static MemoryPool<byte> GetTcpPool(bool zeroOnAlloc, IUnmangedHeap heap) 
+        public static MemoryPool<byte> GetTcpPool(bool zeroOnAlloc, IUnmanagedHeap heap) 
             => new HttpMemoryPool(zeroOnAlloc, heap);
 
         /// <summary>
         /// Gets a memory pool provider for the HTTP server to alloc buffers from
         /// </summary>
         /// <returns>The http server memory pool</returns>
-        public static IHttpMemoryPool GetHttpPool(bool zeroOnAlloc, IUnmangedHeap heap) 
+        public static IHttpMemoryPool GetHttpPool(bool zeroOnAlloc, IUnmanagedHeap heap) 
             => new HttpMemoryPool(zeroOnAlloc, heap);
 
         /*
@@ -58,7 +58,7 @@ namespace VNLib.WebServer
          * All blocks are allocated to the nearest page size
          */
 
-        internal sealed class HttpMemoryPool(bool zeroOnAlloc, IUnmangedHeap heap) : MemoryPool<byte>, IHttpMemoryPool
+        internal sealed class HttpMemoryPool(bool zeroOnAlloc, IUnmanagedHeap heap) : MemoryPool<byte>, IHttpMemoryPool
         {
             ///<inheritdoc/>
             public override int MaxBufferSize { get; } = int.MaxValue;
@@ -98,7 +98,7 @@ namespace VNLib.WebServer
             protected override void Dispose(bool disposing)
             { }
 
-            private sealed class UnsafeMemoryManager(IUnmangedHeap heap, nuint bufferSize, bool zero) : MemoryManager<byte>, IHttpContextBuffer
+            private sealed class UnsafeMemoryManager(IUnmanagedHeap heap, nuint bufferSize, bool zero) : MemoryManager<byte>, IHttpContextBuffer
             {
 
                 private nint _pointer = heap.Alloc(bufferSize, sizeof(byte), zero);

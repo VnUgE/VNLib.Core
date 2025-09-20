@@ -21,7 +21,7 @@ namespace VNLib.Utils.Memory.Tests
         [TestMethod]
         public void VerifySharedHeapTest()
         {
-            IUnmangedHeap sharedHeap = MemoryUtil.Shared;
+            IUnmanagedHeap sharedHeap = MemoryUtil.Shared;
 
             //Ensure that this heap is a shared heap
             Assert.IsTrue(sharedHeap.CreationFlags.HasFlag(HeapCreation.Shared));
@@ -45,7 +45,7 @@ namespace VNLib.Utils.Memory.Tests
              */
 
             //Test default private heap allocation
-            using (IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess())
+            using (IUnmanagedHeap heap = MemoryUtil.InitializeNewHeapForProcess())
             {                
                 Assert.IsFalse(heap.CreationFlags.HasFlag(HeapCreation.GlobalZero));
 
@@ -67,7 +67,7 @@ namespace VNLib.Utils.Memory.Tests
              * alloc a bunch of blocks, dirty them and return it to the heap because it can't 
              * be guarunteed the heap imp will return blocks from the dirty area. 
              */
-            using (IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess(globalZero: true))
+            using (IUnmanagedHeap heap = MemoryUtil.InitializeNewHeapForProcess(globalZero: true))
             {               
                 Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.GlobalZero));
 
@@ -502,7 +502,7 @@ namespace VNLib.Utils.Memory.Tests
         public void DiagnosticsHeapWraperTest()
         {
             //Get a fresh heap
-            IUnmangedHeap heap = MemoryUtil.InitializeNewHeapForProcess();
+            IUnmanagedHeap heap = MemoryUtil.InitializeNewHeapForProcess();
 
             //Init wrapper and dispose
             using TrackedHeapWrapper wrapper = new(heap, true);

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -56,13 +56,13 @@ namespace VNLib.Hashing.IdentityUtility
         /// Parses a JWT from a Base64URL encoded character buffer
         /// </summary>
         /// <param name="urlEncJwtString">The JWT characters to decode</param>
-        /// <param name="heap">An optional <see cref="IUnmangedHeap"/> instance to alloc buffers from</param>
+        /// <param name="heap">An optional <see cref="IUnmanagedHeap"/> instance to alloc buffers from</param>
         /// <param name="textEncoding">The encoding used to decode the text to binary</param>
         /// <returns>The parses <see cref="JsonWebToken"/></returns>
         /// <exception cref="FormatException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static JsonWebToken Parse(ReadOnlySpan<char> urlEncJwtString, IUnmangedHeap? heap = null, Encoding? textEncoding = null)
+        public static JsonWebToken Parse(ReadOnlySpan<char> urlEncJwtString, IUnmanagedHeap? heap = null, Encoding? textEncoding = null)
         {
             heap ??= MemoryUtil.Shared;
             textEncoding ??= Encoding.UTF8;
@@ -90,7 +90,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="heap">The heap to allocate internal buffers from</param>
         /// <returns>A positive ERRNO value, 0 or negative numbers if the parsing failed</returns>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static ERRNO TryParseRaw(ReadOnlySpan<byte> utf8JWTData, out JsonWebToken? jwt, IUnmangedHeap? heap = null)
+        public static ERRNO TryParseRaw(ReadOnlySpan<byte> utf8JWTData, out JsonWebToken? jwt, IUnmanagedHeap? heap = null)
         {
             if(utf8JWTData.IsEmpty)
             {
@@ -143,12 +143,12 @@ namespace VNLib.Hashing.IdentityUtility
         /// Parses a buffer of UTF8 bytes of url encoded base64 characters
         /// </summary>
         /// <param name="utf8JWTData">The JWT data buffer</param>
-        /// <param name="heap">An optional <see cref="IUnmangedHeap"/> instance to alloc buffers from</param>
+        /// <param name="heap">An optional <see cref="IUnmanagedHeap"/> instance to alloc buffers from</param>
         /// <returns>The parsed <see cref="JsonWebToken"/></returns>
         /// <exception cref="FormatException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static JsonWebToken ParseRaw(ReadOnlySpan<byte> utf8JWTData, IUnmangedHeap? heap = null)
+        public static JsonWebToken ParseRaw(ReadOnlySpan<byte> utf8JWTData, IUnmanagedHeap? heap = null)
         {
             int result = TryParseRaw(utf8JWTData, out JsonWebToken? jwt, heap);
 
@@ -171,7 +171,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <summary>
         /// The heap used to allocate buffers from
         /// </summary>
-        public IUnmangedHeap Heap { get; }
+        public IUnmanagedHeap Heap { get; }
         /// <summary>
         /// The size (in bytes) of the encoded data that makes 
         /// up the current JWT.
@@ -192,7 +192,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// </summary>
         /// <param name="heap">The heap used to alloc buffers</param>
         /// <param name="initialData">The initial data of the jwt</param>
-        protected JsonWebToken(IUnmangedHeap heap, VnMemoryStream initialData)
+        protected JsonWebToken(IUnmanagedHeap heap, VnMemoryStream initialData)
         {
             ArgumentNullException.ThrowIfNull(initialData);
             ArgumentNullException.ThrowIfNull(heap);
@@ -208,8 +208,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// Creates a new empty JWT instance, with an optional heap to alloc
         /// buffers from. (<see cref="MemoryUtil.Shared"/> is used as default)
         /// </summary>
-        /// <param name="heap">The <see cref="IUnmangedHeap"/> to alloc buffers from</param>
-        public JsonWebToken(IUnmangedHeap? heap = null)
+        /// <param name="heap">The <see cref="IUnmanagedHeap"/> to alloc buffers from</param>
+        public JsonWebToken(IUnmanagedHeap? heap = null)
         {
             Heap = heap ?? MemoryUtil.Shared;
             DataStream = new(Heap, 100, true);         

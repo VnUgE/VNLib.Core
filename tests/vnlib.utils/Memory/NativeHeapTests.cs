@@ -70,7 +70,7 @@ namespace VNLib.Utils.Memory.Tests
             TestBasicHeapApi(heap);
         }
 
-        private static void TestBasicHeapApi(IUnmangedHeap heap)
+        private static void TestBasicHeapApi(IUnmanagedHeap heap)
         {            
             TestAllocAndFreeWithSizes(heap, elements: 0); // Test zero elements allocation
             TestAllocAndFreeWithSizes(heap, elements: 1);
@@ -81,7 +81,7 @@ namespace VNLib.Utils.Memory.Tests
             TestAllocAndFreeWithSizes(heap, elements: 100000);
         }
 
-        private static void TestAllocAndFreeWithSizes(IUnmangedHeap heap, nuint elements)
+        private static void TestAllocAndFreeWithSizes(IUnmanagedHeap heap, nuint elements)
         {
             if ((heap.CreationFlags & HeapCreation.SupportsRealloc) == 0)
             {
@@ -116,7 +116,7 @@ namespace VNLib.Utils.Memory.Tests
         }
 
 
-        private static void DoAllocAndResize(IUnmangedHeap heap, nuint elements, nuint size, bool zero)
+        private static void DoAllocAndResize(IUnmanagedHeap heap, nuint elements, nuint size, bool zero)
         {
             //Allocate some memory
             IntPtr ptr = heap.Alloc(elements, size, zero);

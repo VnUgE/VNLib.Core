@@ -30,14 +30,14 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Provides a <see cref="MemoryPool{T}"/> wrapper for using an <see cref="IUnmangedHeap"/>s
+    /// Provides a <see cref="MemoryPool{T}"/> wrapper for using an <see cref="IUnmanagedHeap"/>s
     /// </summary>
     /// <typeparam name="T">Unamanged memory type to provide data memory instances from</typeparam>
     public sealed class PrivateBuffersMemoryPool<T> : MemoryPool<T> where T : unmanaged
     {
-        private readonly IUnmangedHeap Heap;
+        private readonly IUnmanagedHeap Heap;
 
-        internal PrivateBuffersMemoryPool(IUnmangedHeap heap, int maxSize)
+        internal PrivateBuffersMemoryPool(IUnmanagedHeap heap, int maxSize)
         {
             Heap = heap;
             MaxBufferSize = maxSize;

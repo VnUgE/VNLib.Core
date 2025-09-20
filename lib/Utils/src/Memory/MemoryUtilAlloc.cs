@@ -34,7 +34,7 @@ namespace VNLib.Utils.Memory
         #region alloc
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool CanUseUnmanagedHeap<T>(IUnmangedHeap heap, nuint elements)
+        private static bool CanUseUnmanagedHeap<T>(IUnmanagedHeap heap, nuint elements)
         {
             /*
             * We may allocate from the share heap only if the heap is not using locks
@@ -49,7 +49,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Allocates a block of unmanaged memory of the number of elements to store of an unmanged type
+        /// Allocates a block of unmanaged memory of the number of elements to store of an Unmanaged type
         /// </summary>
         /// <typeparam name="T">Unmanaged data type to create a block of</typeparam>
         /// <param name="heap"></param>
@@ -59,7 +59,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(IUnmangedHeap heap, int elements, bool zero = false) where T : unmanaged
+        public static UnsafeMemoryHandle<T> UnsafeAlloc<T>(IUnmanagedHeap heap, int elements, bool zero = false) where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(heap);
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
@@ -147,7 +147,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Allocates a block of unmanaged memory of the number of elements to store of an unmanged type
+        /// Allocates a block of unmanaged memory of the number of elements to store of an Unmanaged type
         /// </summary>
         /// <typeparam name="T">Unmanaged data type to create a block of</typeparam>
         /// <param name="heap"></param>
@@ -157,7 +157,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        public static MemoryHandle<T> SafeAlloc<T>(IUnmangedHeap heap, nuint elements, bool zero = false) where T : unmanaged
+        public static MemoryHandle<T> SafeAlloc<T>(IUnmanagedHeap heap, nuint elements, bool zero = false) where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(heap);
 
@@ -173,7 +173,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Allocates a block of unmanaged memory of the number of elements to store of an unmanged type
+        /// Allocates a block of unmanaged memory of the number of elements to store of an Unmanaged type
         /// </summary>
         /// <typeparam name="T">Unmanaged data type to create a block of</typeparam>
         /// <param name="heap"></param>
@@ -184,7 +184,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryHandle<T> SafeAlloc<T>(IUnmangedHeap heap, nint elements, bool zero = false) where T : unmanaged
+        public static MemoryHandle<T> SafeAlloc<T>(IUnmanagedHeap heap, nint elements, bool zero = false) where T : unmanaged
         {
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
             return SafeAlloc<T>(heap, (nuint)elements, zero);
@@ -304,7 +304,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryHandle<T> SafeAllocNearestPage<T>(IUnmangedHeap heap, int elements, bool zero = false) where T : unmanaged
+        public static MemoryHandle<T> SafeAllocNearestPage<T>(IUnmanagedHeap heap, int elements, bool zero = false) where T : unmanaged
         {
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
 
@@ -324,7 +324,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryHandle<T> SafeAllocNearestPage<T>(IUnmangedHeap heap, nuint elements, bool zero = false) where T : unmanaged
+        public static MemoryHandle<T> SafeAllocNearestPage<T>(IUnmanagedHeap heap, nuint elements, bool zero = false) where T : unmanaged
           => SafeAlloc<T>(heap, elements: NearestPage<T>(elements), zero);
 
         /// <summary>
@@ -339,7 +339,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static UnsafeMemoryHandle<T> UnsafeAllocNearestPage<T>(IUnmangedHeap heap, int elements, bool zero = false) where T : unmanaged
+        public static UnsafeMemoryHandle<T> UnsafeAllocNearestPage<T>(IUnmanagedHeap heap, int elements, bool zero = false) where T : unmanaged
         {
             ArgumentOutOfRangeException.ThrowIfNegative(elements);
 
@@ -348,17 +348,17 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Allocates a structure of the specified type on the specified 
-        /// unmanged heap and optionally zero's it's memory
+        /// unmanaged heap and optionally zeros its memory
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap">The heap to allocate structure memory from</param>
         /// <param name="zero">A value that indicates if the structure memory should be zeroed before returning</param>
         /// <returns>A pointer to the structure ready for use.</returns>
-        /// <remarks>Allocations must be freed with <see cref="StructFree{T}(IUnmangedHeap, T*)"/></remarks>
+        /// <remarks>Allocations must be freed with <see cref="StructFree{T}(IUnmanagedHeap, T*)"/></remarks>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T* StructAlloc<T>(IUnmangedHeap heap, bool zero) where T : unmanaged
+        public static T* StructAlloc<T>(IUnmanagedHeap heap, bool zero) where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(heap);
             return (T*)heap.Alloc(1, (nuint)sizeof(T), zero);
@@ -366,33 +366,33 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Allocates a structure of the specified type on the specified 
-        /// unmanged heap and optionally zero's it's memory, then returns
-        /// and reference to the heap allocated structure.
+        /// unmanaged heap and optionally zeros its memory, then returns
+        /// a reference to the heap-allocated structure.
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="heap">The heap to allocate structure memory from</param>
         /// <param name="zero">A value that indicates if the structure memory should be zeroed before returning</param>
         /// <returns>A reference to the heap allocated structure</returns>
-        /// <remarks>Allocations must be freed with <see cref="StructFreeRef{T}(IUnmangedHeap, ref T)"/></remarks>
+        /// <remarks>Allocations must be freed with <see cref="StructFreeRef{T}(IUnmanagedHeap, ref T)"/></remarks>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ref T StructAllocRef<T>(IUnmangedHeap heap, bool zero) where T : unmanaged 
+        public static ref T StructAllocRef<T>(IUnmanagedHeap heap, bool zero) where T : unmanaged 
             => ref Unsafe.AsRef<T>(StructAlloc<T>(heap, zero));
 
         /// <summary>
-        /// Frees a structure allocated with <see cref="StructAlloc{T}(IUnmangedHeap, bool)"/>
+        /// Frees a structure allocated with <see cref="StructAlloc{T}(IUnmanagedHeap, bool)"/>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="heap">Heap the structure was allocated from to free it back to</param>
         /// <param name="structPtr">A pointer to the unmanaged structure to free</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void StructFree<T>(IUnmangedHeap heap, T* structPtr) where T : unmanaged 
+        public static void StructFree<T>(IUnmanagedHeap heap, T* structPtr) where T : unmanaged 
             => StructFree(heap, (void*)structPtr);
 
         /// <summary>
-        /// Frees a structure allocated with <see cref="StructAllocRef{T}(IUnmangedHeap, bool)"/>
+        /// Frees a structure allocated with <see cref="StructAllocRef{T}(IUnmanagedHeap, bool)"/>
         /// by its reference.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -400,16 +400,16 @@ namespace VNLib.Utils.Memory
         /// <param name="structRef">A reference to the unmanaged structure to free</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void StructFreeRef<T>(IUnmangedHeap heap, ref T structRef) where T : unmanaged 
+        public static void StructFreeRef<T>(IUnmanagedHeap heap, ref T structRef) where T : unmanaged 
             => StructFree(heap, Unsafe.AsPointer(ref structRef));
 
         /// <summary>
-        /// Frees a structure allocated with <see cref="StructAlloc{T}(IUnmangedHeap, bool)"/>
+        /// Frees a structure allocated with <see cref="StructAlloc{T}(IUnmanagedHeap, bool)"/>
         /// </summary>
         /// <param name="heap">Heap the structure was allocated from to free it back to</param>
         /// <param name="structPtr">A pointer to the unmanaged structure to free</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public static void StructFree(IUnmangedHeap heap, void* structPtr)
+        public static void StructFree(IUnmanagedHeap heap, void* structPtr)
         {
             ArgumentNullException.ThrowIfNull(heap);
             ArgumentNullException.ThrowIfNull(structPtr);
@@ -516,7 +516,7 @@ namespace VNLib.Utils.Memory
         /// <returns>A <see cref="MemoryHandle{T}"/> wrapper</returns>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static MemoryHandle<T> ToHandle<T>(nint blockPtr, nuint elements, IUnmangedHeap heap, bool zero) 
+        public static MemoryHandle<T> ToHandle<T>(nint blockPtr, nuint elements, IUnmanagedHeap heap, bool zero) 
             where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(heap);
@@ -537,7 +537,7 @@ namespace VNLib.Utils.Memory
         /// <returns>A <see cref="UnsafeMemoryHandle{T}"/> wrapper</returns>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static UnsafeMemoryHandle<T> ToUnsafeHandle<T>(nint blockPtr, int elements, IUnmangedHeap heap)
+        public static UnsafeMemoryHandle<T> ToUnsafeHandle<T>(nint blockPtr, int elements, IUnmanagedHeap heap)
             where T : unmanaged
         {
             ArgumentNullException.ThrowIfNull(heap);
