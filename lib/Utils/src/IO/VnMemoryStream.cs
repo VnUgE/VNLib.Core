@@ -31,6 +31,7 @@ using System.Threading.Tasks;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
+using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.IO
 {
@@ -52,10 +53,7 @@ namespace VNLib.Utils.IO
         private bool _isReadonly;
 
         //Memory
-        private readonly IResizeableMemoryHandle<byte> _buffer;
-
-        //Default owns handle
-        private readonly bool OwnsHandle = true;
+        private readonly Owned<IResizeableMemoryHandle<byte>> _buffer;
 
         //Lazy loaded memory wrapper
         private MemoryManager<byte>? _memoryWrapper;
@@ -88,7 +86,7 @@ namespace VNLib.Utils.IO
             ArgumentNullException.ThrowIfNull(handle);
 
             return handle.CanRealloc || readOnly
-                ? new VnMemoryStream(handle, existingManager: null, length, readOnly, ownsHandle)
+                ? new VnMemoryStream(new(handle, ownsHandle), existingManager: null, length, readOnly)
                 : throw new ArgumentException("The supplied memory handle must be resizable on a writable stream", nameof(handle));
         }
 
@@ -143,7 +141,9 @@ namespace VNLib.Utils.IO
         public VnMemoryStream(IUnmanagedHeap heap, nuint bufferSize, bool zero)
         {
             ArgumentNullException.ThrowIfNull(heap);
-            _buffer = heap.Alloc<byte>(bufferSize, zero);
+            _buffer = Owned<IResizeableMemoryHandle<byte>>.OwnedValue(
+                MemoryUtil.SafeAlloc<byte>(heap, bufferSize, zero)
+            );
         }
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace VNLib.Utils.IO
         {
             ArgumentNullException.ThrowIfNull(heap);
             //Alloc the internal buffer to match the data stream
-            _buffer = heap.AllocAndCopy(data);
+            _buffer = Owned<IResizeableMemoryHandle<byte>>.OwnedValue(heap.AllocAndCopy(data));
             //Set length
             _length = data.Length;
             _position = 0;
@@ -170,11 +170,11 @@ namespace VNLib.Utils.IO
         {
             ArgumentNullException.ThrowIfNull(heap);
             //Alloc the internal buffer to match the data stream
-            _buffer = heap.AllocAndCopy(data);
+            _buffer = Owned<IResizeableMemoryHandle<byte>>.OwnedValue(heap.AllocAndCopy(data));
             //Set length
             _length = data.Length;
             _position = 0;
-        }
+        }      
 
         /// <summary>
         /// WARNING: Dangerous constructor, make sure read-only and owns hanlde are set accordingly
@@ -182,22 +182,19 @@ namespace VNLib.Utils.IO
         /// <param name="buffer">The buffer to referrence directly</param>
         /// <param name="length">The length property of the stream</param>
         /// <param name="readOnly">Is the stream readonly (should mostly be true!)</param>
-        /// <param name="ownsHandle">Does the new stream own the memory -> <paramref name="buffer"/></param>
         /// <param name="existingManager">A reference to an existing memory manager class</param>
         private VnMemoryStream(
-            IResizeableMemoryHandle<byte> buffer,
+            Owned<IResizeableMemoryHandle<byte>> buffer,
             MemoryManager<byte>? existingManager,
             nint length,
-            bool readOnly,
-            bool ownsHandle
+            bool readOnly           
         )
         {
             Debug.Assert(length >= 0, "Length must be positive");
-            Debug.Assert(buffer.CanRealloc || readOnly, "The supplied buffer is not resizable on a writable stream");
+            Debug.Assert(buffer.Value.CanRealloc || readOnly, "The supplied buffer is not resizable on a writable stream");
 
-            OwnsHandle = ownsHandle;
-            _buffer = buffer;                  //Consume the handle
-            _length = length;                  //Store length of the buffer
+            _buffer = buffer;                       //Consume the handle
+            _length = length;                       //Store length of the buffer
             _isReadonly = readOnly;
             _memoryWrapper = existingManager;
         }
@@ -217,7 +214,7 @@ namespace VNLib.Utils.IO
             //Create a new readonly copy (stream does not own the handle)
             return !_isReadonly
                 ? throw new NotSupportedException("This stream is not readonly. Cannot create shallow copy on a mutable stream")
-                : new VnMemoryStream(_buffer, _memoryWrapper, _length, readOnly: true, ownsHandle: false);
+                : new VnMemoryStream(_buffer, _memoryWrapper, _length, readOnly: true);
         }
 
         /// <summary>
@@ -243,7 +240,7 @@ namespace VNLib.Utils.IO
                 int bytesToRead = (int)Math.Min(LenToPosDiff, bufferSize);
 
                 //Create a span wrapper by using the offet function to support memory handles larger than 2gb
-                ReadOnlySpan<byte> span = _buffer.GetOffsetSpan(_position, bytesToRead);
+                ReadOnlySpan<byte> span = _buffer.Value.GetOffsetSpan(_position, bytesToRead);
 
                 destination.Write(span);
 
@@ -347,14 +344,7 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// Closes the stream and frees the internal allocated memory blocks
         /// </summary>
-        public override void Close()
-        {
-            //Only dispose buffer if we own it
-            if (OwnsHandle)
-            {
-                _buffer.Dispose();
-            }
-        }
+        public override void Close() => _buffer.Dispose();
 
         ///<inheritdoc/>
         public override void Flush() { }
@@ -377,7 +367,7 @@ namespace VNLib.Utils.IO
             int bytesToRead = (int)Math.Min(LenToPosDiff, buffer.Length);
 
             //Copy bytes to buffer
-            MemoryUtil.Copy(_buffer, _position, buffer, 0, bytesToRead);
+            MemoryUtil.Copy(_buffer.Value, _position, buffer, 0, bytesToRead);
 
             //Increment buffer position
             _position += bytesToRead;
@@ -394,7 +384,7 @@ namespace VNLib.Utils.IO
             }
 
             //get the value at the current position
-            ref byte ptr = ref _buffer.GetOffsetByteRef(_position);
+            ref byte ptr = ref _buffer.Value.GetOffsetByteRef(_position);
 
             //Increment position
             _position++;
@@ -496,7 +486,7 @@ namespace VNLib.Utils.IO
             nint _value = (nint)value;
 
             //Resize the buffer to the specified length
-            _buffer.Resize(_value);
+            _buffer.Value.Resize(_value);
 
             //Set length
             _length = _value;
@@ -526,7 +516,7 @@ namespace VNLib.Utils.IO
             if (buffer.Length > LenToPosDiff)
             {
                 //Expand buffer if required
-                _buffer.ResizeIfSmaller(newPos);
+                _buffer.Value.ResizeIfSmaller(newPos);
                 //Update length
                 _length = newPos;
             }
@@ -535,7 +525,7 @@ namespace VNLib.Utils.IO
             MemoryUtil.Copy(
                 source: buffer,
                 sourceOffset: 0,
-                dest: _buffer,
+                dest: _buffer.Value,
                 destOffset: (nuint)_position,
                 count: buffer.Length
             );
@@ -586,7 +576,7 @@ namespace VNLib.Utils.IO
                 data = new byte[_length];
             }
 
-            MemoryUtil.CopyArray(_buffer, 0, data, 0, (nuint)_length);
+            MemoryUtil.CopyArray(_buffer.Value, 0, data, 0, (nuint)_length);
 
             return data;
         }
@@ -602,7 +592,7 @@ namespace VNLib.Utils.IO
             //Get 32bit length or throw
             int len = Convert.ToInt32(_length);
             //Get span with no offset
-            return _buffer.AsSpan(0, len);
+            return _buffer.Value.AsSpan(0, len);
         }
 
         /// <summary>
@@ -646,7 +636,7 @@ namespace VNLib.Utils.IO
         /// <exception cref="NotSupportedException"></exception>
         public object Clone() => GetReadonlyShallowCopy();
 
-        private MemoryManager<byte> AllocMemManager() => _buffer.ToMemoryManager(false);
+        private MemoryManager<byte> AllocMemManager() => _buffer.Value.ToMemoryManager(false);
 
     }
 }
