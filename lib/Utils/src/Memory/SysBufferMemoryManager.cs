@@ -45,7 +45,7 @@ namespace VNLib.Utils.Memory
         /// <param name="existingHandle">The existing handle to consume</param>
         /// <param name="ownsHandle">A value that indicates if the memory manager owns the handle reference</param>
         /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="OverflowException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public SysBufferMemoryManager(IMemoryHandle<T> existingHandle, bool ownsHandle)
             : this(new(existingHandle, ownsHandle))
         { }
@@ -64,10 +64,7 @@ namespace VNLib.Utils.Memory
             BackingMemory = existingHandle;
 
             //check for overflow
-            if (existingHandle.Length > Int32.MaxValue)
-            {
-                throw new OverflowException("This memory manager does not accept handles larger than Int32.MaxValue");
-            }
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(existingHandle.Value.Length, (nuint)Int32.MaxValue, nameof(existingHandle));
 
         }
 
