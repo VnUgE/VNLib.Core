@@ -29,6 +29,7 @@ using System.Runtime.InteropServices;
 
 using VNLib.Utils.Extensions;
 using VNLib.Utils.Native;
+using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.Memory
 {
@@ -84,8 +85,7 @@ namespace VNLib.Utils.Memory
 
                 //Create the heap
                 return CreateHeap(
-                    library, 
-                    ownsHandle: true,  // Owns the handle because it was created/loaded here
+                    Owned<SafeLibraryHandle>.OwnedValue(library),  // Owns the handle because it was created/loaded here
                     creationFlags, 
                     flags
                 );
@@ -108,9 +108,21 @@ namespace VNLib.Utils.Memory
         /// <param name="flags">Generic flags passed directly to the heapCreate function</param>
         /// <returns>The newly initialized <see cref="NativeHeap"/></returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public unsafe static NativeHeap CreateHeap(SafeLibraryHandle libHandle, bool ownsHandle, HeapCreation creationFlags, ERRNO flags)
+        public static NativeHeap CreateHeap(SafeLibraryHandle libHandle, bool ownsHandle, HeapCreation creationFlags, ERRNO flags) 
+            => CreateHeap(new(libHandle, ownsHandle), creationFlags, flags);
+
+        /// <summary>
+        /// Creates a new heap from a <see cref="SafeLibraryHandle"/> that is known to be a <see cref="NativeHeap"/>
+        /// ELF library and safe to load named symbols from
+        /// </summary>
+        /// <param name="libHandle">The existing <see cref="SafeLibraryHandle"/> wrapped in an <see cref="Owned{T}"/> structure</param>
+        /// <param name="creationFlags">Specifes the <see cref="HeapCreation"/> flags to pass to the heapCreate function</param>
+        /// <param name="flags">Generic flags passed directly to the heapCreate function</param>
+        /// <returns>The newly initialized <see cref="NativeHeap"/></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public unsafe static NativeHeap CreateHeap(Owned<SafeLibraryHandle> libHandle, HeapCreation creationFlags, ERRNO flags)
         {
-            ArgumentNullException.ThrowIfNull(libHandle);
+            ArgumentNullException.ThrowIfNull(libHandle.Value, nameof(libHandle));
 
             //Create a flags structure with defaults
             UnmanagedHeapDescriptor hFlags = new()
@@ -120,16 +132,16 @@ namespace VNLib.Utils.Memory
                 HeapPointer     = IntPtr.Zero
             };
 
-            return CreateHeap(libHandle, ownsHandle, &hFlags);
+            return CreateHeap(libHandle, &hFlags);
         }
 
-        private unsafe static NativeHeap CreateHeap(SafeLibraryHandle libHandle, bool ownsHandle, UnmanagedHeapDescriptor* flags)
+        private unsafe static NativeHeap CreateHeap(Owned<SafeLibraryHandle> libHandle, UnmanagedHeapDescriptor* flags)
         {
             //Open method table
-            HeapMethods table = new(libHandle, ownsHandle);           
+            HeapMethods table = new(libHandle);           
 
             //Get the create method
-            CreateHeapDelegate create = libHandle.DangerousGetFunction<CreateHeapDelegate>();
+            CreateHeapDelegate create = libHandle.Value.DangerousGetFunction<CreateHeapDelegate>();
 
             //Create the new heap
             if (!create(flags))
@@ -177,10 +189,7 @@ namespace VNLib.Utils.Memory
             bool ret = MethodTable.Destroy(handle);
 
             //Free the library
-            if (MethodTable.OwnsHandle)
-            {
-                MethodTable.Library.Dispose();
-            }
+            MethodTable.Library.Dispose();
 
             //Cleanup the method table
             MethodTable = default;
@@ -219,12 +228,12 @@ namespace VNLib.Utils.Memory
             public HeapCreation CreationFlags;
         }
 
-        readonly record struct HeapMethods(SafeLibraryHandle Library, bool OwnsHandle)
+        readonly record struct HeapMethods(Owned<SafeLibraryHandle> Library)
         {
-            public readonly AllocDelegate Alloc = Library.DangerousGetFunction<AllocDelegate>();
-            public readonly ReallocDelegate Realloc = Library.DangerousGetFunction<ReallocDelegate>();
-            public readonly FreeDelegate Free = Library.DangerousGetFunction<FreeDelegate>();
-            public readonly DestroyHeapDelegate Destroy = Library.DangerousGetFunction<DestroyHeapDelegate>();
+            public readonly AllocDelegate Alloc = Library.Value.DangerousGetFunction<AllocDelegate>();
+            public readonly ReallocDelegate Realloc = Library.Value.DangerousGetFunction<ReallocDelegate>();
+            public readonly FreeDelegate Free = Library.Value.DangerousGetFunction<FreeDelegate>();
+            public readonly DestroyHeapDelegate Destroy = Library.Value.DangerousGetFunction<DestroyHeapDelegate>();
         }
     }
 }
