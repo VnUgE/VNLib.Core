@@ -137,7 +137,7 @@ tasks:
      - cmd: powershell cp license '{{ .TARGET_DIR }}/license.txt'
      - cmd: powershell cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
 
-     - cmd: "cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' ."
+     - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
@@ -156,7 +156,7 @@ tasks:
 
     cmds:
      # tar up the source
-     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
+     - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
   dev-init:
     desc: 'Configures the project for local development'
