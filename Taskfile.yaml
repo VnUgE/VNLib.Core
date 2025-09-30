@@ -35,7 +35,7 @@ tasks:
   postbuild_success:
     dir: '{{ .USER_WORKING_DIR }}'
     cmds:
-     #remove uncessary files from the release dir
+     #remove unnecessary files from the release dir
      - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
 
      - task: pack-parallel
@@ -58,7 +58,7 @@ tasks:
       #the build output directory
       BUILD_OUT: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/publish"
     cmds:
-     - cmd: powershell cp ../build.readme.txt '{{ .BUILD_OUT }}/readme.txt'
+     - cmd: cp ../build.readme.txt '{{ .BUILD_OUT }}/readme.txt'
 
      #tar outputs
      - cmd: cd "{{ .BUILD_OUT }}" && tar{{ if eq OS "windows" }}.exe{{ end }} -czf "{{ .TARGET_DIR }}/{{ .BUILD_MODE }}.tgz" .
@@ -81,4 +81,4 @@ tasks:
     ignore_error: true
     cmds:
     - for: [ bin/, obj/ ]
-      cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
+      cmd: rm -rf '{{ .ITEM }}'

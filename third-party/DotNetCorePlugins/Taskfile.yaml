@@ -46,4 +46,4 @@ tasks:
     ignore_error: true
     cmds:
     - for: [ bin/, obj/ ]
-      cmd: powershell -Command "rm -Recurse -Force '{{.ITEM}}'"
+      cmd: rm -rf '{{.ITEM}}'

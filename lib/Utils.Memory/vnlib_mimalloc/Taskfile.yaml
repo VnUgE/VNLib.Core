@@ -107,7 +107,7 @@ tasks:
     requires:
       vars: [ARTIFACT_DIR]
     cmds:
-     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+     - cmd: mkdir -p '{{ .ARTIFACT_DIR }}'
        ignore_error: true
 
      - task: pack-parallel
@@ -132,10 +132,10 @@ tasks:
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
       ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
-     - cmd: powershell cp NativeHeapApi.h '{{ .TARGET_DIR }}/'
-     - cmd: powershell cp vendor/license '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
-     - cmd: powershell cp license '{{ .TARGET_DIR }}/license.txt'
-     - cmd: powershell cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
+     - cmd: cp NativeHeapApi.h '{{ .TARGET_DIR }}/'
+     - cmd: cp vendor/license '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
+     - cmd: cp license '{{ .TARGET_DIR }}/license.txt'
+     - cmd: cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
 
      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
 
@@ -170,4 +170,4 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
+       cmd: rm -rf "{{ .ITEM }}"
