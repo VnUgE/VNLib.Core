@@ -55,6 +55,7 @@ namespace VNLib.Utils.Memory
         /// New <typeparamref name="T"/>* pointing to the base of the allocated block
         /// </summary>
         /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public unsafe T* Base
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -65,6 +66,7 @@ namespace VNLib.Utils.Memory
         /// New <see cref="IntPtr"/> pointing to the base of the allocated block
         /// </summary>
         /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public unsafe IntPtr BasePtr
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -191,12 +193,10 @@ namespace VNLib.Utils.Memory
             return ((T*)handle) + elements;
         }
 
-        ///<inheritdoc/>
-        public ref T GetReference()
-        {
-            this.ThrowIfClosed();
-            return ref MemoryUtil.GetRef<T>(handle);
-        }
+        /// <inheritdoc/>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public unsafe ref T GetReference() => ref Unsafe.AsRef<T>(Base);
 
         /// <summary>
         /// Gets a reference to the element at the specified offset from the base 
