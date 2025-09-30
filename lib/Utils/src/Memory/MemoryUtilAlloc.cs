@@ -175,7 +175,7 @@ namespace VNLib.Utils.Memory
             * 
             * The underlying heap implementation may not support zero alloc, but
             * if it supports realloc then it should be able to handle size 0 
-            * allocs. That shouldn't be our problem hear, it may be considered
+            * allocs. That shouldn't be our problem here, it may be considered
             * a bug if a caller is allocating 0 bytes and expects a valid pointer.
             */
 
