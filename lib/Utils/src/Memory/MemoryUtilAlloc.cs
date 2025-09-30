@@ -166,7 +166,7 @@ namespace VNLib.Utils.Memory
             {
                 return new MemoryHandle<T>();
             }
-            
+
             /*
             * If the heap supports reallocation then a handle can be created
             * that is empty but has the ability to realloc later. Otherwise the 
@@ -203,7 +203,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Rents a new array and stores it as a resource within an <see cref="OpenResourceHandle{T}"/> to return the 
+        /// Rents a new array and stores it as a resource within an <see cref="ArrayPoolBuffer{T}"/> to return the 
         /// array when work is completed
         /// </summary>
         /// <typeparam name="T"></typeparam>
