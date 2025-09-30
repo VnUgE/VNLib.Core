@@ -77,7 +77,7 @@ namespace VNLib.Utils.IO
             //Normalize the file path to an absolute path
             filePath = Path.GetFullPath(filePath);
 
-            //If windows is detected, use the unmanged function
+            //If Windows is detected, use the unmanaged function
             if (OperatingSystem.IsWindows())
             {
                 //Invoke the winapi file function
@@ -145,7 +145,7 @@ namespace VNLib.Utils.IO
         /// <exception cref="UnauthorizedAccessException"></exception>
         public static FileAttributes GetAttributes(string filePath)
         {
-            //If windows is detected, use the unmanged function
+            //If Windows is detected, use the unmanaged function
             if (OperatingSystem.IsWindows())
             {
                 //Invoke the winapi file function and cast the returned int value to file attributes

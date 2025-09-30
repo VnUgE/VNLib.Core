@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -40,7 +40,7 @@ namespace VNLib.Utils.Memory
     /// </summary>
     /// <param name="flags">The creation flags to obey</param>
     /// <param name="ownsHandle">A flag that indicates if the handle is owned by the instance</param>
-    public abstract class UnmanagedHeapBase(HeapCreation flags, bool ownsHandle) : SafeHandleZeroOrMinusOneIsInvalid(ownsHandle), IUnmangedHeap
+    public abstract class UnmanagedHeapBase(HeapCreation flags, bool ownsHandle) : SafeHandleZeroOrMinusOneIsInvalid(ownsHandle), IUnmanagedHeap
     {
         /// <summary>
         /// The heap synchronization handle

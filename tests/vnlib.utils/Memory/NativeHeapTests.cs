@@ -70,7 +70,7 @@ namespace VNLib.Utils.Memory.Tests
             TestBasicHeapApi(heap);
         }
 
-        private static void TestBasicHeapApi(IUnmangedHeap heap)
+        private static void TestBasicHeapApi(IUnmanagedHeap heap)
         {            
             TestAllocAndFreeWithSizes(heap, elements: 0); // Test zero elements allocation
             TestAllocAndFreeWithSizes(heap, elements: 1);
@@ -81,13 +81,8 @@ namespace VNLib.Utils.Memory.Tests
             TestAllocAndFreeWithSizes(heap, elements: 100000);
         }
 
-        private static void TestAllocAndFreeWithSizes(IUnmangedHeap heap, nuint elements)
+        private static void TestAllocAndFreeWithSizes(IUnmanagedHeap heap, nuint elements)
         {
-            if ((heap.CreationFlags & HeapCreation.SupportsRealloc) == 0)
-            {
-                Assert.Inconclusive($"Heap {heap.GetType()} does not support realloc, skipping realloc tests.");
-            }
-
             //Test reallocations
             DoAllocAndResize(heap, elements, sizeof(byte), false);
             DoAllocAndResize(heap, elements, sizeof(sbyte), false);
@@ -116,17 +111,24 @@ namespace VNLib.Utils.Memory.Tests
         }
 
 
-        private static void DoAllocAndResize(IUnmangedHeap heap, nuint elements, nuint size, bool zero)
+        private static void DoAllocAndResize(IUnmanagedHeap heap, nuint elements, nuint size, bool zero)
         {
             //Allocate some memory
             IntPtr ptr = heap.Alloc(elements, size, zero);
 
             Assert.AreNotEqual(IntPtr.Zero, ptr, "Failed to allocate memory from the native heap");
 
-            //Resize the memory (always double the size even for zero initial elements
-            heap.Resize(ref ptr, Math.Max(elements, 1) * 2, size, zero);
+            if ((heap.CreationFlags & HeapCreation.SupportsRealloc) > 0)
+            {  
+                //Resize the memory (always double the size even for zero initial elements
+                heap.Resize(ref ptr, Math.Max(elements, 1) * 2, size, zero);
 
-            Assert.AreNotEqual(IntPtr.Zero, ptr, "Failed to resize memory from the native heap");
+                Assert.AreNotEqual(IntPtr.Zero, ptr, "Failed to resize memory from the native heap");
+            }
+            else
+            {
+                Console.WriteLine("Heap does not support reallocations, skipping resize test.");
+            }
 
             //Free the memory
             Assert.IsTrue(heap.Free(ref ptr));

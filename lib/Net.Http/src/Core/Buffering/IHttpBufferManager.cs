@@ -73,7 +73,7 @@ namespace VNLib.Net.Http.Core.Buffering
         IChunkAccumulatorBuffer ChunkAccumulatorBuffer { get; }
 
         /// <summary>
-        /// Alloctes internal buffers from the given <see cref="IHttpMemoryPool"/>
+        /// Allocates internal buffers from the given <see cref="IHttpMemoryPool"/>
         /// </summary>
         /// <param name="allocator">The pool to allocate memory from</param>
         /// <param name="config">A reference to the buffer configuration used to allocate buffers</param>

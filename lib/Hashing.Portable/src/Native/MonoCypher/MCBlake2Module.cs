@@ -87,7 +87,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <returns>The initialzied <see cref="IHashStream"/> instance</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static IHashStream Blake2CreateStream(this MonoCypherLibrary library, byte hashSize, IUnmangedHeap? heap)
+        public static IHashStream Blake2CreateStream(this MonoCypherLibrary library, byte hashSize, IUnmanagedHeap? heap)
         {
             ArgumentNullException.ThrowIfNull(library);
             ArgumentOutOfRangeException.ThrowIfEqual(hashSize, 0);
@@ -127,7 +127,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <param name="heap">The heap to allocate the stream on</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public static IHmacStream Blake2CreateHmacStream(this MonoCypherLibrary library, byte hashSize, IUnmangedHeap? heap)
+        public static IHmacStream Blake2CreateHmacStream(this MonoCypherLibrary library, byte hashSize, IUnmanagedHeap? heap)
         {
             ArgumentNullException.ThrowIfNull(library);
 
@@ -310,12 +310,12 @@ namespace VNLib.Hashing.Native.MonoCypher
         private sealed class Blake2Stream : SafeHandle, IHashStream, IHmacStream
         {
             private readonly MonoCypherLibrary _library;
-            private readonly IUnmangedHeap _heap;
+            private readonly IUnmanagedHeap _heap;
 
             ///<inheritdoc/>
             public override bool IsInvalid => handle == IntPtr.Zero;
 
-            internal Blake2Stream(MonoCypherLibrary library, IUnmangedHeap heap, byte hashSize) :base(IntPtr.Zero, true)
+            internal Blake2Stream(MonoCypherLibrary library, IUnmanagedHeap heap, byte hashSize) :base(IntPtr.Zero, true)
             {
                 Debug.Assert(hashSize > 0 && hashSize <= MaxHashSize, "Hash size must be between 1 and 64 inclusive");
                 Debug.Assert(library != null, "Library argument passed to internal blake2 stream constructur is null");

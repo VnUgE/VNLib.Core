@@ -39,7 +39,7 @@ namespace VNLib.Utils.Memory
 {
 
     /// <summary>
-    /// Provides an immutable character buffer stored on an unmanged heap. Contains handles to unmanged memory, and should be disposed
+    /// Provides an immutable character buffer stored on an Unmanaged heap. Contains handles to Unmanaged memory, and should be disposed
     /// </summary>
     [ComVisible(false)]
     [ImmutableObject(true)]
@@ -96,7 +96,7 @@ namespace VNLib.Utils.Memory
         /// <param name="heap">The heap to allocate the buffer from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <remarks>Copies the value into internal memory</remarks>
-        public VnString(ReadOnlySpan<char> data, IUnmangedHeap? heap = null)
+        public VnString(ReadOnlySpan<char> data, IUnmanagedHeap? heap = null)
         {
             //Default to shared heap
             heap ??= MemoryUtil.Shared;
@@ -119,7 +119,7 @@ namespace VNLib.Utils.Memory
         /// <param name="heap">The heap to allocate the buffer from</param>
         /// <returns>The decoded string from the binary data, or an empty string if no data was provided</returns>
         /// <exception cref="ArgumentNullException">Thrown when encoding is null</exception>
-        public static VnString FromBinary(ReadOnlySpan<byte> data, Encoding encoding, IUnmangedHeap? heap = null)
+        public static VnString FromBinary(ReadOnlySpan<byte> data, Encoding encoding, IUnmanagedHeap? heap = null)
         {
             ArgumentNullException.ThrowIfNull(encoding);
 
@@ -185,7 +185,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public static VnString FromStream(Stream stream, Encoding encoding, IUnmangedHeap heap, int bufferSize)
+        public static VnString FromStream(Stream stream, Encoding encoding, IUnmanagedHeap heap, int bufferSize)
         {
             ArgumentNullException.ThrowIfNull(stream);
             ArgumentNullException.ThrowIfNull(encoding);
@@ -276,12 +276,12 @@ namespace VNLib.Utils.Memory
         /// </summary>
         /// <param name="stream">The stream to read data from</param>
         /// <param name="encoding">The encoding to use while decoding data</param>
-        /// <param name="heap">The <see cref="IUnmangedHeap"/> to allocate buffers from</param>
+        /// <param name="heap">The <see cref="IUnmanagedHeap"/> to allocate buffers from</param>
         /// <param name="bufferSize">The size of the buffer to allocate</param>
         /// <returns>The new <see cref="VnString"/> containing the data</returns>
         /// <exception cref="IOException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
-        public static async ValueTask<VnString> FromStreamAsync(Stream stream, Encoding encoding, IUnmangedHeap heap, int bufferSize)
+        public static async ValueTask<VnString> FromStreamAsync(Stream stream, Encoding encoding, IUnmanagedHeap heap, int bufferSize)
         {
             ArgumentNullException.ThrowIfNull(stream);
             ArgumentNullException.ThrowIfNull(encoding);

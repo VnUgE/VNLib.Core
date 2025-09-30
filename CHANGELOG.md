@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2025-09-19
+
+### Changed
+
+- Update System.IO.Pipelines to version 9.0.9 - (deps) [de6bb2f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=de6bb2f44281d74a287b82b67b1b4c08ba7f9aff)
+- Correct various spelling and grammar mistakes across public and internal code documentation. - [65abcc0](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=65abcc05c3eae24ab30a0a0ab3d3dded76cc28cf)
+
+### Refactor
+
+- **Breaking Change:** Correct the spelling of IUnmanagedHeap public interface - [7662571](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=7662571c4c584ac5b95097954e27b11f111fb663)
+
 ## [0.1.2-rc.10] - 2025-09-08
 
 ### Added
@@ -66,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update mimalloc build defaults and cmake forced cache - (utils) [0e6e5cc](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=0e6e5ccbb5048e8ae7081c53acfda5a01bbcc1ef)
 - Expose the MI_SECURE build option - (mimalloc) [ab7ccf0](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=ab7ccf0de1c9179f5aa6a27757c83db72e1a6b3e)
 - Improve tcp configuration logging and warnings - (server) [7142963](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=71429636ffc48076846a8273e0f02ec9d16f9886)
+
+### Fixed
+
+- **Breaking Change:** Correct IUnmanagedHeap from IUnmangedHeap typo - [95c28b2](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=95c28b2d68fdb2249dcfcf4c0e6c175ecdc83cb3)
 
 ## [0.1.2-rc.7] - 2025-07-23
 
@@ -214,6 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove argon2 docs & optional tcp resuse - [f836e09](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=f836e09981866f5c9f2ae46990d11b186a7d12bb)
 
+[0.1.2]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2&id2=v0.1.2-rc.10
 [0.1.2-rc.10]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.10&id2=v0.1.2-rc.9
 [0.1.2-rc.9]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.9&id2=v0.1.2-rc.8
 [0.1.2-rc.8]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.8&id2=v0.1.2-rc.7
