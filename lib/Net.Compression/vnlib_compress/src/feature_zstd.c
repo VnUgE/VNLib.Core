@@ -167,9 +167,17 @@ int ZstdCompressBlock(_In_ const comp_state_t* state, CompressionOperation* oper
 	* The flag is set when the compressor successfully finishes a stream
 	* and has no more data to process.
 	*/
-	if (operation->flush && (streamState->flags & STREAM_FLAG_FINISHED))
+	if ((streamState->flags & STREAM_FLAG_FINISHED))
 	{
-		return VNCMP_SUCCESS;
+		/*
+		* If the stream has been finished, but the operation is not a flush
+		* the user might be requesting a reuse of the stream which is not 
+		* supported, so return an error if not flushing.
+		*/
+
+		return operation->flush 
+			? VNCMP_SUCCESS 
+			: ERR_ZSTD_INVALID_STATE;
 	}
 
 	/* Setup input buffer */

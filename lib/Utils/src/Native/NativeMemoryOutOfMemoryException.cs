@@ -63,7 +63,7 @@ namespace VNLib.Utils.Native
         {
             if (value == 0)
             {
-                throw new NativeMemoryOutOfMemoryException(message ?? "Failed to allocate or reallocte memory region");
+                throw new NativeMemoryOutOfMemoryException(message ?? "Failed to allocate or reallocate memory region");
             }
         }
     }

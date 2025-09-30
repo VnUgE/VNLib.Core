@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -57,7 +57,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <param name="heap">The heap to allocate internal buffers from</param>
         /// <returns>The <see cref="IArgon2Library"/> wrapper instance</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static IArgon2Library Argon2CreateLibrary(this MonoCypherLibrary Library, IUnmangedHeap heap)
+        public static IArgon2Library Argon2CreateLibrary(this MonoCypherLibrary Library, IUnmanagedHeap heap)
         {
             //Validate arguments
             ArgumentNullException.ThrowIfNull(Library);
@@ -65,7 +65,7 @@ namespace VNLib.Hashing.Native.MonoCypher
             return new Argon2HashLib(Library, heap);
         }
 
-        private static void Hash(this MonoCypherLibrary library, IUnmangedHeap heap, Argon2Context* context)
+        private static void Hash(this MonoCypherLibrary library, IUnmanagedHeap heap, Argon2Context* context)
         {
             ArgumentNullException.ThrowIfNull(library);
             ArgumentNullException.ThrowIfNull(heap);
@@ -135,7 +135,7 @@ namespace VNLib.Hashing.Native.MonoCypher
             }
         }
 
-        private sealed record class Argon2HashLib(MonoCypherLibrary Library, IUnmangedHeap BufferHeap) : IArgon2Library
+        private sealed record class Argon2HashLib(MonoCypherLibrary Library, IUnmanagedHeap BufferHeap) : IArgon2Library
         {
 
             ///<inheritdoc/>

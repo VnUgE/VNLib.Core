@@ -54,7 +54,7 @@ namespace VNLib.Utils.Memory
 
         private readonly T[]? _poolArr;
         private readonly ArrayPool<T>? _pool;
-        private readonly IUnmangedHeap? _heap;
+        private readonly IUnmanagedHeap? _heap;
 
         ///<inheritdoc/>
         public readonly Span<T> Span
@@ -98,13 +98,13 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Intializes a new <see cref="UnsafeMemoryHandle{T}"/> for block of memory allocated from
-        /// an <see cref="IUnmangedHeap"/>
+        /// an <see cref="IUnmanagedHeap"/>
         /// </summary>
         /// <param name="heap">The heap the initial memory block belongs to</param>
         /// <param name="initial">A pointer to the unmanaged memory block</param>
         /// <param name="elements">The number of elements this block points to</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal UnsafeMemoryHandle(IUnmangedHeap heap, IntPtr initial, int elements)
+        internal UnsafeMemoryHandle(IUnmanagedHeap heap, IntPtr initial, int elements)
         {
             //Never allow non-empty handles
             Debug.Assert(heap != null);

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -53,7 +53,7 @@ namespace VNLib.Utils
         /// <param name="encoding"><see cref="Encoding"/> to encode data with</param>
         /// <param name="heap">Heap to allocate memory from</param>
         /// <returns>A <see cref="Stream"/> contating the encoded data</returns>
-        public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding, IUnmangedHeap? heap = null)
+        public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding, IUnmanagedHeap? heap = null)
         {
             ArgumentNullException.ThrowIfNull(encoding);
 
