@@ -78,9 +78,9 @@ tasks:
     vars:
       RELEASE_DIR: "{{ .BINARY_DIR }}/release/{{ .TARGET_FRAMEWORK }}"
     cmds:
-     - cmd: mkdir -p {{ .BINARY_DIR }}
+     - cmd: mkdir -p '{{ .BINARY_DIR }}'
 
-     #remove uncessary files from the release dir
+     #remove unnecessary files from the release dir
      - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
 
      - task: pack_parallel

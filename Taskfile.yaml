@@ -35,7 +35,7 @@ tasks:
   postbuild_success:
     dir: '{{ .USER_WORKING_DIR }}'
     cmds:
-     #remove uncessary files from the release dir
+     #remove unnecessary files from the release dir
      - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
 
      - task: pack-parallel
