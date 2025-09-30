@@ -168,7 +168,7 @@ tasks:
       - for: { var: DIST_HEADERS }
         cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}/{{ .ITEM }}'
 
-      - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
+      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
@@ -189,7 +189,7 @@ tasks:
     cmds:
      - cmd: powershell cp ../LICENSE 'LICENSE' -Force
 
-     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
+     - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
      - cmd: powershell rm LICENSE
 

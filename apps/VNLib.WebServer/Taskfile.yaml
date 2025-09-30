@@ -111,7 +111,7 @@ tasks:
      #- cd .. && powershell -Command "Copy-Item -Path ./release.taskfile.yaml -Destination '{{.BUILD_DIR}}/Taskfile.yaml'"
 
      #tar outputs
-     - cd "{{ .BUILD_DIR }}" && tar -czf "{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/{{ .TARGET_OS }}-{{ .BUILD_MODE }}.tgz" .
+     - cd "{{ .BUILD_DIR }}" && tar{{ if eq OS "windows" }}.exe{{ end }} -czf "{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/{{ .TARGET_OS }}-{{ .BUILD_MODE }}.tgz" .
 
   pack_source:
     internal: true
@@ -129,7 +129,7 @@ tasks:
 
     cmds:
       #pack up source code and put in output
-     - cmd: cd .. && tar {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
+     - cmd: cd .. && tar{{ if eq OS "windows" }}.exe{{ end }} {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
 
     #Remove the output dirs on clean
   clean:

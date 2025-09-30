@@ -15,7 +15,7 @@ tasks:
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
-    dir: '{{.USER_WORKING_DIR}}'
+    dir: '{{ .USER_WORKING_DIR }}'
     cmds:
      - task: pack_source
   
@@ -37,7 +37,7 @@ tasks:
 
     cmds:
       #pack up source code and put in output
-     - cmd: cd .. && tar {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/bin/src.tgz' {{ .INCLUDES }}    
+     - cmd: cd .. && tar{{ if eq OS "windows" }}.exe{{ end }} {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/bin/src.tgz' {{ .INCLUDES }}    
 
 
 #Remove the output dirs on clean
