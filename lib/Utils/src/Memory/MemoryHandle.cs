@@ -192,11 +192,7 @@ namespace VNLib.Utils.Memory
         }
 
         ///<inheritdoc/>
-        public ref T GetReference()
-        {
-            this.ThrowIfClosed();
-            return ref MemoryUtil.GetRef<T>(handle);
-        }
+        public unsafe ref T GetReference() => ref Unsafe.AsRef<T>(Base);
 
         /// <summary>
         /// Gets a reference to the element at the specified offset from the base 
