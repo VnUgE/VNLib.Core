@@ -103,7 +103,7 @@ tasks:
     requires:
       vars: [ARTIFACT_DIR]
     cmds:
-     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+     - cmd: mkdir -p '{{ .ARTIFACT_DIR }}'
        ignore_error: true
 
      - task: pack-parallel
@@ -149,9 +149,9 @@ tasks:
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
       ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
-      - cmd: powershell cp LICENSE '{{ .TARGET_DIR }}/license.txt'
-      - cmd: powershell cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
-      - cmd: powershell cp include/argon2.h '{{ .TARGET_DIR }}/argon2.h'
+      - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
+      - cmd: cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
+      - cmd: cp include/argon2.h '{{ .TARGET_DIR }}/argon2.h'
 
       - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
 
@@ -188,4 +188,4 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
+       cmd: rm -rf "{{ .ITEM }}"
