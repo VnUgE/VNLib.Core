@@ -48,9 +48,9 @@ tasks:
 
       - cmd: echo "VNLib.WebServer tests completed successfully"
         silent: true
-
-  #called by build pipeline to build module
+  
   build:
+    desc: 'DO NOT USE. Use vnbuild system to build this project'
     dir: '{{ .USER_WORKING_DIR }}'
     vars:
       INT_DIR: '{{ .SCRATCH_DIR | default "." }}/obj/{{ .MODULE_NAME }}/'
@@ -61,26 +61,26 @@ tasks:
         /p:UseCommonOutputDirectory=true 
         /p:IntermediateOutputPath="{{ .INT_DIR }}"'
     cmds:
-     #managed source supports arm32 unmanaged does not
+    # build for each target arch in debug and release mode 
     - for: { var: TARGET_ARCHES }
       cmd: dotnet publish -c debug -r {{ .ITEM }} {{ .MS_ARGS }} 
     
-    #build release mode after all debug builds
     - for: { var: TARGET_ARCHES }
       cmd: dotnet publish -c release -r {{ .ITEM }} {{ .MS_ARGS }}
 
     #package as a tool
     #- dotnet pack -c debug {{.MS_ARGS}} -o "{{.PACK_OUT}}/debug/" -p:PackageVersion={{.BUILD_VERSION}}  
 
-  #when build succeeds, archive the output into a tgz 
+  
   postbuild_success:
+    desc: 'DO NOT USE. Use vnbuild system to finish the build'
     dir: '{{ .USER_WORKING_DIR }}'
     vars:
       RELEASE_DIR: "{{ .BINARY_DIR }}/release/{{ .TARGET_FRAMEWORK }}"
     cmds:
-     - cmd: powershell mkdir {{ .BINARY_DIR }} -Force
+     - cmd: mkdir -p '{{ .BINARY_DIR }}'
 
-     #remove uncessary files from the release dir
+     #remove unnecessary files from the release dir
      - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
 
      - task: pack_parallel
@@ -105,13 +105,14 @@ tasks:
       BUILD_DIR: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/{{ .TARGET_OS }}/publish"
     cmds:     
      #copy and readme to target
-     - powershell cp ../build.readme.txt '{{ .BUILD_DIR }}/readme.txt'
+     - cmd: cp ../build.readme.txt '{{ .BUILD_DIR }}/readme.txt'
      
      #copy release taskfile
      #- cd .. && powershell -Command "Copy-Item -Path ./release.taskfile.yaml -Destination '{{.BUILD_DIR}}/Taskfile.yaml'"
 
      #tar outputs
-     - cd "{{ .BUILD_DIR }}" && tar -czf "{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/{{ .TARGET_OS }}-{{ .BUILD_MODE }}.tgz" .
+     - cmd: cd "{{ .BUILD_DIR }}" && 
+         tar{{ if eq OS "windows" }}.exe{{ end }} -czf "{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/{{ .TARGET_OS }}-{{ .BUILD_MODE }}.tgz" .
 
   pack_source:
     internal: true
@@ -129,7 +130,7 @@ tasks:
 
     cmds:
       #pack up source code and put in output
-     - cmd: cd .. && tar {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
+     - cmd: cd .. && tar{{ if eq OS "windows" }}.exe{{ end }} {{ .EXCLUDES }} -czf '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}/src.tgz' {{ .INCLUDES }}
 
     #Remove the output dirs on clean
   clean:
@@ -139,5 +140,5 @@ tasks:
      - cmd: dotnet clean
 
      - for: [ bin/, obj/ ]
-       cmd: powershell Remove-Item -Recurse -Force '{{ .USER_WORKING_DIR }}/{{ .ITEM }}'
+       cmd: rm -rf '{{ .USER_WORKING_DIR }}/{{ .ITEM }}'
 

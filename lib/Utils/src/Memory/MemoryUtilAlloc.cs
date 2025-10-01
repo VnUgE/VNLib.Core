@@ -162,11 +162,23 @@ namespace VNLib.Utils.Memory
             ArgumentNullException.ThrowIfNull(heap);
 
             //Return empty handle if no elements were specified
-            if (elements == 0)
+            if (elements == 0 && (heap.CreationFlags & HeapCreation.SupportsRealloc) == 0)
             {
                 return new MemoryHandle<T>();
             }
-            
+
+            /*
+            * If the heap supports reallocation then a handle can be created
+            * that is empty but has the ability to realloc later. Otherwise the 
+            * an empty default handle is returned because the handle cannot
+            * be resized later and will throw.
+            * 
+            * The underlying heap implementation may not support zero alloc, but
+            * if it supports realloc then it should be able to handle size 0 
+            * allocs. That shouldn't be our problem here, it may be considered
+            * a bug if a caller is allocating 0 bytes and expects a valid pointer.
+            */
+
             IntPtr block = heap.Alloc(elements, (nuint)sizeof(T), zero);
 
             return ToHandle<T>(block, elements, heap, zero);
@@ -191,7 +203,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Rents a new array and stores it as a resource within an <see cref="OpenResourceHandle{T}"/> to return the 
+        /// Rents a new array and stores it as a resource within an <see cref="ArrayPoolBuffer{T}"/> to return the 
         /// array when work is completed
         /// </summary>
         /// <typeparam name="T"></typeparam>
