@@ -187,7 +187,7 @@ tasks:
         Taskfile.yaml
 
     cmds:
-     - cmd: cp -f ../LICENSE 'LICENSE' 
+     - cmd: cp ../LICENSE 'LICENSE' 
 
      - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 

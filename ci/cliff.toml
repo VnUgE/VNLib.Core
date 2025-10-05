@@ -119,8 +119,9 @@ commit_parsers = [
 filter_commits = false
 # Order releases topologically instead of chronologically.
 topo_order = true
-# Order of commits in each group/release within the changelog.
-# Allowed values: newest, oldest
+
+topo_order_commits = true
+
 sort_commits = "oldest"
 
 #exclude development tags from changelog
