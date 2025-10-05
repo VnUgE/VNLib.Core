@@ -251,7 +251,7 @@ namespace VNLib.WebServer.VirtualHosts
             //Enumerate kv headers
             return conf.Headers
                     //Ignore empty keys or values                        
-                    .Where(static p => !string.IsNullOrWhiteSpace(p.Key) && string.IsNullOrWhiteSpace(p.Value))
+                    .Where(static p => !string.IsNullOrWhiteSpace(p.Key) && !string.IsNullOrWhiteSpace(p.Value))
                     //Exclude special headers
                     .Where(static p => !SpecialHeaders.SpecialHeader.Contains(p.Key, StringComparer.OrdinalIgnoreCase))
                     .Select(static p => new KeyValuePair<string, string>(p.Key!, p.Value))

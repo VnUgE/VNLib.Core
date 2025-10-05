@@ -49,7 +49,7 @@ namespace VNLib.Hashing
     /// <summary>
     /// Implements the Argon2 data hashing library in .NET for cross platform use.
     /// </summary>
-    /// <remarks>Buffers are allocted on a private <see cref="IUnmangedHeap"/> instance.</remarks>
+    /// <remarks>Buffers are allocated on a private <see cref="IUnmanagedHeap"/> instance.</remarks>
     public static unsafe class VnArgon2
     {
         /// <summary>
@@ -84,12 +84,12 @@ namespace VNLib.Hashing
         public const string ARGON2_LIB_ENVIRONMENT_VAR_NAME = "VNLIB_ARGON2_DLL_PATH";
 
         private static readonly Encoding LocEncoding = Encoding.Unicode;
-        private static readonly LazyInitializer<IUnmangedHeap> _heap = new (static () => MemoryUtil.InitializeNewHeapForProcess(true));
+        private static readonly LazyInitializer<IUnmanagedHeap> _heap = new (static () => MemoryUtil.InitializeNewHeapForProcess(true));
         private static readonly LazyInitializer<IArgon2Library> _nativeLibrary = new(LoadSharedLibInternal);
 
 
         //Private heap initialized to 10k size, and all allocated buffers will be zeroed when allocated
-        private static IUnmangedHeap PwHeap => _heap.Instance;
+        private static IUnmanagedHeap PwHeap => _heap.Instance;
 
         private static IArgon2Library LoadSharedLibInternal()
         {

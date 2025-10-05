@@ -122,7 +122,7 @@ namespace VNLib.Utils.IO
         /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        public VnMemoryStream(IUnmangedHeap heap) : this(heap, DefaultBufferSize, false) { }
+        public VnMemoryStream(IUnmanagedHeap heap) : this(heap, DefaultBufferSize, false) { }
 
         /// <summary>
         /// Creates a new memory stream using the <see cref="MemoryUtil.Shared"/>
@@ -140,7 +140,7 @@ namespace VNLib.Utils.IO
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public VnMemoryStream(IUnmangedHeap heap, nuint bufferSize, bool zero)
+        public VnMemoryStream(IUnmanagedHeap heap, nuint bufferSize, bool zero)
         {
             ArgumentNullException.ThrowIfNull(heap);
             _buffer = heap.Alloc<byte>(bufferSize, zero);
@@ -151,7 +151,7 @@ namespace VNLib.Utils.IO
         /// </summary>
         /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <param name="data">Initial data</param>
-        public VnMemoryStream(IUnmangedHeap heap, ReadOnlySpan<byte> data)
+        public VnMemoryStream(IUnmanagedHeap heap, ReadOnlySpan<byte> data)
         {
             ArgumentNullException.ThrowIfNull(heap);
             //Alloc the internal buffer to match the data stream
@@ -166,7 +166,7 @@ namespace VNLib.Utils.IO
         /// </summary>
         /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
         /// <param name="data">Initial data</param>
-        public VnMemoryStream(IUnmangedHeap heap, ReadOnlyMemory<byte> data)
+        public VnMemoryStream(IUnmanagedHeap heap, ReadOnlyMemory<byte> data)
         {
             ArgumentNullException.ThrowIfNull(heap);
             //Alloc the internal buffer to match the data stream

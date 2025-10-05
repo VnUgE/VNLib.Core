@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -75,18 +75,18 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Provides an async wrapper for copying data from the current stream to another using an unmanged 
+        /// Provides an async wrapper for copying data from the current stream to another using an Unmanaged 
         /// buffer.
         /// </summary>
         /// <param name="source"></param>
         /// <param name="dest">The destination data stream to write data to</param>
         /// <param name="bufferSize">The size of the buffer to use while copying data. (Value will be clamped to the size of the stream if seeking is available)</param>
-        /// <param name="heap">The <see cref="IUnmangedHeap"/> to allocate the buffer from</param>
+        /// <param name="heap">The <see cref="IUnmanagedHeap"/> to allocate the buffer from</param>
         /// <param name="token">A token that may cancel asynchronous operations</param>
         /// <returns>A <see cref="ValueTask"/> that completes when the copy operation has completed</returns>
         /// <exception cref="IOException"></exception>
         /// <exception cref="ArgumentException"></exception>
-        public static async ValueTask CopyToAsync(this Stream source, Stream dest, int bufferSize, IUnmangedHeap heap, CancellationToken token = default)
+        public static async ValueTask CopyToAsync(this Stream source, Stream dest, int bufferSize, IUnmanagedHeap heap, CancellationToken token = default)
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(heap);
@@ -114,7 +114,7 @@ namespace VNLib.Utils.Extensions
         /// <returns>A <see cref="ValueTask"/> that completes when the copy operation has completed</returns>
         /// <exception cref="IOException"></exception>
         /// <exception cref="ArgumentException"></exception>
-        public static async ValueTask CopyToAsync(this Stream source, Stream dest, long count, int bufferSize, IUnmangedHeap heap, CancellationToken token = default)
+        public static async ValueTask CopyToAsync(this Stream source, Stream dest, long count, int bufferSize, IUnmanagedHeap heap, CancellationToken token = default)
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(dest);
@@ -138,7 +138,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="heap">The heap to allocate buffers from</param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        public static void CopyTo(this Stream source, Stream dest, IUnmangedHeap? heap = null)
+        public static void CopyTo(this Stream source, Stream dest, IUnmanagedHeap? heap = null)
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(dest);
@@ -190,7 +190,7 @@ namespace VNLib.Utils.Extensions
         /// <param name="heap">The heap to allocate buffers from</param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
-        public static void CopyTo(this Stream source, Stream dest, long count, IUnmangedHeap? heap = null)
+        public static void CopyTo(this Stream source, Stream dest, long count, IUnmanagedHeap? heap = null)
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(dest);

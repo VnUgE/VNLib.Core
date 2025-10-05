@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2025-10-01
+
+### Changed
+
+- Added more cross platform Task v3.45 syntax support to build scripts - [3cd06db](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=3cd06dbb77529fd594192fba91bd3814d595eaaf)
+- Cleanup and add more Task 3.45 cross platform build support - (webserver) [8689c50](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=8689c50c0187591d7904ac8e8ab7244bc4be1752)
+- Corrected some outdated documentation in the `MemoryUtil` public api. - (utils) [2913f28](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=2913f281579207ddab5c2b909d77b9737659eb06)
+
+### Fixed
+
+- Fixed a bug that causes inconsistent errors when allocating 0 length blocks. closes #42 - (utils) [598a854](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=598a8544306ef8abcdd6df19df699adeab85c631)
+
+## [0.1.2] - 2025-09-20
+
+### Changed
+
+- Update System.IO.Pipelines to version 9.0.9 - (deps) [de6bb2f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=de6bb2f44281d74a287b82b67b1b4c08ba7f9aff)
+- Correct various spelling and grammar mistakes across public and internal code documentation. - [65abcc0](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=65abcc05c3eae24ab30a0a0ab3d3dded76cc28cf)
+
+### Fixed
+
+- **Breaking Change:** Correct IUnmanagedHeap from IUnmangedHeap typo - [95c28b2](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=95c28b2d68fdb2249dcfcf4c0e6c175ecdc83cb3)
+
+### Refactor
+
+- **Breaking Change:** Correct the spelling of IUnmanagedHeap public interface - [7662571](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=7662571c4c584ac5b95097954e27b11f111fb663)
+
+## [0.1.2-rc.10] - 2025-09-08
+
+### Added
+
+- Added public function `NativeHeap.CreateHeap` that accepts existing library handles - [c31478c](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=c31478cb2fe85c6034d9f47d958ef4552d100f0a)
+
+### Changed
+
+- Update brotli to `98a89b1` - (deps) [4b21138](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=4b21138978586fbce46427ec65a2f09c7d2526ba)
+- Update zstd to `98d2b90` - (deps) [5007793](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=5007793c2f417038661c8837e48ae57d8346e9d2)
+
+### Fixed
+
+- Catch zstd stream reuse after finish and return error - (compression) [4814175](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=481417512d7466b9d3882decefd3c519f9d69922)
+- Fix custom response headers not getting sent by the server - (webserver) [1fcf6ed](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=1fcf6ed12098de524d7e17b782252cd5dd634170)
+
 ## [0.1.2-rc.9] - 2025-08-26
 
 ### Added
@@ -199,7 +242,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove argon2 docs & optional tcp resuse - [f836e09](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=f836e09981866f5c9f2ae46990d11b186a7d12bb)
 
-[0.1.2-rc.9]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=vv0.1.2-rc.9&id2=v0.1.2-rc.8
+[0.1.3]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.3&id2=v0.1.2
+[0.1.2]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2&id2=v0.1.2-rc.10
+[0.1.2-rc.10]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.10&id2=v0.1.2-rc.9
+[0.1.2-rc.9]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.9&id2=v0.1.2-rc.8
 [0.1.2-rc.8]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.8&id2=v0.1.2-rc.7
 [0.1.2-rc.7]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.7&id2=v0.1.2-rc.6
 [0.1.2-rc.6]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.6&id2=v0.1.2-rc.5

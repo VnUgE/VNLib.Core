@@ -28,7 +28,7 @@ using System.Collections.Concurrent;
 namespace VNLib.Utils.Memory.Diagnostics
 {
     /// <summary>
-    /// A wrapper for <see cref="IUnmangedHeap"/> that tracks 
+    /// A wrapper for <see cref="IUnmanagedHeap"/> that tracks 
     /// statistics for memory allocations.
     /// </summary>
     /// <remarks>
@@ -36,7 +36,7 @@ namespace VNLib.Utils.Memory.Diagnostics
     /// </remarks>
     /// <param name="heap">The heap to gather statistics on</param>
     /// <param name="ownsHeap">If true, the wrapper will dispose the heap when disposed</param>
-    public class TrackedHeapWrapper(IUnmangedHeap heap, bool ownsHeap) : VnDisposeable, IUnmangedHeap
+    public class TrackedHeapWrapper(IUnmanagedHeap heap, bool ownsHeap) : VnDisposeable, IUnmanagedHeap
     {
         private readonly object _statsLock = new();
         private readonly ConcurrentDictionary<IntPtr, ulong> _table = new();
@@ -47,7 +47,7 @@ namespace VNLib.Utils.Memory.Diagnostics
         /// <summary>
         /// Gets the underlying heap
         /// </summary>
-        protected IUnmangedHeap Heap => heap;
+        protected IUnmanagedHeap Heap => heap;
 
         /// <summary>
         /// Gets the internal lock held when updating statistics
