@@ -262,7 +262,7 @@ namespace VNLib.Net.Http
 
                     HttpPerfCounter.StartCounter(ref counter);
 
-                    await context.WriteAndCloseResponseAsync()
+                    await CompleteResponseAsync(context)
                         .ConfigureAwait(false);
 
                     await context.FlushTransportAsync()
@@ -477,8 +477,8 @@ namespace VNLib.Net.Http
 
             // Form-data size guard
             if (
-                context.Request.State.ContentType == ContentType.MultiPart
-                && context.Request.InputStream.Length > _config.MaxFormDataUploadSize
+                context.Request.State.ContentType == ContentType.MultiPart && 
+                context.Request.InputStream.Length > _config.MaxFormDataUploadSize
             )
             {
                 code = HttpStatusCode.RequestEntityTooLarge;
@@ -500,17 +500,17 @@ namespace VNLib.Net.Http
         ExitFault:
 
             //Close the connection when we exit
-            context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
+            HeaderSet(context, HttpResponseHeader.Connection, "closed");
             context.Respond(code);
             return false;
         }
-       
+
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private async Task ProcessRequestAsync(ListenerState listenState, HttpContext context)
         {
             //Get the server root for the specified location or fallback to a wildcard host if one is selected
-        
+
             if (!listenState.Roots.TryGetValue(context.Request.State.Location.DnsSafeHost, out IWebRoot? root))
             {
                 // If not found, fall back to wildcard host if one is set
@@ -520,7 +520,7 @@ namespace VNLib.Net.Http
             // If still null, no root was found, return 404
             if (root is null)
             {
-                context.Respond(HttpStatusCode.NotFound);              
+                context.Respond(HttpStatusCode.NotFound);
                 return;
             }
 
@@ -546,12 +546,12 @@ namespace VNLib.Net.Http
              * will be terminated.
              */
 
-            HttpRequestHelpers.ProcessQueryArgs(context.Request);          
+            HttpRequestHelpers.ProcessQueryArgs(context.Request);
 
             if (context.Request.State.HasEntityBody)
             {
                 await HttpRequestHelpers.ParseInputStream(context);
-            }          
+            }
 
             /*
              * The event object should be cleared when it is no longer in use, IE before 
@@ -606,8 +606,159 @@ namespace VNLib.Net.Http
              * The safest option would be terminate the connection, well see.
              * 
              * For now I will allow it.
-             */           
-        }       
+             */
+        }
+
+        /*
+         * Responsible for completing an http response by sending headers, entity body
+         * and generally ending the response.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        private async Task CompleteResponseAsync(HttpContext context)
+        {
+            long responseLength =  context.ResponseBody.Length;
+
+            /*
+             * If no response body was set by user code, a default content-length should be returned 
+             * and set to 0. Users's may disable this behaviour if they wish to alter this implicit 
+             * behaviour, or set the header themselves.
+             */
+            if (responseLength == 0)
+            {
+                if (!context.ContextFlags.IsSet(HttpControlMask.ImplictContentLengthDisabled))
+                {
+                    //RFC 7230, length only set on 200 + but not 204
+                    if (
+                        (int)context.Response.StatusCode >= 200 && 
+                        (int)context.Response.StatusCode != 204
+                    )
+                    {
+                        //If headers havent been sent by this stage there is no content, so set length to 0
+                        HeaderSet(context, HttpResponseHeader.ContentLength, "0");
+                    }
+                }
+
+                goto CloseResponse;
+            }
+
+            CompressionMethod negotiatedCompMethod = CompressionMethod.None;
+
+            /*
+             * It will be known at startup whether compression is supported, if not this is 
+             * essentially a constant. 
+             */
+            if (SupportedCompressionMethods != 0)
+            {
+                // Must vary accept-encoding if compression is supported
+                HeaderAdd(context, HttpResponseHeader.Vary, "Accept-Encoding");
+
+                //Determine if compression should be used
+                bool compressionDisabled = 
+                        //disabled because app code disabled it
+                        context.ContextFlags.IsSet(HttpControlMask.CompressionDisabled)
+                        //Disabled because too large or too small
+                        || responseLength > _config.CompressionLimit
+                        || responseLength < _config.CompressionMinimum
+                        //Disabled because lower than http11 does not support chunked encoding
+                        || context.Request.State.HttpVersion < HttpVersion.Http11;
+
+                if (!compressionDisabled)
+                {
+                    //Get first compression method or none if disabled
+                    negotiatedCompMethod = HttpRequestHelpers.GetCompressionSupport(context.Request, SupportedCompressionMethods);
+
+                    //Set response compression encoding headers
+                    switch (negotiatedCompMethod)
+                    {
+                        case CompressionMethod.Gzip:
+                            HeaderSet(context, HttpResponseHeader.ContentEncoding, "gzip");
+                            break;
+                        case CompressionMethod.Deflate:
+                            HeaderSet(context, HttpResponseHeader.ContentEncoding, "deflate");
+                            break;
+                        case CompressionMethod.Brotli:
+                            HeaderSet(context, HttpResponseHeader.ContentEncoding, "br");
+                            break;
+                        case CompressionMethod.Zstd:
+                            HeaderSet(context, HttpResponseHeader.ContentEncoding, "zstd");
+                            break;
+                        case CompressionMethod.None:
+                            break;
+                        default:
+                            // Unsupported or invalid compression method - fall back to no compression
+                            Debug.Fail($"Unsupported compression method negotiated: {negotiatedCompMethod}");
+                            _config.ServerLog.Debug("Unsupported compression method {method}, disabling compression", negotiatedCompMethod);
+                            negotiatedCompMethod = CompressionMethod.None;
+                            break;
+                    }
+                }
+            }
+
+            //Check on head methods
+            if (context.Request.State.Method == HttpMethod.HEAD)
+            {
+                // If head, always set content length, no entity body is sent
+                HeaderSet(context, HttpResponseHeader.ContentLength, responseLength.ToString());
+
+                // We must send headers here so content length doesnt get overwritten,
+                // close will be called after this to flush to transport
+                goto CloseResponse;
+            }
+
+            if (negotiatedCompMethod != 0)
+            {
+                /*
+                 * Chunked encoding is required when compression is being used,
+                 * so transfer encoding must be set to chunked.
+                 */
+
+                HeaderSet(context, HttpResponseHeader.TransferEncoding, "chunked");
+            }
+            else
+            {               
+                HeaderSet(context, HttpResponseHeader.ContentLength, responseLength.ToString());
+            }
+
+            // Headers must be flushed before writing the entity body, this is a final operation
+            await context.Response
+                .SendHeadersAsync(final: true)
+                .ConfigureAwait(false);
+
+            //Determine if buffer is required
+            Memory<byte> buffer = context.ResponseBody.BufferRequired
+                ? context.Buffers.GetResponseDataBuffer()
+                : Memory<byte>.Empty;
+
+            if (negotiatedCompMethod == 0)
+            {
+                // Direct stream when no compression is used, writes data directly
+                // to the transport
+                IDirectResponsWriter output = context.Response.GetDirectStream();
+
+                await context.ResponseBody
+                    .WriteEntityAsync(output, buffer)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // Chunked writer required for compressed output
+                IResponseDataWriter output = context.Response.GetChunkWriter();
+
+                await context.ResponseBody
+                    .WriteEntityAsync(output, buffer, negotiatedCompMethod)
+                    .ConfigureAwait(false);
+            }
+
+        CloseResponse:
+
+            /*
+             * Always close the response once send is complete, this may cause headers and other 
+             * unsent response data to be sent to the client.
+             */
+            await context.Response
+                .CloseAsync()
+                .ConfigureAwait(false);
+        }
 
         private void SetResponseConnectionHeader(HttpContext context)
         {
@@ -616,7 +767,7 @@ namespace VNLib.Net.Http
             if (context.ContextFlags.IsSet(HttpControlMask.KeepAliveDisabled))
             {
                 //Set connection closed
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "closed");
+                HeaderSet(context, HttpResponseHeader.Connection, "closed");
             }
             else
             {
@@ -629,10 +780,18 @@ namespace VNLib.Net.Http
                     "Request parsing allowed keepalive for a non http1.1 connection, this is a bug"
                 );
 
-                context.Response.Headers.Set(HttpResponseHeader.Connection, "keep-alive");
-                context.Response.Headers.Set(HttpResponseHeader.KeepAlive, _keepAliveTimeoutHeaderValue);
+                HeaderSet(context, HttpResponseHeader.Connection, "keep-alive");
+                HeaderSet(context, HttpResponseHeader.KeepAlive, _keepAliveTimeoutHeaderValue);
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void HeaderSet(HttpContext context, HttpResponseHeader header, string value) 
+            => context.Response.Headers.Set(header, value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void HeaderAdd(HttpContext context, HttpResponseHeader header, string value)
+            => context.Response.Headers.Add(header, value);
 
 
         [Conditional("DEBUG")]
