@@ -43,13 +43,6 @@ namespace VNLib.Net.Http.Core
         /// for the current transport
         /// </summary>
         void BeginRequest();
-        
-        /// <summary>
-        /// Sends any pending data associated with the request to the
-        /// connection that begun the request
-        /// </summary>
-        /// <returns>A Task that completes when the response has completed</returns>
-        Task WriteAndCloseResponseAsync();
 
         /// <summary>
         /// Flushes and pending data associated with the request to the transport

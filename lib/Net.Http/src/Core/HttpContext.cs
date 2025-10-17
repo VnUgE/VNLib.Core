@@ -39,7 +39,7 @@ using VNLib.Utils.Memory.Caching;
 namespace VNLib.Net.Http.Core
 {
 
-    internal sealed partial class HttpContext : IConnectionContext, IReusable, IHttpContextInformation
+    internal sealed class HttpContext : IConnectionContext, IReusable, IHttpContextInformation
     {
         /// <summary>
         /// The reusable http request container
@@ -82,27 +82,25 @@ namespace VNLib.Net.Http.Core
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
 
-        private readonly TransportManager _transport;
-        private readonly ManagedHttpCompressor? _compressor;
+        private readonly TransportManager _transport;       
         private ITransportContext? _ctx;
 
         public HttpContext(HttpServer server, ManagedHttpCompressor? compressor)
         {
-            ParentServer = server;
-            _compressor = compressor;
+            ParentServer = server;          
 
             ContextFlags = new(0);
 
             _transport = new();
 
             //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
-            Buffers = new(in server.BufferConfig, _compressor != null);
+            Buffers = new(in server.BufferConfig, compressor != null);
          
             Request = new (_transport, server.Config.MaxUploadsPerRequest);
            
             Response = new (this, _transport, Buffers);
           
-            ResponseBody = new ResponseWriter();           
+            ResponseBody = new ResponseWriter(compressor);           
         }
 
         #region LifeCycle Hooks
@@ -156,9 +154,7 @@ namespace VNLib.Net.Http.Core
 
             Request.OnComplete();
             Response.OnComplete();
-            ResponseBody.OnComplete();
-
-            _compressor?.Free();
+            ResponseBody.OnComplete();            
         }
 
         bool IReusable.Release()

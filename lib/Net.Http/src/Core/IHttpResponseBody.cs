@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -67,10 +67,10 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Writes internal response entity data to the destination stream
         /// </summary>
-        /// <param name="comp">The response compressor</param>
         /// <param name="writer">The response output writer</param>
         /// <param name="buffer">An optional buffer used to buffer responses</param>
+        /// <param name="method">The compression method to use when writing the response</param>
         /// <returns>A task that resolves when the response is completed</returns>
-        Task WriteEntityAsync<TComp>(TComp comp, IResponseDataWriter writer, Memory<byte> buffer) where TComp : IResponseCompressor;
+        Task WriteEntityAsync(IResponseDataWriter writer, Memory<byte> buffer, CompressionMethod method);
     }
 }

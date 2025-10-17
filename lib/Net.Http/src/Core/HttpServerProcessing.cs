@@ -207,12 +207,8 @@ namespace VNLib.Net.Http
                 // Safe to set the connection header now
                 SetResponseConnectionHeader(context);
 
-
                 // Debug log the request if enabled, only runs on debug builds
-                if (_config.RequestDebugLog != null)
-                {
-                    WriteConnectionDebugLog(context);
-                }
+                WriteConnectionDebugLog(context);              
 
                 {
                     /*
@@ -318,13 +314,13 @@ namespace VNLib.Net.Http
                 code = Http11Parser.ParseRequestLine(context.Request, ref parseState, ref reader, lineBuf, secInfo.HasValue);
                 if (code > 0)
                 {
-                    goto ProcessFault;
+                    goto HandleFault;
                 }
 
                 code = Http11Parser.ParseHeaders(context.Request, ref parseState, ref reader, in _config, lineBuf);
                 if (code > 0)
                 {
-                    goto ProcessFault;
+                    goto HandleFault;
                 }
 
                 if (parseState.ContentLength > 0)
@@ -356,7 +352,7 @@ namespace VNLib.Net.Http
                 code = HttpStatusCode.BadRequest;
             }
 
-        ProcessFault:
+        HandleFault:
 
             // Check for below-http level fault
             if ((int)code >= 1000)
@@ -609,10 +605,12 @@ namespace VNLib.Net.Http
              */
         }
 
-        /*
-         * Responsible for completing an http response by sending headers, entity body
-         * and generally ending the response.
-         */
+        /// <summary>
+        /// Completes the HTTP response by handling compression negotiation, 
+        /// sending headers, and writing the response entity body
+        /// </summary>
+        /// <param name="context">The HTTP context containing request and response data</param>
+        /// <returns>A task that completes when the response has been fully written</returns>     
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private async Task CompleteResponseAsync(HttpContext context)
         {
@@ -760,6 +758,10 @@ namespace VNLib.Net.Http
                 .ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Sets the Connection and Keep-Alive response headers based on the context flags
+        /// </summary>
+        /// <param name="context">The HTTP context</param>
         private void SetResponseConnectionHeader(HttpContext context)
         {
             //Set connection header (only for http1.1)
@@ -785,10 +787,22 @@ namespace VNLib.Net.Http
             }
         }
 
+        /// <summary>
+        /// Sets a response header, replacing any existing value
+        /// </summary>
+        /// <param name="context">The HTTP context</param>
+        /// <param name="header">The header to set</param>
+        /// <param name="value">The header value</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void HeaderSet(HttpContext context, HttpResponseHeader header, string value) 
             => context.Response.Headers.Set(header, value);
 
+        /// <summary>
+        /// Adds a response header value
+        /// </summary>
+        /// <param name="context">The HTTP context</param>
+        /// <param name="header">The header to add</param>
+        /// <param name="value">The header value</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void HeaderAdd(HttpContext context, HttpResponseHeader header, string value)
             => context.Response.Headers.Add(header, value);
@@ -798,6 +812,11 @@ namespace VNLib.Net.Http
         private void WriteConnectionDebugLog(HttpContext context)
         {
 #if DEBUG
+            if (_config.RequestDebugLog == null)
+            {
+                return;
+            }
+
             //Alloc debug buffer
             using IMemoryHandle<char> debugBuffer = MemoryUtil.SafeAlloc<char>(16 * 1024);
 

@@ -40,8 +40,10 @@ using VNLib.Net.Http.Core.Compression;
 
 namespace VNLib.Net.Http.Core.Response
 {
-    internal sealed class ResponseWriter : IHttpResponseBody, IHttpLifeCycle
+    internal sealed class ResponseWriter(ManagedHttpCompressor? compressor) : IHttpResponseBody, IHttpLifeCycle
     {
+        private readonly ManagedHttpCompressor? _compressor = compressor;
+
         private ResponsBodyDataState _userState;
         private ReadOnlyMemory<byte> _readSegment;
 
@@ -63,6 +65,9 @@ namespace VNLib.Net.Http.Core.Response
             _userState = default;
 
             _readSegment = default;
+
+            // Always cleanup the compressor after each request/response cycle
+            _compressor?.Free();
         }
       
         /// <inheritdoc/>
@@ -147,13 +152,20 @@ namespace VNLib.Net.Http.Core.Response
             => WriteEntityAsync(dest, buffer, blockSize: 0);
 
         ///<inheritdoc/>        
-        public async Task WriteEntityAsync<TComp>(TComp compressor, IResponseDataWriter writer, Memory<byte> buffer) 
-            where TComp : IResponseCompressor
+        public async Task WriteEntityAsync(IResponseDataWriter writer, Memory<byte> buffer, CompressionMethod compMethod) 
         {
-            //Create a chunked response writer struct to pass to write async function
-            ChunkedResponseWriter<TComp> output = new(writer, compressor);
+            // Compressor must be available when calling this function
+            Debug.Assert(_compressor != null, "Compressor instance is null, cannot write compressed response");
 
-            await WriteEntityAsync(output, buffer, compressor.BlockSize);
+            _compressor.Init(compMethod);
+
+            //Create a chunked response writer struct to pass to write async function           
+
+            await WriteEntityAsync(
+                dest : new ChunkedResponseWriter<ManagedHttpCompressor>(writer, _compressor), 
+                buffer, 
+                blockSize: _compressor.BlockSize
+            );
 
             /*
              * Once there is no more response data avialable to compress
@@ -164,13 +176,11 @@ namespace VNLib.Net.Http.Core.Response
             do
             {
                 //Flush the compressor output
-                int written = compressor.Flush(writer.GetMemory());
+                int written = _compressor.Flush(writer.GetMemory());
 
                 //No more data to buffer
                 if (written == 0)
-                {
-                    //final flush and exit
-                    await writer.FlushAsync(isFinal: true);
+                {                    
                     break;
                 }
 
@@ -181,6 +191,9 @@ namespace VNLib.Net.Http.Core.Response
                 }
 
             } while (true);
+
+            //final flush and exit
+            await writer.FlushAsync(isFinal: true);
         }
 
         private async Task WriteEntityAsync<TResWriter>(TResWriter dest, Memory<byte> buffer, int blockSize)

@@ -157,9 +157,9 @@ namespace VNLib.Net.Http
             Transports = MapListeners([.. bindings]);
 
             //Cache supported compression methods, or none if compressor is null
-            SupportedCompressionMethods = config.CompressorManager is null
-                ? CompressionMethod.None 
-                : config.CompressorManager.GetSupportedMethods();
+            SupportedCompressionMethods = config.CompressorManager is not null
+                ? config.CompressorManager.GetSupportedMethods() 
+                : CompressionMethod.None;
 
             //Create a new context store
             _contextStore = ObjectRental.CreateReusable(ContextCtor);

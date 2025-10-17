@@ -141,7 +141,8 @@ namespace VNLib.Net.Http.Core.Response
             => Cookies[cookie.Name] = cookie;
 
         /// <summary>
-        /// Compiles and flushes all headers to the header accumulator ready for sending
+        /// Compiles, flushes, and clears all headers by writing them to the 
+        /// internal buffer ready for sending
         /// </summary>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
@@ -201,9 +202,22 @@ namespace VNLib.Net.Http.Core.Response
             Writer.CommitChars(ref writer, ref _headerWriterPosition);
         }
 
-        private ValueTask EndFlushHeadersAsync()
+        /// <summary>
+        /// Flushes all available headers to the transport asynchronously.
+        /// </summary>
+        /// <param name="final">A value that indicates if the flush operation is to be final, meaning subsequent calls 
+        /// to <see cref="SendHeadersAsync(bool)"/> will raise an <see cref="InvalidOperationException"/>
+        /// </param>
+        /// <returns>A value task that completes when header data has been made available to the transport</returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <remarks>
+        /// If a call to <see cref="SendHeadersAsync(bool)"/> with <paramref name="final"/> set to true is made,
+        /// subsequent calls to this method will raise an <see cref="InvalidOperationException"/>
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ValueTask SendHeadersAsync(bool final)
         {
-            //Sent all available headers
+            //Sent all available headers (will throw if already sent)
             FlushHeaders();
 
             //Last line to end headers
@@ -212,8 +226,11 @@ namespace VNLib.Net.Http.Core.Response
             //Get the response data header block
             Memory<byte> responseBlock = Writer.GetResponseData(_headerWriterPosition);
 
-            //Update sent headers
-            HeadersSent = true;
+            /*
+             * If final == true, then this is the last call to send headers
+             * and no more headers can be sent after this point
+             */
+            HeadersSent = final;
 
             /*
              * ASYNC NOTICE: It is safe to get the memory block then return the task
@@ -222,34 +239,9 @@ namespace VNLib.Net.Http.Core.Response
              */
 
             //Write the response data to the base stream
-            return responseBlock.IsEmpty 
-                ? ValueTask.CompletedTask 
+            return responseBlock.IsEmpty
+                ? ValueTask.CompletedTask
                 : transport.Stream.WriteAsync(responseBlock);
-        }
-
-        /// <summary>
-        /// Flushes all available headers to the transport asynchronously
-        /// </summary>
-        /// <param name="contentLength">The optional content length if set, <![CDATA[ < 0]]> for chunked responses</param>
-        /// <returns>A value task that completes when header data has been made available to the transport</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ValueTask CompleteHeadersAsync(long contentLength)
-        {
-            Check();
-
-            if (contentLength < 0)
-            {
-                //Add chunked header
-                Headers.Set(HttpResponseHeader.TransferEncoding, "chunked");
-            }
-            else
-            {
-                //Add content length header
-                Headers.Set(HttpResponseHeader.ContentLength, contentLength.ToString());
-            }
-
-            //Flush headers
-            return EndFlushHeadersAsync();
         }
 
         /// <summary>
@@ -320,7 +312,7 @@ namespace VNLib.Net.Http.Core.Response
         }
 
         /// <summary>
-        /// Finalzies the response to a client by sending all available headers if 
+        /// Finalizes the response to a client by sending all available headers if 
         /// they have not been sent yet
         /// </summary>
         /// <exception cref="OutOfMemoryException"></exception>
@@ -329,7 +321,7 @@ namespace VNLib.Net.Http.Core.Response
             //If headers haven't been sent yet, send them and there must be no content
             return HeadersSent 
                 ? ValueTask.CompletedTask 
-                : EndFlushHeadersAsync();
+                : SendHeadersAsync(final: true);
         }
 
 
