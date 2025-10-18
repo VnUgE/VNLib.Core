@@ -62,6 +62,6 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <summary>
         /// Specifies the heap to allocate internal buffers from if necessary (defaults to <see cref="MemoryUtil.Shared"/>)
         /// </summary>
-        public IUnmangedHeap BufferHeap { get; init; } = MemoryUtil.Shared;
+        public IUnmanagedHeap BufferHeap { get; init; } = MemoryUtil.Shared;
     }
 }

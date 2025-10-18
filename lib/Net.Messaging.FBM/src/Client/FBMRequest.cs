@@ -82,7 +82,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
         /*
          * Local list stores processed headers for response messages
-         * which are structures and will be allocted in the list.
+         * which are structures and will be allocated in the list.
          * FBMMessagesHeader's are essentially pointers to locations
          * in the reused buffer (in response "mode") cast to a 
          * character buffer.

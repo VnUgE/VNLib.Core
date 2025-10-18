@@ -108,7 +108,7 @@ tasks:
     requires:
       vars: [ARTIFACT_DIR]
     cmds:
-     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+     - cmd: mkdir -p '{{ .ARTIFACT_DIR }}'
        ignore_error: true
 
      - task: pack-parallel
@@ -162,13 +162,13 @@ tasks:
       ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
       # publish the license file for distribution
-      - cmd: powershell cp ../LICENSE '{{ .TARGET_DIR }}/license.txt'
+      - cmd: cp ../LICENSE '{{ .TARGET_DIR }}/license.txt'
      
       # publish headers for distribution
       - for: { var: DIST_HEADERS }
-        cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}/{{ .ITEM }}'
+        cmd: cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}/{{ .ITEM }}'
 
-      - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
+      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
@@ -187,11 +187,11 @@ tasks:
         Taskfile.yaml
 
     cmds:
-     - cmd: powershell cp ../LICENSE 'LICENSE' -Force
+     - cmd: cp ../LICENSE 'LICENSE' 
 
-     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
+     - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
-     - cmd: powershell rm LICENSE
+     - cmd: rm -f LICENSE
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -208,4 +208,4 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
+       cmd: rm -rf "{{ .ITEM }}"
