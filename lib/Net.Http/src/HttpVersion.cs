@@ -55,6 +55,6 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Http Version 3.0
         /// </summary>
-        Http3 = 0x0A
+        Http3 = 0x10
     }
 }
