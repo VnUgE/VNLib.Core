@@ -25,8 +25,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
@@ -320,150 +318,7 @@ namespace VNLib.Plugins.Runtime
                 .Select(static p => p.Controller)
                 .TryForeach(controller => controller.Unregister(listener));           
         }
-
-        /// <summary>
-        /// Configures the plugin stack to retrieve plugin-local json configuration files 
-        /// from the same directory as the plugin assembly file.
-        /// </summary>
-        /// <param name="builder"></param>
-        /// <param name="hostConfig">An optional configuration element to pass to the plugin's host config element</param>
-        /// <returns>The current builder instance for chaining</returns>
-        public static PluginStackBuilder WithLocalJsonConfig(
-            this PluginStackBuilder builder,
-            in JsonElement? hostConfig
-        )
-            => WithJsonConfigFile(builder, in hostConfig, getPluginJsonFile: null);
-
-        /// <summary>
-        /// Configures the plugin stack to retrieve plugin-local json configuration files 
-        /// from the same directory as the plugin assembly file.
-        /// </summary>
-        /// <param name="builder"></param>
-        /// <param name="configDir">The directory containing all configuration files for the stack</param>
-        /// <param name="hostConfig">An optional configuration element to pass to the plugin's host config element</param>
-        /// <returns>The current builder instance for chaining</returns>
-        public static PluginStackBuilder WithJsonConfigDir(
-           this PluginStackBuilder builder,
-           in JsonElement? hostConfig,
-           DirectoryInfo configDir
-        )
-        {
-            /*
-             * Local function forces config files to be located in the 
-             * specified directory.
-             */
-            string AltDirConfigFileFinder(IPluginAssemblyLoadConfig asmConfig)
-            {
-                //Get the plugin config file name
-                string configFileName = Path.ChangeExtension(asmConfig.AssemblyFile, ".json");
-                configFileName = Path.GetFileName(configFileName);
-
-                //Search for the file within the config directory
-                return Path.Combine(configDir.FullName, configFileName);
-            }
-
-            //Use the alternate directory finder
-            return WithJsonConfigFile(builder, in hostConfig, AltDirConfigFileFinder);
-        }
-
-        /// <summary>
-        /// Configures the plugin stack to retrieve a json configuration file from the specified callbac function,
-        /// or local to the assembly if the callback is null.
-        /// </summary>
-        /// <param name="builder"></param>
-        /// <param name="getPluginJsonFile">An optional callback function that finds the plugin json config file from its assembly path</param>
-        /// <param name="hostConfig">An optional configuration element to pass to the plugin's host config element</param>
-        /// <returns>The current builder instance for chaining</returns>
-        public static PluginStackBuilder WithJsonConfigFile(
-            this PluginStackBuilder builder,
-            in JsonElement? hostConfig,
-            Func<IPluginAssemblyLoadConfig, string>? getPluginJsonFile
-        )
-        {
-            // Fallback to the default file name callback if none is provided
-            getPluginJsonFile ??= GetDefaultFileNameCallback;
-
-            return WithJsonConfig(builder, in hostConfig, GetPluginJsonConfig);
-
-            // Local function that retrieves the plugin json configuration file and 
-            // parses it into a JsonDocument
-            void GetPluginJsonConfig(IPluginAssemblyLoadConfig asmConfig, Stream output)
-            {
-                string fileName = getPluginJsonFile(asmConfig);
-
-                if (FileOperations.FileExists(fileName))
-                {
-                    using FileStream pluginConfFileData = new(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                    IoExtensions.CopyTo(pluginConfFileData, output);
-                }
-                else
-                {
-                    byte[] empty = Encoding.UTF8.GetBytes("{}");
-                    output.Write(empty);
-                }
-            }
-
-            static string GetDefaultFileNameCallback(IPluginAssemblyLoadConfig asmConfig)
-            {
-                /*
-                 * Just changing the asm file extention means the the json file 
-                 * will be in the same directory as the plugin assembly file
-                 */
-                return Path.ChangeExtension(asmConfig.AssemblyFile, ".json");
-            }
-        }
-
-        /// <summary>
-        /// A lower level method that allows you to specify a custom callback that retrieves 
-        /// the plugin json configuration data and writes it to the output stream.
-        /// </summary>
-        /// <param name="builder"></param>
-        /// <param name="hostConfig">The host configuration element to be merged</param>
-        /// <param name="getPluginJsonData">The callback function that will accept the stream to write data to</param>
-        /// <returns>The current builder instance for chaining</returns>
-        public static PluginStackBuilder WithJsonConfig(
-            this PluginStackBuilder builder,
-            in JsonElement? hostConfig,
-            Action<IPluginAssemblyLoadConfig, Stream> getPluginJsonData
-        )
-        {
-            ArgumentNullException.ThrowIfNull(builder);
-            ArgumentNullException.ThrowIfNull(getPluginJsonData);
-
-            JsonElement el;
-
-            //Host config is optional
-            if (hostConfig.HasValue)
-            {
-                el = hostConfig.Value;
-            }
-            else
-            {
-                using JsonDocument empty = JsonDocument.Parse("{}");
-                el = empty.RootElement.Clone();
-            }
-
-            //Create a reader from the binary
-            LocalFilePluginConfigReader reader = new(in el, getPluginJsonData);
-
-            return builder.WithConfigurationReader(reader);
-        }
-
-
-        /// <summary>
-        /// Sets an empty/null configuration reader for the plugin stack. No 
-        /// configuration will be passed to plugins.
-        /// </summary>
-        /// <param name="builder"></param>
-        /// <returns>The current builder instance for chaining</returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        public static PluginStackBuilder WithNullConfig(this PluginStackBuilder builder)
-        {
-            ArgumentNullException.ThrowIfNull(builder, nameof(builder));
-            return builder.WithConfigurationReader(new NullPluginConfigReader());
-        }
-
+    
         /// <summary>
         /// Specifies the directory that the plugin loader will search for plugins in
         /// </summary>
@@ -551,56 +406,6 @@ namespace VNLib.Plugins.Runtime
                     return string.Concat(compined, PLUGIN_FILE_EXTENSION);
                 });
             }
-        }
-
-        /*
-         * Assumes plugin configuration data is stored in a json file with the same name as 
-         * the plugin assembly but with a json extension. 
-         * 
-         * The json file is local for the specific plugin and is not shared between plugins. The host 
-         * configuration is also required
-         */
-        private sealed record class LocalFilePluginConfigReader(ref readonly JsonElement HostJson, Action<IPluginAssemblyLoadConfig, Stream> GetConfigFilePathCallback)
-            : IPluginConfigReader
-        {
-
-            private readonly JsonElement _hostClonedConfig = HostJson.Clone();
-
-            public void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream configData)
-            {
-                //Allow comments and trailing commas
-                JsonDocumentOptions jdo = new()
-                {
-                    AllowTrailingCommas = true,
-                    CommentHandling = JsonCommentHandling.Skip,
-                };
-
-                using VnMemoryStream pluginConfigData = new();
-                GetConfigFilePathCallback.Invoke(asmConfig, pluginConfigData);
-
-                pluginConfigData.Seek(0, SeekOrigin.Begin);
-
-                using JsonDocument pluginConf = JsonDocument.Parse(pluginConfigData, jdo);
-
-                using JsonDocument merged = _hostClonedConfig.Merge(
-                    pluginConf.RootElement,
-                    initalName: "host",
-                    secondName: "plugin"
-                );
-
-                //Write the merged config to the output stream
-                using Utf8JsonWriter writer = new(configData);
-                merged.WriteTo(writer);
-            }
-        }
-
-        private sealed class NullPluginConfigReader : IPluginConfigReader
-        {
-            ///<inheritdoc/>
-            public void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream outputStream)
-            {
-                //Do nothing
-            }
-        }
+        }       
     }
 }
