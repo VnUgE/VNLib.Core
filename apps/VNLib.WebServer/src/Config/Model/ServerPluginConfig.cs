@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -29,19 +29,19 @@ namespace VNLib.WebServer.Config.Model
     internal class ServerPluginConfig : IJsonOnDeserialized
     {
         [JsonPropertyName("enabled")]
-        public bool Enabled { get; set; } = true; //default to true if config is defined, then it can be assumed we want to load plugins unless explicitly disabled      
+        public bool Enabled { get; init; } = true; //default to true if config is defined, then it can be assumed we want to load plugins unless explicitly disabled      
 
         [JsonPropertyName("path")]
         public string Path { get; set; } = null!;
 
         [JsonPropertyName("config_dir")]
-        public string ConfigDir { get; set; } = null!;
+        public string? ConfigDir { get; set; } = null;
 
         [JsonPropertyName("hot_reload")]
-        public bool HotReload { get; set; }
+        public bool HotReload { get; init; }
 
         [JsonPropertyName("reload_delay_sec")]
-        public int ReloadDelaySec { get; set; } = 2;
+        public int ReloadDelaySec { get; init; } = 2;
 
         public void OnDeserialized()
         {
@@ -53,10 +53,16 @@ namespace VNLib.WebServer.Config.Model
             Validate.EnsureNotNull(Path, "If plugins are enabled, you must specify a directory to load them from");
             Validate.EnsureRange(ReloadDelaySec, 0, 600, "Reload delay must be between 0 and 600 seconds");
 
+            // Make path absolute
+            Path = System.IO.Path.GetFullPath(Path);
+
             //In order to read files, config dir must exist
             if (ConfigDir is not null)
             {
                 Validate.Assert(System.IO.Directory.Exists(ConfigDir), $"Config directory '{ConfigDir}' does not exist");
+
+                //Make config dir absolute
+                ConfigDir = System.IO.Path.GetFullPath(ConfigDir);
             }
         }
     }

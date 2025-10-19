@@ -89,29 +89,15 @@ namespace VNLib.WebServer.Bootstrap
             {
                 logger.AppLog.Information("Plugin loading disabled via configuration flag.");
                 return null;
-            }          
+            }
 
             //Init new plugin stack builder
             PluginStackBuilder pluginBuilder = PluginStackBuilder.Create()
                                     .WithDebugLog(logger.AppLog)
                                     .WithSearchDirectories([ conf.Path ])
-                                    .WithLoaderFactory(PluginAsemblyLoading.Create);
-
-            bool configDir = !string.IsNullOrWhiteSpace(conf.ConfigDir);
-
-            //Setup plugin config data
-            if (configDir)
-            {
-                pluginBuilder.WithPluginConfig(
-                    hostConfig: config.GetDocumentRoot(), 
-                    configDir: new (conf.ConfigDir)
-                );
-            }
-            else
-            {
-                pluginBuilder.WithPluginConfig(config.GetDocumentRoot());               
-            }
-
+                                    .WithLoaderFactory(PluginAsemblyLoading.Create)
+                                    .WithPluginConfig(config.GetDocumentRoot(), conf.ConfigDir);
+            
             if (conf.HotReload)
             {
                 Validate.EnsureRange(conf.ReloadDelaySec, 1, 120);
@@ -123,7 +109,7 @@ namespace VNLib.WebServer.Bootstrap
                 PLUGIN_DATA_TEMPLATE,
                 true,
                 conf.Path,
-                configDir ? conf.ConfigDir : "(local)",
+                conf.ConfigDir ?? "(local)",
                 conf.HotReload,
                 conf.ReloadDelaySec
             );
