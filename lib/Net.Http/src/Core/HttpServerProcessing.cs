@@ -466,7 +466,7 @@ namespace VNLib.Net.Http
                     }
 
                     //TODO: Handle chunked transfer encoding (not implemented yet)
-                    code = HttpStatusCode.NotImplemented;
+                    code = HttpStatusCode.BadRequest;
                     goto ExitFault;
                 }
             }
