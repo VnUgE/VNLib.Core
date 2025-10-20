@@ -131,6 +131,9 @@ namespace VNLib.WebServer.Transport
         private sealed class SslTcpTransportProvider(TcpServer Server, SslServerAuthenticationOptions AuthOptions) 
             : TcpTransportProvider(Server)
         {
+
+            private readonly TcpServer Server = Server;
+
             /*
               * An SslStream may throw a win32 exception with HRESULT 0x80090327
               * when processing a client certificate (I believe anyway) only 
