@@ -31,11 +31,11 @@ using VNLib.Utils.Native;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Provides a <see cref="IUnmangedHeap"/> wrapper for the <see cref="Marshal"/> virtualalloc 
+    /// Provides a <see cref="IUnmanagedHeap"/> wrapper for the <see cref="Marshal"/> virtualalloc 
     /// global heap methods
     /// </summary>
     [ComVisible(false)]
-    public unsafe class ProcessHeap : VnDisposeable, IUnmangedHeap
+    public unsafe class ProcessHeap : VnDisposeable, IUnmanagedHeap
     {
         /// <summary>
         /// Gets the shared process heap instance

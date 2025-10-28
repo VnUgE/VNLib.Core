@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -48,13 +48,14 @@ namespace VNLib.Utils.Memory
         where T : unmanaged
     {
         private readonly bool ZeroMemory;
-        private readonly IUnmangedHeap Heap;
+        private readonly IUnmanagedHeap Heap;
         private nuint _length;
 
         /// <summary>
         /// New <typeparamref name="T"/>* pointing to the base of the allocated block
         /// </summary>
         /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public unsafe T* Base
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -65,6 +66,7 @@ namespace VNLib.Utils.Memory
         /// New <see cref="IntPtr"/> pointing to the base of the allocated block
         /// </summary>
         /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public unsafe IntPtr BasePtr
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -116,7 +118,7 @@ namespace VNLib.Utils.Memory
         /// <param name="elements">Number of elements to allocate</param>
         /// <param name="zero">Zero all memory during allocations from heap</param>
         /// <param name="initial">The initial block of allocated memory to wrap</param>
-        internal MemoryHandle(IUnmangedHeap heap, IntPtr initial, nuint elements, bool zero) : base(true)
+        internal MemoryHandle(IUnmanagedHeap heap, IntPtr initial, nuint elements, bool zero) : base(true)
         {
             //Set element size
             _length = elements;
@@ -191,12 +193,10 @@ namespace VNLib.Utils.Memory
             return ((T*)handle) + elements;
         }
 
-        ///<inheritdoc/>
-        public ref T GetReference()
-        {
-            this.ThrowIfClosed();
-            return ref MemoryUtil.GetRef<T>(handle);
-        }
+        /// <inheritdoc/>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public unsafe ref T GetReference() => ref Unsafe.AsRef<T>(Base);
 
         /// <summary>
         /// Gets a reference to the element at the specified offset from the base 

@@ -102,7 +102,7 @@ tasks:
     requires:
       vars: [ARTIFACT_DIR]
     cmds:
-     - cmd: powershell mkdir -Force '{{ .ARTIFACT_DIR }}'
+     - cmd: mkdir -p '{{ .ARTIFACT_DIR }}'
        ignore_error: true
 
      - task: pack-parallel
@@ -160,13 +160,13 @@ tasks:
     cmds:
       # publish headers for distribution
       - for: { var: DIST_HEADERS }
-        cmd: powershell cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}'
+        cmd: cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}'
 
-      - cmd: powershell cp 'vendor/LICENCE.md' '{{ .TARGET_DIR }}/monocypher-license.md'
-      - cmd: powershell cp 'LICENSE' '{{ .TARGET_DIR }}/license.txt'
-      - cmd: powershell cp 'build.readme.txt' '{{ .TARGET_DIR }}/readme.txt'
+      - cmd: cp 'vendor/LICENCE.md' '{{ .TARGET_DIR }}/monocypher-license.md'
+      - cmd: cp 'LICENSE' '{{ .TARGET_DIR }}/license.txt'
+      - cmd: cp 'build.readme.txt' '{{ .TARGET_DIR }}/readme.txt'
 
-      - cmd: cd {{ .TARGET_DIR }} && tar -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
+      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
@@ -186,7 +186,7 @@ tasks:
 
     cmds:
      # tar up the source
-     - cmd: tar -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
+     - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
   dev-init:
     desc: 'Configures the project for local development'
@@ -201,7 +201,7 @@ tasks:
     sources:
      - src/*
      - vendor/**/*
-     - CMakelists.txt
+     - CMakeLists.txt
     cmds:
      - task: dev-init
 
@@ -210,4 +210,4 @@ tasks:
     ignore_error: true
     cmds:
      - for: [ bin/, build/ ]
-       cmd: '{{ if eq OS "windows" }}powershell rm -Recurse -Force{{else}}rm -rf{{end}} "{{ .ITEM }}"'
+       cmd: rm -rf "{{ .ITEM }}"

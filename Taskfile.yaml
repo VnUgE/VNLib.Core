@@ -35,7 +35,7 @@ tasks:
   postbuild_success:
     dir: '{{ .USER_WORKING_DIR }}'
     cmds:
-     #remove uncessary files from the release dir
+     #remove unnecessary files from the release dir
      - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
 
      - task: pack-parallel
@@ -58,10 +58,10 @@ tasks:
       #the build output directory
       BUILD_OUT: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/publish"
     cmds:
-     - cmd: powershell cp ../build.readme.txt '{{ .BUILD_OUT }}/readme.txt'
+     - cmd: cp ../build.readme.txt '{{ .BUILD_OUT }}/readme.txt'
 
      #tar outputs
-     - cmd: cd "{{ .BUILD_OUT }}" && tar -czf "{{ .TARGET_DIR }}/{{ .BUILD_MODE }}.tgz" .
+     - cmd: cd "{{ .BUILD_OUT }}" && tar{{ if eq OS "windows" }}.exe{{ end }} -czf "{{ .TARGET_DIR }}/{{ .BUILD_MODE }}.tgz" .
  
   packsource:
     dir: '{{ .USER_WORKING_DIR }}'
@@ -72,7 +72,7 @@ tasks:
       powershell -Command "Get-ChildItem -Include *.cs,*.csproj -Recurse 
       | Where { \$_.FullName -notlike '*\obj\*' -and \$_.FullName -notlike '*\bin\*' } 
       | Resolve-Path -Relative 
-      | tar --files-from - -czf '{{ .TARGET_DIR }}/src.tgz'"
+      | tar{{ if eq OS "windows" }}.exe{{ end }} --files-from - -czf '{{ .TARGET_DIR }}/src.tgz'"
 
 
 #Remove the output dirs on clean
@@ -81,4 +81,4 @@ tasks:
     ignore_error: true
     cmds:
     - for: [ bin/, obj/ ]
-      cmd: powershell rm -Recurse -Force '{{ .ITEM }}'
+      cmd: rm -rf '{{ .ITEM }}'

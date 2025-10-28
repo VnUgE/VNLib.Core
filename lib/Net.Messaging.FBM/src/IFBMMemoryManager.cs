@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -60,12 +60,12 @@ namespace VNLib.Net.Messaging.FBM
         void FreeBuffer(IFBMSpanOnlyMemoryHandle state);
 
         /// <summary>
-        /// Tries to get the internal <see cref="IUnmangedHeap"/> to allocate internal 
+        /// Tries to get the internal <see cref="IUnmanagedHeap"/> to allocate internal 
         /// buffers from
         /// </summary>
         /// <param name="heap">The internal heap</param>
         /// <returns>A value that indicates if a backing heap is supported and can be recovered</returns>
-        bool TryGetHeap([NotNullWhen(true)]out IUnmangedHeap? heap);
+        bool TryGetHeap([NotNullWhen(true)]out IUnmanagedHeap? heap);
     }
 
 }

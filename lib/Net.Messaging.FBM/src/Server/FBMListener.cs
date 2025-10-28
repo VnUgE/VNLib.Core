@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -85,7 +85,7 @@ namespace VNLib.Net.Messaging.FBM.Server
 
             try
             {
-                if(!MemoryManger.TryGetHeap(out IUnmangedHeap? heap))
+                if(!MemoryManger.TryGetHeap(out IUnmanagedHeap? heap))
                 {
                     throw new NotSupportedException("The memory manager must export an unmanaged heap");
                 }

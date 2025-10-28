@@ -124,7 +124,7 @@ tasks:
     cmds:
     #clean solution
      - cmd: dotnet clean
-     - cmd: powershell rm '{{ .ARCHIVE_FILE_NAME }}' --Force 
+     - cmd: rm -f '{{ .ARCHIVE_FILE_NAME }}' 
      - task: clean-native
 
   dev-init:

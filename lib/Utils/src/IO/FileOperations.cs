@@ -57,6 +57,7 @@ namespace VNLib.Utils.IO
         const int LIBC_X_OK = 1; // Execute permission
         const int LIBC_F_OK = 0; // Check for existence only
 
+        [SupportedOSPlatform("linux")]
         [LibraryImport("libc", EntryPoint = "access", StringMarshalling = StringMarshalling.Utf8)]        
         [return:MarshalAs(UnmanagedType.I4)]
         private static unsafe partial int Access([MarshalAs(UnmanagedType.LPStr)] string path, int mode);
@@ -76,7 +77,7 @@ namespace VNLib.Utils.IO
             //Normalize the file path to an absolute path
             filePath = Path.GetFullPath(filePath);
 
-            //If windows is detected, use the unmanged function
+            //If Windows is detected, use the unmanaged function
             if (OperatingSystem.IsWindows())
             {
                 //Invoke the winapi file function
@@ -144,7 +145,7 @@ namespace VNLib.Utils.IO
         /// <exception cref="UnauthorizedAccessException"></exception>
         public static FileAttributes GetAttributes(string filePath)
         {
-            //If windows is detected, use the unmanged function
+            //If Windows is detected, use the unmanaged function
             if (OperatingSystem.IsWindows())
             {
                 //Invoke the winapi file function and cast the returned int value to file attributes

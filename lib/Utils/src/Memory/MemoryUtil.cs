@@ -112,13 +112,13 @@ namespace VNLib.Utils.Memory
         /// The backing heap
         /// is determined by the OS type and process environment varibles.
         /// </remarks>
-        public static IUnmangedHeap Shared => _lazyHeap.Instance;       
+        public static IUnmanagedHeap Shared => _lazyHeap.Instance;       
 
 
-        private static readonly LazyInitializer<IUnmangedHeap> _lazyHeap = new(InitSharedHeapInternal);
+        private static readonly LazyInitializer<IUnmanagedHeap> _lazyHeap = new(InitSharedHeapInternal);
 
         //Avoiding static initializer
-        private static IUnmangedHeap InitSharedHeapInternal()
+        private static IUnmanagedHeap InitSharedHeapInternal()
         {
             //Get env for heap diag
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
@@ -128,7 +128,7 @@ namespace VNLib.Utils.Memory
             Trace.WriteLineIf(globalZero, "Shared heap global zero enabled");
 
             //Init shared heap instance
-            IUnmangedHeap heap = InitHeapInternal(
+            IUnmanagedHeap heap = InitHeapInternal(
                 //Supply suggested arguments to the heap library, it can clear or set them as needed
                 HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc | HeapCreation.Shared,
                 globalZero
@@ -160,21 +160,21 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Initializes a new <see cref="IUnmangedHeap"/> determined by compilation/runtime flags
+        /// Initializes a new <see cref="IUnmanagedHeap"/> determined by compilation/runtime flags
         /// and operating system type for the current proccess.
         /// </summary>
         /// <param name="globalZero">If true, sets the <see cref="HeapCreation.GlobalZero"/> flag</param>
-        /// <returns>An <see cref="IUnmangedHeap"/> for the current process</returns>
+        /// <returns>An <see cref="IUnmanagedHeap"/> for the current process</returns>
         /// <exception cref="SystemException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
-        public static IUnmangedHeap InitializeNewHeapForProcess(bool globalZero = false) 
+        public static IUnmanagedHeap InitializeNewHeapForProcess(bool globalZero = false) 
             => InitHeapInternal(
                 // Set default flags, the heap lib can clear or set them as needed. Default is a private heap.
                 HeapCreation.UseSynchronization | HeapCreation.SupportsRealloc,
                 globalZero
             );
 
-        private static IUnmangedHeap InitHeapInternal(HeapCreation defaultFlags, bool globalZero)
+        private static IUnmanagedHeap InitHeapInternal(HeapCreation defaultFlags, bool globalZero)
         {
             //Get environment varable
             string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
@@ -245,7 +245,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
-        /// <typeparam name="T">Unmanged datatype</typeparam>
+        /// <typeparam name="T">Unmanaged datatype</typeparam>
         /// <param name="block">Block of memory to be cleared</param>
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void UnsafeZeroMemory<T>(ReadOnlySpan<T> block) where T : struct
@@ -264,7 +264,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
-        /// <typeparam name="T">Unmanged datatype</typeparam>
+        /// <typeparam name="T">Unmanaged datatype</typeparam>
         /// <param name="block">Block of memory to be cleared</param>
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void UnsafeZeroMemory<T>(ReadOnlyMemory<T> block) where T : struct
@@ -735,7 +735,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
-        /// <typeparam name="T">Unmanged type</typeparam>
+        /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="ReadOnlySpan{T}"/></param>
         /// <param name="dest">Destination <see cref="MemoryHandle{T}"/></param>
         /// <param name="count">Number of elements to copy</param>
@@ -768,7 +768,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
-        /// <typeparam name="T">Unmanged type</typeparam>
+        /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="ReadOnlyMemory{T}"/></param>
         /// <param name="sourceOffset">The element offset in the source memory</param>
         /// <param name="dest">Destination <see cref="IMemoryHandle{T}"/></param>
@@ -798,7 +798,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
-        /// <typeparam name="T">Unmanged type</typeparam>
+        /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="MemoryHandle{T}"/></param>
         /// <param name="sourceOffset">Number of elements to offset source data</param>
         /// <param name="dest">Destination <see cref="Span{T}"/></param>
@@ -834,7 +834,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Copies data from source memory to destination memory of an umanged data type
         /// </summary>
-        /// <typeparam name="T">Unmanged type</typeparam>
+        /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="MemoryHandle{T}"/></param>
         /// <param name="sourceOffset">Number of elements to offset source data</param>
         /// <param name="dest">Destination <see cref="Memory{T}"/></param>
@@ -868,7 +868,7 @@ namespace VNLib.Utils.Memory
         /// using references for blocks smaller than <see cref="UInt32.MaxValue"/> and 
         /// pinning for larger blocks
         /// </summary>
-        /// <typeparam name="T">Unmanged type</typeparam>
+        /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="MemoryHandle{T}"/></param>
         /// <param name="sourceOffset">Number of elements to offset source data</param>
         /// <param name="dest">Destination <see cref="Memory{T}"/></param>

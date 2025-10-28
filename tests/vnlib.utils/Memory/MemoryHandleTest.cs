@@ -199,29 +199,75 @@ namespace VNLib.Utils.Memory.Tests
                 //Pin should throw
                 Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = thandle.Pin(0));
 
-                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = thandle.GetReference());
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = thandle.GetReference());
             }
 
             //Full ref to mhandle check status
-            using (MemoryHandle<byte> mHandle = new())
+            using (MemoryHandle<byte> hut = new())
             {
 
                 //Some members should not throw
-                _ = mHandle.ByteLength;
+                _ = hut.ByteLength;
 
                 //Handle should be invalid
-                Assert.IsTrue(mHandle.IsInvalid);
+                Assert.IsTrue(hut.IsInvalid);
 
-                Assert.IsFalse(mHandle.IsClosed);
+                Assert.IsFalse(hut.IsClosed);
 
                 //Confirm empty handle protected values throw
-                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = mHandle.GetOffset(0));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.GetOffset(0));
 
-                Assert.ThrowsExactly<ObjectDisposedException>(() => mHandle.Resize(10));
+                Assert.ThrowsExactly<ObjectDisposedException>(() => hut.Resize(10));
 
-                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = mHandle.BasePtr);
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.BasePtr);
 
-                Assert.ThrowsExactly<ObjectDisposedException>(() => _ = mHandle.GetReference());
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.GetReference());
+            }
+        }
+
+        [TestMethod]
+        public unsafe void EmptyResizableHandleTest()
+        {
+            if (!Shared.CreationFlags.HasFlag(HeapCreation.SupportsRealloc))
+            {
+                Assert.Inconclusive("Heap does not support realloc");
+            }
+
+            using (MemoryHandle<byte> hut = SafeAlloc<byte>(Shared, 0, false))
+            {
+                /*
+                 * Basically all the handle should be valid, but inaccessable
+                 * because its zero length. Pointers are inaccessable because 
+                 * technically they will point to invalid memory.
+                 */
+
+                Assert.IsFalse(hut.IsInvalid);
+                Assert.IsFalse(hut.IsClosed);
+
+                //Should throw on normal empty accesses                
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.Base);
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.BasePtr);
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.GetOffset(0));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.GetReference());
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.GetOffsetRef(0));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = hut.Pin(0));
+
+                _ = hut.Length;
+                _ = hut.ByteLength;
+                _ = hut.Equals(null);  // Just checking that no errors occur when checking equality
+                _ = hut.GetHashCode();
+                _ = hut.Span; //Should be empty but not throw
+               
+                Assert.IsTrue(hut.Span.IsEmpty);
+                Assert.IsTrue(hut.AsSpan(0).IsEmpty);
+                Assert.IsTrue(hut.AsSpan(0, 0).IsEmpty);             
+
+                //Resize to non-zero
+                hut.Resize(1024);
+                Assert.IsFalse(hut.IsInvalid);
+                Assert.IsFalse(hut.IsClosed);
+                Assert.AreEqual(1024u, hut.Length);
+                
             }
         }
     }
