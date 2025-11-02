@@ -1498,8 +1498,8 @@ heap_page_free_decommit(heap_t* heap, uint32_t page_type, uint32_t page_retain_c
 	}
 }
 
-static inline void
-heap_make_free_page_available(heap_t* heap, uint32_t size_class, page_t* page) {
+static inline int heap_make_free_page_available(heap_t* heap, uint32_t size_class, page_t* page)
+{
 	page->size_class = size_class;
 	page->block_size = global_size_class[size_class].block_size;
 	page->block_count = global_size_class[size_class].block_count;
