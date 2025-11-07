@@ -98,11 +98,10 @@ jobs:
       commands: |
         cd @project_name@
 
-        bash ci/scripts/linux-setup-amd64.sh install
-
         export DOTNET_ROOT=$(pwd)/.dotnet
         export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
         export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+        bash ci/scripts/linux-setup-amd64.sh install
 
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test
@@ -139,11 +138,10 @@ jobs:
       commands: |
         cd @project_name@
 
-        bash ci/scripts/linux-setup-amd64.sh install
-
         export DOTNET_ROOT=$(pwd)/.dotnet
         export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
         export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+        bash ci/scripts/linux-setup-amd64.sh install
 
         task -t Module.Taskfile.yaml dev-init
         task -t Module.Taskfile.yaml test

@@ -33,10 +33,6 @@ DOTNET_CHECKSUM="0fc0499a857f161f7c35775bb3f50ac6f0333f02f5df21d21147d538eb26a9a
 # GitVersion tool
 GITVERSION_VERSION="6.3.0"
 
-# Base dependencies for each package manager
-APT_DEPS=("build-essential" "curl" "ca-certificates")
-DNF_DEPS=("gcc" "make" "curl" "ca-certificates")
-
 log_info() {
     echo "[INFO] $*"
 }
@@ -192,39 +188,41 @@ install_cmake() {
         return 0
     fi
 
-    install_tarball "${CMAKE_URL}" "${CMAKE_CHECKSUM}" "/usr/local/lib/cmake"
-   
+    local cmake_install_dir="/usr/local/lib/cmake"
+
+    install_tarball "${CMAKE_URL}" "${CMAKE_CHECKSUM}" "${cmake_install_dir}"
+
     # find the cmake binary location
-    local cmake_bin_dir=$(find /usr/local/lib/cmake -type d -name "bin" | head -n 1)
+    local cmake_bin_dir=$(find "${cmake_install_dir}" -type d -name "bin" | head -n 1)
     if [ -z "${cmake_bin_dir}" ]; then
         log_error "Failed to find cmake bin directory after installation"
         exit 1
     fi
 
     # link all cmake binaries to /usr/local/bin
-    ln -s "${cmake_bin_dir}/*" /usr/local/bin
+    ln -s "${cmake_bin_dir}"/* /usr/local/bin
 }
 
 # Main installation entry point
 install_deps() {
     local os_type=$(detect_os)
-    
+
     log_info "Detected OS: ${os_type}"
-    
+
     case "${os_type}" in
         debian)
             log_info "Setting up Debian/Ubuntu environment..."
             
             # Install additional dependencies passed as arguments
             apt-get update -qq
-            apt-get install -y "${APT_DEPS[@]}" "$@"
+            apt-get install -y "$@" build-essential curl ca-certificates
             ;;
         redhat)
             log_info "Setting up RedHat/Fedora/Alma environment..."
     
             # Collect additional dependencies passed as arguments
-            dnf install -y "${DNF_DEPS[@]}" "$@"
-
+            dnf group install -y c-development
+            dnf install -y "$@" curl ca-certificates
             ;;
         *)
             log_error "Unsupported OS type: ${os_type}"
