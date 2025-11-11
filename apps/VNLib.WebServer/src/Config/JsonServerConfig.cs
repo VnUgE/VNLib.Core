@@ -120,7 +120,7 @@ namespace VNLib.WebServer.Config
         /// A helper function that will attempt to parse a json or yaml file stream
         /// into a <see cref="JsonDocument"/>.
         /// </summary>
-        /// <param name="stream">The open file to read syncronously</param>
+        /// <param name="stream">The open file to read synchronously</param>
         /// <returns>The parsed document if read successfully</returns>
         /// <exception cref="ArgumentNullException"></exception>
         public static JsonDocument? ReadConfigFileToJson(FileStream stream)
@@ -131,13 +131,13 @@ namespace VNLib.WebServer.Config
             ConfigFileType type = GetConfigFileType(stream.Name);
 
             return ReadConfigToJson(stream, type);
-        }       
+        }
 
         /// <summary>
         /// A helper function that will attempt to parse a json or yaml data stream
         /// into a <see cref="JsonDocument"/>.
         /// </summary>
-        /// <param name="stream">The open file to read syncronously</param>
+        /// <param name="stream">The open file to read synchronously</param>
         /// <returns>The parsed document if read successfully</returns>
         /// <exception cref="ArgumentNullException"></exception>
         public static JsonDocument? ReadConfigToJson(Stream stream, ConfigFileType configType)

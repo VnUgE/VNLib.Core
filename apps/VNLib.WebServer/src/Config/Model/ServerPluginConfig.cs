@@ -29,7 +29,7 @@ namespace VNLib.WebServer.Config.Model
     internal class ServerPluginConfig : IJsonOnDeserialized
     {
         [JsonPropertyName("enabled")]
-        public bool Enabled { get; init; } = true; //default to true if config is defined, then it can be assumed we want to load plugins unless explicitly disabled      
+        public bool Enabled { get; init; } = true; //default to true if config is defined, then it can be assumed we want to load plugins unless explicitly disabled
 
         [JsonPropertyName("path")]
         public string Path { get; set; } = null!;

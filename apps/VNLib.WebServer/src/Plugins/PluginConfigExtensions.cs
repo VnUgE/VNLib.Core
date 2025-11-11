@@ -57,7 +57,11 @@ namespace VNLib.WebServer.Plugins
         /// <param name="builder"></param>
         /// <param name="hostConfig">A nullable host element to pass to the configuration loader</param>
         /// <param name="configDir">The directory to search for configuration files</param>
-        public static PluginStackBuilder WithPluginConfig(this PluginStackBuilder builder, JsonElement hostConfig, string? configDir) 
+        public static PluginStackBuilder WithPluginConfig(
+            this PluginStackBuilder builder,
+            JsonElement hostConfig,
+            string? configDir
+        )
             => builder.WithConfigurationReader(new JsonConfigReader(hostConfig, Path.GetDirectoryName(configDir)));
 
         /*
@@ -76,7 +80,7 @@ namespace VNLib.WebServer.Plugins
             public void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream outputStream)
             {
                 // Use assembly directory if no config directory specified
-                string configSearchDir = _configDir ?? Path.GetDirectoryName(asmConfig.AssemblyFile)!;              
+                string configSearchDir = _configDir ?? Path.GetDirectoryName(asmConfig.AssemblyFile)!;
 
                 // Probe the config directory for configuration files
                 foreach (string ext in JsonServerConfig.SupportedFileExtensions)
