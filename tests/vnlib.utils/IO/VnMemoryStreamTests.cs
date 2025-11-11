@@ -164,5 +164,22 @@ namespace VNLib.Utils.IO.Tests
             // Check invalid arguments
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => vms.SetLength(-1), "Setting length to a negative value should throw ArgumentOutOfRangeException.");
         }
+
+        [TestMethod()]
+        public void EmptyStreamTest()
+        {
+            using VnMemoryStream vms = new(0, false);
+            
+            Assert.AreEqual(0, vms.Length);          
+            Assert.AreEqual(0, vms.Position);
+            Assert.IsTrue(vms.CanSeek);            
+            Assert.IsTrue(vms.CanRead);            
+            Assert.IsTrue(vms.CanWrite);
+
+            // Resize should be allowed
+            vms.SetLength(128);
+            Assert.AreEqual(128, vms.Length);
+            Assert.AreEqual(0, vms.Position);
+        }
     }
 }

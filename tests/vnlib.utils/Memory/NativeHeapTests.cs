@@ -83,11 +83,6 @@ namespace VNLib.Utils.Memory.Tests
 
         private static void TestAllocAndFreeWithSizes(IUnmanagedHeap heap, nuint elements)
         {
-            if ((heap.CreationFlags & HeapCreation.SupportsRealloc) == 0)
-            {
-                Assert.Inconclusive($"Heap {heap.GetType()} does not support realloc, skipping realloc tests.");
-            }
-
             //Test reallocations
             DoAllocAndResize(heap, elements, sizeof(byte), false);
             DoAllocAndResize(heap, elements, sizeof(sbyte), false);
@@ -123,10 +118,17 @@ namespace VNLib.Utils.Memory.Tests
 
             Assert.AreNotEqual(IntPtr.Zero, ptr, "Failed to allocate memory from the native heap");
 
-            //Resize the memory (always double the size even for zero initial elements
-            heap.Resize(ref ptr, Math.Max(elements, 1) * 2, size, zero);
+            if ((heap.CreationFlags & HeapCreation.SupportsRealloc) > 0)
+            {  
+                //Resize the memory (always double the size even for zero initial elements
+                heap.Resize(ref ptr, Math.Max(elements, 1) * 2, size, zero);
 
-            Assert.AreNotEqual(IntPtr.Zero, ptr, "Failed to resize memory from the native heap");
+                Assert.AreNotEqual(IntPtr.Zero, ptr, "Failed to resize memory from the native heap");
+            }
+            else
+            {
+                Console.WriteLine("Heap does not support reallocations, skipping resize test.");
+            }
 
             //Free the memory
             Assert.IsTrue(heap.Free(ref ptr));
