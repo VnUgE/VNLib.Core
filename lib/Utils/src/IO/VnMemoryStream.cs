@@ -174,7 +174,7 @@ namespace VNLib.Utils.IO
             //Set length
             _length = data.Length;
             _position = 0;
-        }      
+        }
 
         /// <summary>
         /// WARNING: Dangerous constructor, make sure read-only and buffer ownership are set accordingly
@@ -187,7 +187,7 @@ namespace VNLib.Utils.IO
             Owned<IResizeableMemoryHandle<byte>> buffer,
             MemoryManager<byte>? existingManager,
             nint length,
-            bool readOnly           
+            bool readOnly
         )
         {
             Debug.Assert(length >= 0, "Length must be positive");
@@ -214,7 +214,7 @@ namespace VNLib.Utils.IO
             //Create a new readonly copy (stream does not own the handle)
             return !_isReadonly
                 ? throw new NotSupportedException("This stream is not readonly. Cannot create shallow copy on a mutable stream")
-                : new VnMemoryStream(_buffer, _memoryWrapper, _length, readOnly: true);
+                : new VnMemoryStream(_buffer.WithOwnership(false), _memoryWrapper, _length, readOnly: true);
         }
 
         /// <summary>
