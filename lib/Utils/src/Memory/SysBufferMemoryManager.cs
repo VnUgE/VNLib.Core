@@ -25,6 +25,8 @@
 using System;
 using System.Buffers;
 
+using VNLib.Utils.Resources;
+
 namespace VNLib.Utils.Memory
 {
     /// <summary>
@@ -34,34 +36,40 @@ namespace VNLib.Utils.Memory
     /// <typeparam name="T">Unmanaged memory type</typeparam>
     public sealed class SysBufferMemoryManager<T> : MemoryManager<T>
     {
-        private readonly IMemoryHandle<T> BackingMemory;
-        private readonly bool _ownsHandle;
+        private readonly Owned<IMemoryHandle<T>> BackingMemory;
 
         /// <summary>
-        /// Consumes an exisitng <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
+        /// Consumes an existing <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
         /// The handle should no longer be referrenced directly
         /// </summary>
         /// <param name="existingHandle">The existing handle to consume</param>
         /// <param name="ownsHandle">A value that indicates if the memory manager owns the handle reference</param>
         /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="OverflowException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public SysBufferMemoryManager(IMemoryHandle<T> existingHandle, bool ownsHandle)
+            : this(new(existingHandle, ownsHandle))
+        { }
+
+        /// <summary>
+        /// Consumes an existing <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
+        /// The handle should no longer be referrenced directly
+        /// </summary>
+        /// <param name="existingHandle">The existing handle to consume</param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public SysBufferMemoryManager(Owned<IMemoryHandle<T>> existingHandle)
         {
-            BackingMemory = existingHandle ?? throw new ArgumentNullException(nameof(existingHandle));
+            BackingMemory = existingHandle;
 
             //check for overflow
-            if (existingHandle.Length > Int32.MaxValue)
-            {
-                throw new OverflowException("This memory manager does not accept handles larger than Int32.MaxValue");
-            }
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(existingHandle.Value.Length, (nuint)Int32.MaxValue, nameof(existingHandle));
 
-            _ownsHandle = ownsHandle;
         }
 
         ///<inheritdoc/>
         ///<exception cref="OverflowException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
-        public override Span<T> GetSpan() => BackingMemory.Span;
+        public override Span<T> GetSpan() => BackingMemory.Value.Span;
 
         /// <summary>
         /// <inheritdoc/>
@@ -69,18 +77,12 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public unsafe override MemoryHandle Pin(int elementIndex = 0)
-            => BackingMemory.Pin(elementIndex);
+            => BackingMemory.Value.Pin(elementIndex);
 
         ///<inheritdoc/>
         public override void Unpin() { }
 
         ///<inheritdoc/>
-        protected override void Dispose(bool disposing)
-        {
-            if (_ownsHandle)
-            {
-                BackingMemory.Dispose();
-            }
-        }
+        protected override void Dispose(bool disposing) => BackingMemory.Dispose();
     }
 }
