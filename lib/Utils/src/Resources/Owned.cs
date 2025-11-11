@@ -36,13 +36,14 @@ namespace VNLib.Utils.Resources
     /// The value that indicates if ownership should be passed on to this wrapper. If true, the value will be disposed 
     /// when this instance is disposed. False indicates the instance is not responsible for disposing the value.
     /// </param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>"
     public readonly struct Owned<T>(T value, bool ownsValue) : IDisposable where T : IDisposable
     {
 
         /// <summary>
         /// The owned value.
         /// </summary>
-        public T Value { get; } = value;
+        public T Value { get; } = value ?? throw new ArgumentNullException(nameof(value));
 
         /// <summary>
         /// Indicates whether the <see cref="Value"/> should be disposed when this instance is disposed.

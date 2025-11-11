@@ -59,8 +59,6 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public SysBufferMemoryManager(Owned<IMemoryHandle<T>> existingHandle)
         {
-            ArgumentNullException.ThrowIfNull(existingHandle.Value, nameof(existingHandle));
-
             BackingMemory = existingHandle;
 
             //check for overflow

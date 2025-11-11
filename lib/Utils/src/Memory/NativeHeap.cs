@@ -124,8 +124,6 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentNullException"></exception>
         public unsafe static NativeHeap CreateHeap(Owned<SafeLibraryHandle> libHandle, HeapCreation creationFlags, ERRNO flags)
         {
-            ArgumentNullException.ThrowIfNull(libHandle.Value, nameof(libHandle));
-
             //Create a flags structure with defaults
             UnmanagedHeapDescriptor hFlags = new()
             {
