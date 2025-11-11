@@ -115,8 +115,10 @@ namespace VNLib.Utils.Memory
         /// Creates a new heap from a <see cref="SafeLibraryHandle"/> that is known to be a <see cref="NativeHeap"/>
         /// ELF library and safe to load named symbols from
         /// </summary>
-        /// <param name="libHandle">The existing <see cref="SafeLibraryHandle"/> wrapped in an <see cref="Owned{T}"/> structure</param>
-        /// <param name="creationFlags">Specifes the <see cref="HeapCreation"/> flags to pass to the heapCreate function</param>
+        /// <param name="libHandle">
+        /// The existing <see cref="SafeLibraryHandle"/> wrapped in an <see cref="Owned{T}"/> structure
+        /// </param>
+        /// <param name="creationFlags">Specifies the <see cref="HeapCreation"/> flags to pass to the heapCreate function</param>
         /// <param name="flags">Generic flags passed directly to the heapCreate function</param>
         /// <returns>The newly initialized <see cref="NativeHeap"/></returns>
         /// <exception cref="ArgumentNullException"></exception>

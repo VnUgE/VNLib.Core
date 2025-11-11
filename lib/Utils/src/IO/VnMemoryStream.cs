@@ -177,9 +177,9 @@ namespace VNLib.Utils.IO
         }      
 
         /// <summary>
-        /// WARNING: Dangerous constructor, make sure read-only and owns hanlde are set accordingly
+        /// WARNING: Dangerous constructor, make sure read-only and buffer ownership are set accordingly
         /// </summary>
-        /// <param name="buffer">The buffer to referrence directly</param>
+        /// <param name="buffer">The buffer to reference directly</param>
         /// <param name="length">The length property of the stream</param>
         /// <param name="readOnly">Is the stream readonly (should mostly be true!)</param>
         /// <param name="existingManager">A reference to an existing memory manager class</param>

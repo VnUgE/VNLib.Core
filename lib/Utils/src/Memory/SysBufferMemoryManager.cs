@@ -39,7 +39,7 @@ namespace VNLib.Utils.Memory
         private readonly Owned<IMemoryHandle<T>> BackingMemory;
 
         /// <summary>
-        /// Consumes an exisitng <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
+        /// Consumes an existing <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
         /// The handle should no longer be referrenced directly
         /// </summary>
         /// <param name="existingHandle">The existing handle to consume</param>
@@ -51,7 +51,7 @@ namespace VNLib.Utils.Memory
         { }
 
         /// <summary>
-        /// Consumes an exisitng <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
+        /// Consumes an existing <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
         /// The handle should no longer be referrenced directly
         /// </summary>
         /// <param name="existingHandle">The existing handle to consume</param>

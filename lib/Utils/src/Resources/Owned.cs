@@ -50,7 +50,7 @@ namespace VNLib.Utils.Resources
         public bool OwnsValue { get; } = ownsValue;
 
         /// <summary>
-        /// If the value of 
+        /// Disposes the <see cref="Value"/> if this instance owns it (when <see cref="OwnsValue"/> is true).
         /// </summary>
         public void Dispose()
         {
@@ -65,7 +65,7 @@ namespace VNLib.Utils.Resources
         /// but allows for changing the ownership flag.
         /// </summary>
         /// <param name="ownsValue">The new ownership value</param>
-        /// <returns>The new <see cref="Owned{T}"/> wrapper with newn ownerhsip</returns>
+        /// <returns>The new <see cref="Owned{T}"/> wrapper with new ownership</returns>
         public Owned<T> WithOwnership(bool ownsValue) => new(Value, ownsValue);
 
         /// <summary>
@@ -86,6 +86,7 @@ namespace VNLib.Utils.Resources
         /// Implicit conversion to the owned value.
         /// </summary>
         /// <param name="owned">The owned wrapper</param>
+        /// <returns>The underlying <see cref="Value"/> from the wrapper</returns>
         public static implicit operator T(in Owned<T> owned) => owned.Value;
     }
 }
