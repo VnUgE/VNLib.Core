@@ -81,4 +81,9 @@
     </None>
   </ItemGroup>
 
+  <!-- Allow access to unit test executables -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="VNLib.WebServerTests" />
+  </ItemGroup>
+
 </Project>
