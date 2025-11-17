@@ -37,7 +37,7 @@ namespace VNLib.Utils.IO
 {
 
     /// <summary>
-    /// Provides an unmanaged memory stream. Desigend to help reduce garbage collector load for 
+    /// Provides an unmanaged memory stream. Designed to help reduce garbage collector load for 
     /// high frequency memory operations. Similar to <see cref="UnmanagedMemoryStream"/>
     /// </summary>
     public sealed class VnMemoryStream : Stream, ICloneable
@@ -59,7 +59,7 @@ namespace VNLib.Utils.IO
         private MemoryManager<byte>? _memoryWrapper;
 
         /// <summary>
-        /// Creates a new <see cref="VnMemoryStream"/> pointing to the begining of memory, and consumes the handle.
+        /// Creates a new <see cref="VnMemoryStream"/> pointing to the beginning of memory, and consumes the handle.
         /// </summary>
         /// <param name="handle"><see cref="IResizeableMemoryHandle{T}"/> to consume</param>
         /// <param name="length">Length of the stream</param>
@@ -94,7 +94,7 @@ namespace VNLib.Utils.IO
         /// Converts a writable <see cref="VnMemoryStream"/> to readonly to allow shallow copies
         /// </summary>
         /// <remarks>
-        /// This funciton will convert the stream passed into it to a readonly stream. 
+        /// This function will convert the stream passed into it to a readonly stream. 
         /// The function passes through the input stream as the return value
         /// </remarks>
         /// <param name="stream">The stream to make readonly</param>

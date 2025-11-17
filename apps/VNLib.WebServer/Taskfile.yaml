@@ -23,6 +23,23 @@ tasks:
      - task: default
        vars: { CONFIGURATION: 'debug' }
 
+  unit-test:
+    desc: 'Runs unit tests for VNLib.WebServer'
+    dir: '{{ .USER_WORKING_DIR }}/unit-tests'
+    cmds:
+     - cmd: dotnet build 
+        --nologo
+        --configuration debug
+        --verbosity normal
+
+     - cmd: dotnet test
+        --no-build
+        --nologo
+        --logger "console;verbosity=detailed"
+        --configuration debug
+        --framework {{ .TARGET_FRAMEWORK | default "net8.0" }}
+        {{ .CLI_ARGS }}
+
   test:
     desc: 'Runs tests for the VNLib.WebServer project'
     dir: '{{ .USER_WORKING_DIR }}/src'
@@ -33,6 +50,9 @@ tasks:
         silent: true
 
       - task: build-debug
+
+      #run unit tests
+      - task: unit-test
 
       #test help command exits successfully
       - cmd: cd 'bin/debug/net8.0' && dotnet VNLib.WebServer.dll --help

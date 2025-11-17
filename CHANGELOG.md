@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2025-11-17
+
+### Added
+
+- Add new `Owned<T>` structure type to help manage disposable types - (utils) [096904a](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=096904a6d24edeb9c17b6193f8940ba65db19fbd)
+
+### Changed
+
+- Fix many code documentation typos - [c0a4887](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=c0a48874c798fa0327b69a6729b79546be640758)
+- Update Serilog.Sinks.Console to version 6.1.1 - (deps) [9ce9dbe](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=9ce9dbe8ff23e56b793efd453c4bd6d9d4a57154)
+- Update System.IO.Pipelines to version 9.0.11 - (deps) [55a93fc](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=55a93fcd5ed00e3f741bbdf0d9b23a095b9cd52f)
+
+### Fixed
+
+- Remove `vntable` oom test as it's out of scope and non-determinisitc - (utils) [6109a9c](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=6109a9cd580e88d4bbdef01b5e45d7429226055b)
+- Added basic unit testing for some internal webserver components - (webserver) [a86d7d0](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=a86d7d07b431d96ca77a4a650c423046a93a2e8c)
+- Implement server plugin config deserialzing tests. - (webserver) [5211d09](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=5211d098867e8d2853b8bd3f428467e422d797df)
+- Fixed a typo `ReleaseMutext()` -> `ReleaseMutex()` in structure `MutextReleaser` which obsoletes typo. - (utils) [323b1e6](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=323b1e616033876c6afd03d75f43c4e15dd7436c)
+
 ## [0.1.3] - 2025-10-01
 
 ### Changed
@@ -15,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Changed the exception type raised when `SysBufferMemoryManager` checks if an integer overflow would occur to an `ArgumentOutOfRangeException` - (utils) [cd80575](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=cd80575d012941daa00936909361fa4f5fa6136f)
+- Catch zstd stream reuse after finish and return error - (compression) [4814175](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=481417512d7466b9d3882decefd3c519f9d69922)
 - Fixed a bug that causes inconsistent errors when allocating 0 length blocks. closes #42 - (utils) [598a854](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=598a8544306ef8abcdd6df19df699adeab85c631)
 
 ## [0.1.2] - 2025-09-20
@@ -25,10 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct various spelling and grammar mistakes across public and internal code documentation. - [65abcc0](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=65abcc05c3eae24ab30a0a0ab3d3dded76cc28cf)
 
 ### Fixed
-
-- **Breaking Change:** Correct IUnmanagedHeap from IUnmangedHeap typo - [95c28b2](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=95c28b2d68fdb2249dcfcf4c0e6c175ecdc83cb3)
-
-### Refactor
 
 - **Breaking Change:** Correct the spelling of IUnmanagedHeap public interface - [7662571](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=7662571c4c584ac5b95097954e27b11f111fb663)
 
@@ -45,7 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Catch zstd stream reuse after finish and return error - (compression) [4814175](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=481417512d7466b9d3882decefd3c519f9d69922)
 - Fix custom response headers not getting sent by the server - (webserver) [1fcf6ed](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=1fcf6ed12098de524d7e17b782252cd5dd634170)
 
 ## [0.1.2-rc.9] - 2025-08-26
@@ -242,6 +258,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove argon2 docs & optional tcp resuse - [f836e09](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=f836e09981866f5c9f2ae46990d11b186a7d12bb)
 
+[0.1.4]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.4&id2=v0.1.3
 [0.1.3]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.3&id2=v0.1.2
 [0.1.2]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2&id2=v0.1.2-rc.10
 [0.1.2-rc.10]: https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/diff?id=v0.1.2-rc.10&id2=v0.1.2-rc.9

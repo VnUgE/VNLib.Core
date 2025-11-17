@@ -40,7 +40,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Consumes an existing <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
-        /// The handle should no longer be referrenced directly
+        /// The handle should no longer be referenced directly
         /// </summary>
         /// <param name="existingHandle">The existing handle to consume</param>
         /// <param name="ownsHandle">A value that indicates if the memory manager owns the handle reference</param>
@@ -52,7 +52,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Consumes an existing <see cref="MemoryHandle{T}"/> to provide <see cref="MemoryUtil"/> wrappers.
-        /// The handle should no longer be referrenced directly
+        /// The handle should no longer be referenced directly
         /// </summary>
         /// <param name="existingHandle">The existing handle to consume</param>
         /// <exception cref="ArgumentNullException"></exception>

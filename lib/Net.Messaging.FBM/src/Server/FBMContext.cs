@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -66,7 +66,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// <summary>
         /// Initializes the context with the buffered request data
         /// </summary>
-        /// <param name="requestData">The request data buffer positioned at the begining of the request data</param>
+        /// <param name="requestData">The request data buffer positioned at the beginning of the request data</param>
         /// <param name="connectionId">The unique id of the connection</param>
         internal void Prepare(VnMemoryStream requestData, string connectionId)
         {

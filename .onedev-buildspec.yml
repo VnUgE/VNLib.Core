@@ -186,7 +186,7 @@ jobs:
     runInContainer: false
     interpreter:
       type: DefaultInterpreter
-      commands: "vnbuild build --no-delay \n"
+      commands: "vnbuild build --no-delay"
     useTTY: true
     condition: SUCCESSFUL
     optional: false

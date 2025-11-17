@@ -88,7 +88,7 @@ namespace VNLib.Utils.Extensions
 
         /// <summary>
         /// Wraps the <see cref="IMemoryHandle{T}"/> instance in System.Buffers.MemoryManager 
-        /// wrapper to provide <see cref="Memory{T}"/> buffers from umanaged handles.
+        /// wrapper to provide <see cref="Memory{T}"/> buffers from unmanaged handles.
         /// </summary>
         /// <typeparam name="T">The unmanaged data type</typeparam>
         /// <param name="handle"></param>
@@ -110,7 +110,7 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T">The unmanaged data type</typeparam>
         /// <param name="heap"></param>
         /// <param name="size">The number of elements to allocate on the heap</param>
-        /// <param name="zero">Optionally zeros conents of the block when allocated</param>
+        /// <param name="zero">Optionally zeros contents of the block when allocated</param>
         /// <returns>The <see cref="MemoryManager{T}"/> wrapper around the block of memory</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
@@ -192,7 +192,7 @@ namespace VNLib.Utils.Extensions
         /// Resizes the current handle on the heap
         /// </summary>
         /// <param name="memory"></param>
-        /// <param name="elements">Positive number of elemnts the current handle should referrence</param>
+        /// <param name="elements">Positive number of elements the current handle should reference</param>
         /// <exception cref="OverflowException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
@@ -305,7 +305,7 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="block"></param>
-        /// <param name="offset">The offset (in elements) from the begining of the block</param>
+        /// <param name="offset">The offset (in elements) from the beginning of the block</param>
         /// <param name="size">The size of the block (in elements)</param>
         /// <returns>The offset span</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
@@ -333,7 +333,7 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="block"></param>
-        /// <param name="offset">The offset (in elements) from the begining of the block</param>
+        /// <param name="offset">The offset (in elements) from the beginning of the block</param>
         /// <param name="size">The size of the block (in elements)</param>
         /// <returns>The offset span</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>

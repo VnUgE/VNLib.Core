@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -38,7 +38,7 @@ namespace VNLib.Utils.Extensions
     public static class ThreadingExtensions
     {
         /// <summary>
-        /// Waits for exlcusive access to the resource identified by the given moniker
+        /// Waits for exclusive access to the resource identified by the given moniker
         /// and returns a handle that will release the lock when disposed.
         /// </summary>
         /// <typeparam name="TMoniker"></typeparam>

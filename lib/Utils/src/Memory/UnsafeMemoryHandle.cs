@@ -34,7 +34,7 @@ namespace VNLib.Utils.Memory
 
     /// <summary>
     /// Represents an unsafe handle to managed/unmanaged memory that should be used cautiously.
-    /// A referrence counter is not maintained.
+    /// A reference counter is not maintained.
     /// </summary>
     /// <typeparam name="T">Unmanaged memory type</typeparam>
     [StructLayout(LayoutKind.Sequential)]
