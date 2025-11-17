@@ -649,8 +649,8 @@ namespace VNLib.Utils
         /// encoded binary value
         /// </summary>
         /// <param name="utf8Encoded">The buffer containg characters to be decoded</param>
-        /// <param name="utf8Output">The buffer to write deocded values to</param>
-        /// <returns>The nuber of bytes written to the output buffer</returns>
+        /// <param name="utf8Output">The buffer to write decoded values to</param>
+        /// <returns>The number of bytes written to the output buffer</returns>
         /// <exception cref="FormatException"></exception>
         public static ERRNO PercentDecode(ReadOnlySpan<byte> utf8Encoded, Span<byte> utf8Output)
         {
@@ -661,7 +661,7 @@ namespace VNLib.Utils
             {
                 byte value = utf8Encoded[i];
 
-                //Begining of percent encoding character
+                //Beginning of percent encoding character
                 if (value == 0x25)
                 {
                     //Calculate the base16 multiplier from the upper half of the 

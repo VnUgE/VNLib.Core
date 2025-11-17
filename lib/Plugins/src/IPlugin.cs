@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -30,7 +30,7 @@ namespace VNLib.Plugins
     public interface IPlugin
     {
         /// <summary>
-        /// The name of the plugin to referrence (may be used by the host to interact)
+        /// The name of the plugin to reference (may be used by the host to interact)
         /// </summary>
         string PluginName { get; }
 

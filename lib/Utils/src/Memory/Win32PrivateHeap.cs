@@ -42,7 +42,7 @@ namespace VNLib.Utils.Memory
     ///</summary>
     ///<remarks>
     /// <see cref="Win32PrivateHeap"/> implements <see cref="SafeHandle"/> and tracks allocated blocks by its 
-    /// referrence counter. Allocations increment the count, and free's decrement the count, so the heap may 
+    /// reference counter. Allocations increment the count, and free's decrement the count, so the heap may 
     /// be disposed safely
     /// </remarks>
     [ComVisible(false)]
