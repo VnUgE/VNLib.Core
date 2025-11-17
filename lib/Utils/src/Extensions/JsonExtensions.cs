@@ -97,15 +97,6 @@ namespace VNLib.Utils.Extensions
                 : null;
         }
 
-        /// <summary>
-        /// Shortcut extension to <see cref="JsonElement.GetProperty(string)"/> and returns a string 
-        /// </summary>
-        /// <param name="conf"></param>
-        /// <param name="propertyName">The name of the property to get the string value of</param>
-        /// <returns>If the property exists, returns the string stored at that property</returns>
-        [Obsolete("Use the IReadOnlyDictionary overload instead, this will be removed in a future release.")]
-        public static string? GetPropString(this IDictionary<string, JsonElement> conf, string propertyName) 
-            => GetPropString((IReadOnlyDictionary<string, JsonElement>)conf, propertyName);
 
         /// <summary>
         /// Merges the current <see cref="JsonDocument"/> with another <see cref="JsonDocument"/> to 
