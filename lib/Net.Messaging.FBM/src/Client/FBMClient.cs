@@ -343,7 +343,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
                         if (read == 0)
                         {
-                            //No more data avialable
+                            //No more data available
                             break;
                         }
 

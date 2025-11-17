@@ -83,7 +83,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
         internal void OnPluginUnloaded(IManagedPlugin plugin)
         {
-            //Get the old endpoints from the controller referrence and remove them
+            //Get the old endpoints from the controller reference and remove them
             if (_endpointsForPlugins.TryGetValue(plugin, out IEndpoint[]? oldEps))
             {
                 //Remove the old endpoints

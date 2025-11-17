@@ -33,7 +33,7 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Net.Compression
 {
     /// <summary>
-    /// A referrence native compression library implementation. Allows for creating compressor instances
+    /// A reference native compression library implementation. Allows for creating compressor instances
     /// from a native dll.
     /// </summary>
     public sealed class NativeCompressionLib : VnDisposeable, INativeCompressionLib

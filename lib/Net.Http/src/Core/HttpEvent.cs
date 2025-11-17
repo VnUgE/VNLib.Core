@@ -177,7 +177,7 @@ namespace VNLib.Net.Http
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         internal void Clear()
         {
-            //Clean up referrence types and cleanable objects
+            //Clean up reference types and cleanable objects
             Context = null;
             _ci.Clear();
             _ci = null;

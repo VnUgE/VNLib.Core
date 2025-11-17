@@ -75,8 +75,8 @@ namespace VNLib.Utils.Native
         }
 
         /// <summary>
-        /// Gets an delegate wrapper for the specified native function without tracking its referrence.
-        /// The caller must manage the <see cref="SafeLibraryHandle"/> referrence count in order
+        /// Gets an delegate wrapper for the specified native function without tracking its reference.
+        /// The caller must manage the <see cref="SafeLibraryHandle"/> reference count in order
         /// to not leak resources or cause process corruption
         /// </summary>
         /// <typeparam name="T">The native method delegate type</typeparam>

@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 namespace VNLib.Utils.Async
 {
     /// <summary>
-    /// Provides a base class for resources that must be obtained exclusivly in a multi-threaded environment
+    /// Provides a base class for resources that must be obtained exclusively in a multi-threaded environment
     /// but allow state update operations (and their exceptions) to be deferred to the next accessor.
     /// </summary>
     /// <typeparam name="TState">The state parameter type passed during updates</typeparam>
@@ -46,7 +46,7 @@ namespace VNLib.Utils.Async
         /// <inheritdoc/>
         /// <br></br>
         /// <br></br>
-        /// If the previous call to <see cref="UpdateAndRelease"/> resulted in an asynchronous update, and exceptions occured, an <see cref="AsyncUpdateException"/>
+        /// If the previous call to <see cref="UpdateAndRelease"/> resulted in an asynchronous update, and exceptions occurred, an <see cref="AsyncUpdateException"/>
         /// will be thrown enclosing the exception
         /// </summary>
         /// <param name="millisecondsTimeout">Time in milliseconds to wait for exclusive access to the resource</param>
@@ -109,8 +109,8 @@ namespace VNLib.Utils.Async
         /// Requests a resource update and releases the exclusive lock on this resource. If a deferred update operation has any 
         /// exceptions during its last operation, they will be thrown here.  
         /// </summary>
-        /// <param name="defer">Specifies weather the update should be deferred or awaited on the current call</param>
-        /// <param name="state">A state parameter to be pased to the update function</param>
+        /// <param name="defer">Specifies whether the update should be deferred or awaited on the current call</param>
+        /// <param name="state">A state parameter to be passed to the update function</param>
         /// <exception cref="ObjectDisposedException"></exception>
         public async ValueTask UpdateAndRelease(bool defer, TState state)
         {
@@ -119,7 +119,7 @@ namespace VNLib.Utils.Async
             {
                 //Dispose the update task
                 LastUpdate?.Dispose();
-                //Remove the referrence
+                //Remove the reference
                 LastUpdate = null;
                 //Run update on the current thread
                 LastUpdate = await UpdateResource(defer, state).ConfigureAwait(true);
@@ -138,16 +138,16 @@ namespace VNLib.Utils.Async
 
         /// <summary>
         /// <para>
-        /// When overrriden in a derived class, is responsible for updating the state of the instance if necessary.
+        /// When overridden in a derived class, is responsible for updating the state of the instance if necessary.
         /// </para>
         /// <para>
-        /// If the result of the update retruns a <see cref="Task"/> that represents the deferred update, the next call to <see cref="WaitOne"/> will 
-        /// block until the operation completes and will throw any exceptions that occured
+        /// If the result of the update returns a <see cref="Task"/> that represents the deferred update, the next call to <see cref="WaitOne"/> will 
+        /// block until the operation completes and will throw any exceptions that occurred
         /// </para>
         /// </summary>
         /// <param name="defer">true if the caller expects a resource update to be deferred, false if the caller expects the result of the update to be awaited</param>
         /// <param name="state">State parameter passed when releasing</param>
-        /// <returns>A <see cref="Task"/> representing the async state update operation, or null if no async state update operation need's to be monitored</returns>
+        /// <returns>A <see cref="Task"/> representing the async state update operation, or null if no async state update operation needs to be monitored</returns>
         protected abstract ValueTask<Task?> UpdateResource(bool defer, TState state);
 
         ///<inheritdoc/>

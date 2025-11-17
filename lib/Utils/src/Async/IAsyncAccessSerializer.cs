@@ -32,11 +32,11 @@ namespace VNLib.Utils.Async
     /// access to a resource based on a moniker. Similar to the <see cref="Monitor"/> 
     /// class.
     /// </summary>
-    /// <typeparam name="TMoniker">The moniker type, the uniuqe token identifying the wait</typeparam>
+    /// <typeparam name="TMoniker">The moniker type, the unique token identifying the wait</typeparam>
     public interface IAsyncAccessSerializer<TMoniker>
     {
         /// <summary>
-        /// Provides waiting for exclusve access identified 
+        /// Provides waiting for exclusive access identified 
         /// by the supplied moniker
         /// </summary>
         /// <param name="moniker">The moniker used to identify the wait</param>

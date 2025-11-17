@@ -68,7 +68,7 @@ namespace VNLib.Utils.IO
         void Close();
         /// <summary>
         /// <para>
-        /// Advances the begining of the accumulated data window.
+        /// Advances the beginning of the accumulated data window.
         /// </para>
         /// <para>
         /// This method is used during reading to singal that data 

@@ -70,7 +70,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <summary>
         /// Allows for post processing of a selected <see cref="FileProcessArgs"/> for the given entity.
         /// <para>
-        /// This method may mutate the <paramref name="chosenRoutine"/> argument referrence to change the
+        /// This method may mutate the <paramref name="chosenRoutine"/> argument reference to change the
         /// the routine that will be used to process the file.
         /// </para>
         /// </summary>

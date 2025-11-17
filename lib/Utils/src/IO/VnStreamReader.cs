@@ -153,7 +153,7 @@ namespace VNLib.Utils.IO
             //Termination found in buffer window
             if (term > -1)
             {
-                //Capture the line from the begining of the window to the termination
+                //Capture the line from the beginning of the window to the termination
                 Memory<byte> line = buffered[..term];
 
                 //Shift the window to the end of the line (excluding the termination)
@@ -181,7 +181,7 @@ namespace VNLib.Utils.IO
             //Get current buffer window
             Span<byte> buffered = _buffer.Accumulated;
 
-            //Convert all avialable data
+            //Convert all available data
             int encoded = Encoding.GetChars(buffered, buffer);
 
             //Shift buffer window to the end of the converted data

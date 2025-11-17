@@ -33,7 +33,7 @@ namespace VNLib.Net.Http
     /// response stream. This avoids a buffer allocation and a copy.
     /// </para>
     /// <para>
-    /// The entity is only read foward, one time, so it is not seekable.
+    /// The entity is only read forward, one time, so it is not seekable.
     /// </para>
     /// <para>
     /// The <see cref="Close"/> method is always called by internal lifecycle hooks

@@ -58,7 +58,7 @@ namespace VNLib.Utils.IO
         /// </summary>
         void FillBuffer();
         /// <summary>
-        /// Compacts the available buffer space back to the begining of the buffer region
+        /// Compacts the available buffer space back to the beginning of the buffer region
         /// and determines if there is room for more data to be buffered
         /// </summary>
         /// <returns>The remaining buffer space if any</returns>

@@ -65,12 +65,12 @@ namespace VNLib.Utils.Memory
         /// <para>
         /// Loads an unmanaged heap at runtime, into the current process at the given path. The dll must conform
         /// to the unmanaged heap format. After the method table is loaded, the heapCreate function is called to 
-        /// initialze the heap.
+        /// initialize the heap.
         /// </para>
         /// </summary>
         /// <param name="dllPath">The path to the heap's dll file to load into the process.</param>
         /// <param name="searchPath">The native library search path</param>
-        /// <param name="creationFlags">Specifes the <see cref="HeapCreation"/> flags to pass to the heapCreate function</param>
+        /// <param name="creationFlags">Specifies the <see cref="HeapCreation"/> flags to pass to the heapCreate function</param>
         /// <param name="flags">Generic flags passed directly to the heapCreate function</param>
         /// <returns>The newly initialized <see cref="NativeHeap"/></returns>
         /// <exception cref="ArgumentNullException"></exception>
@@ -103,8 +103,8 @@ namespace VNLib.Utils.Memory
         /// ELF library and safe to load named symbols from
         /// </summary>
         /// <param name="libHandle">The existing <see cref="SafeLibraryHandle"/></param>
-        /// <param name="ownsHandle">A boolen value indicating if the heap owns the lifetime of the handle and should dispose it when disposed</param>
-        /// <param name="creationFlags">Specifes the <see cref="HeapCreation"/> flags to pass to the heapCreate function</param>
+        /// <param name="ownsHandle">A boolean value indicating if the heap owns the lifetime of the handle and should dispose it when disposed</param>
+        /// <param name="creationFlags">Specifies the <see cref="HeapCreation"/> flags to pass to the heapCreate function</param>
         /// <param name="flags">Generic flags passed directly to the heapCreate function</param>
         /// <returns>The newly initialized <see cref="NativeHeap"/></returns>
         /// <exception cref="ArgumentNullException"></exception>
@@ -151,7 +151,7 @@ namespace VNLib.Utils.Memory
 
             Trace.WriteLine($"Successfully created user defined native heap 0x{flags->HeapPointer:x} with flags 0x{flags->CreationFlags:x}");
 
-            //Return the neap heap
+            //Return the new heap
             return new(flags, table);
         }
        
