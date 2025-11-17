@@ -225,7 +225,7 @@ namespace VNLib.Hashing.IdentityUtility
         public ReadOnlySpan<byte> HeaderData => DataBuffer[..HeaderEnd];
 
         /// <summary>
-        /// Encodes and stores the specified header value to the begining of the 
+        /// Encodes and stores the specified header value to the beginning of the 
         /// JWT. This method may only be called once, if the header has not already been supplied.
         /// </summary>
         /// <param name="header">The value of the JWT header parameter</param>

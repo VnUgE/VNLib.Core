@@ -157,7 +157,7 @@ namespace VNLib.Utils.Memory
         /// a handle, meaning it now takes ownsership of the the memory it points to.
         /// </summary>
         /// <param name="handle">The <see cref="MemoryHandle{T}"/> to consume</param>
-        /// <param name="start">The offset from the begining of the buffer marking the begining of the string</param>
+        /// <param name="start">The offset from the beginning of the buffer marking the beginning of the string</param>
         /// <param name="length">The number of characters this string points to</param>
         /// <returns>The new <see cref="VnString"/></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
@@ -379,7 +379,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Creates a <see cref="VnString"/> that is a window within the current string,
-        /// the referrence points to the same memory as the first instnace.
+        /// the reference points to the same memory as the first instance.
         /// </summary>
         /// <param name="start">The index within the current string to begin the child string</param>
         /// <param name="count">The number of characters (or length) of the child string</param>
@@ -416,7 +416,7 @@ namespace VNLib.Utils.Memory
         
         /// <summary>
         /// Creates a <see cref="VnString"/> that is a window within the current string,
-        /// the referrence points to the same memory as the first instnace.
+        /// the reference points to the same memory as the first instance.
         /// </summary>
         /// <param name="start">The index within the current string to begin the child string</param>
         /// <returns>The child <see cref="VnString"/></returns>

@@ -68,7 +68,7 @@ namespace VNLib.Utils.Memory
             // Clear the syncronization flag since locking is never needed or used
             CreationFlags &= ~HeapCreation.UseSynchronization;
 
-            Trace.WriteLine($"Default heap instnace created {GetHashCode():x} with flags {CreationFlags:x}");
+            Trace.WriteLine($"Default heap instance created {GetHashCode():x} with flags {CreationFlags:x}");
         }
 
         ///<inheritdoc/>
@@ -120,6 +120,6 @@ namespace VNLib.Utils.Memory
         }
 
         ///<inheritdoc/>
-        protected override void Free() => Trace.WriteLine($"Default heap instnace disposed {GetHashCode():x}");
+        protected override void Free() => Trace.WriteLine($"Default heap instance disposed {GetHashCode():x}");
     }
 }

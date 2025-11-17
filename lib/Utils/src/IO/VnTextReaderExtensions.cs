@@ -74,7 +74,7 @@ namespace VNLib.Utils.IO
         }
 
         /// <summary>
-        /// Fill a buffer with reamining buffered data 
+        /// Fill a buffer with remaining buffered data 
         /// </summary>
         /// <param name="reader"></param>
         /// <param name="buffer">Buffer to copy data to</param>
@@ -87,7 +87,7 @@ namespace VNLib.Utils.IO
         }
 
         /// <summary>
-        /// Fill a buffer with reamining buffered data 
+        /// Fill a buffer with remaining buffered data 
         /// </summary>
         /// <param name="reader"></param>
         /// <param name="buffer">Buffer to copy data to</param>
@@ -100,7 +100,7 @@ namespace VNLib.Utils.IO
         }
 
         /// <summary>
-        /// Fill a buffer with reamining buffered data, up to 
+        /// Fill a buffer with remaining buffered data, up to 
         /// the size of the supplied buffer
         /// </summary>
         /// <param name="reader"></param>
@@ -113,7 +113,7 @@ namespace VNLib.Utils.IO
         }
 
         /// <summary>
-        /// Fill a buffer with reamining buffered data, up to 
+        /// Fill a buffer with remaining buffered data, up to 
         /// the size of the supplied buffer
         /// </summary>
         /// <param name="reader"></param>
@@ -155,7 +155,7 @@ namespace VNLib.Utils.IO
                 //Check again to see if more data is buffered
                 if (reader.Available <= 0)
                 {
-                    //No data avialable
+                    //No data available
                     return 0;
                 }
 
@@ -168,7 +168,7 @@ namespace VNLib.Utils.IO
 
             //Termination not found within the entire buffer, so buffer space has been exhausted
 
-            //Supress as this response is expected when the buffer is exhausted, 
+            //Suppress as this response is expected when the buffer is exhausted, 
 #pragma warning disable CA2201 // Do not raise reserved exception types
             throw new OutOfMemoryException("The line was not found within the current buffer, cannot continue");
 #pragma warning restore CA2201 // Do not raise reserved exception types
@@ -187,10 +187,10 @@ namespace VNLib.Utils.IO
             //Termination found in buffer window
             if (term > -1)
             {
-                //Capture the line from the begining of the window to the termination
+                //Capture the line from the beginning of the window to the termination
                 ReadOnlySpan<byte> line = bytes[..term];
 
-                //Get the number ot chars 
+                //Get the number of chars 
                 result = reader.Encoding.GetCharCount(line);
 
                 //See if the buffer is large enough

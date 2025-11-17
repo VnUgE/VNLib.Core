@@ -40,7 +40,7 @@ namespace VNLib.Utils.Memory
         ICloneable
     {
         /// <summary>
-        /// Gets the internal string referrence
+        /// Gets the internal string reference
         /// </summary>
         protected string StringRef => base[0]!;
 
@@ -64,7 +64,7 @@ namespace VNLib.Utils.Memory
         /// <exception cref="ArgumentException"></exception>
         public PrivateString(string data, bool ownsReferrence) : base(1)
         {
-            //Create a private string manager to store referrence to string
+            //Create a private string manager to store reference to string
             base[0] = data ?? throw new ArgumentNullException(nameof(data));
             OwnsReferrence = ownsReferrence;
         }
@@ -72,13 +72,13 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Gets the value of the internal string as a <see cref="ReadOnlySpan{T}"/>
         /// </summary>
-        /// <returns>The <see cref="ReadOnlySpan{T}"/> referrence to the internal string</returns>
+        /// <returns>The <see cref="ReadOnlySpan{T}"/> reference to the internal string</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         public ReadOnlySpan<char> ToReadOnlySpan() => StringRef.AsSpan();
 
         /// <summary>
         /// <para>
-        /// Allows for reading the internal string referrence without 
+        /// Allows for reading the internal string reference without 
         /// copying the string to a new instance.
         /// </para>
         /// <para>

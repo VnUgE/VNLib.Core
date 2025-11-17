@@ -161,7 +161,7 @@ namespace VNLib.Net.Http.Core.Request
                 writer.Advance(read);
             }
 
-            //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
+            //See if data is still remaining to be read from transport (remaining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
             {
                 int read = transport.Stream!.Read(writer.Remaining);
@@ -207,7 +207,7 @@ namespace VNLib.Net.Http.Core.Request
                 writer.Advance(read);
             }
 
-            //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
+            //See if data is still remaining to be read from transport (remaining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
             {
                 int read = await transport.Stream.ReadAsync(writer.Remaining, cancellationToken)

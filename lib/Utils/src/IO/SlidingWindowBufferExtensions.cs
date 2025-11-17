@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -40,8 +40,8 @@ namespace VNLib.Utils.IO
     {
         /// <summary>
         /// Shifts/resets the current buffered data window down to the 
-        /// begining of the buffer if the buffer window is shifted away 
-        /// from the begining.
+        /// beginning of the buffer if the buffer window is shifted away 
+        /// from the beginning.
         /// </summary>
         /// <returns>The number of bytes of available space in the buffer</returns>
         public static ERRNO CompactBufferWindow<T>(this ISlindingWindowBuffer<T> sBuf)
@@ -53,7 +53,7 @@ namespace VNLib.Utils.IO
                 Span<T> buffer = sBuf.Buffer.Span;
                 //Get data within window
                 Span<T> usedData = sBuf.Accumulated;
-                //Copy remaining to the begining of the buffer
+                //Copy remaining to the beginning of the buffer
                 usedData.CopyTo(buffer);
 
                 //Reset positions, then advance to the specified size

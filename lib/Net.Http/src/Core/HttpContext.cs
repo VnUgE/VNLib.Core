@@ -179,7 +179,7 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Gets a readonly reference to the transport security information
         /// </summary>
-        /// <returns>A readonly referrence to the <see cref="TransportSecurityInfo"/> structure </returns>
+        /// <returns>A readonly reference to the <see cref="TransportSecurityInfo"/> structure </returns>
         public ref readonly TransportSecurityInfo? GetSecurityInfo() => ref _ctx!.GetSecurityInfo();
 
         #region Context information

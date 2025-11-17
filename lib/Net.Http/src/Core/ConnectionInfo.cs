@@ -101,7 +101,7 @@ namespace VNLib.Net.Http.Core
 
         internal ConnectionInfo(HttpContext ctx)
         {
-            //Update the context referrence
+            //Update the context reference
             Context = ctx;
             
             //Create new header collection
