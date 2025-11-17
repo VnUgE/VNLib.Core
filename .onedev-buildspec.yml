@@ -1,8 +1,8 @@
-version: 40
+version: 43
 jobs:
 - name: Repo Sync Push
   steps:
-  - !PushRepository
+  - type: PushRepository
     name: Github push sync
     remoteUrl: https://github.com/VnUgE/VNLib.Core.git
     userName: VnUgE
@@ -10,7 +10,7 @@ jobs:
     force: true
     condition: SUCCESSFUL
     optional: false
-  - !PushRepository
+  - type: PushRepository
     name: Codeberg push sync
     remoteUrl: https://codeberg.org/VnUgE/VNLib.Core.git
     userName: VnUgE
@@ -19,8 +19,9 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   triggers:
-  - !TagCreateTrigger {}
-  - !BranchUpdateTrigger {}
+  - type: TagCreateTrigger
+  - type: BranchUpdateTrigger
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
@@ -29,7 +30,7 @@ jobs:
 - name: Windows Tests
   jobExecutor: windows
   steps:
-  - !CommandStep
+  - type: CommandStep
     name: Clone init and test
     runInContainer: false
     interpreter: !DefaultInterpreter
@@ -42,8 +43,9 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   triggers:
-  - !BranchUpdateTrigger
+  - type: BranchUpdateTrigger
     branches: '** -master'
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
@@ -52,10 +54,11 @@ jobs:
 - name: Staging build
   jobExecutor: windows
   steps:
-  - !CommandStep
+  - type: CommandStep
     name: Clone and build
     runInContainer: false
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
         vnbuild build --no-delay --verbose
@@ -64,8 +67,9 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   triggers:
-  - !BranchUpdateTrigger
+  - type: BranchUpdateTrigger
     branches: develop
+    userMatch: anyone
   jobDependencies:
   - jobName: Windows Tests
     requireSuccessful: true
@@ -76,29 +80,38 @@ jobs:
 - name: Ubuntu Tests
   jobExecutor: docker
   steps:
-  - !CheckoutStep
+  - type: CheckoutStep
     name: checkout source
-    cloneCredential: !DefaultCredential {}
+    cloneCredential:
+      type: DefaultCredential
     withLfs: false
     withSubmodules: false
     checkoutPath: '@project_name@'
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: ubuntu-x64 tests
     runInContainer: true
-    image: vnuge/vnbuild:ubuntu-latest
-    interpreter: !DefaultInterpreter
+    image: mcr.microsoft.com/dotnet/sdk:8.0.415-noble-amd64@@sha256:a0f438b4cfbfd28cefa865facd9d1359732f8fb266a83a515a3634b0e8ac4f0b
+    interpreter:
+      type: DefaultInterpreter
       commands: |
-          cd @project_name@
-          task -t Module.Taskfile.yaml dev-init
-          task -t Module.Taskfile.yaml test
+        cd @project_name@
+
+        export DOTNET_ROOT=$(pwd)/.dotnet
+        export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
+        export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+        bash ci/scripts/linux-setup-amd64.sh install
+
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
   triggers:
-  - !BranchUpdateTrigger
+  - type: BranchUpdateTrigger
     branches: '** -master'
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
@@ -107,29 +120,38 @@ jobs:
 - name: Fedora Tests
   jobExecutor: docker
   steps:
-  - !CheckoutStep
+  - type: CheckoutStep
     name: checkout source
-    cloneCredential: !DefaultCredential {}
+    cloneCredential:
+      type: DefaultCredential
     withLfs: false
     withSubmodules: false
     checkoutPath: '@project_name@'
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: fedora-x64 tests
     runInContainer: true
-    image: vnuge/vnbuild:fedora-latest
-    interpreter: !DefaultInterpreter
+    image: docker.io/fedora:43@@sha256:2ad3073554aef41c15b2c52e968ec0540c931bc3dab8c599ca6eb6f32f3f2d14
+    interpreter:
+      type: DefaultInterpreter
       commands: |
-         cd @project_name@
-         task -t Module.Taskfile.yaml dev-init
-         task -t Module.Taskfile.yaml test
+        cd @project_name@
+
+        export DOTNET_ROOT=$(pwd)/.dotnet
+        export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
+        export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+        bash ci/scripts/linux-setup-amd64.sh install
+
+        task -t Module.Taskfile.yaml dev-init
+        task -t Module.Taskfile.yaml test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
   triggers:
-  - !BranchUpdateTrigger
+  - type: BranchUpdateTrigger
     branches: '** -master'
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
@@ -138,38 +160,41 @@ jobs:
 - name: Publish master
   jobExecutor: publish-agents
   steps:
-  - !CommandStep
+  - type: CommandStep
     name: clone
     runInContainer: false
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
     useTTY: true
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: Create git tag
     runInContainer: false
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd @project_name@
         task tag-current-commit -t Module.Taskfile.yaml
     useTTY: true
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: VNBuild Build
     runInContainer: false
-    interpreter: !DefaultInterpreter
-      commands: |
-        vnbuild build --no-delay 
+    interpreter:
+      type: DefaultInterpreter
+      commands: "vnbuild build --no-delay"
     useTTY: true
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: VNBuild Publish
     runInContainer: false
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         vnbuild publish --ftp "@secret:ftp_server_address@" --sign
     envVars:
@@ -181,8 +206,9 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   triggers:
-  - !BranchUpdateTrigger
+  - type: BranchUpdateTrigger
     branches: master
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30

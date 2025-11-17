@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -142,7 +142,7 @@ namespace VNLib.Net.Http.Core.Response
             await WriteEntityAsync(output, buffer, compressor.BlockSize);
 
             /*
-             * Once there is no more response data avialable to compress
+             * Once there is no more response data available to compress
              * we need to flush the compressor, then flush the writer
              * to publish all accumulated data to the client
              */

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -44,7 +44,7 @@ namespace VNLib.Utils.Memory
         private readonly ArrayPool<T> Pool;
 
         /// <summary>
-        /// Referrence to internal buffer
+        /// Reference to internal buffer
         /// </summary>
         public T[] Buffer { get; private set; }
 
@@ -95,7 +95,7 @@ namespace VNLib.Utils.Memory
         { }
 
         /// <summary>
-        /// Initialzies a new <see cref="ArrayPoolBuffer{T}"/> from the specified rented array
+        /// Initializes a new <see cref="ArrayPoolBuffer{T}"/> from the specified rented array
         /// that belongs to the supplied pool
         /// </summary>
         /// <param name="pool">The pool the array was rented from</param>
@@ -119,7 +119,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Gets an offset wrapper around the current buffer
         /// </summary>
-        /// <param name="offset">Offset from begining of current buffer</param>
+        /// <param name="offset">Offset from beginning of current buffer</param>
         /// <param name="count">Number of <typeparamref name="T"/> from offset</param>
         /// <returns>An <see cref="ArraySegment{BufType}"/> wrapper around the current buffer containing the offset</returns>
         public ArraySegment<T> GetOffsetWrapper(int offset, int count)
@@ -165,7 +165,7 @@ namespace VNLib.Utils.Memory
         /// Gets a memory structure around the internal buffer
         /// </summary>
         /// <param name="count">The number of elements included in the result</param>
-        /// <param name="start">A value specifying the begining index of the buffer to include</param>
+        /// <param name="start">A value specifying the beginning index of the buffer to include</param>
         /// <returns>A memory structure over the buffer</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>

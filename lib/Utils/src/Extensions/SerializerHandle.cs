@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -29,16 +29,16 @@ using VNLib.Utils.Async;
 namespace VNLib.Utils.Extensions
 {
     /// <summary>
-    /// Holds the exlcusive lock to the the <see cref="IAsyncAccessSerializer{TMoniker}"/>
+    /// Holds the exclusive lock to the the <see cref="IAsyncAccessSerializer{TMoniker}"/>
     /// and releases the lock when the handle is disposed
     /// </summary>
     /// <typeparam name="TMoniker">The moniker type</typeparam>
-    /// <param name="Moniker">The monike that referrences the entered lock</param>
-    /// <param name="Serializer">The serialzer this handle will release the lock on when disposed</param>
+    /// <param name="Moniker">The moniker that references the entered lock</param>
+    /// <param name="Serializer">The serializer this handle will release the lock on when disposed</param>
     public readonly record struct SerializerHandle<TMoniker>(TMoniker Moniker, IAsyncAccessSerializer<TMoniker> Serializer) : IDisposable
     {
         /// <summary>
-        /// Releases the exclusive lock on the moinker back to the serializer;
+        /// Releases the exclusive lock on the moniker back to the serializer;
         /// </summary>
         public readonly void Dispose() => Serializer.Release(Moniker);
     }

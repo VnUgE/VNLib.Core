@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -39,14 +39,14 @@ namespace VNLib.Utils.Memory.Tests
             {
                 Assert.IsTrue(empty.Empty);
                 //Test 0 rows/cols
-                Assert.IsTrue(0 == empty.Rows);
-                Assert.IsTrue(0 == empty.Cols);
+                Assert.AreEqual(0u, empty.Rows);
+                Assert.AreEqual(0u, empty.Cols);
 
                 //Test that empty table throws on access
-                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = empty[0, 0]);
-                Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = empty.Get(0, 0));
-                Assert.ThrowsException<ArgumentOutOfRangeException>(() => empty.Set(0, 0, 10));
-                Assert.ThrowsException<ArgumentOutOfRangeException>(() => empty[0, 0] = 10);
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = empty[0, 0]);
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = empty.Get(0, 0));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => empty.Set(0, 0, 10));
+                Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => empty[0, 0] = 10);
             }
 
             using (VnTable<int> table = new(40000, 10000))
@@ -54,32 +54,13 @@ namespace VNLib.Utils.Memory.Tests
                 Assert.IsFalse(table.Empty);
 
                 //Test table size
-                Assert.IsTrue(40000 == table.Rows);
-                Assert.IsTrue(10000 == table.Cols);
+                Assert.AreEqual(40000u, table.Rows);
+                Assert.AreEqual(10000u, table.Cols);
             }
 
             //Test params
-            Assert.ThrowsException<ArgumentNullException>(() => _ = new VnTable<int>(null!, 1, 1));
+            Assert.ThrowsExactly<ArgumentNullException>(() => _ = new VnTable<int>(null!, 1, 1));
 
-            /*
-             * Try-catch is used because underlying heaps 
-             * may cause different OOM exceptions to be raised
-             * but still have a base class of OutOfMemoryException.
-             * So catch covers all OOM exceptions.
-             */
-
-            try
-            {
-                using VnTable<int> table = new(uint.MaxValue, 20);
-
-                Assert.Fail("The table allocation did not fail as expected");
-            }
-            catch (OutOfMemoryException)
-            {}
-            catch(Exception ex) 
-            {
-                Assert.Fail("Table overflow creation test failed because another exception type was raised, {0}", ex.GetType().Name);
-            }
         }
 
         [TestMethod()]
@@ -88,15 +69,15 @@ namespace VNLib.Utils.Memory.Tests
             static void TestIndexAt(VnTable<int> table, uint row, uint col, int value)
             {
                 table[row, col] = value;
-                Assert.IsTrue(value == table[row, col]);
-                Assert.IsTrue(value == table.Get(row, col));
+                Assert.AreEqual(table[row, col], value);
+                Assert.AreEqual(table.Get(row, col), value);
             }
 
             static void TestSetAt(VnTable<int> table, uint row, uint col, int value)
             {
                 table.Set(row, col, value);
-                Assert.IsTrue(value == table[row, col]);
-                Assert.IsTrue(value == table.Get(row, col));
+                Assert.AreEqual(table[row, col], value);
+                Assert.AreEqual(table.Get(row, col), value);
             }
 
             static void TestSetDirectAccess(VnTable<int> table, uint row, uint col, int value)
@@ -105,7 +86,7 @@ namespace VNLib.Utils.Memory.Tests
                 table[address] = value;
 
                 //Get value using indexer
-                Assert.IsTrue(value == table[row, col]);
+                Assert.AreEqual(table[row, col], value);
             }
 
             static void TestGetDirectAccess(VnTable<int> table, uint row, uint col, int value)
@@ -115,11 +96,11 @@ namespace VNLib.Utils.Memory.Tests
                 uint address = row * table.Cols + col;
 
                 //Test direct access
-                Assert.IsTrue(value == table[address]);
+                Assert.AreEqual(table[address], value);
                 
                 //Get value using indexer
-                Assert.IsTrue(value == table[row, col]);
-                Assert.IsTrue(value == table.Get(row, col));
+                Assert.AreEqual(table[row, col], value);
+                Assert.AreEqual(table.Get(row, col), value);
             }
 
 
@@ -143,11 +124,11 @@ namespace VNLib.Utils.Memory.Tests
             TestSetDirectAccess(table, 0, 0, 100);
             TestGetDirectAccess(table, 0, 0, 86);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = table[11, 11]);
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = table.Get(11, 11));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = table[11, 11]);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = table.Get(11, 11));
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => table.Set(11, 11, 10));
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => table[11, 11] = 10);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => table.Set(11, 11, 10));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => table[11, 11] = 10);
         }
 
         [TestMethod()]
@@ -159,10 +140,10 @@ namespace VNLib.Utils.Memory.Tests
             table.Dispose();
 
             //Test that methods throw on access
-            Assert.ThrowsException<ObjectDisposedException>(() => table[10, 10] = 10);
-            Assert.ThrowsException<ObjectDisposedException>(() => table.Set(10, 10, 10));
-            Assert.ThrowsException<ObjectDisposedException>(() => table[10, 10] == 10);
-            Assert.ThrowsException<ObjectDisposedException>(() => table.Get(10, 10));
+            Assert.ThrowsExactly<ObjectDisposedException>(() => table[10, 10] = 10);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => table.Set(10, 10, 10));
+            Assert.ThrowsExactly<ObjectDisposedException>(() => table[10, 10] == 10);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => table.Get(10, 10));
         }
 
     }

@@ -213,14 +213,14 @@ namespace VNLib.Utils.Memory
         ///<exception cref="ObjectDisposedException"></exception>
         ///<exception cref="ArgumentOutOfRangeException"></exception>
         ///<remarks>
-        ///Calling this method increments the handle's referrence count. 
+        ///Calling this method increments the handle's reference count. 
         ///Disposing the returned handle decrements the handle count.
         ///</remarks>
         public unsafe MemoryHandle Pin(int elementIndex)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(elementIndex);
 
-            //Get ptr and guard checks before adding the referrence
+            //Get ptr and guard checks before adding the reference
             T* ptr = GetOffset((nuint)elementIndex);
 
             bool addRef = false;
