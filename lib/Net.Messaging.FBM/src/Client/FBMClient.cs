@@ -431,7 +431,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <returns></returns>
         protected async Task ProcessContinuousRecvAsync()
         {
-            Debug("Begining receive loop");
+            Debug("Beginning receive loop");
 
             //Alloc recv buffer
             IFBMMemoryHandle recvBuffer = Config.MemoryManager.InitHandle();
