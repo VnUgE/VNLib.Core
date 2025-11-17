@@ -104,33 +104,7 @@ namespace VNLib.Plugins.Essentials.Accounts
                 .ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Updates a password associated with the specified user. If the update fails, the transaction
-        /// is rolled back.
-        /// </summary>
-        /// <param name="manager"></param>
-        /// <param name="user">The user account to update the password of</param>
-        /// <param name="password">The new password to set</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
-        [Obsolete("Will be removed in future releases, use overload that accepts hashing provider")]
-        public static async Task<ERRNO> UpdatePasswordAsync(
-            this IUserManager manager, 
-            IUser user, 
-            string password, 
-            CancellationToken cancellation = default
-        )
-        {
-            ArgumentNullException.ThrowIfNull(user);
-            ArgumentNullException.ThrowIfNull(manager);
 
-            using PrivateString ps = PrivateString.ToPrivateString(password, ownsString: false);
-            
-            return await manager
-                .UpdatePasswordAsync(user, ps, cancellation)
-                .ConfigureAwait(false);
-        }
 
         /// <summary>
         /// Updates a password associated with the specified user. If the update fails, the transaction
