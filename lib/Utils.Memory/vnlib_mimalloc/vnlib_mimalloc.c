@@ -65,6 +65,7 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapCreate(UnmanagedHeapDescriptor* flags)
 
     flags->CreationFlags &= ~(HEAP_CREATION_SERIALZE_ENABLED);
     flags->CreationFlags |= HEAP_CREATION_SUPPORTS_REALLOC;
+    flags->CreationFlags |= HEAP_CREATION_IS_SHARED;
    
     flags->HeapPointer = heapGetSharedHeapHandle();
 
