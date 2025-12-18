@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_rpmalloc
@@ -197,10 +197,10 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapDestroy(HeapHandle heap)
 }
 
 
-VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, uint64_t elements, uint64_t alignment, int zero)
 {
     //Multiply for element size
-    size_t size = elements * alignment;
+    size_t size = (size_t)(elements * alignment);
 
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)
@@ -239,10 +239,10 @@ VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, size_t elements, size_t
 }
 
 
-VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, uint64_t elements, uint64_t alignment, int zero)
 {
     //Multiply for element size
-    size_t size = elements * alignment;
+    size_t size = (size_t)(elements * alignment);
     (void)zero;
 
     //Check for global heap
