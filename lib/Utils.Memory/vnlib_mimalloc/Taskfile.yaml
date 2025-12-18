@@ -133,8 +133,8 @@ tasks:
       ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
      - cmd: cp NativeHeapApi.h '{{ .TARGET_DIR }}/'
-     - cmd: cp vendor/license '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
-     - cmd: cp license '{{ .TARGET_DIR }}/license.txt'
+     - cmd: cp vendor/LICENSE '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
+     - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
      - cmd: cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
 
      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
