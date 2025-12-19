@@ -14,6 +14,9 @@ vars:
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
 
+  # Enable architecture-tuned SIMD paths when building on x64/amd64
+  MI_ARCH_SIMD_FLAGS: '{{ if or (eq ARCH "amd64") (eq ARCH "x86_64") (eq ARCH "x64") }}-DMI_OPT_ARCH=ON -DMI_OPT_SIMD=ON{{ end }}'
+
   # default cmake build parameters
   CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   CMAKE_BUILD_DIR: 'build/{{ OS }}'
@@ -54,6 +57,7 @@ tasks:
     cmds:
       - cmd: cmake 
          {{ .CMAKE_ARGS }} 
+         {{ .MI_ARCH_SIMD_FLAGS }}
          -S .
          -B{{ .CMAKE_BUILD_DIR }}
          -DCMAKE_BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}
