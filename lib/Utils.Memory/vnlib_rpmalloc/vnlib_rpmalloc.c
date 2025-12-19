@@ -199,6 +199,11 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapDestroy(HeapHandle heap)
 
 VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, uint64_t elements, uint64_t alignment, int zero)
 {
+#if SIZE_MAX < UINT64_MAX
+    //Check multiplication overflow: if alignment is non-zero and elements exceeds the safe limit
+    if (alignment != 0 && elements > (SIZE_MAX / alignment)) return NULL;
+#endif
+
     //Multiply for element size
     size_t size = (size_t)(elements * alignment);
 
@@ -241,9 +246,14 @@ VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, uint64_t elements, uint
 
 VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, uint64_t elements, uint64_t alignment, int zero)
 {
+#if SIZE_MAX < UINT64_MAX
+    //Check multiplication overflow: if alignment is non-zero and elements exceeds the safe limit
+    if (alignment != 0 && elements > (SIZE_MAX / alignment)) return NULL;    
+#endif
+
     //Multiply for element size
     size_t size = (size_t)(elements * alignment);
-    (void)zero;
+    (void)sizeof(zero);
 
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)

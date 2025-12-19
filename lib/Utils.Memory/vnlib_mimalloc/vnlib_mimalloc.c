@@ -90,6 +90,10 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapDestroy(HeapHandle heap)
 
 VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, uint64_t elements, uint64_t alignment, int zero)
 {
+#if SIZE_MAX < UINT64_MAX
+    if (elements > SIZE_MAX || alignment > SIZE_MAX) return NULL;
+#endif
+
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
@@ -110,20 +114,24 @@ VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, uint64_t elements, uint
 
 VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, uint64_t elements, uint64_t alignment, int zero)
 {
+#if SIZE_MAX < UINT64_MAX
+    if (elements > SIZE_MAX || alignment > SIZE_MAX) return NULL;    
+#endif
+
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         //reallocate the block
         return zero ?
-			mi_recalloc(block, (size_t)elements, (size_t)alignment) :
-			mi_reallocn(block, (size_t)elements, (size_t)alignment);
+            mi_recalloc(block, (size_t)elements, (size_t)alignment) :
+            mi_reallocn(block, (size_t)elements, (size_t)alignment);
     }
     else
     {
         //First class heap realloc
         return zero ?
-			mi_heap_recalloc(heap, block, (size_t)elements, (size_t)alignment) :
-			mi_heap_reallocn(heap, block, (size_t)elements, (size_t)alignment);
+            mi_heap_recalloc(heap, block, (size_t)elements, (size_t)alignment) :
+            mi_heap_reallocn(heap, block, (size_t)elements, (size_t)alignment);
     }
 }
 
