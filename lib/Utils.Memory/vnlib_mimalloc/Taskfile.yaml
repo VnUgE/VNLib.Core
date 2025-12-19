@@ -14,9 +14,6 @@ vars:
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
 
-  # optional build variables
-  ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       # default to greedy allocator build
-
   # default cmake build parameters
   CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
   CMAKE_BUILD_DIR: 'build/{{ OS }}'
@@ -53,14 +50,13 @@ tasks:
     desc: 'Configures the build for the current platform'
     internal: true
     requires:
-      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, ENABLE_GREEDY]
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
       - cmd: cmake 
          {{ .CMAKE_ARGS }} 
          -S .
          -B{{ .CMAKE_BUILD_DIR }}
          -DCMAKE_BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}
-         -DENABLE_GREEDY={{ .ENABLE_GREEDY }}
 
   cmake-compile:
     desc: 'Compiles the project for the current platform'
