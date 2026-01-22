@@ -42,10 +42,10 @@ namespace VNLib.Utils.Memory.Tests
             using MemoryHandle<byte> handle = MemoryUtil.Shared.Alloc<byte>(TestHandleSize, false);
 
             //Should be able to get an empty span at the beginning
-            Assert.IsTrue(_ = handle.GetSubSequence(0, 0).Span.IsEmpty);
+            Assert.IsTrue(handle.GetSubSequence(0, 0).Span.IsEmpty);
 
             //Should be able to get an empty span at the end
-            Assert.IsTrue(_ = handle.GetSubSequence(8192, 0).Span.IsEmpty);
+            Assert.IsTrue(handle.GetSubSequence(8192, 0).Span.IsEmpty);
 
             //Test extension bounds checking, may defer to the sequence itself
 
