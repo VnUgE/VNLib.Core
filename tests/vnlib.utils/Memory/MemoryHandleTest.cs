@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -62,13 +62,13 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(handle.Length, (ulong)bigHandleSize);
 
             //Should throw overflow
-            Assert.ThrowsException<OverflowException>(() => _ = handle.Span);
-            Assert.ThrowsException<OverflowException>(() => _ = handle.IntLength);
+            Assert.ThrowsExactly<OverflowException>(() => _ = handle.Span);
+            Assert.ThrowsExactly<OverflowException>(() => _ = handle.IntLength);
 
             //Should get the remaining span
             Span<byte> offsetTest = handle.GetOffsetSpan(int.MaxValue, 1024);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetOffsetSpan((long)int.MaxValue + 1, 1024));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetOffsetSpan((long)int.MaxValue + 1, 1024));
 
         }
 #endif
@@ -254,7 +254,7 @@ namespace VNLib.Utils.Memory.Tests
 
                 _ = hut.Length;
                 _ = hut.ByteLength;
-                _ = hut.Equals(null);  // Just checking that no errors occur when checking equality
+                _ = hut.Equals(null!);  // Just checking that no errors occur when checking equality
                 _ = hut.GetHashCode();
                 _ = hut.Span; //Should be empty but not throw
                

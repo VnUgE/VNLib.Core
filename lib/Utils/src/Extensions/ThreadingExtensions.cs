@@ -50,7 +50,7 @@ namespace VNLib.Utils.Extensions
            this IAsyncAccessSerializer<TMoniker> serialzer,
            TMoniker moniker,
            CancellationToken cancellation = default
-           )
+        )
         {
             //Wait async get handle
             static async Task<SerializerHandle<TMoniker>> AwaitHandle(Task wait, IAsyncAccessSerializer<TMoniker> serialzer, TMoniker moniker)
@@ -252,7 +252,7 @@ namespace VNLib.Utils.Extensions
         public static Task<bool> NoSpinWaitAsync(this WaitHandle handle, int timeoutMs)
         {            
             //Completion source used to signal the awaiter when the wait handle is signaled
-            TaskCompletionSource<bool> completion = new(TaskCreationOptions.None);
+            TaskCompletionSource<bool> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
             
             //Register wait on threadpool to complete the task source
             RegisteredWaitHandle registration = ThreadPool.RegisterWaitForSingleObject(

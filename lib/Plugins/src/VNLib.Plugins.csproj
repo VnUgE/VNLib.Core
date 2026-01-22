@@ -6,7 +6,6 @@
     <RootNamespace>VNLib.Plugins</RootNamespace>
     <AssemblyName>VNLib.Plugins</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>

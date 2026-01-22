@@ -6,7 +6,6 @@
     <RootNamespace>VNLib.Plugins.Essentials.ServiceStack</RootNamespace>
     <AssemblyName>VNLib.Plugins.Essentials.ServiceStack</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>
