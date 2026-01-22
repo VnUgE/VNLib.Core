@@ -6,7 +6,6 @@
     <AssemblyName>VNLib.Net.Rest.Client</AssemblyName>
     <RootNamespace>VNLib.Net.Rest.Client</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
   
   <PropertyGroup>

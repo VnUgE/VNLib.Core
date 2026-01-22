@@ -6,7 +6,6 @@
     <RootNamespace>VNLib.Net.Transport</RootNamespace>
     <AssemblyName>VNLib.Net.Transport.SimpleTCP</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
   
   <PropertyGroup>

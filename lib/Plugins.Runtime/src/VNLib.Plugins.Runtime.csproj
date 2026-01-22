@@ -5,7 +5,6 @@
     <Nullable>enable</Nullable>
     <RootNamespace>VNLib.Plugins.Runtime</RootNamespace>
     <AssemblyName>VNLib.Plugins.Runtime</AssemblyName>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
 
