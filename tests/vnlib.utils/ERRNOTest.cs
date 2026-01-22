@@ -34,7 +34,7 @@ namespace VNLib.Utils.Tests
         [TestMethod]
         public unsafe void ERRNOSizeTest()
         {
-            Assert.IsTrue(sizeof(ERRNO) == sizeof(nint));
+            Assert.AreEqual(sizeof(nint), sizeof(ERRNO));
         }
 
     }

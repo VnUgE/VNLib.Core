@@ -22,7 +22,7 @@
 * along with VNLib.UtilsTests. If not, see http://www.gnu.org/licenses/.
 */
 
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 
 namespace VNLib.Utils.Tests

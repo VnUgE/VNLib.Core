@@ -62,13 +62,13 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(handle.Length, (ulong)bigHandleSize);
 
             //Should throw overflow
-            Assert.ThrowsException<OverflowException>(() => _ = handle.Span);
-            Assert.ThrowsException<OverflowException>(() => _ = handle.IntLength);
+            Assert.ThrowsExactly<OverflowException>(() => _ = handle.Span);
+            Assert.ThrowsExactly<OverflowException>(() => _ = handle.IntLength);
 
             //Should get the remaining span
             Span<byte> offsetTest = handle.GetOffsetSpan(int.MaxValue, 1024);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetOffsetSpan((long)int.MaxValue + 1, 1024));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetOffsetSpan((long)int.MaxValue + 1, 1024));
 
         }
 #endif

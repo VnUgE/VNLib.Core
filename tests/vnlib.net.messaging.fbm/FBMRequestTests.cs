@@ -73,7 +73,7 @@ namespace VNLib.Net.Messaging.FBM.Tests
             // Test writing header with HeaderCommand enum
             request.WriteHeader(HeaderCommand.Location, "http://example.com/resource");
             // Verify header was written
-            Assert.IsTrue(request.Length > 7); // Length should be greater than just the message ID header
+            Assert.IsGreaterThan(7, request.Length); // Length should be greater than just the message ID header
 
             //Test writing header with custom byte key
             request.WriteHeader(0x56, "custom-header-value");
@@ -82,8 +82,8 @@ namespace VNLib.Net.Messaging.FBM.Tests
             string compiled = request.Compile();
 
             Assert.IsFalse(string.IsNullOrEmpty(compiled));
-            Assert.IsTrue(compiled.Contains("http://example.com/resource"));
-            Assert.IsTrue(compiled.Contains("custom-header-value"), "Compiled string should include custom-header-value.");
+            Assert.Contains("http://example.com/resource", compiled);
+            Assert.Contains("custom-header-value", compiled, "Compiled string should include custom-header-value.");
         }
 
         /*
@@ -146,7 +146,7 @@ namespace VNLib.Net.Messaging.FBM.Tests
             request.WriteBody([0x01, 0x02, 0x03, 0x04], ContentType.Binary);
 
             ReadOnlyMemory<byte> initialData = request.GetRequestData();
-            Assert.IsTrue(initialData.Length > 0, "Initial request data should not be empty.");
+            Assert.IsGreaterThan(0, initialData.Length, "Initial request data should not be empty.");
             Assert.AreEqual(0x01, initialData.Span[0], "Initial request data should start with the message ID.");
 
             // Reset the request

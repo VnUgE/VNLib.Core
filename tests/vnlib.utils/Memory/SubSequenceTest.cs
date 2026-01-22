@@ -50,52 +50,52 @@ namespace VNLib.Utils.Memory.Tests
             //Test extension bounds checking, may defer to the sequence itself
 
             //Overrun the handle by offset
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(8193, 1).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(8193, 1).Span);
 
             //Overrun the handle by size
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(0, 8193).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(0, 8193).Span);
 
             //Overrun the handle by size at the end of a valid handle
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(8192, 1).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(8192, 1).Span);
 
             //Negative offset
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(0, -1).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = handle.GetSubSequence(0, -1).Span);
          
 
             //Test slicing 
 
             SubSequence<byte> full = handle.GetSubSequence(0, TestHandleSize);
 
-            Assert.IsTrue(full.Span.Length == TestHandleSize);
+            Assert.AreEqual(TestHandleSize, full.Span.Length);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = full.Slice(0, -1).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = full.Slice(0, -1).Span);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = full.Slice(8192, 1).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = full.Slice(8192, 1).Span);
 
             //Test slicing with offset only, size should be the remainder of the handle
-            Assert.IsTrue(full.Slice(100).Span.Length == (TestHandleSize - 100));
+            Assert.AreEqual(TestHandleSize - 100, full.Slice(100).Span.Length);
 
             //Slice of slice
             SubSequence<byte> slice = full.Slice(8190, 2);
 
-            Assert.IsTrue(slice.Span.Length == 2);
+            Assert.AreEqual(2, slice.Span.Length);
 
             //Allow slice of the exact same size or smaller
-            Assert.IsTrue(slice.Slice(0, 2).Span.Length == 2);
+            Assert.AreEqual(2, slice.Slice(0, 2).Span.Length);
 
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = slice.Slice(0, 3).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = slice.Slice(0, 3).Span);
 
             //Allow empty slice at the end
             Assert.IsTrue(slice.Slice(2, 0).Span.IsEmpty);
 
             //Overrun by offset
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = slice.Slice(3, 0).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = slice.Slice(3, 0).Span);
 
             //Overrun by size
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = slice.Slice(0, 3).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = slice.Slice(0, 3).Span);
 
             //Overrun by size at the end of a valid slice
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = slice.Slice(2, 1).Span);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = slice.Slice(2, 1).Span);
 
            
         }

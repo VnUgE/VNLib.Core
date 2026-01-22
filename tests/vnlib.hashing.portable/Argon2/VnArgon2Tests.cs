@@ -25,7 +25,7 @@
 using VNLib.Hashing.Native.MonoCypher;
 using VNLib.Utils.Memory;
 
-namespace VNLib.Hashing.Tests
+namespace VNLib.Hashing.PortableTests.Argon2
 {
     [TestClass()]
     public class VnArgon2Tests

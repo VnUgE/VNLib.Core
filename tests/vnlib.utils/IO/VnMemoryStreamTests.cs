@@ -22,7 +22,7 @@
 * along with VNLib.UtilsTests. If not, see http://www.gnu.org/licenses/.
 */
 
-﻿using System;
+using System;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -137,11 +137,11 @@ namespace VNLib.Utils.IO.Tests
             byte[] testData = [1, 2, 3, 4, 5, 6, 7, 8];
             vms.Write(testData);
 
-            Assert.AreEqual(vms.Length, testData.Length);
+            Assert.HasCount((int)vms.Length, testData);
 
             //Get the data as a span
             ReadOnlySpan<byte> span = vms.AsSpan();
-            Assert.AreEqual(span.Length, testData.Length);
+            Assert.HasCount(span.Length, testData);
 
             for (int i = 0; i < span.Length; i++)
             {
@@ -150,13 +150,13 @@ namespace VNLib.Utils.IO.Tests
 
             //Get the data as a memory
             ReadOnlyMemory<byte> memory = vms.AsMemory();
-            Assert.AreEqual(memory.Length, testData.Length);
+            Assert.HasCount(memory.Length, testData);
 
             Assert.IsTrue(memory.Span.SequenceEqual(testData));
 
             //Get the data as a byte array
             byte[] array = vms.ToArray();
-            Assert.AreEqual(array.Length, testData.Length);
+            Assert.HasCount(array.Length, testData);
 
             Assert.IsTrue(array.AsSpan().SequenceEqual(testData));
         }

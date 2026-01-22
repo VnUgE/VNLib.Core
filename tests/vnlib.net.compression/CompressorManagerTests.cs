@@ -22,7 +22,7 @@
 * along with VNLib.Net.CompressionTests. If not, see http://www.gnu.org/licenses/.
 */
 
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -32,14 +32,15 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
+using VNLib.Net.Compression;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
-namespace VNLib.Net.Compression.Tests
+namespace VNLib.Net.CompressionTests
 {
     [TestClass()]
     public class CompressorManagerTests

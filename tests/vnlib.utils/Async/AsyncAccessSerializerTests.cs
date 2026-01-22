@@ -80,7 +80,7 @@ namespace VNLib.Utils.Async.Tests
             serializer.Release(DEFAULT_KEY);
 
             //Confirm an excess release raises exception
-            Assert.ThrowsException<KeyNotFoundException>(() => serializer.Release(DEFAULT_KEY));
+            Assert.ThrowsExactly<KeyNotFoundException>(() => serializer.Release(DEFAULT_KEY));
         }
 
         /*
@@ -110,7 +110,7 @@ namespace VNLib.Utils.Async.Tests
             cts.Cancel();
 
             //Confirm the task raises cancellation
-            Assert.ThrowsException<TaskCanceledException>(() => reentry.GetAwaiter().GetResult());
+            Assert.ThrowsExactly<TaskCanceledException>(() => reentry.GetAwaiter().GetResult());
         }
 
         [TestMethod()]
