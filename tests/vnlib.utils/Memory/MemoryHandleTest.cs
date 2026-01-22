@@ -254,7 +254,7 @@ namespace VNLib.Utils.Memory.Tests
 
                 _ = hut.Length;
                 _ = hut.ByteLength;
-                _ = hut.Equals(null);  // Just checking that no errors occur when checking equality
+                _ = hut.Equals(null!);  // Just checking that no errors occur when checking equality
                 _ = hut.GetHashCode();
                 _ = hut.Span; //Should be empty but not throw
                

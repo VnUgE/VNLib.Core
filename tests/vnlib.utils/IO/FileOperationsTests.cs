@@ -118,10 +118,12 @@ namespace VNLib.Utils.IO.Tests
             }
             else
             {
+#pragma warning disable CA1416 // Validate platform compatibility
                 Assert.ThrowsExactly<NotSupportedException>(
                     () => FileOperations.CanAccess(_tempFilePath, FileAccess.Read), 
                     message: "Non-Linux platforms should throw NotSupportedException for access checks"
                 );
+#pragma warning restore CA1416 // Validate platform compatibility
             }
         }
 
@@ -139,10 +141,12 @@ namespace VNLib.Utils.IO.Tests
             }
             else
             {
+#pragma warning disable CA1416 // Validate platform compatibility
                 Assert.ThrowsExactly<NotSupportedException>(
                     () => FileOperations.CanAccess(_tempFilePath, FileAccess.Read),
                     message: "Non-Linux platforms should throw NotSupportedException for access checks"
                 );
+#pragma warning restore CA1416 // Validate platform compatibility
             }
         }
 
