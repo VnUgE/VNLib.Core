@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM.Tests
@@ -21,8 +21,6 @@
 * You should have received a copy of the GNU General Public License 
 * along with VNLib.Net.Messaging.FBM.Tests. If not, see http://www.gnu.org/licenses/.
 */
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using VNLib.Utils.Memory;
 using VNLib.Net.Http;
