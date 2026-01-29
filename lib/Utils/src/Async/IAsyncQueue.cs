@@ -38,9 +38,9 @@ namespace VNLib.Utils.Async
 #pragma warning restore CA1711 // Identifiers should not have incorrect suffix
     {
         /// <summary>
-        /// Attemts to enqueue an item if the queue has the capacity
+        /// Attempts to enqueue an item if the queue has the capacity
         /// </summary>
-        /// <param name="item">The item to eqneue</param>
+        /// <param name="item">The item to enqueue</param>
         /// <returns>True if the queue can accept another item, false otherwise</returns>
         bool TryEnqueue(T item);
 
@@ -55,14 +55,14 @@ namespace VNLib.Utils.Async
         /// Asynchronously waits for an item to be Enqueued to the end of the queue.
         /// </summary>
         /// <param name="cancellationToken">A token to cancel the operation</param>
-        /// <returns>The item at the begining of the queue</returns>
+        /// <returns>The item at the beginning of the queue</returns>
         ValueTask<T> DequeueAsync(CancellationToken cancellationToken = default);
        
         /// <summary>
         /// Removes the object at the beginning of the queue and stores it to the result parameter. Without waiting for a change 
         /// event. 
         /// </summary>
-        /// <param name="result">The item that was at the begining of the queue</param>
+        /// <param name="result">The item that was at the beginning of the queue</param>
         /// <returns>True if the queue could be read synchronously, false if the lock could not be entered, or the queue contains no items</returns>
         bool TryDequeue([MaybeNullWhen(false)] out T result);
        
@@ -70,7 +70,7 @@ namespace VNLib.Utils.Async
         /// Peeks the object at the beginning of the queue and stores it to the result parameter. Without waiting for a change 
         /// event. 
         /// </summary>
-        /// <param name="result">The item that was at the begining of the queue</param>
+        /// <param name="result">The item that was at the beginning of the queue</param>
         /// <returns>True if the queue could be read synchronously, false if the lock could not be entered, or the queue contains no items</returns>
         bool TryPeek([MaybeNullWhen(false)] out T result);
     }

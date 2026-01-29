@@ -1,0 +1,13 @@
+{
+  "level1": {
+    "level2": {
+      "level3": {
+        "value": "deeply-nested"
+      }
+    }
+  },
+  "simple": "value",
+  "number": 42,
+  "boolean": true,
+  "array": [1, 2, 3]
+}

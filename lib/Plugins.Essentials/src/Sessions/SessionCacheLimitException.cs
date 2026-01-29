@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,7 +27,7 @@ using System;
 namespace VNLib.Plugins.Essentials.Sessions
 {
     /// <summary>
-    /// Raised when the maximum number of cache entires has been reached, and the new session cannot be processed
+    /// Raised when the maximum number of cache entries has been reached, and the new session cannot be processed
     /// </summary>
     public class SessionCacheLimitException : SessionException
     {

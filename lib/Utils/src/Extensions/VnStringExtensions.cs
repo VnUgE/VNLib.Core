@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -39,7 +39,7 @@ namespace VNLib.Utils.Extensions
     public static class VnStringExtensions
     {
         /// <summary>
-        /// Derermines if the character exists within the instance
+        /// Determines if the character exists within the instance
         /// </summary>
         /// <param name="str"></param>
         /// <param name="value">The value to find</param>
@@ -49,7 +49,7 @@ namespace VNLib.Utils.Extensions
         public static bool Contains(this VnString str, char value) => str.AsSpan().Contains(value);
 
         /// <summary>
-        /// Derermines if the sequence exists within the instance
+        /// Determines if the sequence exists within the instance
         /// </summary>
         /// <param name="str"></param>
         /// <param name="value">The sequence to find</param>
@@ -61,27 +61,27 @@ namespace VNLib.Utils.Extensions
 
 
         /// <summary>
-        ///  Searches for the first occurrance of the specified character within the current instance
+        ///  Searches for the first occurrence of the specified character within the current instance
         /// </summary>
         /// <param name="str"></param>
         /// <param name="value">The character to search for within the instance</param>
-        /// <returns>The 0 based index of the occurance, -1 if the character was not found</returns>
+        /// <returns>The 0 based index of the occurrence, -1 if the character was not found</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf(this VnString str, char value) => str.IsEmpty ? -1 : str.AsSpan().IndexOf(value);
 
         /// <summary>
-        /// Searches for the first occurrance of the specified sequence within the current instance
+        /// Searches for the first occurrence of the specified sequence within the current instance
         /// </summary>
         /// <param name="str"></param>
         /// <param name="search">The sequence to search for</param>
-        /// <returns>The 0 based index of the occurance, -1 if the sequence was not found</returns>
+        /// <returns>The 0 based index of the occurrence, -1 if the sequence was not found</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf(this VnString str, ReadOnlySpan<char> search) => str.AsSpan().IndexOf(search);
 
         /// <summary>
-        /// Searches for the first occurrance of the specified sequence within the current instance
+        /// Searches for the first occurrence of the specified sequence within the current instance
         /// </summary>
         /// <param name="str"></param>
         /// <param name="search">The sequence to search for</param>
@@ -96,8 +96,8 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <param name="str"></param>
         /// <param name="search">The sequence of data to search for</param>
-        /// <param name="start">The lower boundry of the search area</param>
-        /// <returns>The absolute index of the first occurrance within the instance, -1 if the sequency was not found in the windowed segment</returns>
+        /// <param name="start">The lower boundary of the search area</param>
+        /// <returns>The absolute index of the first occurrence within the instance, -1 if the sequence was not found in the windowed segment</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         public static int IndexOf(this VnString str, ReadOnlySpan<char> search, int start)
@@ -259,7 +259,7 @@ namespace VNLib.Utils.Extensions
                 //Return remaining data
                 yield return data.AbsoluteTrim(lowerBound);
             }
-            //Remove empty entires but do not trim them
+            //Remove empty entries but do not trim them
             else if ((options & StringSplitOptions.TrimEntries) == 0)
             {
                 do
@@ -385,7 +385,7 @@ namespace VNLib.Utils.Extensions
         /// for a memory handle
         /// </summary>
         /// <param name="handle"></param>
-        /// <param name="offset">The offset in characters that represents the begining of the string</param>
+        /// <param name="offset">The offset in characters that represents the beginning of the string</param>
         /// <param name="length">The number of characters from the handle to reference (length of the string)</param>
         /// <returns>The new <see cref="VnString"/> wrapper</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>

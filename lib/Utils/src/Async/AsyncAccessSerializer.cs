@@ -160,9 +160,9 @@ namespace VNLib.Utils.Async
         public virtual void Release(TMoniker moniker)
         {
             /*
-             * When releasing a lock on a moniker, we store entires in an internal table. Wait entires also require mutual
-             * exclustion to properly track waiters. This happens inside a single lock for lower entry times/complexity. 
-             * The wait's internal semaphore may also cause longer waits within the lock, so wait entires are "prepared"
+             * When releasing a lock on a moniker, we store entries in an internal table. Wait entries also require mutual
+             * exclusion to properly track waiters. This happens inside a single lock for lower entry times/complexity. 
+             * The wait's internal semaphore may also cause longer waits within the lock, so wait entries are "prepared"
              * by using tokens to access the wait/release mechanisms with proper tracking.
              * 
              * Tokens can be used to control the wait because the call to release may cause thread yielding (if internal 
@@ -217,10 +217,10 @@ namespace VNLib.Utils.Async
 
         /// <summary>
         /// Gets a <see cref="WaitEntry"/> from the pool, or initializes a new one
-        /// and stores the moniker referrence
+        /// and stores the moniker reference
         /// </summary>
-        /// <param name="wait">The <see cref="WaitEntry"/> referrence to initialize</param>
-        /// <param name="moniker">The moniker referrence to initialize</param>
+        /// <param name="wait">The <see cref="WaitEntry"/> reference to initialize</param>
+        /// <param name="moniker">The moniker reference to initialize</param>
         protected virtual void GetWaitEntry([NotNull] ref WaitEntry? wait, TMoniker moniker)
         {
             //Try to get wait from pool
@@ -258,7 +258,7 @@ namespace VNLib.Utils.Async
         ///<inheritdoc/>
         public void CacheHardClear()
         {
-            //Take lock to remove the stored wait entires to dispose of them
+            //Take lock to remove the stored wait entries to dispose of them
             WaitEntry[] pooled;
 
             lock (StoreLock)
@@ -285,7 +285,7 @@ namespace VNLib.Utils.Async
             private TaskNode? _head;
 
             /// <summary>
-            /// A stored referrnece to the moniker while the wait exists
+            /// A stored reference to the moniker while the wait exists
             /// </summary>
             public TMoniker? Moniker { get; private set; }
 
@@ -294,7 +294,7 @@ namespace VNLib.Utils.Async
             /// outside of a nested lock
             /// <para>This method and release method are not thread safe</para>
             /// </summary>
-            /// <param name="enterToken">A referrence to the wait entry token</param>
+            /// <param name="enterToken">A reference to the wait entry token</param>
             /// <returns>
             /// The incremented reference count.
             /// </returns>
@@ -307,7 +307,7 @@ namespace VNLib.Utils.Async
             /// <para>This method and release method are not thread safe</para>
             /// </summary>
             /// <param name="cancellation"></param>
-            /// <param name="enterToken">A referrence to the wait entry token</param>
+            /// <param name="enterToken">A reference to the wait entry token</param>
             /// <returns>
             /// The incremented reference count.
             /// </returns>
@@ -367,7 +367,7 @@ namespace VNLib.Utils.Async
             /// Prepres a new <see cref="WaitEntry"/> for 
             /// its new moniker object.
             /// </summary>
-            /// <param name="moniker">The referrence to the moniker to hold</param>
+            /// <param name="moniker">The reference to the moniker to hold</param>
             public void Prepare(TMoniker? moniker)
             {
                 Moniker = moniker;

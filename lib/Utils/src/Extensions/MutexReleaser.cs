@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace VNLib.Utils.Extensions
@@ -32,16 +33,26 @@ namespace VNLib.Utils.Extensions
     /// that has been entered and will be released. Best if used
     /// within a using() statment
     /// </summary>
-    /// <param name="Handle">The Mutext referrence</param>
+    /// <param name="Handle">The Mutex reference</param>
     public readonly record struct MutexReleaser(Mutex Handle) : IDisposable
     {
         /// <summary>
         ///  Releases the held System.Threading.Mutex once.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose() => Handle.ReleaseMutex();
+
         /// <summary>
         /// Releases the held System.Threading.Mutex once.
         /// </summary>
-        public readonly void ReleaseMutext() => Handle.ReleaseMutex();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void ReleaseMutex() => Handle.ReleaseMutex();
+
+        /// <summary>
+        /// Releases the held System.Threading.Mutex once.
+        /// </summary>
+        [Obsolete]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void ReleaseMutext() => ReleaseMutex();       
     }
 }

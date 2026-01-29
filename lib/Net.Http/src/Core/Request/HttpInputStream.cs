@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -149,7 +149,7 @@ namespace VNLib.Net.Http.Core
                 _state.Position += read;
             }
 
-            //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
+            //See if data is still remaining to be read from transport (remaining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
             {
                 ERRNO read = transport.Stream!.Read(writer.Remaining);
@@ -192,7 +192,7 @@ namespace VNLib.Net.Http.Core
                 _state.Position += read;
             }
 
-            //See if data is still remaining to be read from transport (reamining size is also the amount of data that can be read)
+            //See if data is still remaining to be read from transport (remaining size is also the amount of data that can be read)
             if (writer.RemainingSize > 0)
             {                
                 int read = await transport.Stream.ReadAsync(writer.Remaining, cancellationToken)

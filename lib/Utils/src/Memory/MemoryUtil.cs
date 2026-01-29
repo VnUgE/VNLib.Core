@@ -462,7 +462,7 @@ namespace VNLib.Utils.Memory
         /// of data to the target structure reference.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="source">A reference to the first byte of source data to copy from</param>
         /// <param name="target">An initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         public static void CopyStruct<T>(ref readonly byte source, ref T target) where T : unmanaged
@@ -486,7 +486,7 @@ namespace VNLib.Utils.Memory
         /// be large enough to hold the structure data.
         /// </remarks>
         /// <typeparam name="T"></typeparam>
-        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="source">A reference to the first byte of source data to copy from</param>
         /// <param name="target">A reference to the first byte of the memory location to copy the struct data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         public static void CopyStruct<T>(scoped ref readonly T source, ref byte target) where T : unmanaged
@@ -508,7 +508,7 @@ namespace VNLib.Utils.Memory
         /// of data to the target structure reference.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="source">A reference to the first byte of source data to copy from</param>
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -523,7 +523,7 @@ namespace VNLib.Utils.Memory
         /// of data to the target structure reference.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="source">A referrence to the first byte of source data to copy from</param>
+        /// <param name="source">A reference to the first byte of source data to copy from</param>
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -534,7 +534,7 @@ namespace VNLib.Utils.Memory
         /// Copies structure data from a source sequence of data to the target structure reference.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="sourceData">A referrence to the first byte of source data to copy from</param>
+        /// <param name="sourceData">A reference to the first byte of source data to copy from</param>
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentException"></exception>
@@ -553,7 +553,7 @@ namespace VNLib.Utils.Memory
         /// Copies structure data from a source sequence of data to the target structure reference.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="sourceData">A referrence to the first byte of source data to copy from</param>
+        /// <param name="sourceData">A reference to the first byte of source data to copy from</param>
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -564,7 +564,7 @@ namespace VNLib.Utils.Memory
         /// Copies structure data from a source sequence of data to the target structure reference.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="sourceData">A referrence to the first byte of source data to copy from</param>
+        /// <param name="sourceData">A reference to the first byte of source data to copy from</param>
         /// <param name="target">A pointer to initialized target structure to copy data to</param>
         /// <exception cref="ArgumentNullException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1449,7 +1449,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T"></typeparam>
         /// <param name="handle">The handle to check bounds of</param>
         /// <param name="offset">The base offset to add</param>
-        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferenced</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(IMemoryHandle<T> handle, nuint offset, nuint count)
@@ -1462,7 +1462,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T"></typeparam>
         /// <param name="block">The handle to check bounds of</param>
         /// <param name="offset">The base offset to add</param>
-        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferenced</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(ReadOnlySpan<T> block, int offset, int count)
         {
@@ -1478,7 +1478,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T"></typeparam>
         /// <param name="block">The handle to check bounds of</param>
         /// <param name="offset">The base offset to add</param>
-        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferenced</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(Span<T> block, int offset, int count) 
@@ -1491,7 +1491,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T"></typeparam>
         /// <param name="block">The handle to check bounds of</param>
         /// <param name="offset">The base offset to add</param>
-        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferenced</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(ReadOnlyMemory<T> block, int offset, int count)
@@ -1508,7 +1508,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T"></typeparam>
         /// <param name="block">The handle to check bounds of</param>
         /// <param name="offset">The base offset to add</param>
-        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferenced</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(Memory<T> block, int offset, int count) 
@@ -1521,7 +1521,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T"></typeparam>
         /// <param name="block">The handle to check bounds of</param>
         /// <param name="offset">The base offset to add</param>
-        /// <param name="count">The number of bytes expected to be assigned or dereferrenced</param>
+        /// <param name="count">The number of bytes expected to be assigned or dereferenced</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckBounds<T>(T[] block, nuint offset, nuint count)
@@ -1632,7 +1632,7 @@ namespace VNLib.Utils.Memory
         /// Gets a <see cref="Span{T}"/> from the supplied address
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="address">The address of the begining of the memory sequence</param>
+        /// <param name="address">The address of the beginning of the memory sequence</param>
         /// <param name="size">The size of the sequence</param>
         /// <returns>The span pointing to the memory at the supplied addres</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -6,7 +6,6 @@
     <RootNamespace>VNLib.Net.Transport</RootNamespace>
     <AssemblyName>VNLib.Net.Transport.SimpleTCP</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -33,7 +32,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="System.IO.Pipelines" Version="9.0.9" />
+    <PackageReference Include="System.IO.Pipelines" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -38,12 +38,12 @@ namespace VNLib.Utils.Memory
         private readonly StringRef[] ProtectedElements = new StringRef[elements];
 
         /// <summary>
-        /// Gets or sets a string referrence into the protected elements store
+        /// Gets or sets a string reference into the protected elements store
         /// </summary>
         /// <param name="index">The table index to store the string</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        /// <returns>Referrence to string associated with the index</returns>
+        /// <returns>Reference to string associated with the index</returns>
         protected string? this[int index]
         {
             get
@@ -89,7 +89,7 @@ namespace VNLib.Utils.Memory
             {
                 /*
                  * If string is interned, it is safe to return the
-                 * string referrence as it will not be erased
+                 * string reference as it will not be erased
                  */
                 return str.Value;
             }

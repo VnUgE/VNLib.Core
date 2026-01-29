@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -58,7 +58,7 @@ namespace VNLib.Utils.IO
         {
             //Store ref to parent dir
             Parent = parent;
-            //Referrence store
+            //Reference store
             Storage = parent.Storage;
             //Add the name of this dir to the end of the specified dir path
             DirectoryPath = Path.Combine(parent.DirectoryPath, dirName);

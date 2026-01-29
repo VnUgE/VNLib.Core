@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -38,7 +38,7 @@ namespace VNLib.Utils.Extensions
     public static class ThreadingExtensions
     {
         /// <summary>
-        /// Waits for exlcusive access to the resource identified by the given moniker
+        /// Waits for exclusive access to the resource identified by the given moniker
         /// and returns a handle that will release the lock when disposed.
         /// </summary>
         /// <typeparam name="TMoniker"></typeparam>
@@ -50,7 +50,7 @@ namespace VNLib.Utils.Extensions
            this IAsyncAccessSerializer<TMoniker> serialzer,
            TMoniker moniker,
            CancellationToken cancellation = default
-           )
+        )
         {
             //Wait async get handle
             static async Task<SerializerHandle<TMoniker>> AwaitHandle(Task wait, IAsyncAccessSerializer<TMoniker> serialzer, TMoniker moniker)
@@ -252,7 +252,7 @@ namespace VNLib.Utils.Extensions
         public static Task<bool> NoSpinWaitAsync(this WaitHandle handle, int timeoutMs)
         {            
             //Completion source used to signal the awaiter when the wait handle is signaled
-            TaskCompletionSource<bool> completion = new(TaskCreationOptions.None);
+            TaskCompletionSource<bool> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
             
             //Register wait on threadpool to complete the task source
             RegisteredWaitHandle registration = ThreadPool.RegisterWaitForSingleObject(

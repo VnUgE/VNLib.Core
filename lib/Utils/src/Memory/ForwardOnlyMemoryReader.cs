@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -27,7 +27,7 @@ using System;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// A mutable structure used to implement a simple foward only 
+    /// A mutable structure used to implement a simple forward only 
     /// reader for a memory segment
     /// </summary>
     /// <typeparam name="T">The element type</typeparam>
@@ -63,7 +63,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Advances the window position the specified number of elements
         /// </summary>
-        /// <param name="count">The number of elements to advance the widnow position</param>
+        /// <param name="count">The number of elements to advance the window position</param>
         public void Advance(int count)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan(count, WindowSize);
@@ -72,7 +72,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Resets the sliding window to the begining of the buffer
+        /// Resets the sliding window to the beginning of the buffer
         /// </summary>
         public void Reset() => _position = 0;
     }

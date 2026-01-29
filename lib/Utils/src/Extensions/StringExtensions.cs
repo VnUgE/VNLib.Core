@@ -185,7 +185,7 @@ namespace VNLib.Utils.Extensions
                 //Trim remaining and add it regardless of length
                 splitCb(reader.Window.Trim(), state);
             }
-            //Remove empty entires but do not trim them
+            //Remove empty entries but do not trim them
             else if ((options & StringSplitOptions.RemoveEmptyEntries) == StringSplitOptions.RemoveEmptyEntries)
             {
                 //Get data before splitter and trim it
@@ -362,7 +362,7 @@ namespace VNLib.Utils.Extensions
         public static int IndexOf(this in Memory<byte> data, ReadOnlyMemory<byte> search) => IndexOf(data, search.Span);
 
         /// <summary>
-        /// Slices the current span from the begining of the segment to the first occurrance of the specified character. 
+        /// Slices the current span from the beginning of the segment to the first occurrence of the specified character. 
         /// If the character is not found, the entire segment is returned
         /// </summary>
         /// <param name="data"></param>
@@ -378,7 +378,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Slices the current span from the begining of the segment to the first occurrance of the specified character sequence. 
+        /// Slices the current span from the beginning of the segment to the first occurrence of the specified character sequence. 
         /// If the character sequence is not found, the entire segment is returned
         /// </summary>
         /// <param name="data"></param>
@@ -533,7 +533,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Replaces very ocurrance of character sequence within a buffer with another sequence of the same length
+        /// Replaces every occurrence of character sequence within a buffer with another sequence of the same length
         /// </summary>
         /// <param name="buffer"></param>
         /// <param name="search">The sequence to search for</param>
@@ -550,7 +550,7 @@ namespace VNLib.Utils.Extensions
 
             while(start > -1)
             {
-                //Shift the buffer to the begining of the search parameter
+                //Shift the buffer to the beginning of the search parameter
                 buffer = buffer[start..];
 
                 //Overwite the search parameter

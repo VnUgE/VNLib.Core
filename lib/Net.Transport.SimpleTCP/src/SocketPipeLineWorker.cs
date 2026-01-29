@@ -176,7 +176,7 @@ namespace VNLib.Net.Transport.Tcp
                     {
 
                         /*
-                         * Using a foward only reader allows the following loop
+                         * Using a forward only reader allows the following loop
                          * to track the ammount of data written to the socket
                          * until the entire segment has been sent or if it has
                          * move to the next segment

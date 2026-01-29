@@ -85,7 +85,7 @@ namespace VNLib.Net.Messaging.FBM.Server
            
             MessageId = messageId;
 
-            //Write the messageid to the begining of the headers buffer
+            //Write the message id to the beginning of the headers buffer
             Helpers.WriteMessageid(_headerAccumulator, messageId);
         }
 
