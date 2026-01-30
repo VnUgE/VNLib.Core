@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -27,7 +27,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using VNLib.Utils.Async;
-using VNLib.Utils.Resources;
 
 namespace VNLib.Utils.Extensions
 {
@@ -197,16 +196,19 @@ namespace VNLib.Utils.Extensions
                 return TrueCompleted;
             }
             //When timeout is 0, wh will block, return false
-            else if(timeoutMs == 0)
+            else if (timeoutMs == 0)
             {
                 return FalseCompleted;
             }
+
             //Init short lived spinwait
             SpinWait sw = new();
+
             //Spin until yield occurs
             while (!sw.NextSpinWillYield)
             {
                 sw.SpinOnce();
+
                 //Check handle state
                 if (handle.WaitOne(0))
                 {
@@ -250,41 +252,75 @@ namespace VNLib.Utils.Extensions
         /// <param name="timeoutMs">Time (in ms)</param>
         /// <returns></returns>
         public static Task<bool> NoSpinWaitAsync(this WaitHandle handle, int timeoutMs)
-        {            
-            //Completion source used to signal the awaiter when the wait handle is signaled
-            TaskCompletionSource<bool> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            
-            //Register wait on threadpool to complete the task source
+        {
+            NoSpinWaitState state = new();
+
+            //Register wait on threadpool and assign the registration object
             RegisteredWaitHandle registration = ThreadPool.RegisterWaitForSingleObject(
                 handle, 
-                TaskCompletionCallback, 
-                completion, 
-                timeoutMs, executeOnlyOnce: true
+                NoSpinWaitState.OnCompletionCallback, state, 
+                timeoutMs, 
+                executeOnlyOnce: true
             );
 
-            //Register continuation to cleanup
-            _ = completion.Task.ContinueWith(
-                CleanupContinuation, 
-                registration, 
-                CancellationToken.None, 
-                TaskContinuationOptions.ExecuteSynchronously, 
-                TaskScheduler.Default
-            ).ConfigureAwait(false);
-            
-            return completion.Task;
+            return state.GetTask(registration);
         }
 
-        private static void CleanupContinuation(Task<bool> task, object? taskCompletion)
+        private sealed class NoSpinWaitState
         {
-            RegisteredWaitHandle registration = (taskCompletion as RegisteredWaitHandle)!;
-            registration.Unregister(null);
-            task.Dispose();
-        }
-        private static void TaskCompletionCallback(object? tcsState, bool timedOut)
-        {
-            TaskCompletionSource<bool> completion = (tcsState as TaskCompletionSource<bool>)!;
-            //Set the result of the wait handle timeout
-            _ = completion.TrySetResult(!timedOut);
+            private readonly TaskCompletionSource<bool> Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            /// <summary>
+            /// Tracks the completion state of the wait operation
+            /// </summary>
+            private volatile bool IsCompleted;
+
+            /// <summary>
+            /// Holds the registration object for the wait operation
+            /// </summary>
+            private RegisteredWaitHandle? Registration;
+
+            /// <summary>
+            /// Gets the task that will complete when the wait handle is signaled 
+            /// or the timeout expires. Performs necessary state cleanup.
+            /// </summary>
+            /// <returns>The task coupled to the registered wait handle to return to the caller</returns>
+            public Task<bool> GetTask(RegisteredWaitHandle registration)
+            {
+                if (IsCompleted)
+                {
+                    registration.Unregister(null);
+                }
+                else
+                {
+                    _ = Interlocked.Exchange(ref Registration, registration);
+                }
+
+                return Completion.Task;
+            }
+
+            /// <summary>
+            /// Callback invoked by the thread pool when the wait handle is signaled 
+            /// or the timeout expires
+            /// </summary>
+            /// <param name="waitState">The state parameter to be passed from the threadpool registration</param>
+            /// <param name="timedOut">A value that indicates if the itmeout was exceeded or not</param>
+            public static void OnCompletionCallback(object? waitState, bool timedOut)
+            {
+                NoSpinWaitState self = (NoSpinWaitState)waitState!;
+
+                self.IsCompleted = true;
+
+                /*
+                 * Get the registration and unregister it to clean up resources, 
+                 * interlocked exchange for null to prevent multiple unregister attempts
+                 */
+                RegisteredWaitHandle? reg = Interlocked.Exchange(ref self.Registration, null);
+                reg?.Unregister(null);
+
+                // Complete the task
+                self.Completion.TrySetResult(!timedOut);
+            }           
         }
       
 
@@ -298,11 +334,11 @@ namespace VNLib.Utils.Extensions
         public static Task RegisterUnobserved(this CancellationToken token, Action callback)
         {
             //Call callback when the wait handle is set
-            return token.WaitHandle.WaitAsync()
+            return WaitAsync(token.WaitHandle)
                 .ContinueWith(static (t, callback) => (callback as Action)!.Invoke(), 
                     callback, 
                     CancellationToken.None, 
-                    TaskContinuationOptions.ExecuteSynchronously, 
+                    TaskContinuationOptions.None, //WaitAsync will set the contiuation level for callbacks
                     TaskScheduler.Default
                 );
         }
