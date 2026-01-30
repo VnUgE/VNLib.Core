@@ -14,8 +14,8 @@ vars:
   BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
 
-  # optional build variables
-  ENABLE_GREEDY: '{{ .ENABLE_GREEDY | default "1" }}'       # default to greedy allocator build
+  # Enable architecture-tuned SIMD paths when building on x64/amd64
+  MI_ARCH_SIMD_FLAGS: '{{ if or (eq ARCH "amd64") (eq ARCH "x86_64") (eq ARCH "x64") }}-DMI_OPT_ARCH=ON -DMI_OPT_SIMD=ON{{ end }}'
 
   # default cmake build parameters
   CMAKE_BUILD_TYPE: '{{ .BUILD_TYPE | default "Release" }}'
@@ -53,14 +53,14 @@ tasks:
     desc: 'Configures the build for the current platform'
     internal: true
     requires:
-      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, ENABLE_GREEDY]
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
       - cmd: cmake 
          {{ .CMAKE_ARGS }} 
+         {{ .MI_ARCH_SIMD_FLAGS }}
          -S .
          -B{{ .CMAKE_BUILD_DIR }}
          -DCMAKE_BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}
-         -DENABLE_GREEDY={{ .ENABLE_GREEDY }}
 
   cmake-compile:
     desc: 'Compiles the project for the current platform'
@@ -133,8 +133,8 @@ tasks:
       ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
      - cmd: cp NativeHeapApi.h '{{ .TARGET_DIR }}/'
-     - cmd: cp vendor/license '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
-     - cmd: cp license '{{ .TARGET_DIR }}/license.txt'
+     - cmd: cp vendor/LICENSE '{{ .TARGET_DIR }}/{{ .DEP_NAME }}_license.txt'
+     - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
      - cmd: cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
 
      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .

@@ -8,7 +8,7 @@ jobs:
     userName: VnUgE
     passwordSecret: git-access-token
     force: true
-    condition: SUCCESSFUL
+    condition: ALWAYS
     optional: false
   - type: PushRepository
     name: Codeberg push sync
@@ -16,7 +16,7 @@ jobs:
     userName: VnUgE
     passwordSecret: codeberg-access-token
     force: true
-    condition: SUCCESSFUL
+    condition: ALWAYS
     optional: false
   triggers:
   - type: TagCreateTrigger

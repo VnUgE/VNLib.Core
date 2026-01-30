@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_mimalloc
@@ -65,6 +65,7 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapCreate(UnmanagedHeapDescriptor* flags)
 
     flags->CreationFlags &= ~(HEAP_CREATION_SERIALZE_ENABLED);
     flags->CreationFlags |= HEAP_CREATION_SUPPORTS_REALLOC;
+    flags->CreationFlags |= HEAP_CREATION_IS_SHARED;
    
     flags->HeapPointer = heapGetSharedHeapHandle();
 
@@ -87,42 +88,50 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapDestroy(HeapHandle heap)
 }
 
 
-VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, uint64_t elements, uint64_t alignment, int zero)
 {
+#if SIZE_MAX < UINT64_MAX
+    if (elements > SIZE_MAX || alignment > SIZE_MAX) return NULL;
+#endif
+
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         //Allocate the block
         return zero ?
-            mi_calloc(elements, alignment) : 
-            mi_mallocn(elements, alignment);
+            mi_calloc((size_t)elements, (size_t)alignment) : 
+            mi_mallocn((size_t)elements, (size_t)alignment);
     }
     else
     {
         //First class heap, lock is held by caller, optionally zero the block
         return zero ?
-            mi_heap_calloc(heap, elements, alignment) : 
-            mi_heap_mallocn(heap, elements, alignment);
+            mi_heap_calloc(heap, (size_t)elements, (size_t)alignment) : 
+            mi_heap_mallocn(heap, (size_t)elements, (size_t)alignment);
     }
 }
 
 
-VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, size_t elements, size_t alignment, int zero)
+VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, uint64_t elements, uint64_t alignment, int zero)
 {
+#if SIZE_MAX < UINT64_MAX
+    if (elements > SIZE_MAX || alignment > SIZE_MAX) return NULL;    
+#endif
+
     //Check for global heap
     if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         //reallocate the block
         return zero ?
-			mi_recalloc(block, elements, alignment) :
-			mi_reallocn(block, elements, alignment);
+            mi_recalloc(block, (size_t)elements, (size_t)alignment) :
+            mi_reallocn(block, (size_t)elements, (size_t)alignment);
     }
     else
     {
         //First class heap realloc
         return zero ?
-			mi_heap_recalloc(heap, block, elements, alignment) :
-			mi_heap_reallocn(heap, block, elements, alignment);
+            mi_heap_recalloc(heap, block, (size_t)elements, (size_t)alignment) :
+            mi_heap_reallocn(heap, block, (size_t)elements, (size_t)alignment);
     }
 }
 
