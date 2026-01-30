@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.5] - 2026-01-22
+## [0.1.5] - 2026-01-30
 
 ### Added
 
-- Enable platform arch support by default on amd64 systems - (mimalloc) [63e16cd](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=63e16cd20fcec19b08d6ed8ab285dc19f8f93f0d)
+- Enable platform arch SIMD enhancements by default on amd64 systems - (mimalloc) [63e16cd](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=63e16cd20fcec19b08d6ed8ab285dc19f8f93f0d)
 
 ### Changed
 
@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor and modernize unit test assertions and namespaces - [cf05883](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=cf05883f6204c6a1f47c81262ebb88dcf4140751)
 - Fix value disacard in Subsequence unit tests during assertions - [f738ced](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=f738ced219d4f3679a1fad06098924a4cb9d18b3)
 - Suppress test warnings, improve async/threading/test code - [54af35f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=54af35f6418afd4926f37ed1749b45ae1e382765)
+
+### Performance
+
+- Improve waithandle WaitAsync and NoSpinWaitAsync extension methods - (utils) [ed59eb7](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=ed59eb7393b3ed5876206e9a45ca94841542bd44)
 
 ## [0.1.4] - 2025-11-17
 
