@@ -6,7 +6,6 @@
     <RootNamespace>VNLib.Net.Messaging.FBM</RootNamespace>
     <AssemblyName>VNLib.Net.Messaging.FBM</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
   </PropertyGroup>
 
   <PropertyGroup>

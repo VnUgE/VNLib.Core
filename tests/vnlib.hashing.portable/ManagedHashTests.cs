@@ -1,4 +1,26 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿/*
+* Copyright (c) 2026 Vaughn Nugent
+* 
+* Library: VNLib
+* Package: VNLib.Hashing.PortableTests
+* File: ManagedHashTests.cs 
+*
+* ManagedHashTests.cs is part of VNLib.Hashing.PortableTests which is part of the larger 
+* VNLib collection of libraries and utilities.
+*
+* VNLib.Hashing.PortableTests is free software: you can redistribute it and/or modify 
+* it under the terms of the GNU General Public License as published
+* by the Free Software Foundation, either version 2 of the License,
+* or (at your option) any later version.
+*
+* VNLib.Hashing.PortableTests is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+* General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License 
+* along with VNLib.Hashing.PortableTests. If not, see http://www.gnu.org/licenses/.
+*/
 
 using System.Text;
 using System.Diagnostics;
@@ -6,7 +28,7 @@ using System.Diagnostics;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 
-namespace VNLib.Hashing.Tests
+namespace VNLib.Hashing.PortableTests
 {
 
     [TestClass()]
@@ -31,27 +53,27 @@ namespace VNLib.Hashing.Tests
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHash(testData, heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
+                Assert.AreEqual<int>(ManagedHash.GetHashSize(alg), hashSize);
 
                 //With input string and heap buffer
                 hashSize = ManagedHash.ComputeHash("test", heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
+                Assert.AreEqual<int>(ManagedHash.GetHashSize(alg), hashSize);
 
                 //Compute string and byte array
                 byte[] testdata = ManagedHash.ComputeHash(testData, alg);
-                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
+                Assert.HasCount(ManagedHash.GetHashSize(alg), testdata);
 
                 //With input string
                 testdata = ManagedHash.ComputeHash("test", alg);
-                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
+                Assert.HasCount(ManagedHash.GetHashSize(alg), testdata);
 
                 //Compute hash as a hex string. Output should be 2x because hex is 2 chars per byte
                 string testEnc = ManagedHash.ComputeHash(testdata, alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
+                Assert.AreEqual(ManagedHash.GetHashSize(alg) * 2, testEnc.Length);
 
                 //With input string
                 testEnc = ManagedHash.ComputeHash("test", alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
+                Assert.AreEqual(ManagedHash.GetHashSize(alg) * 2, testEnc.Length);
             }
         }
 
@@ -75,27 +97,27 @@ namespace VNLib.Hashing.Tests
 
                 //Compute hash
                 ERRNO hashSize = ManagedHash.ComputeHmac(testKey, testData, heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
+                Assert.AreEqual<int>(ManagedHash.GetHashSize(alg), hashSize);
 
                 //With input string and heap buffer
                 hashSize = ManagedHash.ComputeHmac(testKey, "test", heapBuffer.Span, alg);
-                Assert.IsTrue(hashSize == ManagedHash.GetHashSize(alg));
+                Assert.AreEqual<int>(ManagedHash.GetHashSize(alg), hashSize);
 
                 //Compute string and byte array
                 byte[] testdata = ManagedHash.ComputeHmac(testKey, testData, alg);
-                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
+                Assert.HasCount(ManagedHash.GetHashSize(alg), testdata);
 
                 //With input string
                 testdata = ManagedHash.ComputeHmac(testKey, "test", alg);
-                Assert.IsTrue(testdata.Length == ManagedHash.GetHashSize(alg));
+                Assert.HasCount(ManagedHash.GetHashSize(alg), testdata);
 
                 //Compute hash as string
                 string testEnc = ManagedHash.ComputeHmac(testKey, testdata, alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
+                Assert.AreEqual(ManagedHash.GetHashSize(alg) * 2, testEnc.Length);
 
                 //With input string
                 testEnc = ManagedHash.ComputeHmac(testKey, "test", alg, HashEncodingMode.Hexadecimal);
-                Assert.IsTrue(testEnc.Length == ManagedHash.GetHashSize(alg) * 2);
+                Assert.AreEqual(ManagedHash.GetHashSize(alg) * 2, testEnc.Length);
             }
         }
 
@@ -142,7 +164,7 @@ namespace VNLib.Hashing.Tests
         {
             HashAlg[] algs = Enum.GetValues<HashAlg>();
 
-            Assert.AreEqual(algs.Length, TestHashOutputHex.Length);
+            Assert.HasCount(algs.Length, TestHashOutputHex);
 
             for (int i = 0; i < algs.Length; i++)
             {
@@ -177,7 +199,7 @@ namespace VNLib.Hashing.Tests
                 Assert.AreEqual(HashSizes[i], ManagedHash.GetHashSize(algs[i]));
             }
 
-            Assert.ThrowsException<ArgumentException>(() => ManagedHash.GetHashSize(HashAlg.None));
+            Assert.ThrowsExactly<ArgumentException>(() => ManagedHash.GetHashSize(HashAlg.None));
         }
     }
 }

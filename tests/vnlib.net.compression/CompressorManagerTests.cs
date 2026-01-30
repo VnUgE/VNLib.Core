@@ -1,4 +1,28 @@
-﻿using System;
+﻿/*
+* Copyright (c) 2026 Vaughn Nugent
+* 
+* Library: VNLib
+* Package: VNLib.Net.CompressionTests
+* File: CompressorManagerTests.cs 
+*
+* CompressorManagerTests.cs is part of VNLib.Net.CompressionTests which is part of the larger 
+* VNLib collection of libraries and utilities.
+*
+* VNLib.Net.CompressionTests is free software: you can redistribute it and/or modify 
+* it under the terms of the GNU General Public License as published
+* by the Free Software Foundation, either version 2 of the License,
+* or (at your option) any later version.
+*
+* VNLib.Net.CompressionTests is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+* General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License 
+* along with VNLib.Net.CompressionTests. If not, see http://www.gnu.org/licenses/.
+*/
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,14 +33,15 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using VNLib.Utils.IO;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
+using VNLib.Net.Compression;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
-namespace VNLib.Net.Compression.Tests
+namespace VNLib.Net.CompressionTests
 {
     [TestClass()]
     public class CompressorManagerTests

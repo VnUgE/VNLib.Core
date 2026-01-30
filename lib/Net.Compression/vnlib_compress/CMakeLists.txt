@@ -47,10 +47,13 @@ if(COMPRESS_ENABLE_BROTLI)
 
 	message(STATUS "Enabling Brotli compression module from local source")
 
-	set(BROTLI_BUNDLED_MODE OFF CACHE BOOL "explicitly set bundled mode to off" FORCE)
-	set(BROTLI_EMSCRIPTEN OFF CACHE BOOL "disable emscripten support" FORCE)
-	set(BROTLI_BUILD_TOOLS OFF CACHE BOOL "disable building of tools" FORCE)
-	set(BROTLI_DISABLE_TESTS OFF CACHE BOOL "disable building of tests" FORCE)
+	# Configure vendored brotli for static-only build without tools/tests/install.
+	set(BUILD_SHARED_LIBS OFF CACHE BOOL "Force static brotli artifacts" FORCE)
+	set(BROTLI_BUNDLED_MODE ON CACHE BOOL "Treat brotli as vendored dependency" FORCE)
+	set(BROTLI_BUILD_TOOLS OFF CACHE BOOL "Disable brotli CLI" FORCE)
+	set(BROTLI_DISABLE_TESTS ON CACHE BOOL "Disable brotli tests" FORCE)
+	set(BROTLI_BUILD_FOR_PACKAGE OFF CACHE BOOL "Do not build shared+static packages" FORCE)
+	set(BROTLI_EMSCRIPTEN OFF CACHE BOOL "Disable emscripten support" FORCE)
 
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/brotli EXCLUDE_FROM_ALL)
 	

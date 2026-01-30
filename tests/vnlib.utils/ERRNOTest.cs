@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.UtilsTests
@@ -34,7 +34,7 @@ namespace VNLib.Utils.Tests
         [TestMethod]
         public unsafe void ERRNOSizeTest()
         {
-            Assert.IsTrue(sizeof(ERRNO) == sizeof(nint));
+            Assert.AreEqual(sizeof(nint), sizeof(ERRNO));
         }
 
     }

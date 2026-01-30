@@ -7,7 +7,6 @@
     <AssemblyName>VNLib.Net.Compression</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <!--Enable dynamic loading because it's dynamically loaded by servers-->
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>

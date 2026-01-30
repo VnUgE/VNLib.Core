@@ -9,7 +9,6 @@ project(
 
 set(_MI_PROJ_NAME "vnlib_mimalloc")
 
-option(ENABLE_GREEDY "Enable greedy allocator configuration" ON)
 option(ENABLE_STATIC_FPIC "Enable fPIC for static library" ON)
 option(MI_SECURE "Enable secure allocator configuration" OFF)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "The build configuration type")
@@ -134,7 +133,6 @@ set(MI_BUILD_TESTS OFF CACHE BOOL "Disable mimalloc tests" FORCE)
 set(MI_BUILD_STATIC ON CACHE BOOL "Enable mimalloc static library" FORCE)
 set(MI_BUILD_SHARED OFF CACHE BOOL "Disable mimalloc shared library" FORCE)
 set(MI_BUILD_OBJECT OFF CACHE BOOL "Disable mimalloc object library" FORCE)
-set(MI_BUILD_TESTS OFF CACHE BOOL "Disable mimalloc tests" FORCE)
 #Do not allow process abort when alloc fails, we don't need it 
 set(MI_XMALLOC OFF CACHE BOOL "Disable mimalloc xmalloc" FORCE)
 set(MI_OVERRIDE OFF CACHE BOOL "Disable malloc overrides" FORCE)
