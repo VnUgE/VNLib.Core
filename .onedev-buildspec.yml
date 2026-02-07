@@ -240,16 +240,16 @@ jobs:
     useTTY: true
     condition: SUCCESSFUL
     optional: false
-  - type: PublishPullRequestMarkdownReportStep
-    name: publish review to pr
-    reportName: Basic Review
-    file: '@project_name@/basic-review.md'
+  - type: PublishArtifactStep
+    name: publish review artifact
+    artifacts: '@project_name@/basic-review.md'
     condition: SUCCESSFUL
     optional: false
   jobExecutor: windows
   triggers:
-  - type: PullRequestUpdateTrigger
-    branches: develop
+  - type: BranchUpdateTrigger
+    branches: -develop -master
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
