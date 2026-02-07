@@ -11,7 +11,7 @@ tasks:
     desc: Lightweight PR review focusing on formatting, spelling, and style issues
     dir: '{{ .USER_WORKING_DIR }}'
     requires:
-      vars: [ REVIEW_OUTPUT, OPEN_CODE_URL ]
+      vars: [ REVIEW_OUTPUT ]
     vars:
       MODEL: '{{ .MODEL | default "github-copilot/gpt-5-mini" }}'
       CURRENT_BRANCH:
@@ -85,7 +85,6 @@ tasks:
           --model "{{ .MODEL }}"
           --agent plan
           --thinking
-          --attach {{ .OPEN_CODE_URL }}
           '{{ toString .PROMPT }}'
           --file pr-changes.diff > {{ .REVIEW_OUTPUT }}
       
