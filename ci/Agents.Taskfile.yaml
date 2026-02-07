@@ -73,7 +73,7 @@ tasks:
         {{ .CHANGED_FILES }}
 
     preconditions:
-      - copilot --version # ensure copilot cli is installed
+      - opencode --version # ensure copilot cli is installed
       # prevent running on protected branches
       - '{{ if eq .CURRENT_BRANCH "develop" }} exit 1 {{ else }} exit 0 {{ end }}' 
       - '{{ if eq .CURRENT_BRANCH "master" }} exit 1 {{ else }} exit 0 {{ end }}'
