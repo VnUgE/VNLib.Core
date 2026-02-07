@@ -237,6 +237,8 @@ jobs:
     envVars:
     - name: REVIEW_OUTPUT
       value: basic-review.md
+    - name: OPEN_CODE_URL
+      value: '@secret:open_code_url@'
     useTTY: true
     condition: SUCCESSFUL
     optional: false
