@@ -30,6 +30,7 @@ tasks:
          - Copyright headers (missing, incorrect year, or inconsistent format)
          - Obvious style guide violations (naming conventions, etc)
          - Trailing whitespace, missing newlines at EOF
+         - Missing, outdated, or incorrect code comments in public APIs
 
         **DO NOT review:**
          - Logic or algorithm correctness
