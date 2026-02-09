@@ -1,0 +1,92 @@
+
+version: '3'
+
+vars:
+  MODEL: '{{ .MODEL | default "github-copilot/gpt-5-mini" }}'
+  BASE_BRANCH: '{{ .BASE_BRANCH | default "develop" }}'
+
+tasks:
+
+  pr-basic-review:
+    desc: Lightweight PR review focusing on formatting, spelling, and style issues
+    dir: '{{ .USER_WORKING_DIR }}'
+    requires:
+      vars: [ REVIEW_OUTPUT ]
+    vars:
+      MODEL: '{{ .MODEL | default "github-copilot/gpt-5-mini" }}'
+      CURRENT_BRANCH:
+        sh: git rev-parse --abbrev-ref HEAD
+      CHANGED_FILES:
+        sh: git --no-pager diff --name-only origin/{{ .BASE_BRANCH }}...HEAD
+      STATS:
+        sh: git --no-pager diff --stat origin/{{ .BASE_BRANCH }}...HEAD
+      PROMPT: |
+        You are a lightweight code review assistant for pull requests. Your focus is on quick, 
+        objective issues that can be fixed immediately without deep architectural knowledge.
+
+        **Scope - Review ONLY:**
+         - Spelling mistakes in comments, strings, and documentation
+         - Formatting inconsistencies (indentation, spacing, line length violations)
+         - Copyright headers (missing, incorrect year, or inconsistent format)
+         - Obvious style guide violations (naming conventions, etc)
+         - Trailing whitespace, missing newlines at EOF
+         - Missing, outdated, or incorrect code comments in public APIs
+
+        **DO NOT review:**
+         - Logic or algorithm correctness
+         - Architecture or design patterns
+         - Performance optimizations
+         - Security vulnerabilities
+         - Test coverage
+        
+        Those are for deeper reviews, not PR quick-checks.
+
+        **Your actions:**
+          1. Review the changes from the included pr-changes.diff
+          2. Use your tools to read changed files listed below
+          3. Identify only the issues listed in scope above and as many as you can find
+          4. Output a markdown checklist in this exact format:
+
+            # PR Review: {{ .CURRENT_BRANCH }}
+            **Base:** {{ .BASE_BRANCH }} | **Date:** {{ date "2006-01-02" "00:00:00" }}
+            
+            ## Summary
+            <1-2 sentence summary of changes and issue count>
+            
+            ## Issues Found
+            - 1. <filename>:<line>: <issue description>
+            - 2. <filename>:<line>: <issue description>
+            - ...
+            
+            ## Statistics
+            {{ .STATS }}
+
+        **Guidelines:**
+          - Respond ONLY with the markdown output above, no additional commentary
+          - Include line numbers for every issue
+          - Be specific: "Fix spelling: 'recieve' → 'receive'" not just "spelling error"
+          - Skip vendored code, third-party dependencies, and generated files
+          - If no issues found, say "No formatting/style issues found ✓"
+          - Document as many issues as you can find, be thourough in your search 
+
+        ---
+        Files changed in this PR:
+        {{ .CHANGED_FILES }}
+
+    preconditions:
+      - opencode --version # ensure copilot cli is installed
+      # prevent running on protected branches
+      - '{{ if eq .CURRENT_BRANCH "develop" }} exit 1 {{ else }} exit 0 {{ end }}' 
+      - '{{ if eq .CURRENT_BRANCH "master" }} exit 1 {{ else }} exit 0 {{ end }}'
+    cmds:
+      - cmd: git --no-pager diff origin/{{ .BASE_BRANCH }}...HEAD > pr-changes.diff
+      - defer: rm -f pr-changes.diff
+
+      - cmd: opencode run 
+          --model "{{ .MODEL }}"
+          --agent plan
+          --thinking
+          '{{ toString .PROMPT }}'
+          --file pr-changes.diff > {{ .REVIEW_OUTPUT }}
+      
+      - cmd: echo "Review complete. Results saved to {{ .REVIEW_OUTPUT }}"

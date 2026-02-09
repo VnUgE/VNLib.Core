@@ -8,7 +8,7 @@ jobs:
     userName: VnUgE
     passwordSecret: git-access-token
     force: true
-    condition: SUCCESSFUL
+    condition: ALWAYS
     optional: false
   - type: PushRepository
     name: Codeberg push sync
@@ -16,7 +16,7 @@ jobs:
     userName: VnUgE
     passwordSecret: codeberg-access-token
     force: true
-    condition: SUCCESSFUL
+    condition: ALWAYS
     optional: false
   triggers:
   - type: TagCreateTrigger
@@ -208,6 +208,47 @@ jobs:
   triggers:
   - type: BranchUpdateTrigger
     branches: master
+    userMatch: anyone
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 14400
+
+- name: Code Reviews
+  steps:
+  - type: CommandStep
+    name: clone
+    runInContainer: false
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: run basic review
+    runInContainer: false
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd @project_name@
+        task -t ./ci/Agents.Taskfile.yaml pr-basic-review
+    envVars:
+    - name: REVIEW_OUTPUT
+      value: basic-review.md
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish review artifact
+    artifacts: '@project_name@/basic-review.md'
+    condition: SUCCESSFUL
+    optional: false
+  jobExecutor: windows
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: -develop -master
     userMatch: anyone
   retryCondition: never
   maxRetries: 3
