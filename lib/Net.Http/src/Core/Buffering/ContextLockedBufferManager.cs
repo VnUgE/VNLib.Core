@@ -149,7 +149,7 @@ namespace VNLib.Net.Http.Core.Buffering
         /// <summary>
         /// Gets the shared buffer used for http request initialization
         /// </summary>
-        /// <returns>A memory block buffer incoming transport data to be read by the parsing reader</returns>
+        /// <returns>A memory block buffer containing incoming transport data to be read by the parsing reader.</returns>
         public Memory<byte> GetInitStreamBuffer()
         {
             /*

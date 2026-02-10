@@ -36,7 +36,7 @@ namespace VNLib.Net.Http.Core
      */
 
     /// <summary>
-    /// Represents a rseponse entity body
+    /// Represents a response entity body
     /// </summary>
     internal interface IHttpResponseBody
     {

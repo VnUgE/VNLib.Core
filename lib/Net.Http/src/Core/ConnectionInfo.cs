@@ -107,7 +107,7 @@ namespace VNLib.Net.Http.Core
             //Create new header collection
             Headers = new VnHeaderCollection(ctx);
             
-            //set co value
+            // Set cross-origin value
             CrossOrigin = HttpRequestHelpers.IsCrossOrigin(ctx.Request);
             
             //Set websocket status

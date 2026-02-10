@@ -30,15 +30,15 @@ namespace VNLib.Net.Http
     public enum CookieSameSite 
     {
         /// <summary>
-        /// Cookie samesite property lax mode
+        /// Cookie SameSite property: Lax mode
         /// </summary>
         Lax, 
         /// <summary>
-        /// Cookie samesite property, None mode
+        /// Cookie SameSite property: None mode
         /// </summary>
         None, 
         /// <summary>
-        /// Cookie samesite property, strict mode
+        /// Cookie SameSite property: Strict mode
         /// </summary>
         Strict
     }

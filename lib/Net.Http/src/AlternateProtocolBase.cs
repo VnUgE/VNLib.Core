@@ -35,7 +35,7 @@ namespace VNLib.Net.Http
     public abstract class AlternateProtocolBase : MarshalByRefObject, IAlternateProtocol
     {
         /// <summary>
-        /// A cancelation source that allows for canceling running tasks, that is linked 
+        /// A cancellation source that allows for canceling running tasks, that is linked 
         /// to the server that called <see cref="RunAsync(Stream)"/>.
         /// </summary>
         /// <remarks>
@@ -49,7 +49,7 @@ namespace VNLib.Net.Http
         ///<inheritdoc/>
         async Task IAlternateProtocol.RunAsync(Stream transport, CancellationToken handlerToken)
         {
-            //Create new cancel source
+            // Create new cancellation source
             CancelSource ??= new();
             //Register the token to cancel the source and save the registration for unregister on dispose
             CancellationTokenRegistration Registration = handlerToken.Register(CancelSource.Cancel);
@@ -62,10 +62,10 @@ namespace VNLib.Net.Http
             }
             finally
             {
-                //dispose the cancelation registration
+                // Dispose the cancellation registration
                 await Registration.DisposeAsync();
 
-                //Dispose cancel source
+                // Dispose cancellation token source
                 CancelSource.Dispose();
             }
         }
@@ -76,7 +76,7 @@ namespace VNLib.Net.Http
         public required virtual bool IsSecure { get; init; }
 
         /// <summary>
-        /// Determines if the instance is pending cancelation 
+        /// Determines if the instance is pending cancellation 
         /// </summary>
         public bool IsCancellationRequested => CancelSource.IsCancellationRequested;
 
@@ -86,7 +86,7 @@ namespace VNLib.Net.Http
         public virtual void CancelAll() => CancelSource?.Cancel();
 
         /// <summary>
-        /// Called when the protocol swtich handshake has completed and the transport is 
+        /// Called when the protocol switch handshake has completed and the transport is 
         /// available for the new protocol
         /// </summary>
         /// <param name="transport">The transport stream</param>

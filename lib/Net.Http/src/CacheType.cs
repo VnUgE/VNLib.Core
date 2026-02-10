@@ -41,7 +41,7 @@ namespace VNLib.Net.Http
         /// </summary>
         NoCache = 0x01, 
         /// <summary>
-        /// Sets the cache type private varibale
+        /// Sets the cache type private variable
         /// </summary>
         Private = 0x02, 
         /// <summary>

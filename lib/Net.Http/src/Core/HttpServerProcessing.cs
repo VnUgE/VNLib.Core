@@ -171,7 +171,7 @@ namespace VNLib.Net.Http
 
 
         /*
-         * Main even handler. Processes a single http request/response cycle
+         * Main event handler. Processes a single http request/response cycle
          * from start to finish. Returning true indicates that the connection
          * can be kept alive and reused for another request.
          */
@@ -221,7 +221,7 @@ namespace VNLib.Net.Http
                      * and not allow it to be reused.
                      * 
                      * When paralleling writes and reads if the discard failed it could leave the write in 
-                     * an undefined state, so this operatin needs to be done in serial before writing the response.
+                     * an undefined state, so this operation needs to be done in serial before writing the response.
                      * 
                      * In the future we can consider altering the response and sending an HTTP level error 
                      * but for now we will just drop the connection and clean up.
@@ -618,7 +618,7 @@ namespace VNLib.Net.Http
 
             /*
              * If no response body was set by user code, a default content-length should be returned 
-             * and set to 0. Users's may disable this behaviour if they wish to alter this implicit 
+             * and set to 0. Users may disable this behaviour if they wish to alter this implicit 
              * behaviour, or set the header themselves.
              */
             if (responseLength == 0)

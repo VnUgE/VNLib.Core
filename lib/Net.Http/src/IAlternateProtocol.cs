@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 namespace VNLib.Net.Http
 {
     /// <summary>
-    /// Allows implementation for a protocol swtich from HTTP to another protocol
+    /// Allows implementation for a protocol switch from HTTP to another protocol
     /// </summary>
     public interface IAlternateProtocol
     {
@@ -39,7 +39,7 @@ namespace VNLib.Net.Http
         /// that is stored
         /// </summary>
         /// <param name="transport">The prepared transport stream for the new protocol</param>
-        /// <param name="handlerToken">A cancelation token that the caller may pass for operation cancelation and cleanup</param>
+        /// <param name="handlerToken">A cancellation token that the caller may pass for operation cancellation and cleanup</param>
         /// <returns>A task that will be awaited by the server, that when complete, will cleanup resources held by the connection</returns>
         Task RunAsync(Stream transport, CancellationToken handlerToken);
     }

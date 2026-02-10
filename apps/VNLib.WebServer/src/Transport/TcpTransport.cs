@@ -132,7 +132,7 @@ namespace VNLib.WebServer.Transport
             : TcpTransportProvider(Server)
         {
 
-            private readonly TcpServer Server = Server;
+            private readonly TcpServer _server = Server;
 
             /*
               * An SslStream may throw a win32 exception with HRESULT 0x80090327
@@ -167,7 +167,7 @@ namespace VNLib.WebServer.Transport
                     }
                     catch (AuthenticationException ae) when (ae.HResult == INVALID_FRAME_HRESULT)
                     {
-                        Server.Config.Log.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
+                        _server.Config.Log.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
                         
                         await _listener.CloseConnectionAsync(descriptor, reuse: true);
                         await stream.DisposeAsync();
@@ -185,7 +185,7 @@ namespace VNLib.WebServer.Transport
             }
 
             ///<inheritdoc/>
-            public override string ToString() => $"{Server.Config.LocalEndPoint} tcp/ip (TLS enabled)";
+            public override string ToString() => $"{_server.Config.LocalEndPoint} tcp/ip (TLS enabled)";
         }
     }
 }

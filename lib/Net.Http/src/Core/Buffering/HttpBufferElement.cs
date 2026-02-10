@@ -52,7 +52,7 @@ namespace VNLib.Net.Http.Core.Buffering
 
         public void SetBuffer(Memory<byte> buffer)
         {
-            Debug.Assert(_handle.Size == 0, "Buffer was not feed correctly");
+            Debug.Assert(_handle.Size == 0, "Buffer was not fed correctly");
 
             _handle = default;
 
