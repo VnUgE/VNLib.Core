@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -31,7 +31,7 @@ namespace VNLib.Net.Http.Core.Response
     /// Represents a stream that can be written to directly (does not 
     /// buffer response data)
     /// </summary>
-    internal interface IDirectResponsWriter
+    internal interface IDirectResponseWriter
     {
         /// <summary>
         /// Writes the given data buffer to the client

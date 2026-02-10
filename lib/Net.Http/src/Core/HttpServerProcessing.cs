@@ -731,7 +731,7 @@ namespace VNLib.Net.Http
             {
                 // Direct stream when no compression is used, writes data directly
                 // to the transport
-                IDirectResponsWriter output = context.Response.GetDirectStream();
+                IDirectResponseWriter output = context.Response.GetDirectStream();
 
                 await context.ResponseBody
                     .WriteEntityAsync(output, buffer)

@@ -148,7 +148,7 @@ namespace VNLib.Net.Http.Core.Response
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
         ///<inheritdoc/>
-        public Task WriteEntityAsync(IDirectResponsWriter dest, Memory<byte> buffer) 
+        public Task WriteEntityAsync(IDirectResponseWriter dest, Memory<byte> buffer) 
             => WriteEntityAsync(dest, buffer, blockSize: 0);
 
         ///<inheritdoc/>        
@@ -197,7 +197,7 @@ namespace VNLib.Net.Http.Core.Response
         }
 
         private async Task WriteEntityAsync<TResWriter>(TResWriter dest, Memory<byte> buffer, int blockSize)
-           where TResWriter : IDirectResponsWriter
+           where TResWriter : IDirectResponseWriter
         {
             //try to clamp the buffer size to the compressor block size
             if (blockSize > 0)
@@ -260,7 +260,7 @@ namespace VNLib.Net.Http.Core.Response
 
         private static async Task ProcessStreamDataAsync<TStream, TWriter>(TStream stream, TWriter dest, Memory<byte> buffer, long length)
             where TStream : IHttpStreamResponse
-            where TWriter : IDirectResponsWriter
+            where TWriter : IDirectResponseWriter
         {
             /*
              * When streams are used, callers will submit an explict length value 
@@ -312,7 +312,7 @@ namespace VNLib.Net.Http.Core.Response
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
        
 
-        private readonly struct ChunkedResponseWriter<TComp>(IResponseDataWriter writer, TComp comp) : IDirectResponsWriter
+        private readonly struct ChunkedResponseWriter<TComp>(IResponseDataWriter writer, TComp comp) : IDirectResponseWriter
             where TComp : IResponseCompressor
         {
 

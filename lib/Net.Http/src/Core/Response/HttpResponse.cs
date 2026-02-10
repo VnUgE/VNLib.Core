@@ -247,9 +247,9 @@ namespace VNLib.Net.Http.Core.Response
         /// <summary>
         /// Gets a response writer for writing directly to the transport stream
         /// </summary>
-        /// <returns>The <see cref="IDirectResponsWriter"/> instance for writing stream data to</returns>
+        /// <returns>The <see cref="IDirectResponseWriter"/> instance for writing stream data to</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IDirectResponsWriter GetDirectStream()
+        public IDirectResponseWriter GetDirectStream()
         {
             //Headers must be sent before getting a direct stream
             Debug.Assert(HeadersSent, "A call to stream capture was made before the headers were flushed to the transport");
@@ -328,7 +328,7 @@ namespace VNLib.Net.Http.Core.Response
 #pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
 
 
-        private sealed class DirectStream(TransportManager transport) : IDirectResponsWriter
+        private sealed class DirectStream(TransportManager transport) : IDirectResponseWriter
         {
             ///<inheritdoc/>
             public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer) => transport!.Stream.WriteAsync(buffer);
