@@ -130,11 +130,11 @@ namespace VNLib.Net.Http
             //Catch wrapped socket exceptions
             catch (IOException ioe) when (ioe.InnerException is SocketException se)
             {
-                WriteSocketExecption(se);
+                WriteSocketException(se);
             }
             catch (SocketException se)
             {
-                WriteSocketExecption(se);
+                WriteSocketException(se);
             }
             //Catch wrapped OC exceptions
             catch (IOException ioe) when (ioe.InnerException is OperationCanceledException oce)

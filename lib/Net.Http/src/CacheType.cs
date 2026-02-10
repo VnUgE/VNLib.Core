@@ -3,7 +3,7 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: CacheType.cs 
+* File: CacheType.cs
 *
 * CacheType.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
@@ -33,23 +33,23 @@ namespace VNLib.Net.Http
     public enum CacheType
     {
         /// <summary>
-        /// default cache type
+        /// Default cache type
         /// </summary>
         None = 0x00,
         /// <summary>
-        /// Set the cache header to 'No-Cache'
+        /// Adds 'no-cache' to Cache-Control header
         /// </summary>
         NoCache = 0x01, 
         /// <summary>
-        /// Sets the cache type private variable
+        /// Adds 'private' to Cache-Control header
         /// </summary>
-        Private = 0x02, 
+        Private = 0x02,
         /// <summary>
-        /// sets the cache type to public
+        /// Adds 'public' to Cache-Control header
         /// </summary>
-        Public = 0x04, 
+        Public = 0x04,
         /// <summary>
-        /// Sets the nocache to no-store
+        /// Adds 'no-store' to Cache-Control header
         /// </summary>
         NoStore = 0x08,
         /// <summary>

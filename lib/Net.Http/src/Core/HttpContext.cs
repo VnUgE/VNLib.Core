@@ -87,7 +87,7 @@ namespace VNLib.Net.Http.Core
 
         public HttpContext(HttpServer server, ManagedHttpCompressor? compressor)
         {
-            ParentServer = server;          
+            ParentServer = server;
 
             ContextFlags = new(0);
 
@@ -217,7 +217,7 @@ namespace VNLib.Net.Http.Core
             );
 
             /*
-             * Specal function to set available data
+             * Special function to set available data
              * NOTE: this can be dangerous as the buffer is 
              */
             reader.SetAvailableData(_preBufferedByteCount);

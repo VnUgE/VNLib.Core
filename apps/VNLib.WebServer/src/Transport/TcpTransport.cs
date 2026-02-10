@@ -96,7 +96,7 @@ namespace VNLib.WebServer.Transport
         /// <summary>
         /// A TCP server transport provider class
         /// </summary>
-        private class TcpTransportProvider(TcpServer Server) : ITransportProvider
+        private class TcpTransportProvider(TcpServer server) : ITransportProvider
         {
             protected ITcpListner? _listener;
             protected CancellationTokenRegistration _reg;
@@ -111,7 +111,7 @@ namespace VNLib.WebServer.Transport
                 }
 
                 //Start the server
-                _listener = Server.Listen();
+                _listener = server.Listen();
                 _reg = stopToken.Register(_listener.Close, false);
             }
 
@@ -125,14 +125,14 @@ namespace VNLib.WebServer.Transport
             }
 
             ///<inheritdoc/>
-            public override string ToString() => $"{Server.Config.LocalEndPoint} tcp/ip";
+            public override string ToString() => $"{server.Config.LocalEndPoint} tcp/ip";
         }
 
-        private sealed class SslTcpTransportProvider(TcpServer Server, SslServerAuthenticationOptions AuthOptions) 
-            : TcpTransportProvider(Server)
+        private sealed class SslTcpTransportProvider(TcpServer server, SslServerAuthenticationOptions authOptions) 
+            : TcpTransportProvider(server)
         {
 
-            private readonly TcpServer _server = Server;
+            private readonly TcpServer _server = server;
 
             /*
               * An SslStream may throw a win32 exception with HRESULT 0x80090327
@@ -162,7 +162,7 @@ namespace VNLib.WebServer.Transport
                     try
                     {
                         //auth the new connection
-                        await stream.AuthenticateAsServerAsync(AuthOptions, cancellation);
+                        await stream.AuthenticateAsServerAsync(authOptions, cancellation);
                         return new SslTcpTransportContext(_listener, descriptor, stream);
                     }
                     catch (AuthenticationException ae) when (ae.HResult == INVALID_FRAME_HRESULT)

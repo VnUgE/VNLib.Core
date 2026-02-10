@@ -399,7 +399,7 @@ namespace VNLib.Net.Http
         /// Writes the specialized log for a socket exception
         /// </summary>
         /// <param name="se">The socket exception to log</param>
-        public void WriteSocketExecption(SocketException se)
+        public void WriteSocketException(SocketException se)
         {
             //When clause guards nulls
             switch (se.SocketErrorCode)

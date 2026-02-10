@@ -3,7 +3,7 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: CookieSameSite.cs 
+* File: CookieSameSite.cs
 *
 * CookieSameSite.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
