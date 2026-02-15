@@ -58,7 +58,7 @@ namespace VNLib.Net.Http.Core.Buffering
             /*
               * NOTE:
               * If an exception is raised in the following code, it will raise to the 
-              * parent context call to allocate. An undefined state is fine becase
+              * parent context call to allocate. An undefined state is fine because
               * the call to FreeAll is guaranteed to be called during all control flow
               * as long as the exception is not caught.
               * 
@@ -66,7 +66,7 @@ namespace VNLib.Net.Http.Core.Buffering
               * fine.
               */
 
-            Debug.Assert(_handle == null, "Memory Leak: new http buffer alloacted when an existing buffer was not freed.");
+            Debug.Assert(_handle == null, "Memory Leak: new http buffer allocated when an existing buffer was not freed.");
             Debug.Assert(_responseAndFormDataBuffer.IsEmpty);
 
             //Alloc a single buffer for the entire context
@@ -99,7 +99,7 @@ namespace VNLib.Net.Http.Core.Buffering
              * 
              * The bin buffer size is determined by the buffer config so the 
              * user may still configure the buffer size for restriction, so we
-             * just alloc the largerest of the two and use it for requests and 
+             * just alloc the largest of the two and use it for requests and 
              * responses.
              * 
              * Control flow may change and become unsafe in the future!
@@ -197,7 +197,7 @@ namespace VNLib.Net.Http.Core.Buffering
             int max = Math.Max(config.RequestHeaderBufferSize, config.ResponseHeaderBufferSize);
 
             //Compute the max size including the char buffer
-            return SplitHttpBufferElement.GetfullSize(max);
+            return SplitHttpBufferElement.GetFullSize(max);
         }
 
         static int ComputeTotalBufferSize(in HttpBufferConfig config, bool chunkingEnabled)

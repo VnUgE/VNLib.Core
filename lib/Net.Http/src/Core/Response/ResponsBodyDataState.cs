@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -33,10 +33,10 @@ using System.IO;
 
 namespace VNLib.Net.Http.Core.Response
 {
-    internal readonly struct ResponsBodyDataState
+    internal readonly struct ResponseBodyDataState
     {
         /// <summary>
-        /// A value that inidcates if the response entity has been set
+        /// A value that indicates if the response entity has been set
         /// </summary>
         public readonly bool IsSet;
         /// <summary>
@@ -46,15 +46,15 @@ namespace VNLib.Net.Http.Core.Response
         /// <summary>
         /// The length (in bytes) of the response entity
         /// </summary>
-        public readonly long Legnth;
+        public readonly long Length;
 
         public readonly IHttpStreamResponse? Stream;
         public readonly IMemoryResponseReader? MemResponse;
         public readonly Stream? RawStream;
 
-        private ResponsBodyDataState(IHttpStreamResponse stream, long length)
+        private ResponseBodyDataState(IHttpStreamResponse stream, long length)
         {
-            Legnth = length;
+            Length = length;
             Stream = stream;
             MemResponse = null;
             RawStream = null;
@@ -62,9 +62,9 @@ namespace VNLib.Net.Http.Core.Response
             BufferRequired = true;
         }
 
-        private ResponsBodyDataState(IMemoryResponseReader reader)
+        private ResponseBodyDataState(IMemoryResponseReader reader)
         {
-            Legnth = reader.Remaining;
+            Length = reader.Remaining;
             MemResponse = reader;
             Stream = null;
             RawStream = null;
@@ -72,9 +72,9 @@ namespace VNLib.Net.Http.Core.Response
             BufferRequired = false;
         }
 
-        private ResponsBodyDataState(Stream stream, long length)
+        private ResponseBodyDataState(Stream stream, long length)
         {
-            Legnth = length;
+            Length = length;
             Stream = null;
             MemResponse = null;
             RawStream = stream;
@@ -91,10 +91,10 @@ namespace VNLib.Net.Http.Core.Response
             RawStream?.Dispose();
         }
 
-        public static ResponsBodyDataState FromMemory(IMemoryResponseReader stream) => new(stream);
+        public static ResponseBodyDataState FromMemory(IMemoryResponseReader stream) => new(stream);
 
-        public static ResponsBodyDataState FromStream(IHttpStreamResponse stream, long length) => new(stream, length);
+        public static ResponseBodyDataState FromStream(IHttpStreamResponse stream, long length) => new(stream, length);
 
-        public static ResponsBodyDataState FromRawStream(Stream stream, long length) => new(stream, length);
+        public static ResponseBodyDataState FromRawStream(Stream stream, long length) => new(stream, length);
     }
 }

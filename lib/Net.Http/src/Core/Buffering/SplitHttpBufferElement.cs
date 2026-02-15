@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -66,6 +66,6 @@ namespace VNLib.Net.Http.Core.Buffering
         /// </summary>
         /// <param name="binSize">The desired size of the binary buffer</param>
         /// <returns>The total size of the binary buffer required to store the binary and character buffer</returns>
-        public static int GetfullSize(int binSize) => binSize + MemoryUtil.ByteCount<char>(binSize);
+        public static int GetFullSize(int binSize) => binSize + MemoryUtil.ByteCount<char>(binSize);
     }
 }

@@ -53,7 +53,7 @@ namespace VNLib.Net.Http.Core.Request
 
             /*
              * Priority order is gzip, deflate, br. Br is last for dynamic compression 
-             * because of performace. We also need to make sure the server supports 
+             * because of performance. We also need to make sure the server supports 
              * the desired compression method also.
              */
 
@@ -96,16 +96,16 @@ namespace VNLib.Net.Http.Core.Request
         /// </summary>
         /// <returns>true if the origin header was set and does not match the current locations origin</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsCrossOrigin(this HttpRequest Request)
+        public static bool IsCrossOrigin(this HttpRequest request)
         {
-            if (Request.State.Origin is null)
+            if (request.State.Origin is null)
             {
                 return false;
             }
 
             //Get the origin string components for comparison (allocs new strings :( )
-            string locOrigin = Request.State.Location.GetComponents(UriComponents.SchemeAndServer, UriFormat.SafeUnescaped);
-            string reqOrigin = Request.State.Origin.GetComponents(UriComponents.SchemeAndServer, UriFormat.SafeUnescaped);
+            string locOrigin = request.State.Location.GetComponents(UriComponents.SchemeAndServer, UriFormat.SafeUnescaped);
+            string reqOrigin = request.State.Origin.GetComponents(UriComponents.SchemeAndServer, UriFormat.SafeUnescaped);
 
             //If origin components are not equal, this is a cross origin request
             return !string.Equals(locOrigin, reqOrigin, StringComparison.OrdinalIgnoreCase);
@@ -115,15 +115,15 @@ namespace VNLib.Net.Http.Core.Request
         /// Is the current connection a websocket upgrade request handshake
         /// </summary>
         /// <returns>true if the connection is a websocket upgrade request, false otherwise</returns>
-        public static bool IsWebSocketRequest(this HttpRequest Request)
+        public static bool IsWebSocketRequest(this HttpRequest request)
         {
-            string? upgrade = Request.Headers[HttpRequestHeader.Upgrade];
+            string? upgrade = request.Headers[HttpRequestHeader.Upgrade];
 
             if (!string.IsNullOrWhiteSpace(upgrade) && upgrade.Contains("websocket", StringComparison.OrdinalIgnoreCase))
             {
                 //This request is a websocket request
                 //Check connection header
-                string? connection = Request.Headers[HttpRequestHeader.Connection];
+                string? connection = request.Headers[HttpRequestHeader.Connection];
 
                 //Must be a web socket request
                 return !string.IsNullOrWhiteSpace(connection) && connection.Contains("upgrade", StringComparison.OrdinalIgnoreCase);
@@ -163,8 +163,8 @@ namespace VNLib.Net.Http.Core.Request
                     break;
                 case ContentType.MultiPart:
                     {
-                        //Make sure we have a boundry specified
-                        if (string.IsNullOrWhiteSpace(request.State.Boundry))
+                        //Make sure we have a boundary specified
+                        if (string.IsNullOrWhiteSpace(request.State.Boundary))
                         {
                             break;
                         }
@@ -173,10 +173,10 @@ namespace VNLib.Net.Http.Core.Request
 
                         int chars = await BufferInputStreamAsChars(request.InputStream, formBody, GetFdBuffer(context), info.Encoding);
 
-                        //Split the body as a span at the boundries
+                        //Split the body as a span at the boundaries
                         ((ReadOnlySpan<char>)formBody.AsSpan(0, chars))
                             .Split(
-                                splitter: $"--{request.State.Boundry}", 
+                                splitter: $"--{request.State.Boundary}", 
                                 StringSplitOptions.RemoveEmptyEntries, 
                                 splitCb: FormDataBodySplitCb, 
                                 state: context
@@ -213,7 +213,7 @@ namespace VNLib.Net.Http.Core.Request
 
         /*
          * Reads the input stream into the char buffer and returns the number of characters read. This method
-         * expands the char buffer as needed to accomodate the input stream.
+         * expands the char buffer as needed to accommodate the input stream.
          * 
          * We assume the parsing method checked the size of the input stream so we can assume its safe to read
          * all of it into memory.
@@ -387,7 +387,7 @@ namespace VNLib.Net.Http.Core.Request
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void UrlEncodedSplitCb(ReadOnlySpan<char> kvArg, HttpRequest Request)
         {
-            //Get key side of agument (or entire argument if no value is set)
+            //Get key side of argument (or entire argument if no value is set)
             ReadOnlySpan<char> key = kvArg.SliceBeforeParam('=');
             ReadOnlySpan<char> value = kvArg.SliceAfterParam('=');
 
@@ -419,7 +419,7 @@ namespace VNLib.Net.Http.Core.Request
                 );
             }
 
-            //Query string parse method`
+            //Query string parse method
             static void QueryParser(ReadOnlySpan<char> queryArgument, HttpRequest Request)
             {
                 //Split spans at the '=' character

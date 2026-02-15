@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -157,7 +157,7 @@ namespace VNLib.Utils.Native
         }
 
         /*
-         * Users may specify realtive directories to search for the library
+         * Users may specify relative directories to search for the library
          * in the current working directory, so this function attempts to load
          * the library from the relative directory if the user has specified one
          */

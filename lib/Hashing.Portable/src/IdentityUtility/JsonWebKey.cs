@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -435,7 +435,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// Gets the EC key parameters from the current Json Web Key 
         /// </summary>
         /// <param name="jwk"></param>
-        /// <param name="includePrivate">A value that inidcates if private key parameters should be parsed and included </param>
+        /// <param name="includePrivate">A value that indicates if private key parameters should be parsed and included </param>
         /// <returns>The parsed key parameter structure, or null if the key parameters were empty or could not be parsed</returns>
         public static ECParameters? GetECParameters(this ReadOnlyJsonWebKey jwk, bool includePrivate) => GetECParameters(in jwk, includePrivate);
 
@@ -444,7 +444,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// </summary>
         /// <typeparam name="TKey"></typeparam>
         /// <param name="jwk"></param>
-        /// <param name="includePrivate">A value that inidcates if private key parameters should be parsed and included </param>
+        /// <param name="includePrivate">A value that indicates if private key parameters should be parsed and included </param>
         /// <returns>The parsed key parameter structure, or null if the key parameters were empty or could not be parsed</returns>
         public static ECParameters? GetECParameters<TKey>(in TKey jwk, bool includePrivate) where TKey : IJsonWebKey
         {

@@ -38,7 +38,7 @@
 /*
  * 6-26-2024
  * 
- * Server has been transformed to ultilize a single configuration to listen 
+ * Server has been transformed to utilize a single configuration to listen 
  * on a map of transport servers and isolate those connections to individual 
  * virtual hosts. It allows multiple virtual hosts to be mapped to a single 
  * transport server, but also allow a many-to-many relationship between
@@ -69,14 +69,14 @@ namespace VNLib.Net.Http
 
     /// <summary>
     /// Provides a resource efficient, high performance, single library HTTP(s) server, 
-    /// with extensable processors and transport providers.
+    /// with extensible processors and transport providers.
     /// This class cannot be inherited
     /// </summary>
     public sealed partial class HttpServer : ICacheHolder, IHttpServer
     {
         /// <summary>
         /// The host key that determines a "wildcard" host, meaning the 
-        /// default connection handler when an incomming connection has 
+        /// default connection handler when an incoming connection has 
         /// not specific route
         /// </summary>
         public const string WILDCARD_KEY = "*";
@@ -310,7 +310,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Begins listening for connections on configured interfaces for configured hostnames.
         /// </summary>
-        /// <param name="cancellationToken">A token used to stop listening for incomming connections and close all open websockets</param>
+        /// <param name="cancellationToken">A token used to stop listening for incoming connections and close all open websockets</param>
         /// <returns>A task that resolves when the server has exited</returns>
         /// <exception cref="SocketException"></exception>
         /// <exception cref="ThreadStateException"></exception>
@@ -408,7 +408,7 @@ namespace VNLib.Net.Http
                 case SocketError.ConnectionAborted:
                     break;
                 case SocketError.ConnectionReset:
-                    _config.ServerLog.Debug("Connecion reset by client");
+                    _config.ServerLog.Debug("Connection reset by client");
                     break;
                 case SocketError.TimedOut:
                     _config.ServerLog.Debug("Socket operation timed out");

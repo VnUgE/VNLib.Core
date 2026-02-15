@@ -114,7 +114,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Returns the realtive index after the specified sequence within the <see cref="VnString"/> instance
+        /// Returns the relative index after the specified sequence within the <see cref="VnString"/> instance
         /// </summary>
         /// <param name="str"></param>
         /// <param name="search">The sequence to search for</param>
@@ -129,7 +129,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Allows for trimming whitespace characters in a realtive sequence from 
+        /// Allows for trimming whitespace characters in a relative sequence from 
         /// within a <see cref="VnString"/> buffer defined by the start and end parameters
         /// and returning the trimmed entry.
         /// </summary>
@@ -172,7 +172,7 @@ namespace VNLib.Utils.Extensions
             //remove trailing whitespace characters
             while (end > start)
             {
-                //If whiterspace character shift end param down
+                //If whitespace character shift end param down
                 if (trimmed[end - 1] != ' ')
                 {
                     break;
@@ -182,7 +182,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Allows for trimming whitespace characters in a realtive sequence from 
+        /// Allows for trimming whitespace characters in a relative sequence from 
         /// within a <see cref="VnString"/> buffer and returning the trimmed entry.
         /// </summary>
         /// <param name="data"></param>
@@ -197,7 +197,7 @@ namespace VNLib.Utils.Extensions
         /// Trims leading or trailing whitespace characters and returns a new child instance 
         /// without leading or trailing whitespace
         /// </summary>
-        /// <returns>A child <see cref="VnString"/> of the current instance without leading or trailing whitespaced</returns>
+        /// <returns>A child <see cref="VnString"/> of the current instance without leading or trailing whitespace</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VnString RelativeTirm(this VnString data) => AbsoluteTrim(data, 0);

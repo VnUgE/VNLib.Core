@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: Http11ParseExtensions.cs 
+* File: Http11Parser.cs 
 *
-* Http11ParseExtensions.cs is part of VNLib.Net.Http which is part of the larger 
+* Http11Parser.cs is part of VNLib.Net.Http which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -222,17 +222,17 @@ namespace VNLib.Net.Http.Core.Request
                  * or the reader binary buffer while reading lines. Buffer sizes are fixed 
                  * to the system memory page size. Depending on the encoding the user chooses
                  * this should not be an issue for most configurations. This strategy is 
-                 * most efficient for realtivly small header sizes. 
+                 * most efficient for relatively small header sizes. 
                  * 
                  * The header's key is hashed by the HttpHelpers class and the hash is used to 
-                 * index a lookup table to return its enumeration value which is used in the swtich 
+                 * index a lookup table to return its enumeration value which is used in the switch 
                  * statement to reduce the number of strings added to the request header container.
                  * This was a major effort to reduce memory and CPU overhead while using the 
                  * WebHeaderCollection .NET class, which I think is still worth using instead of a
                  * custom header data structure class. 
                  * 
-                 * Some case statments are custom HttpRequestHeader enum values via internal casted 
-                 * constants to be consistant with he .NET implementation.
+                 * Some case statements are custom HttpRequestHeader enum values via internal casted 
+                 * constants to be consistent with the .NET implementation.
                  */
                 do
                 {
@@ -256,7 +256,7 @@ namespace VNLib.Net.Http.Core.Request
                         ReadOnlySpan<char> header = lineBuf[..(int)charsRead];
 
                         /*
-                         * RFC 7230, ignore headers with preceeding whitespace
+                         * RFC 7230, ignore headers with preceding whitespace
                          * 
                          * If the first character is whitespace that is enough to 
                          * ignore the rest of the header
@@ -294,13 +294,13 @@ namespace VNLib.Net.Http.Core.Request
                             break;
                         case HttpRequestHeader.ContentType:
                             {
-                                if (!HttpHelpers.TryParseContentType(requestHeaderValue.ToString(), out string? ct, out string? charset, out string? boundry) || ct == null)
+                                if (!HttpHelpers.TryParseContentType(requestHeaderValue.ToString(), out string? ct, out string? charset, out string? boundary) || ct == null)
                                 {
                                     //Invalid content type header value
                                     return HttpStatusCode.UnsupportedMediaType;
                                 }
 
-                                reqState.Boundry = boundry;
+                                reqState.Boundary = boundary;
                                 reqState.Charset = charset;
 
                                 //Get the content type enum from mime type
@@ -312,7 +312,7 @@ namespace VNLib.Net.Http.Core.Request
                                 //Content length has already been calculated, ERROR, rfc 7230
                                 if (parseState.ContentLength > 0)
                                 {
-                                    Config.ServerLog.Debug("Message warning, recieved multiple content length headers");
+                                    Config.ServerLog.Debug("Message warning, received multiple content length headers");
                                     return HttpStatusCode.BadRequest;
                                 }
 

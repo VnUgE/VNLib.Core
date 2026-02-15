@@ -44,7 +44,7 @@ namespace VNLib.Net.Http.Core.Response
     {
         private readonly ManagedHttpCompressor? _compressor = compressor;
 
-        private ResponsBodyDataState _userState;
+        private ResponseBodyDataState _userState;
         private ReadOnlyMemory<byte> _readSegment;
 
         #region LifeCycle Hooks
@@ -82,7 +82,7 @@ namespace VNLib.Net.Http.Core.Response
         public bool BufferRequired => _userState.BufferRequired;
 
         ///<inheritdoc/>
-        public long Length => _userState.Legnth;
+        public long Length => _userState.Length;
 
         /// <summary>
         /// Attempts to set the response body as a stream
@@ -100,7 +100,7 @@ namespace VNLib.Net.Http.Core.Response
             Debug.Assert(response != null, "Stream value is null, illegal operation");
             Debug.Assert(length > -1, "explicit length passed a negative value, illegal operation");
 
-            _userState = ResponsBodyDataState.FromStream(response, length);
+            _userState = ResponseBodyDataState.FromStream(response, length);
             return true;
         }
 
@@ -119,7 +119,7 @@ namespace VNLib.Net.Http.Core.Response
             Debug.Assert(response != null, "Memory response argument was null and expected a value");
 
             //Assign user-state
-            _userState = ResponsBodyDataState.FromMemory(response);
+            _userState = ResponseBodyDataState.FromMemory(response);
             return true;
         }
 
@@ -140,7 +140,7 @@ namespace VNLib.Net.Http.Core.Response
             Debug.Assert(length > -1, "explicit length passed a negative value, illegal operation");
 
             //Assign user-state
-            _userState = ResponsBodyDataState.FromRawStream(rawStream, length);
+            _userState = ResponseBodyDataState.FromRawStream(rawStream, length);
             return true;
         }
 
@@ -226,8 +226,8 @@ namespace VNLib.Net.Http.Core.Response
                 else
                 {                    
                     /*
-                     * Compressor block size is unkown so we can assume it does not matter
-                     * and write full blocks as they are read. This will usually be a on-shot 
+                     * Compressor block size is unknown so we can assume it does not matter
+                     * and write full blocks as they are read. This will usually be a one-shot 
                      * operation, since the writer handles chunk buffering
                      */
 
@@ -241,20 +241,20 @@ namespace VNLib.Net.Http.Core.Response
                     }
                 }
 
-                //Disposing of memory response can be deferred until the end of the request since its always syncrhonous
+                //Disposing of memory response can be deferred until the end of the request since its always synchronous
             }
             else if (_userState.RawStream != null)
             {
                 Debug.Assert(!buffer.IsEmpty, "Transfer buffer is required for streaming operations");
 
-                await ProcessStreamDataAsync(_userState.GetRawStreamResponse(), dest, buffer, _userState.Legnth);
+                await ProcessStreamDataAsync(_userState.GetRawStreamResponse(), dest, buffer, _userState.Length);
             }
             else
             {
                 Debug.Assert(!buffer.IsEmpty, "Transfer buffer is required for streaming operations");
                 Debug.Assert(_userState.Stream != null, "Stream value is null, illegal state");
 
-                await ProcessStreamDataAsync(_userState.Stream, dest, buffer, _userState.Legnth);
+                await ProcessStreamDataAsync(_userState.Stream, dest, buffer, _userState.Length);
             }
         }
 
@@ -290,7 +290,7 @@ namespace VNLib.Net.Http.Core.Response
 
             } while (sentBytes < length);
 
-            //Try to dispose the response stream asyncrhonously since we are done with it
+            //Try to dispose the response stream asynchronously since we are done with it
             await stream.DisposeAsync();
         }
         

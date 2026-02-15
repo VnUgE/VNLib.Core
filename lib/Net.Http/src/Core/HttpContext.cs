@@ -47,7 +47,7 @@ namespace VNLib.Net.Http.Core
         public readonly HttpRequest Request;
 
         /// <summary>
-        /// The reusable response controler
+        /// The reusable response controller
         /// </summary>
         public readonly HttpResponse Response;
 
@@ -78,7 +78,7 @@ namespace VNLib.Net.Http.Core
         /// <remarks>
         /// This property is only cleared when the context is released for reuse
         /// so when this property contains a value, the context must be released
-        /// or this property must be exlicitly cleared
+        /// or this property must be explicitly cleared
         /// </remarks>
         public IAlternateProtocol? AlternateProtocol { get; set; }
 
@@ -93,7 +93,7 @@ namespace VNLib.Net.Http.Core
 
             _transport = new();
 
-            //Init buffer manager, if compression is supported, we need to alloc a buffer for the compressor
+            // Init buffer manager; if compression is supported, we need to alloc a buffer for the compressor
             Buffers = new(in server.BufferConfig, compressor != null);
          
             Request = new (_transport, server.Config.MaxUploadsPerRequest);
@@ -105,7 +105,7 @@ namespace VNLib.Net.Http.Core
 
         #region LifeCycle Hooks
         // Hooks are written in the order they are called
-        // Shall remain near state objects reduced cognitive load
+        // Shall remain near state objects to reduce cognitive load
 
         void IReusable.Prepare()
         {
@@ -201,9 +201,9 @@ namespace VNLib.Net.Http.Core
 
         /*
          * The following functions operate in tandem. Data should be buffered
-         * by a call to BufferTransportAsync() and then made availbe by a call to
+         * by a call to BufferTransportAsync() and then made available by a call to
          * GetReader(). This set of functions only happens once per request/response
-         * cycle. This allows a async buffer filling before a syncronous transport
+         * cycle. This allows an async buffer filling before a synchronous transport
          * read. 
          */
 

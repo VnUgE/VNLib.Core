@@ -42,7 +42,7 @@ namespace VNLib.Net.Http
     public static partial class HttpHelpers
     {
         /// <summary>
-        /// Carrage return + line feed characters used within the VNLib.Net.Http namespace to delimit http messages/lines
+        /// Carriage return + line feed characters used within the VNLib.Net.Http namespace to delimit http messages/lines
         /// </summary>
         public const string CRLF = "\r\n";
 
@@ -167,7 +167,7 @@ namespace VNLib.Net.Http
         {
             /*
              * Http methods are hashed at runtime using the HttpMethod enum
-             * values, purley for compatability and automation
+             * values, purely for compatibility and automation
              */
             return ComputeCodeHashLookup(
                 Enum.GetValues<HttpMethod>()
@@ -362,15 +362,15 @@ namespace VNLib.Net.Http
         /// <param name="header">The Content-Type header value field</param>
         /// <param name="ContentType">The mime content type field</param>
         /// <param name="Charset">The mime charset</param>
-        /// <param name="Boundry">The multi-part form boundry parameter</param>
+        /// <param name="boundary">The multi-part form boundary parameter</param>
         /// <returns>True if parsing the content type succeded, false otherwise</returns>
-        public static bool TryParseContentType(string header, out string? ContentType, out string? Charset, out string? Boundry)
+        public static bool TryParseContentType(string header, out string? ContentType, out string? Charset, out string? boundary)
         {
             try
             {
                 //Parse content type
                 System.Net.Mime.ContentType ctype = new(header);
-                Boundry = ctype.Boundary;
+                boundary = ctype.Boundary;
                 Charset = ctype.CharSet;
                 ContentType = ctype.MediaType;
                 return true;
@@ -379,7 +379,7 @@ namespace VNLib.Net.Http
 //Disable warning for not using the exception, intended behavior
 #pragma warning disable ERP022 // Unobserved exception in a generic exception handler.
             {
-                ContentType = Charset = Boundry = null;
+                ContentType = Charset = boundary = null;
                 //Invalid content type header value
             }
 #pragma warning restore ERP022 // Unobserved exception in a generic exception handler.

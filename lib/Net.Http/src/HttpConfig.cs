@@ -86,7 +86,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// The maximum size in bytes allowed for an MIME form-data content type upload
         /// </summary>
-        /// <remarks>Set to 0 to disabled mulit-part/form-data uploads</remarks>
+        /// <remarks>Set to 0 to disable multipart/form-data uploads</remarks>
         public readonly int MaxFormDataUploadSize { get; init; } = 40 * 1024;
 
         /// <summary>

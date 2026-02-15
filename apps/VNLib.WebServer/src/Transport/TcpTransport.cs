@@ -68,7 +68,7 @@ namespace VNLib.WebServer.Transport
              * 
              * The HttpServer impl calls Read() synchronously on the calling thread, 
              * it assumes that the call will make it synchronously to the underlying 
-             * transport. SslStream calls ReadAsync() interally on the current 
+             * transport. SslStream calls ReadAsync() internally on the current 
              * synchronization context, which causes a deadlock... So the threadpool 
              * scheduler on the pipeline ensures that all continuations are run on the
              * threadpool, which fixes this issue.
@@ -84,7 +84,7 @@ namespace VNLib.WebServer.Transport
         {
             return new PipeOptions(
                 config.BufferPool,
-                //Noticable performance increase when using inline scheduler for reader (handles send operations)
+                //Noticeable performance increase when using inline scheduler for reader (handles send operations)
                 readerScheduler: inlineScheduler ? PipeScheduler.Inline : PipeScheduler.ThreadPool,
                 writerScheduler: inlineScheduler ? PipeScheduler.Inline : PipeScheduler.ThreadPool,
                 pauseWriterThreshold: config.MaxRecvBufferData,
@@ -105,7 +105,7 @@ namespace VNLib.WebServer.Transport
             void ITransportProvider.Start(CancellationToken stopToken)
             {
                 //TEMPORARY (unless it works)
-                if(_listener is not null)
+                if (_listener is not null)
                 {
                     throw new InvalidOperationException("The server has already been started.");
                 }
@@ -140,10 +140,10 @@ namespace VNLib.WebServer.Transport
               * an issue on some clients (browsers)
               */
 
-            private const int UKNOWN_CERT_AUTH_HRESULT = unchecked((int)0x80090327);
+            private const int UNKNOWN_CERT_AUTH_HRESULT = unchecked((int)0x80090327);
 
             /// <summary>
-            /// An invlaid frame size may happen if data is recieved on an open socket
+            /// An invalid frame size may happen if data is received on an open socket
             /// but does not contain valid SSL handshake data
             /// </summary>
             private const int INVALID_FRAME_HRESULT = unchecked((int)0x80131501);
