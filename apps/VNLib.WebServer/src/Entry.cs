@@ -339,7 +339,7 @@ Starting...
 
                 currentDomain.FirstChanceException += delegate (object? sender, FirstChanceExceptionEventArgs e)
                 {
-                    log.Verbose(e.Exception, "Exception occured in app-domain ");
+                    log.Verbose(e.Exception, "Exception occurred in app-domain ");
                 };
 
                 currentDomain.AssemblyLoad += delegate (object? sender, AssemblyLoadEventArgs args)

@@ -60,7 +60,7 @@ namespace VNLib.WebServer.VirtualHosts
                 BlackList               = GetIpBlacklist(VhConfig),
                 WhiteList               = GetIpWhitelist(VhConfig),
                 DownStreamServers       = GetDownStreamServers(VhConfig),
-                ExcludedExtensions      = GetExlcudedExtensions(VhConfig),
+                ExcludedExtensions      = GetExcludedExtensions(VhConfig),
                 DefaultFiles            = GetDefaultFiles(VhConfig),
                 PathFilter              = GetPathFilter(VhConfig),
                 CacheDefault            = TimeSpan.FromSeconds(VhConfig.CacheDefaultTimeSeconds),
@@ -69,7 +69,7 @@ namespace VNLib.WebServer.VirtualHosts
                 FailureFiles            = GetFailureFiles(VhConfig),
                 FilePathCacheMaxAge     = TimeSpan.MaxValue,
                 Hostnames               = VhConfig.Hostnames!,
-                Transports              = VhConfig.Interfaces,                
+                Transports              = VhConfig.Interfaces,
                 FileCacheHeaders        = GetFileCacheHeaders(VhConfig)
             };
         }        
@@ -179,7 +179,7 @@ namespace VNLib.WebServer.VirtualHosts
                     .ToFrozenSet();
         }
 
-        private static FrozenSet<string> GetExlcudedExtensions(VirtualHostServerConfig conf)
+        private static FrozenSet<string> GetExcludedExtensions(VirtualHostServerConfig conf)
         {
             //Get exlucded/denied extensions from config, ignore null strings
             if (conf.DenyExtensions is not null)

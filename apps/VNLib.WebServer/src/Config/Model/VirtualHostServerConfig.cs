@@ -44,11 +44,11 @@ namespace VNLib.WebServer.Config.Model
         public bool RequestTrace { get; set; } = false;
 
         /// <summary>
-        /// Ensures the port written into the http HOST header matches the 
-        /// port of the interface the connection was actually received on. 
+        /// Ensures the port written into the http HOST header matches the
+        /// port of the interface the connection was actually received on.
         /// <para>
-        /// When enabled, often breaks reverse proxies that forward requests 
-        /// to the server thats listening on a different port than this server.
+        /// When enabled, often breaks reverse proxies that forward requests
+        /// to the server that's listening on a different port than this server.
         /// </para>
         /// </summary>
         [JsonPropertyName("force_port_check")]
@@ -95,8 +95,8 @@ namespace VNLib.WebServer.Config.Model
         public string? DirPath { get; set; } = string.Empty;
 
         /// <summary>
-        /// An array of ip addresses to trust when the server is behind a 
-        /// reverse proxy. These downstream servers will be trusted 
+        /// An array of IP addresses to trust when the server is behind a
+        /// reverse proxy. These downstream servers will be trusted
         /// to provide accurate client IP information in the X-Forwarded-For header.
         /// </summary>
         [JsonPropertyName("downstream_servers")]
@@ -195,14 +195,14 @@ namespace VNLib.WebServer.Config.Model
 
             {
                 Validate.EnsureNotNull(Interfaces, "An interface configuration is required for every virtual host");
-                Validate.Assert(Interfaces.Length > 0, $"You must define at least one interface for host");
+                Validate.Assert(Interfaces.Length > 0, $"You must define at least one interface for the host");
 
                 // Validate each interface
                 for (int i = 0; i < Interfaces.Length; i++)
                 {
                     TransportInterface iFace = Interfaces[i];
 
-                    Validate.EnsureNotNull(iFace, $"Vrtual host interface [{i}] is undefined");
+                    Validate.EnsureNotNull(iFace, $"Virtual host interface [{i}] is undefined");
 
                     Validate.EnsureNotNull(iFace.Address, $"The interface IP address is required for interface [{i}]");
                     Validate.EnsureValidIp(iFace.Address, $"The interface IP address is invalid for interface [{i}]");

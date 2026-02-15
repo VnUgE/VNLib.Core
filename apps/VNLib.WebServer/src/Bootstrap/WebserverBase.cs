@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -53,10 +53,10 @@ namespace VNLib.WebServer.Bootstrap
         private HttpServiceStack? _serviceStack;
 
         /// <summary>
-        /// Gets the internal <see cref="HttpServiceStack"/> this 
+        /// Gets the internal <see cref="HttpServiceStack"/> this
         /// controller is managing
         /// </summary>
-        public HttpServiceStack ServiceStack 
+        public HttpServiceStack ServiceStack
             => _serviceStack ?? throw new InvalidOperationException("Service stack has not been configured yet");
 
         /// <summary>
