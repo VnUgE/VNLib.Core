@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -57,6 +57,7 @@ namespace VNLib.WebServer.VirtualHosts
                 RootDir                 = new(VhConfig.DirPath!),
                 LogProvider             = logger,
                 ExecutionTimeout        = GetExecutionTimeout(VhConfig),
+                BlackList               = GetIpBlacklist(VhConfig),
                 WhiteList               = GetIpWhitelist(VhConfig),
                 DownStreamServers       = GetDownStreamServers(VhConfig),
                 ExcludedExtensions      = GetExlcudedExtensions(VhConfig),
@@ -67,44 +68,12 @@ namespace VNLib.WebServer.VirtualHosts
                 SpecialHeaders          = GetSpecialHeaders(VhConfig),
                 FailureFiles            = GetFailureFiles(VhConfig),
                 FilePathCacheMaxAge     = TimeSpan.MaxValue,
-                Hostnames               = GetHostnames(VhConfig),
-                Transports              = GetInterfaces(VhConfig),
-                BlackList               = GetIpBlacklist(VhConfig),
+                Hostnames               = VhConfig.Hostnames!,
+                Transports              = VhConfig.Interfaces,                
                 FileCacheHeaders        = GetFileCacheHeaders(VhConfig)
             };
-        }
-
-        private static string[] GetHostnames(VirtualHostServerConfig conf)
-        {
-            Validate.EnsureNotNull(conf.Hostnames, "Hostnames array was set to null, you must define at least one hostname");
-
-            foreach (string hostname in conf.Hostnames)
-            {
-                Validate.EnsureNotNull(hostname, "Hostname is null, all hostnames must be defined");
-            }
-
-            return conf.Hostnames;
-        }
-
-        private static TransportInterface[] GetInterfaces(VirtualHostServerConfig conf)
-        {
-            Validate.EnsureNotNull(conf.Interfaces, "Interfaces array was set to null, you must define at least one network interface");
-            Validate.Assert(conf.Interfaces.Length > 0, $"You must define at least one interface for host");
-
-            for(int i = 0; i < conf.Interfaces.Length; i++)
-            {
-                TransportInterface iFace = conf.Interfaces[i];
-
-                Validate.EnsureNotNull(iFace, $"Vrtual host interface [{i}] is undefined");
-
-                Validate.EnsureNotNull(iFace.Address, $"The interface IP address is required for interface [{i}]");
-                Validate.EnsureValidIp(iFace.Address, $"The interface IP address is invalid for interface [{i}]");
-                Validate.EnsureRange(iFace.Port, 1, 65535, "Interface port");
-            }
-
-            return conf.Interfaces;
-        }
-
+        }        
+      
         private static Regex GetPathFilter(VirtualHostServerConfig conf)
         {
             //Allow site to define a regex filter pattern
@@ -180,7 +149,7 @@ namespace VNLib.WebServer.VirtualHosts
 
         private static FrozenSet<IPAddress>? GetIpWhitelist(VirtualHostServerConfig conf)
         {
-            if(conf.Whitelist is null)
+            if (conf.Whitelist is null)
             {
                 return null;
             }
@@ -229,9 +198,9 @@ namespace VNLib.WebServer.VirtualHosts
 
         private static IReadOnlyCollection<string> GetDefaultFiles(VirtualHostServerConfig conf)
         {
-            if(conf.DefaultFiles is null)
+            if (conf.DefaultFiles is null)
             {
-                return Array.Empty<string>();
+                return [];
             }
 
             //Get blocked extensions for the root
@@ -280,7 +249,7 @@ namespace VNLib.WebServer.VirtualHosts
         private static FrozenDictionary<ContentType, string> GetFileCacheHeaders(VirtualHostServerConfig conf)
         {
             //Users can still set this value to null
-            if(conf.FileHttpCacheMaxAge is null)
+            if (conf.FileHttpCacheMaxAge is null)
             {
                 return new Dictionary<ContentType, string>()
                     .ToFrozenDictionary();
@@ -290,9 +259,6 @@ namespace VNLib.WebServer.VirtualHosts
                 .Select(kv =>
                 {
                     var (k, v) = kv;
-
-                    Validate.Assert(k[0] == '.', $"File extension must start with a '.' character for {k}");
-                    Validate.EnsureRange(v, 0, int.MaxValue, $"Cache time for {k}");
 
                     //If a value of 0 is set, then we set the cache to no-cache, otherwise public
                     CacheType type = v == 0

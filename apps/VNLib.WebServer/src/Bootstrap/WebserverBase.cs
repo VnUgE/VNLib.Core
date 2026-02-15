@@ -56,18 +56,8 @@ namespace VNLib.WebServer.Bootstrap
         /// Gets the internal <see cref="HttpServiceStack"/> this 
         /// controller is managing
         /// </summary>
-        public HttpServiceStack ServiceStack
-        {
-            get
-            {
-                if (_serviceStack is null)
-                {
-                    throw new InvalidOperationException("Service stack has not been configured yet");
-                }
-
-                return _serviceStack;
-            }
-        }
+        public HttpServiceStack ServiceStack 
+            => _serviceStack ?? throw new InvalidOperationException("Service stack has not been configured yet");
 
         /// <summary>
         /// Configures the http server for the application so

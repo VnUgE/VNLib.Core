@@ -298,14 +298,9 @@ Starting...
             string configPath = args.GetArgument("--config") ?? Path.Combine(EXE_DIR.FullName, DEFAULT_CONFIG_PATH);
 
             //Allow reading from stdin
-            if(configPath == "--")
-            {
-                return JsonServerConfig.FromStdin();
-            }
-            else
-            {
-                return JsonServerConfig.FromFile(configPath);
-            }
+            return configPath == "--" 
+                ? JsonServerConfig.FromStdin() 
+                : JsonServerConfig.FromFile(configPath);
         }
 
         private static WebserverBase GetWebserver(ServerLogger logger, IServerConfig config, ProcessArguments procArgs)
@@ -336,6 +331,7 @@ Starting...
             {
                 log.Fatal("UNHANDLED APPDOMAIN EXCEPTION \n {e}", e);
             };
+
             //If double verbose is specified, log app-domain messages
             if (args.DoubleVerbose)
             {
@@ -345,6 +341,7 @@ Starting...
                 {
                     log.Verbose(e.Exception, "Exception occured in app-domain ");
                 };
+
                 currentDomain.AssemblyLoad += delegate (object? sender, AssemblyLoadEventArgs args)
                 {
                     log.Verbose(
@@ -354,6 +351,7 @@ Starting...
                         args.LoadedAssembly.Location
                     );
                 };
+
                 currentDomain.DomainUnload += delegate (object? sender, EventArgs e)
                 {
                     log.Verbose("Domain {domain} unloaded", currentDomain.FriendlyName);
