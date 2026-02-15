@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <RootNamespace>VNLib.Net.Transport</RootNamespace>
+    <RootNamespace>VNLib.Net.Transport.Tcp</RootNamespace>
     <AssemblyName>VNLib.Net.Transport.SimpleTCP</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
