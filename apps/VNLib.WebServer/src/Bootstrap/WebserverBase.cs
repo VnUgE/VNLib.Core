@@ -31,6 +31,7 @@ using VNLib.Utils;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Essentials.ServiceStack;
+using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 using VNLib.Plugins.Essentials.ServiceStack.Construction;
 
 using VNLib.WebServer.Config;
@@ -44,6 +45,7 @@ namespace VNLib.WebServer.Bootstrap
     internal abstract class WebserverBase(ServerLogger logger, IServerConfig config, ProcessArguments procArgs) 
         : VnDisposeable
     {
+        private readonly bool LoadPluginsConcurrently = !procArgs.HasArgument("--sequential-load");
 
         protected readonly ProcessArguments procArgs = procArgs;
         protected readonly IServerConfig config = config;
@@ -51,6 +53,7 @@ namespace VNLib.WebServer.Bootstrap
         protected readonly TcpServerLoader TcpConfig = new(config, procArgs, logger.SysLog);
 
         private HttpServiceStack? _serviceStack;
+        private HttpPluginStack? _plugins;
 
         /// <summary>
         /// Gets the internal <see cref="HttpServiceStack"/> this
@@ -59,6 +62,8 @@ namespace VNLib.WebServer.Bootstrap
         public HttpServiceStack ServiceStack
             => _serviceStack ?? throw new InvalidOperationException("Service stack has not been configured yet");
 
+        public HttpPluginStack? PluginStack => _plugins;
+
         /// <summary>
         /// Configures the http server for the application so
         /// its ready to start
@@ -66,25 +71,17 @@ namespace VNLib.WebServer.Bootstrap
         public virtual void Configure()
         {
             _serviceStack = ConfiugreServiceStack();
+            _plugins = ConfigurePluginStack(_serviceStack);
         }
 
         protected virtual HttpServiceStack ConfiugreServiceStack()
         {
-            bool loadPluginsConcurrently = !procArgs.HasArgument("--sequential-load");
-
             HttpConfig http = GetHttpConfig();
 
             VirtualHostConfig[] virtualHosts = GetAllVirtualHosts();
 
-            PluginStackBuilder? plugins = ConfigurePlugins();
-
-            HttpServiceStackBuilder builder = new HttpServiceStackBuilder()
-                                    .LoadPluginsConcurrently(loadPluginsConcurrently)
-                                    .WithBuiltInHttp(TcpConfig.ReduceBindingsForGroups, http)
-                                    .WithManualPlugins(plugins =>
-                                    {
-
-                                    })
+            HttpServiceStackBuilder builder = new HttpServiceStackBuilder()                                   
+                                    .WithBuiltInHttp(TcpConfig.ReduceBindingsForGroups, http)                                   
                                     .WithDomain(domain =>
                                     {
                                         domain.WithServiceGroups(vh =>
@@ -97,14 +94,27 @@ namespace VNLib.WebServer.Bootstrap
                                         });
                                     });
 
-            if (plugins != null)
-            {
-                builder.WithPluginStack(plugins.ConfigureStack);
-            }
+            
 
-            PrintLogicalRouting(virtualHosts);
+            PrintLogicalRouting(virtualHosts);            
 
             return builder.Build();
+        }
+
+        protected virtual HttpPluginStack? ConfigurePluginStack(HttpServiceStack http)
+        {
+            PluginStackBuilder? plugins = ConfigurePlugins();
+
+            if (plugins is null)
+            {
+                return null;
+            }
+
+            return new HttpPluginStack(
+                httpStack: http,
+                pluginStack: plugins.ConfigureStack(),
+                debugLog: logger.AppLog
+            );
         }
 
         protected abstract VirtualHostConfig[] GetAllVirtualHosts();
@@ -121,10 +131,10 @@ namespace VNLib.WebServer.Bootstrap
         {
             /* Since this api is uses internally, knowing the order of operations is a bug, not a rumtime accident */
             Debug.Assert(Disposed == false, "Server was disposed");
-            Debug.Assert(_serviceStack != null, "Server was not configured");
+            Debug.Assert(_serviceStack != null, "Server was not configured");          
 
             //Attempt to load plugins before starting server
-            _serviceStack.LoadPlugins(logger.AppLog);
+            _plugins?.LoadPlugins(LoadPluginsConcurrently);
 
             _serviceStack.StartServers();
         }
@@ -138,10 +148,25 @@ namespace VNLib.WebServer.Bootstrap
             Debug.Assert(Disposed == false, "Server was disposed");
             Debug.Assert(_serviceStack != null, "Server was not configured");
 
+            _plugins?.UnloadPlugins();
+
             //Stop the server and wait synchronously
             _serviceStack.StopAndWaitAsync()
                 .GetAwaiter()
                 .GetResult();
+        }
+
+        /// <summary>
+        /// Manually reloads all plugins loaded to the current service manager. This 
+        /// is useful for plugin development and testing when you want to quickly 
+        /// reload plugins without restarting the server.
+        /// </summary>
+        public void ReloadPlugins()
+        {
+            Debug.Assert(Disposed == false, "Server was disposed");
+            Debug.Assert(_serviceStack != null, "Server was not configured");
+
+            _plugins?.ReloadPlugins(LoadPluginsConcurrently);
         }
 
         private void PrintLogicalRouting(VirtualHostConfig[] hosts)
@@ -191,6 +216,10 @@ namespace VNLib.WebServer.Bootstrap
        
 
         ///<inheritdoc/>
-        protected override void Free() => _serviceStack?.Dispose();
+        protected override void Free()
+        {
+            _serviceStack?.Dispose();
+            _plugins?.Dispose();
+        }
     }
 }
