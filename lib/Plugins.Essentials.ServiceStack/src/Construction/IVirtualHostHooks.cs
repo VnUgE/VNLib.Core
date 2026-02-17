@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -56,7 +56,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// </summary>
         /// <param name="errorCode">The error code that was created during processing</param>
         /// <param name="entity">The active IHttpEvent representing the faulted request</param>
-        /// <returns>A value indicating if the entity was proccsed by this call</returns>
+        /// <returns>A value indicating if the entity was processed by this call</returns>
         bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity);
 
         /// <summary>

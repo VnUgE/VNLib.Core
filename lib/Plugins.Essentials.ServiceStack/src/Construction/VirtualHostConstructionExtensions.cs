@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: SsBuilderExtensions.cs 
+* File: VirtualHostConstructionExtensions.cs 
 *
-* SsBuilderExtensions.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* VirtualHostConstructionExtensions.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -54,7 +54,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
 
         /// <summary>
-        /// Takes a callback to allow you to inject middelware applications into 
+        /// Takes a callback to allow you to inject middleware applications into 
         /// your virtual host
         /// </summary>
         /// <param name="vhBuilder"></param>
@@ -69,11 +69,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         public static IVirtualHostBuilder WithHostnames(this IVirtualHostBuilder virtualHostBuilder, string[] hostnames) 
             => virtualHostBuilder.WithOption(c => c.Hostnames = hostnames);
 
-        public static IVirtualHostBuilder WithDefaultFiles(this IVirtualHostBuilder vhBuidler, params string[] defaultFiles) 
-            => vhBuidler.WithDefaultFiles((IReadOnlyCollection<string>)defaultFiles);
+        public static IVirtualHostBuilder WithDefaultFiles(this IVirtualHostBuilder vhBuilder, params string[] defaultFiles) 
+            => vhBuilder.WithDefaultFiles((IReadOnlyCollection<string>)defaultFiles);
 
-        public static IVirtualHostBuilder WithDefaultFiles(this IVirtualHostBuilder vhBuidler, IReadOnlyCollection<string> defaultFiles) 
-            => vhBuidler.WithOption(c => c.DefaultFiles = defaultFiles);
+        public static IVirtualHostBuilder WithDefaultFiles(this IVirtualHostBuilder vhBuilder, IReadOnlyCollection<string> defaultFiles) 
+            => vhBuilder.WithOption(c => c.DefaultFiles = defaultFiles);
 
         public static IVirtualHostBuilder WithExcludedExtensions(this IVirtualHostBuilder vhBuilder, params string[] excludedExtensions) 
             => vhBuilder.WithExcludedExtensions(new HashSet<string>(excludedExtensions));
