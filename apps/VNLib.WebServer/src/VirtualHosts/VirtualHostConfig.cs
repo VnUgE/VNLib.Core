@@ -79,12 +79,12 @@ namespace VNLib.WebServer.VirtualHosts
         public required FrozenDictionary<ContentType, string> FileCacheHeaders { get; init; }
 
         /// <summary>
-        /// Allows config to specify contant additional headers
+        /// Allows config to specify constant additional headers
         /// </summary>
         public required KeyValuePair<string, string>[] AdditionalHeaders { get; init; }
 
         /// <summary>
-        /// Contains internal headers used for specific purposes, cherrypicked from the config headers 
+        /// Contains internal headers used for specific purposes, cherry-picked from the config headers 
         /// </summary>
         public required FrozenDictionary<string, string> SpecialHeaders { get; init; }
 
@@ -94,7 +94,7 @@ namespace VNLib.WebServer.VirtualHosts
         internal required TransportInterface[] Transports { get; init; }
 
         /// <summary>
-        /// An optional whitelist set of ipaddresses that are allowed to make connections to this site
+        /// An optional whitelist set of IP addresses that are allowed to make connections to this site
         /// </summary>
         internal required FrozenSet<IPAddress>? WhiteList { get; init; }
 

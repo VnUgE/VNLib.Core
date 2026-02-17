@@ -45,7 +45,7 @@ namespace VNLib.WebServer.Bootstrap
     internal abstract class WebserverBase(ServerLogger logger, IServerConfig config, ProcessArguments procArgs) 
         : VnDisposeable
     {
-        private readonly bool LoadPluginsConcurrently = !procArgs.HasArgument("--sequential-load");
+        private readonly bool _loadPluginsConcurrently = !procArgs.HasArgument("--sequential-load");
 
         protected readonly ProcessArguments procArgs = procArgs;
         protected readonly IServerConfig config = config;
@@ -70,11 +70,11 @@ namespace VNLib.WebServer.Bootstrap
         /// </summary>
         public virtual void Configure()
         {
-            _serviceStack = ConfiugreServiceStack();
+            _serviceStack = ConfigureServiceStack();
             _plugins = ConfigurePluginStack(_serviceStack);
         }
 
-        protected virtual HttpServiceStack ConfiugreServiceStack()
+        protected virtual HttpServiceStack ConfigureServiceStack()
         {
             HttpConfig http = GetHttpConfig();
 
@@ -129,12 +129,12 @@ namespace VNLib.WebServer.Bootstrap
         /// </summary>
         public void Start()
         {
-            /* Since this api is uses internally, knowing the order of operations is a bug, not a rumtime accident */
+            /* Since this API is used internally, knowing the order of operations is a bug, not a runtime accident */
             Debug.Assert(Disposed == false, "Server was disposed");
-            Debug.Assert(_serviceStack != null, "Server was not configured");          
+            Debug.Assert(_serviceStack != null, "Server was not configured");
 
             //Attempt to load plugins before starting server
-            _plugins?.LoadPlugins(LoadPluginsConcurrently);
+            _plugins?.LoadPlugins(_loadPluginsConcurrently);
 
             _serviceStack.StartServers();
         }
@@ -166,7 +166,7 @@ namespace VNLib.WebServer.Bootstrap
             Debug.Assert(Disposed == false, "Server was disposed");
             Debug.Assert(_serviceStack != null, "Server was not configured");
 
-            _plugins?.ReloadPlugins(LoadPluginsConcurrently);
+            _plugins?.ReloadPlugins(_loadPluginsConcurrently);
         }
 
         private void PrintLogicalRouting(VirtualHostConfig[] hosts)

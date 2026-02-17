@@ -84,7 +84,7 @@ namespace VNLib.WebServer
 ";
 
 
-        private readonly HttpServiceStack _serviceStack = server.ServiceStack;       
+        private readonly HttpServiceStack _serviceStack = server.ServiceStack;
 
 
         /// <summary>
@@ -233,15 +233,15 @@ namespace VNLib.WebServer
         private static void EnterPluginLoop(
             TextReader input,
             TextWriter output,
-            string pluignName, 
+            string pluginName, 
             HttpPluginStack man
         )
         {
-            output.WriteLine("Entering plugin {0}. Type 'exit' to leave", pluignName);
+            output.WriteLine("Entering plugin {0}. Type 'exit' to leave", pluginName);
 
             while (true)
             {
-                output.Write("{0}> ", pluignName);
+                output.Write("{0}> ", pluginName);
 
                 string? cmdText = input.ReadLine();
 
@@ -257,7 +257,7 @@ namespace VNLib.WebServer
                 }
 
                 // Exec command
-                if (!man.SendCommand(pluignName, cmdText))
+                if (!man.SendCommand(pluginName, cmdText))
                 {
                     output.WriteLine("Plugin does not exist exiting loop");
                     break;

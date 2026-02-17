@@ -87,7 +87,7 @@ namespace VNLib.WebServer.VirtualHosts
 
         private static FrozenDictionary<HttpStatusCode, FileCache> GetFailureFiles(VirtualHostServerConfig conf, ILogProvider logger)
         {
-            //if a failure file array is specified, capure all files and
+            //if a failure file array is specified, capture all files and
             if (conf.ErrorFiles is null || conf.ErrorFiles.Length < 1)
             {
                 return new Dictionary<HttpStatusCode, FileCache>().ToFrozenDictionary();
@@ -182,7 +182,7 @@ namespace VNLib.WebServer.VirtualHosts
 
         private static FrozenSet<string> GetExcludedExtensions(VirtualHostServerConfig conf)
         {
-            //Get exlucded/denied extensions from config, ignore null strings
+            //Get excluded/denied extensions from config, ignore null strings
             if (conf.DenyExtensions is not null)
             {
                 return conf.DenyExtensions

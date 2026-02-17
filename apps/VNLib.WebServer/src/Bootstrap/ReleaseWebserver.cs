@@ -46,7 +46,7 @@ namespace VNLib.WebServer.Bootstrap
 {
 
     /*
-     * This class represents a normally loaded "Relase" webserver to allow 
+     * This class represents a normally loaded "Release" webserver to allow 
      * for module webserver use-cases. It relies on a system configuration
      * file and command line arguments to configure the server.
      */
@@ -93,8 +93,8 @@ namespace VNLib.WebServer.Bootstrap
             //Init new plugin stack builder
             PluginStackBuilder pluginBuilder = PluginStackBuilder.Create()
                                     .WithDebugLog(logger.AppLog)
-                                    .WithSearchDirectories([ conf.Path ])
-                                    .WithLoaderFactory(PluginAsemblyLoading.Create);
+                                    .WithSearchDirectories([conf.Path])
+                                    .WithLoaderFactory(PluginAssemblyLoading.Create);
 
             //Setup plugin config data
             if (!string.IsNullOrWhiteSpace(conf.ConfigDir))
@@ -183,7 +183,7 @@ namespace VNLib.WebServer.Bootstrap
                          * copies.
                          * 
                          * Aligning chunk buffer to the transport buffer size is the easiest solution to avoid excessive
-                         * copyies
+                         * copies
                          */
                         ChunkedResponseAccumulatorSize = compressorManager != null ? TcpConfig.TcpTxBufferSize : 0
                     },
@@ -279,7 +279,7 @@ namespace VNLib.WebServer.Bootstrap
             }
             catch (KeyNotFoundException kne)
             {
-                throw new ServerConfigurationException("Missing required configuration varaibles", kne);
+                throw new ServerConfigurationException("Missing required configuration variables", kne);
             }
             catch (FormatException fe)
             {
