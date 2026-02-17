@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -23,14 +23,13 @@
 */
 
 using VNLib.Net.Http;
-using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
     /// Represents an HTTP service host which provides information required 
-    /// for HttpServer routing and the <see cref="IWebRoot"/> for proccessing
-    /// incomming connections
+    /// for HttpServer routing and the <see cref="IWebRoot"/> for processing
+    /// incoming connections
     /// </summary>
     public interface IServiceHost
     {
@@ -44,22 +43,20 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// Optional user state to be set during initialization and read at a later time
         /// </summary>
         object? UserState { get; }
-      
-        /// <summary>
-        /// Called when a plugin is loaded and is endpoints are extracted
-        /// to be placed into service.
-        /// </summary>
-        /// <param name="plugin">The loaded plugin ready to be attached</param>
-        /// <param name="endpoints">The dynamic endpoints of a loading plugin</param>
-        void OnRuntimeServiceAttach(IManagedPlugin plugin, IEndpoint[] endpoints);
 
         /// <summary>
-        /// Called when a <see cref="ServiceDomain"/>'s <see cref="IHttpPluginManager"/> 
-        /// unloads a given plugin, and its originally discovered endpoints
+        /// Called when an <see cref="IHttpServiceBinding"/> is being attached to this host, 
+        /// allowing the host to resolve and register the binding's endpoints, middleware, and services
         /// </summary>
-        /// <param name="plugin">The unloading plugin to detach</param>
-        /// <param name="endpoints">The endpoints of the unloading plugin to remove from service</param>
-        void OnRuntimeServiceDetach(IManagedPlugin plugin, IEndpoint[] endpoints);
+        /// <param name="binding">The service binding being attached</param>
+        void OnServiceAttach(IHttpServiceBinding binding);
 
+        /// <summary>
+        /// Called when a previously attached <see cref="IHttpServiceBinding"/> is being 
+        /// detached from this host, requiring cleanup and removal of the binding's endpoints, 
+        /// middleware, and services
+        /// </summary>
+        /// <param name="binding">The service binding being detached</param>
+        void OnServiceDetach(IHttpServiceBinding binding);
     }
 }

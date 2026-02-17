@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -32,7 +32,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 {
 
     /// <summary>
-    /// Represents a domain of services and thier dynamically loaded plugins 
+    /// Represents a domain of services and their configured virtual hosts
     /// that will be hosted by an application service stack
     /// </summary>
     public sealed class ServiceDomain

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -23,24 +23,22 @@
 */
 
 using System;
-using System.IO;
-using System.Net;
-using System.Linq;
-using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
-
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
 using VNLib.Plugins.Essentials.Middleware;
-using VNLib.Plugins.Essentials.ServiceStack.Plugins;
+using VNLib.Plugins.Essentials.Runtime;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {
 
     /// <summary>
-    /// 
+    /// Extension methods for building and configuring the HTTP service domain
     /// </summary>
     public static class SsBuilderExtensions
     {
@@ -185,23 +183,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         }
 
 
-        private static void OnPluginServiceEvent<T>(this IManagedPlugin plugin, Action<T> loader)
-        {
-            if (plugin.Services.GetService(typeof(T)) is T s)
-            {
-                loader(s);
-            }
-        }
-
-
         /*
-         * The goal of this class is to added the extra service injection
-         * and manage the IWebRoot instance that will be served by a 
-         * webserver
+         * The goal of this class is to manage the IWebRoot instance served by a 
+         * webserver and handle dynamic service binding attach/detach operations
          */
 
         private sealed class CustomServiceHost<T>(T Instance, object? userState) : IServiceHost 
-            where T : EventProcessor, IRuntimeServiceInjection
+            where T : EventProcessor, IHttpServiceAttachable
         {
             ///<inheritdoc/>
             public IWebRoot Processor => Instance;
@@ -210,45 +198,24 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             public object? UserState => userState;
 
             ///<inheritdoc/>
-            void IServiceHost.OnRuntimeServiceAttach(IManagedPlugin plugin, IEndpoint[] endpoints)
-            {
-                //Add endpoints to service
-                Instance.Options.EndpointTable.AddEndpoint(endpoints);
-                
-                //Inject services into the event processor service pool
-                Instance.AddServices(plugin.Services);
-
-                //Add all exposed middleware to the chain
-                plugin.OnPluginServiceEvent<IEnumerable<IHttpMiddleware>>(p => p.ForEach(Instance.Options.MiddlewareChain.Add));
-                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => p.ForEach(Instance.Options.MiddlewareChain.Add));
-            }
+            void IServiceHost.OnServiceAttach(IHttpServiceBinding binding) 
+                => Instance.AttachService(binding);
 
             ///<inheritdoc/>
-            void IServiceHost.OnRuntimeServiceDetach(IManagedPlugin plugin, IEndpoint[] endpoints)
-            {
-                //Remove endpoints
-                Instance.Options.EndpointTable.RemoveEndpoint(endpoints);
-                Instance.RemoveServices(plugin.Services);
-
-                //Remove all middleware from the chain
-                plugin.OnPluginServiceEvent<IEnumerable<IHttpMiddleware>>(p => p.ForEach(Instance.Options.MiddlewareChain.Remove));
-                plugin.OnPluginServiceEvent<IHttpMiddleware[]>(p => p.ForEach(Instance.Options.MiddlewareChain.Remove));
-            }
-
+            void IServiceHost.OnServiceDetach(IHttpServiceBinding binding) 
+                => Instance.DetachService(binding);
         }
 
 
         private sealed class BasicVirtualHost(IVirtualHostHooks Hooks, EventProcessorConfig config) 
-            : EventProcessor(config), IRuntimeServiceInjection
+            : EventProcessor(config), IHttpServiceAttachable
         {
             /*
-             * Runtime service injection can be tricky, at least in my architecture. If all we have 
-             * is am IServiceProvider instance, we cannot trust that the services availabe are 
-             * exactly the same as the ones initially provided. So we can store the known types
-             * that a given service container DID export, and then use that to remove the services
-             * when the service provider is removed.
+             * Runtime service injection tracks service bindings so installed services can
+             * be properly removed when the service is detached. This is required to prevent stale 
+             * service references to unloaded plugins.
              */
-            private readonly ConditionalWeakTable<IServiceProvider, Type[]> _exposedTypes = new();
+            private readonly ConditionalWeakTable<IHttpServiceBinding, Action> _exposedTypes = [];
 
             ///<inheritdoc/>
             public override bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity) 
@@ -267,42 +234,67 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 => Hooks.TranslateResourcePath(requestPath);
 
             ///<inheritdoc/>
-            public void AddServices(IServiceProvider services)
+            public void AttachService(IHttpServiceBinding binding)
             {
-                Type[] exposedForHandler = [];
+                List<Type> exposed              = [];               
+                IEndpoint[] endpoints           = [];
+                IHttpMiddleware[] middleware    = [];
 
+                // Attempt to resolve and expose all services defined by
+                // the service binding to the service pool
                 foreach (Type type in ServicePool.Types)
                 {
-                    //Get exported service by the desired type
-                    object? service = services.GetService(type);
+                    object? service = binding.Services.GetService(type);
 
-                    //If its not null, then add it to the service pool
                     if (service is not null)
                     {
                         ServicePool.SetService(type, service);
-
-                        //Add to the exposed types list
-                        exposedForHandler = [.. exposedForHandler, type];
+                        exposed.Add(type);
                     }
                 }
 
-                //Add to the exposed types table
-                _exposedTypes.Add(services, exposedForHandler);
+                // Attempt to resolve middleware and endpoints defined by the service binding
+                if (binding.Services.GetService(typeof(IHttpMiddleware[])) is IHttpMiddleware[] mwArray)
+                {
+                    middleware = mwArray;
+                }
+                else if (binding.Services.GetService(typeof(IEnumerable<IHttpMiddleware>)) is IEnumerable<IHttpMiddleware> mwEnumerable)
+                {
+                    middleware = [.. mwEnumerable];
+                }
+
+                // Attempts to recover the virtual endpoint definition from the service
+                // collection and add its endpoints to the endpoint table
+                if (binding.Services.GetService(typeof(IVirtualEndpointDefinition)) is IVirtualEndpointDefinition definition)
+                {
+                    endpoints = [.. definition.GetEndpoints()];
+                }
+
+                middleware.ForEach(Options.MiddlewareChain.Add);
+
+                Options.EndpointTable.AddEndpoint(endpoints);
+
+                // Stores an action callback to capture the types exposed by this service binding
+                // and the endpoints/middleware it added so they can be cleanly removed when the
+                // service is detached
+                _exposedTypes.Add(binding, () =>
+                {
+                    exposed.ForEach(t => ServicePool.SetService(t, null));
+
+                    middleware.ForEach(Options.MiddlewareChain.Remove);
+
+                    Options.EndpointTable.RemoveEndpoint(endpoints);
+                });
             }
 
             ///<inheritdoc/>
-            public void RemoveServices(IServiceProvider services)
+            public void DetachService(IHttpServiceBinding binding)
             {
-                //Get all exposed types for this service provider
-                if (_exposedTypes.TryGetValue(services, out Type[]? exposed))
-                {                    
-                    foreach (Type type in exposed)
-                    {
-                        ServicePool.SetService(type, null);
-                    }
+                if (_exposedTypes.TryGetValue(binding, out Action? unload))
+                {
+                    _ = _exposedTypes.Remove(binding);
 
-                    //Remove from the exposed types table
-                    _exposedTypes.Remove(services);
+                    unload();                   
                 }
             }
         }

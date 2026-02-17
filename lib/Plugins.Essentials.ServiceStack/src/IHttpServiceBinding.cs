@@ -1,11 +1,11 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: ServiceGroup.cs 
+* File: IHttpServiceBinding.cs
 *
-* ServiceGroup.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* IHttpServiceBinding.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -23,33 +23,23 @@
 */
 
 using System;
-using System.Collections.Generic;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
-
     /// <summary>
-    /// Represents a collection of virtual hosts that share a 
-    /// common transport (interface, port, and SSL status)
-    /// and may be loaded by a single server instance.
+    /// Represents a bundle of HTTP-consumable services that can be dynamically 
+    /// attached to or detached from an HTTP service domain at runtime. This is
+    /// the contract between external service providers (plugins, manual services, 
+    /// tests) and the HTTP hosting layer.
     /// </summary>
-    /// <remarks>
-    /// Initializes a new <see cref="ServiceGroup"/> of virtual hosts
-    /// with common transport
-    /// </remarks>
-    /// <param name="hosts">The hosts that share a common interface endpoint</param>
-    public sealed class ServiceGroup(IEnumerable<IServiceHost> hosts)
+    public interface IHttpServiceBinding
     {
-        private readonly LinkedList<IServiceHost> _vHosts = new(hosts);       
-
         /// <summary>
-        /// The collection of hosts that are loaded by this group
+        /// Gets the service provider whose services will be resolved and injected 
+        /// into the host's service pool for use during request processing. The provider
+        /// may expose endpoints via <see cref="IVirtualEndpointDefinition"/>, middleware
+        /// via <see cref="IHttpMiddleware"/> collections, and other request-scoped services.
         /// </summary>
-        public IReadOnlyCollection<IServiceHost> Hosts => _vHosts;
-
-        /// <summary>
-        /// Clears all hosts from this group
-        /// </summary>
-        internal void UnloadAll() => _vHosts.Clear();
+        IServiceProvider Services { get; }
     }
 }
