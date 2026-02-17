@@ -41,14 +41,17 @@ using VNLib.WebServer.Config.Model;
 namespace VNLib.WebServer.VirtualHosts
 {
 
-    internal sealed partial class JsonWebConfigBuilder(VirtualHostServerConfig VhConfig, ILogProvider logger) 
-        : IVirtualHostConfigBuilder
+    internal static partial class JsonWebConfigBuilder
     {
+
+        [GeneratedRegex(@"(\/\.\.)|(\\\.\.)|[\[\]^*<>|`~'\n\r\t\n]|(\s$)|^(\s)", RegexOptions.Compiled)]
+        private static partial Regex DefaultPathFilterRegex();
+
         //Use pre-compiled default regex
-        private static readonly Regex DefaultRootRegex = MyRegex();
+        private static readonly Regex DefaultRootRegex = DefaultPathFilterRegex();
        
         ///<inheritdoc/>
-        public VirtualHostConfig GetBaseConfig()
+        public static VirtualHostConfig GetBaseConfig(VirtualHostServerConfig VhConfig, ILogProvider logger)
         {
             //Declare the vh config
             return new()
@@ -56,31 +59,33 @@ namespace VNLib.WebServer.VirtualHosts
                 //File root is required
                 RootDir                 = new(VhConfig.DirPath!),
                 LogProvider             = logger,
-                ExecutionTimeout        = GetExecutionTimeout(VhConfig),
+                Hostnames               = VhConfig.Hostnames!,
+                Transports              = VhConfig.Interfaces,
+                FilePathCacheMaxAge     = TimeSpan.MaxValue,
+                CacheDefault            = TimeSpan.FromSeconds(VhConfig.CacheDefaultTimeSeconds),
+                ExecutionTimeout        = TimeSpan.FromMilliseconds(VhConfig.MaxExecutionTimeMs),
                 BlackList               = GetIpBlacklist(VhConfig),
                 WhiteList               = GetIpWhitelist(VhConfig),
                 DownStreamServers       = GetDownStreamServers(VhConfig),
                 ExcludedExtensions      = GetExcludedExtensions(VhConfig),
                 DefaultFiles            = GetDefaultFiles(VhConfig),
-                PathFilter              = GetPathFilter(VhConfig),
-                CacheDefault            = TimeSpan.FromSeconds(VhConfig.CacheDefaultTimeSeconds),
+                PathFilter              = GetPathFilter(VhConfig),               
                 AdditionalHeaders       = GetConfigHeaders(VhConfig),
                 SpecialHeaders          = GetSpecialHeaders(VhConfig),
-                FailureFiles            = GetFailureFiles(VhConfig),
-                FilePathCacheMaxAge     = TimeSpan.MaxValue,
-                Hostnames               = VhConfig.Hostnames!,
-                Transports              = VhConfig.Interfaces,
+                FailureFiles            = GetFailureFiles(VhConfig, logger),               
                 FileCacheHeaders        = GetFileCacheHeaders(VhConfig)
             };
-        }        
-      
-        private static Regex GetPathFilter(VirtualHostServerConfig conf)
-        {
-            //Allow site to define a regex filter pattern
-            return conf.PathFilter is not null ? new(conf.PathFilter!) : DefaultRootRegex;
         }
 
-        private FrozenDictionary<HttpStatusCode, FileCache> GetFailureFiles(VirtualHostServerConfig conf)
+        /// <summary>
+        /// Gets the path filter for filtering/validating request paths. If no 
+        /// filter is specified, a default filter is used that blocks directory
+        /// traversal and invalid characters.
+        /// </summary>
+        private static Regex GetPathFilter(VirtualHostServerConfig conf) 
+            => conf.PathFilter is not null ? new(conf.PathFilter!) : DefaultRootRegex;
+
+        private static FrozenDictionary<HttpStatusCode, FileCache> GetFailureFiles(VirtualHostServerConfig conf, ILogProvider logger)
         {
             //if a failure file array is specified, capure all files and
             if (conf.ErrorFiles is null || conf.ErrorFiles.Length < 1)
@@ -90,7 +95,7 @@ namespace VNLib.WebServer.VirtualHosts
 
             //Get the error files
             IEnumerable<KeyValuePair<HttpStatusCode, string>> ffs = conf.ErrorFiles
-                        .Select(static f => new KeyValuePair<HttpStatusCode, string>((HttpStatusCode)f.Code, f.Path!));
+                .Select(static f => new KeyValuePair<HttpStatusCode, string>((HttpStatusCode)f.Code, f.Path!));
 
             //Create the file cache dictionary
             (HttpStatusCode, string, FileCache?)[] loadCache = ffs.Select(static kv =>
@@ -105,14 +110,16 @@ namespace VNLib.WebServer.VirtualHosts
                 .Where(static loadCache => loadCache.Item3 != null)
                 .Count();
 
-            string[] notFoundFiles = loadCache
-                .Where(static loadCache => loadCache.Item3 == null)
-                .Select(static l => Path.GetFileName(l.Item2))
-                .ToArray();
-
-            if (notFoundFiles.Length > 0)
             {
-                logger.Warn("Failed to load error files {files} for host {hosts}", notFoundFiles, conf.Hostnames);
+                string[] notFoundFiles = loadCache
+                    .Where(static loadCache => loadCache.Item3 == null)
+                    .Select(static l => Path.GetFileName(l.Item2))
+                    .ToArray();
+
+                if (notFoundFiles.Length > 0)
+                {
+                    logger.Warn("Failed to load error files {files} for host {hosts}", notFoundFiles, conf.Hostnames);
+                }
             }
 
             //init frozen dictionary from valid cached files
@@ -140,13 +147,7 @@ namespace VNLib.WebServer.VirtualHosts
 
             return (downstreamServers ?? []).ToFrozenSet();
         }
-
-        private static TimeSpan GetExecutionTimeout(VirtualHostServerConfig conf)
-        {
-            //Get the execution timeout
-            return TimeSpan.FromMilliseconds(conf.MaxExecutionTimeMs);
-        }
-
+  
         private static FrozenSet<IPAddress>? GetIpWhitelist(VirtualHostServerConfig conf)
         {
             if (conf.Whitelist is null)
@@ -205,9 +206,9 @@ namespace VNLib.WebServer.VirtualHosts
 
             //Get blocked extensions for the root
             return conf.DefaultFiles
-                        .Where(static s => !string.IsNullOrWhiteSpace(s))
-                        .Distinct()
-                        .ToList();
+                    .Where(static s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct()
+                    .ToList();
         }
 
         private static KeyValuePair<string, string>[] GetConfigHeaders(VirtualHostServerConfig conf)
@@ -275,9 +276,5 @@ namespace VNLib.WebServer.VirtualHosts
                     static val => val.Value
                 );
         }
-
-
-        [GeneratedRegex(@"(\/\.\.)|(\\\.\.)|[\[\]^*<>|`~'\n\r\t\n]|(\s$)|^(\s)", RegexOptions.Compiled)]
-        private static partial Regex MyRegex();
     }
 }

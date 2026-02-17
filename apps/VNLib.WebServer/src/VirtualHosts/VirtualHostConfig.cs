@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -60,7 +60,7 @@ namespace VNLib.WebServer.VirtualHosts
         /// <summary>
         /// A regex filter instance to filter incoming filesystem paths
         /// </summary>
-        public Regex? PathFilter { get; init; }
+        public required Regex? PathFilter { get; init; }
 
         /// <summary>
         /// The default response entity cache value
@@ -71,22 +71,22 @@ namespace VNLib.WebServer.VirtualHosts
         /// A collection of in-memory files to send in response to processing error
         /// codes.
         /// </summary>
-        public FrozenDictionary<HttpStatusCode, FileCache> FailureFiles { get; init; } = new Dictionary<HttpStatusCode, FileCache>().ToFrozenDictionary();
+        public required FrozenDictionary<HttpStatusCode, FileCache> FailureFiles { get; init; }
 
         /// <summary>
         /// Contains a mapping of file extensions to http cache header strings
         /// </summary>
-        public FrozenDictionary<ContentType, string> FileCacheHeaders { get; init; } = new Dictionary<ContentType, string>().ToFrozenDictionary();
+        public required FrozenDictionary<ContentType, string> FileCacheHeaders { get; init; }
 
         /// <summary>
         /// Allows config to specify contant additional headers
         /// </summary>
-        public KeyValuePair<string, string>[] AdditionalHeaders { get; init; } = Array.Empty<KeyValuePair<string, string>>();
+        public required KeyValuePair<string, string>[] AdditionalHeaders { get; init; }
 
         /// <summary>
         /// Contains internal headers used for specific purposes, cherrypicked from the config headers 
         /// </summary>
-        public FrozenDictionary<string, string> SpecialHeaders { get; init; } = new Dictionary<string, string>().ToFrozenDictionary();
+        public required FrozenDictionary<string, string> SpecialHeaders { get; init; }
 
         /// <summary>
         /// The array of interfaces the host wishes to listen on
@@ -102,6 +102,5 @@ namespace VNLib.WebServer.VirtualHosts
         /// An optional blacklist set of ipaddresses that are not allowed to make connections to this site
         /// </summary>
         internal required FrozenSet<IPAddress>? BlackList { get; init; }
-
     }
 }

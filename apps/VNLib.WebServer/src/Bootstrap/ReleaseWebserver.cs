@@ -219,7 +219,7 @@ namespace VNLib.WebServer.Bootstrap
                 foreach (VirtualHostServerConfig vhConfig in GetVirtualHosts())
                 {
                
-                    VirtualHostConfig conf = new JsonWebConfigBuilder(vhConfig, log).GetBaseConfig();
+                    VirtualHostConfig conf = JsonWebConfigBuilder.GetBaseConfig(vhConfig, log);
 
                     //Configure event hooks
                     conf.EventHooks = new VirtualHostHooks(conf);
@@ -286,7 +286,7 @@ namespace VNLib.WebServer.Bootstrap
                 throw new ServerConfigurationException("Failed to parse IP address", fe);
             }
 
-            return configs.ToArray();
+            return [.. configs];
         }
 
         private VirtualHostServerConfig[] GetVirtualHosts()
