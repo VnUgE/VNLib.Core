@@ -286,7 +286,7 @@ namespace VNLib.WebServer.Bootstrap
                 throw new ServerConfigurationException("Failed to parse IP address", fe);
             }
 
-            return [.. configs];
+            return configs.ToArray();
         }
 
         private VirtualHostServerConfig[] GetVirtualHosts()

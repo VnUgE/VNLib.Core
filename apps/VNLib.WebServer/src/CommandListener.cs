@@ -211,7 +211,7 @@ namespace VNLib.WebServer
                         shutdownEvent.Set();
                         return;
 
-                    case "":    // Print newline on empty input
+                    case "": // Print newline on empty input
                         break;
 
                     case "help":

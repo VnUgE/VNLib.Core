@@ -184,10 +184,10 @@ namespace VNLib.WebServer.Config.Model
                 return;
             }
 
-            Validate.EnsureNotNull(DirPath, "A virtual host was defined without a root directory property: 'dirPath'");
+            Validate.EnsureNotNull(DirPath, "A virtual host was defined without a root directory property: 'DirPath'");
 
             {
-                Validate.EnsureNotNull(Hostnames, "A virtual host was defined without a hostname property: 'hostnames'");
+                Validate.EnsureNotNull(Hostnames, "A virtual host was defined without a hostname property: 'Hostnames'");
                 Validate.Assert(Hostnames.Length > 0, $"You must define at least one hostname for the host");
 
                 foreach (string hostname in Hostnames)

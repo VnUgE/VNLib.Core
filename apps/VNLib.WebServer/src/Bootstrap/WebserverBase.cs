@@ -62,6 +62,10 @@ namespace VNLib.WebServer.Bootstrap
         public HttpServiceStack ServiceStack
             => _serviceStack ?? throw new InvalidOperationException("Service stack has not been configured yet");
 
+        /// <summary>
+        /// Gets the internal <see cref="HttpPluginStack"/> this controller is managing, 
+        /// or null if plugin loading is disabled
+        /// </summary>
         public HttpPluginStack? PluginStack => _plugins;
 
         /// <summary>
@@ -80,23 +84,21 @@ namespace VNLib.WebServer.Bootstrap
 
             VirtualHostConfig[] virtualHosts = GetAllVirtualHosts();
 
-            HttpServiceStackBuilder builder = new HttpServiceStackBuilder()                                   
-                                    .WithBuiltInHttp(TcpConfig.ReduceBindingsForGroups, http)                                   
-                                    .WithDomain(domain =>
-                                    {
-                                        domain.WithServiceGroups(vh =>
-                                        {
-                                            /*
-                                             * Must pass the virtual host configuration as the state object
-                                             * so transport providers can be loaded from a given virtual host
-                                             */
-                                            virtualHosts.ForEach(vhConfig => vh.WithVirtualHost(vhConfig, vhConfig));
-                                        });
-                                    });
+            HttpServiceStackBuilder builder = new HttpServiceStackBuilder()
+                .WithBuiltInHttp(TcpConfig.ReduceBindingsForGroups, http)
+                .WithDomain(domain =>
+                {
+                    domain.WithServiceGroups(vh =>
+                    {
+                        /*
+                         * Must pass the virtual host configuration as the state object
+                         * so transport providers can be loaded from a given virtual host
+                         */
+                        virtualHosts.ForEach(vhConfig => vh.WithVirtualHost(vhConfig, vhConfig));
+                    });
+                });
 
-            
-
-            PrintLogicalRouting(virtualHosts);            
+            PrintLogicalRouting(virtualHosts);
 
             return builder.Build();
         }

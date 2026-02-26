@@ -46,7 +46,7 @@ namespace VNLib.WebServer
     static class Entry
     {
         const string STARTUP_MESSAGE =
-@"VNLib.Webserver - runtime host Copyright (C) Vaughn Nugent
+@"VNLib.WebServer - runtime host Copyright (C) Vaughn Nugent
 This program comes with ABSOLUTELY NO WARRANTY.
 Licensing for this software and other libraries can be found at https://www.vaughnnugent.com/resources/software
 Starting...
@@ -238,7 +238,7 @@ Starting...
         {
             const string TEMPLATE =
 @$"
-    VNLib.Webserver Copyright (C) 2026 Vaughn Nugent
+    VNLib.WebServer Copyright (C) 2026 Vaughn Nugent
 
     A high-performance, cross-platform, single process, reference webserver built on the .NET 8.0 Core runtime.
 
@@ -278,7 +278,7 @@ Starting...
         {MonoCypherLibrary.MONOCYPHER_LIB_ENVIRONMENT_VAR_NAME} - Specifies the path to the Monocypher native library
 
     Usage:
-        VNLib.Webserver --config <path> ... (other options)     #Starts the server from the configuration (basic usage)
+        VNLib.WebServer --config <path> ... (other options)     #Starts the server from the configuration (basic usage)
 
 ";
             Console.WriteLine(TEMPLATE);
