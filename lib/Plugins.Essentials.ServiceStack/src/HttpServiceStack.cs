@@ -22,10 +22,11 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
@@ -41,6 +42,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// </summary>
     public sealed class HttpServiceStack : VnDisposeable, IHttpServiceAttachable
     {
+        private readonly HashSet<IHttpServiceBinding> _activeBindings = [];
         private readonly IReadOnlyCollection<IHttpServer> _servers;
         private readonly ServiceDomain _serviceDomain;
 
@@ -114,6 +116,23 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         {
             Check();
 
+            lock (_activeBindings)
+            {
+                if (!_activeBindings.Add(binding))
+                {
+                    //Already attached, ignore
+                    return;
+                }
+            }
+
+            /*
+             * Note: Lock is released before h.OnServiceAttach() calls. This creates a potential race
+             * where OnAllServerExit could snapshot _activeBindings and detach a binding that is
+             * still in the process of being attached to all virtual hosts. In practice, this requires
+             * a plugin to be loading at the exact moment servers finish exiting (non-scenario).
+             * We don't hold the lock across the external call to avoid deadlock risk.
+             */
+
             //Attach to all service groups in the domain
             _serviceDomain.ServiceGroups
                .SelectMany(g => g.Hosts)
@@ -124,17 +143,48 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         public void DetachService(IHttpServiceBinding binding)
         {
             Check();
+            DetachServiceCore(binding);
+        }
 
+        private void DetachServiceCore(IHttpServiceBinding binding)
+        {
             //Detach from all service groups in the domain
             _serviceDomain.ServiceGroups
                 .SelectMany(g => g.Hosts)
-                .ForEach(h => h.OnServiceDetach(binding));           
+                .ForEach(h => h.OnServiceDetach(binding));
+
+            lock (_activeBindings)
+            {
+                _activeBindings.Remove(binding);
+            }
         }
 
         private void OnAllServerExit(Task allExit)
         {
-            //Tear down virtual hosts when all servers have exited
-            _serviceDomain.TearDown();
+            IHttpServiceBinding[] activeBindings;
+
+            lock (_activeBindings)
+            {
+                activeBindings = [.. _activeBindings];
+            }
+
+            try
+            {
+                // Best-effort detach of all active bindings before teardown to
+                // avoid dangling service references in the virtual host pipeline.
+                // Uses DetachServiceCore to bypass the disposed-state guard since
+                // we are already executing in the server exit path.
+                activeBindings.TryForeach(DetachServiceCore);
+            }
+            catch (AggregateException)
+            {
+                // Swallow — cleanup here is best-effort; the server is already exiting
+            }
+            finally
+            {
+                //Tear down virtual hosts when all servers have exited
+                _serviceDomain.TearDown();
+            }
         }
 
         ///<inheritdoc/>

@@ -93,15 +93,14 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
         {
             _stack.BuildStack();
 
-            IManualPlugin[] plugins = [.. _stack.GetPlugins()];
-
             /*
              * Attempt to initialize all plugins before loading them. This causes all assemblies
              * config, and dependencies to be discovered, validated, and loaded into memory.
              * 
              * Only continue with loading plugins that were successfully initialized
              */
-            PluginServiceBindingAdapter[] initializedPlugins = plugins
+            PluginServiceBindingAdapter[] initializedPlugins = _stack
+                .GetPlugins()
                 .Where(p => TryInitializePluginCore(p, _debugLog))
                 .Select(p => new PluginServiceBindingAdapter(p))
                 .ToArray();
@@ -256,7 +255,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             }
             else if (_initializedPlugins is not null)
             {
-                _initializedPlugins.TryForeach(p => p.Plugin.Dispose());
+                _initializedPlugins.TryForeach(p => p.Free());
                 _initializedPlugins = null;
             }
         }
@@ -383,6 +382,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
              *  .Single() will throw if the plugin instance is not found. It should never happen, and 
              *  if it does it will propagate up to the Load() or Unload() method if the plugin was loaded
              *  by the application logic. Otherwise it will fall back to the background of the loader.
+             *  
+             *  TODO: Known possible issue
+             *    If reload is called on the entire stack, it will cause all assembly loaders to re-initalize
+             *    which means that plugins that might have failed to initialize when the stack was first loaded,
+             *    might succeed during the reload, but are not in the _initializePlugins array. Which will cause
+             *    the hooks below to raise exceptions. 
              */
 
             ///<inheritdoc/>
@@ -486,6 +491,16 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             {
                 Services?.Dispose();
                 Services = null;
+            }
+
+            /// <summary>
+            /// Cleans up any internal resources and frees the plugin instance. Call
+            /// this function when the plugin stack is being disposed.
+            /// </summary>
+            public void Free()
+            {
+                UnloadServices();
+                Plugin.Dispose();
             }
 
             ///<inheritdoc/>
