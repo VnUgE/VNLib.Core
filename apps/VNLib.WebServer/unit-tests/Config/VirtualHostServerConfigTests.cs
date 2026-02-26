@@ -255,6 +255,21 @@ namespace VNLib.WebServerTests.Config
             );
         }
 
+        /// <summary>
+        /// Verifies that an empty hostnames array throws ServerConfigurationException.
+        /// At least one hostname is required for a virtual host to route any requests.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_EmptyHostnamesArray_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = [];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
         #endregion
 
         #region Interface Validation Tests
@@ -734,6 +749,76 @@ namespace VNLib.WebServerTests.Config
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.DefaultFiles = null;
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a default file name containing a backslash throws ServerConfigurationException.
+        /// Backslashes are not valid in plain file names and indicate a path separator on Windows.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DefaultFileWithBackslash_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DefaultFiles = ["sub\\index.html"];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a default file name with no extension throws ServerConfigurationException.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DefaultFileWithoutExtension_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DefaultFiles = ["index"];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a default file name with a single-character extension throws ServerConfigurationException.
+        /// Extensions must be at least two characters (e.g., "js", "cs").
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DefaultFileWithSingleCharExtension_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DefaultFiles = ["index.h"];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a directory traversal sequence in a default file name throws ServerConfigurationException.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DefaultFileWithPathTraversal_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DefaultFiles = ["../evil.html"];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that valid hyphenated and underscored file names pass validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DefaultFileHyphenatedAndUnderscore_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DefaultFiles = ["my-page.html", "my_file.js", "index.min.js"];
 
             config.OnDeserialized();
         }

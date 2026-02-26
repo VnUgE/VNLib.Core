@@ -26,6 +26,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace VNLib.WebServer.Config.Model
 {
@@ -187,6 +188,8 @@ namespace VNLib.WebServer.Config.Model
 
             {
                 Validate.EnsureNotNull(Hostnames, "A virtual host was defined without a hostname property: 'hostnames'");
+                Validate.Assert(Hostnames.Length > 0, $"You must define at least one hostname for the host");
+
                 foreach (string hostname in Hostnames)
                 {
                     Validate.EnsureNotNull(hostname, "Hostname is null, all hostnames must be defined");
@@ -242,7 +245,12 @@ namespace VNLib.WebServer.Config.Model
                 foreach (string file in DefaultFiles)
                 {
                     Validate.EnsureNotNull(file, "Default file name is null, all entries must be defined");
-                    Validate.Assert(!file.Contains('/'), $"Default file name cannot contain path separators: {file}");
+                    //Ensure the format looks like a plain file name with an extension.
+                    //This rejects path separators, traversal sequences, and extensionless names.
+                    Validate.Assert(
+                        Regex.IsMatch(file, @"^(?!.*\.\.)[a-zA-Z0-9_.-]+\.[a-zA-Z]{2,}$"),
+                        $"The file path: {file} is not a valid file path format"
+                    );
                 }
             }
 
