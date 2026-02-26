@@ -1,9 +1,9 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
-* File: CommandListener.cs 
+* File: CommandListener.cs
 *
 * CommandListener.cs is part of VNLib.WebServer which is part of 
 * the larger VNLib collection of libraries and utilities.

@@ -55,6 +55,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
         /// <exception cref="AggregateException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        void UnloadPlugins();      
+        void UnloadPlugins();
     }
 }

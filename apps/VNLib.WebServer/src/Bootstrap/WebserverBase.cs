@@ -3,7 +3,7 @@
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
-* File: WebserverBase.cs 
+* File: WebserverBase.cs
 *
 * WebserverBase.cs is part of VNLib.WebServer which is part of the larger 
 * VNLib collection of libraries and utilities.

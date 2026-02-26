@@ -36,13 +36,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <summary>
         /// <para>
         /// Called when the server intends to process a file and requires translation from a 
-        /// uri path to a usable filesystem path 
+        /// URI path to a usable filesystem path 
         /// </para>
         /// <para>
         /// NOTE: This function must be thread-safe!
         /// </para>
         /// </summary>
-        /// <param name="requestPath">The path requested by the request </param>
+        /// <param name="requestPath">The URI path requested by the client</param>
         /// <returns>The translated and filtered filesystem path used to identify the file resource</returns>
         string TranslateResourcePath(string requestPath);
 

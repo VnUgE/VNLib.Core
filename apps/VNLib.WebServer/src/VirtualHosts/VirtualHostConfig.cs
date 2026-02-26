@@ -99,7 +99,7 @@ namespace VNLib.WebServer.VirtualHosts
         internal required FrozenSet<IPAddress>? WhiteList { get; init; }
 
         /// <summary>
-        /// An optional blacklist set of ipaddresses that are not allowed to make connections to this site
+        /// An optional blacklist set of IP addresses that are not allowed to make connections to this site
         /// </summary>
         internal required FrozenSet<IPAddress>? BlackList { get; init; }
     }
