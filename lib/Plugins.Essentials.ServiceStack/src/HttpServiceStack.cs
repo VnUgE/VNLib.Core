@@ -176,15 +176,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack
                 // we are already executing in the server exit path.
                 activeBindings.TryForeach(DetachServiceCore);
             }
+#pragma warning disable ERP022 // Unobserved exception in a generic exception handler
             catch (AggregateException)
             {
                 // Swallow — cleanup here is best-effort; the server is already exiting
             }
-            finally
-            {
-                //Tear down virtual hosts when all servers have exited
-                _serviceDomain.TearDown();
-            }
+#pragma warning restore ERP022 // Unobserved exception in a generic exception handler
         }
 
         ///<inheritdoc/>

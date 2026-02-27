@@ -81,7 +81,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <param name="getTransports">The transport builder callback function</param>
         /// <param name="config">The http configuration structure used to initialize servers</param>
         /// <returns>The current instance for chaining</returns>
-        public HttpServiceStackBuilder WithBuiltInHttp(Func<IReadOnlyCollection<ServiceGroup>, HttpTransportMapping[]> getTransports, HttpConfig config) 
+        public HttpServiceStackBuilder WithBuiltInHttp(
+            Func<IReadOnlyCollection<ServiceGroup>, HttpTransportMapping[]> getTransports, 
+            HttpConfig config
+        ) 
             => WithBuiltInHttp(getTransports, _ => config);
 
         /// <summary>
@@ -119,10 +122,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             //Host builder callback is optional
             _hostBuilder?.Invoke(ServiceBuilder);
 
-            //Init the service domain
-            ServiceDomain sd = new();
+            IEnumerable<ServiceGroup> groups = _serviceBuilder.BuildGroups();
 
-            sd.BuildDomain(_serviceBuilder);
+            //Init the service domain
+            ServiceDomain sd = new(groups);          
 
             //Get http servers from the user callback for the service domain
             IHttpServer[] servers = _getServers.Invoke(sd.ServiceGroups);

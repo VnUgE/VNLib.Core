@@ -22,11 +22,7 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
 using System.Collections.Generic;
-
-using VNLib.Utils.Extensions;
-using VNLib.Plugins.Essentials.ServiceStack.Construction;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -35,52 +31,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// Represents a domain of services and their configured virtual hosts
     /// that will be hosted by an application service stack
     /// </summary>
-    public sealed class ServiceDomain
+    public sealed class ServiceDomain(IEnumerable<ServiceGroup> hosts)
     {
-        private ServiceGroup[] _serviceGroups = [];
+        private readonly ServiceGroup[] _serviceGroups = [..hosts];
       
         /// <summary>
         /// Gets all service groups loaded in the service manager
         /// </summary>
-        public IReadOnlyCollection<ServiceGroup> ServiceGroups => _serviceGroups;
-
-        /// <summary>
-        /// Uses the supplied callback to get a collection of virtual hosts
-        /// to build the current domain with
-        /// </summary>
-        /// <param name="hostBuilder">The callback method to build virtual hosts</param>
-        /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
-        public void BuildDomain(ServiceBuilder hostBuilder)
-        {
-            ArgumentNullException.ThrowIfNull(hostBuilder);
-
-            FromExisting(hostBuilder.BuildGroups());
-        }
-
-        /// <summary>
-        /// Builds the domain from an existing enumeration of virtual hosts
-        /// </summary>
-        /// <param name="hosts">The enumeration of virtual hosts</param>
-        /// <returns>A value that indicates if any virtual hosts were successfully loaded</returns>
-        public void FromExisting(IEnumerable<ServiceGroup> hosts)
-        {
-            ArgumentNullException.ThrowIfNull(hosts);
-
-            hosts.ForEach(h => _serviceGroups = [.. _serviceGroups, h]);
-        }
-
-        /// <summary>
-        /// Tears down the service domain by destroying all <see cref="ServiceGroup"/>s. This instance may be rebuilt 
-        /// if this method returns successfully.
-        /// </summary>
-        public void TearDown()
-        {
-            //Manually cleanup if unload missed data
-            Array.ForEach(_serviceGroups, static sg => sg.UnloadAll());
-          
-            Array.Clear(_serviceGroups);
-
-            _serviceGroups = [];
-        }
+        public IReadOnlyCollection<ServiceGroup> ServiceGroups => _serviceGroups;       
     }
 }

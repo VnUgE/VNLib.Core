@@ -22,7 +22,6 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System;
 using System.Collections.Generic;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
@@ -40,16 +39,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// <param name="hosts">The hosts that share a common interface endpoint</param>
     public sealed class ServiceGroup(IEnumerable<IServiceHost> hosts)
     {
-        private readonly LinkedList<IServiceHost> _vHosts = new(hosts);       
+        private readonly IServiceHost[] _vHosts = [..hosts];
 
         /// <summary>
         /// The collection of hosts that are loaded by this group
         /// </summary>
-        public IReadOnlyCollection<IServiceHost> Hosts => _vHosts;
-
-        /// <summary>
-        /// Clears all hosts from this group
-        /// </summary>
-        internal void UnloadAll() => _vHosts.Clear();
+        public IReadOnlyCollection<IServiceHost> Hosts => _vHosts;  
     }
 }
