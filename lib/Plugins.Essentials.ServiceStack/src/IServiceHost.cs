@@ -45,18 +45,18 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         object? UserState { get; }
 
         /// <summary>
-        /// Called when an <see cref="IHttpServiceBinding"/> is being attached to this host, 
+        /// Called when an <see cref="IServiceBinding"/> is being attached to this host, 
         /// allowing the host to resolve and register the binding's endpoints, middleware, and services
         /// </summary>
         /// <param name="binding">The service binding being attached</param>
-        void OnServiceAttach(IHttpServiceBinding binding);
+        void OnServiceAttach(IServiceBinding binding);
 
         /// <summary>
-        /// Called when a previously attached <see cref="IHttpServiceBinding"/> is being 
+        /// Called when a previously attached <see cref="IServiceBinding"/> is being 
         /// detached from this host, requiring cleanup and removal of the binding's endpoints, 
         /// middleware, and services
         /// </summary>
         /// <param name="binding">The service binding being detached</param>
-        void OnServiceDetach(IHttpServiceBinding binding);
+        void OnServiceDetach(IServiceBinding binding);
     }
 }

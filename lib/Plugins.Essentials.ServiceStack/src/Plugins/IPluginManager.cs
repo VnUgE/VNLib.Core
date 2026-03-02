@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IHttpPluginManager.cs 
+* File: IPluginManager.cs 
 *
-* IHttpPluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
+* IPluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
 * is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -28,12 +28,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     /// <summary>
     /// Represents a live plugin controller that manages all
-    /// plugins wired into this HTTP service stack
+    /// plugins attached to the service stack
     /// </summary>
-    public interface IHttpPluginManager
+    public interface IPluginManager
     {
         /// <summary>
-        /// Loads plugins into the current service manager using the specified debug log provider
+        /// Loads plugins into the current service manager. The log provider
+        /// passed to the constructor will be used for plugin diagnostics.
         /// </summary>
         /// <param name="concurrent">A value that indicates if plugins should be loaded in parallel or serially</param>
         /// <exception cref="AggregateException"></exception>

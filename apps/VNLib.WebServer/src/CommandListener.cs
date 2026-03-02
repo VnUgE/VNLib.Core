@@ -234,7 +234,7 @@ namespace VNLib.WebServer
             TextReader input,
             TextWriter output,
             string pluginName, 
-            HttpPluginStack man
+            PluginManager man
         )
         {
             output.WriteLine("Entering plugin {0}. Type 'exit' to leave", pluginName);

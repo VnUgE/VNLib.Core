@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -28,6 +28,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
+
 using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
@@ -38,7 +39,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {
 
     /// <summary>
-    /// Extension methods for building and configuring the HTTP service domain
+    /// Extension methods for building and configuring the service domain
     /// </summary>
     public static class SsBuilderExtensions
     {
@@ -184,12 +185,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
 
         /*
-         * The goal of this class is to manage the IWebRoot instance served by a 
-         * webserver and handle dynamic service binding attach/detach operations
+         * This class wraps an EventProcessor/IServiceBinder implementation to manage
+         * the IWebRoot instance served by a virtual host and handle dynamic service
+         * binding attach/detach operations.
          */
 
         private sealed class CustomServiceHost<T>(T Instance, object? userState) : IServiceHost 
-            where T : EventProcessor, IHttpServiceAttachable
+            where T : EventProcessor, IServiceBinder
         {
             ///<inheritdoc/>
             public IWebRoot Processor => Instance;
@@ -198,24 +200,24 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             public object? UserState => userState;
 
             ///<inheritdoc/>
-            void IServiceHost.OnServiceAttach(IHttpServiceBinding binding) 
-                => Instance.AttachService(binding);
+            void IServiceHost.OnServiceAttach(IServiceBinding binding) 
+                => Instance.Bind(binding);
 
             ///<inheritdoc/>
-            void IServiceHost.OnServiceDetach(IHttpServiceBinding binding) 
-                => Instance.DetachService(binding);
+            void IServiceHost.OnServiceDetach(IServiceBinding binding) 
+                => Instance.Unbind(binding);
         }
 
 
         private sealed class BasicVirtualHost(IVirtualHostHooks Hooks, EventProcessorConfig config) 
-            : EventProcessor(config), IHttpServiceAttachable
+            : EventProcessor(config), IServiceBinder
         {
             /*
              * Runtime service injection tracks service bindings so installed services can
              * be properly removed when the service is detached. This is required to prevent stale 
              * service references to unloaded plugins.
              */
-            private readonly ConditionalWeakTable<IHttpServiceBinding, Action> _exposedTypes = [];
+            private readonly ConditionalWeakTable<IServiceBinding, Action> _exposedTypes = [];
 
             ///<inheritdoc/>
             public override bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity) 
@@ -234,9 +236,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 => Hooks.TranslateResourcePath(requestPath);
 
             ///<inheritdoc/>
-            public void AttachService(IHttpServiceBinding binding)
+            public void Bind(IServiceBinding binding)
             {
-                List<Type> exposed              = [];               
+                List<Type> exposed              = [];
                 IEndpoint[] endpoints           = [];
                 IHttpMiddleware[] middleware    = [];
 
@@ -288,13 +290,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             }
 
             ///<inheritdoc/>
-            public void DetachService(IHttpServiceBinding binding)
+            public void Unbind(IServiceBinding binding)
             {
                 if (_exposedTypes.TryGetValue(binding, out Action? unload))
                 {
                     _ = _exposedTypes.Remove(binding);
 
-                    unload();                   
+                    unload();
                 }
             }
         }

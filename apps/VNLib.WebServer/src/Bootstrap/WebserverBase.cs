@@ -53,7 +53,7 @@ namespace VNLib.WebServer.Bootstrap
         protected readonly TcpServerLoader TcpConfig = new(config, procArgs, logger.SysLog);
 
         private HttpServiceStack? _serviceStack;
-        private HttpPluginStack? _plugins;
+        private PluginManager? _plugins;
 
         /// <summary>
         /// Gets the internal <see cref="HttpServiceStack"/> this
@@ -63,10 +63,10 @@ namespace VNLib.WebServer.Bootstrap
             => _serviceStack ?? throw new InvalidOperationException("Service stack has not been configured yet");
 
         /// <summary>
-        /// Gets the internal <see cref="HttpPluginStack"/> this controller is managing, 
+        /// Gets the internal <see cref="PluginManager"/> this controller is managing, 
         /// or null if plugin loading is disabled
         /// </summary>
-        public HttpPluginStack? PluginStack => _plugins;
+        public PluginManager? PluginStack => _plugins;
 
         /// <summary>
         /// Configures the http server for the application so
@@ -103,7 +103,7 @@ namespace VNLib.WebServer.Bootstrap
             return builder.Build();
         }
 
-        protected virtual HttpPluginStack? ConfigurePluginStack(HttpServiceStack http)
+        protected virtual PluginManager? ConfigurePluginStack(HttpServiceStack http)
         {
             PluginStackBuilder? plugins = ConfigurePlugins();
 
@@ -112,8 +112,8 @@ namespace VNLib.WebServer.Bootstrap
                 return null;
             }
 
-            return new HttpPluginStack(
-                httpStack: http,
+            return new PluginManager(
+                binder: http.CreateBinder(),
                 pluginStack: plugins.ConfigureStack(),
                 debugLog: logger.AppLog
             );

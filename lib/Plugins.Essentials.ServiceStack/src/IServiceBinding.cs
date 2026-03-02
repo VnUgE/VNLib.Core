@@ -1,11 +1,11 @@
-/*
+﻿/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IHttpServiceBinding.cs
+* File: IServiceBinding.cs
 *
-* IHttpServiceBinding.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* IServiceBinding.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -27,18 +27,15 @@ using System;
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
-    /// Represents a bundle of HTTP-consumable services that can be dynamically 
-    /// attached to or detached from an HTTP service domain at runtime. This is
-    /// the contract between external service providers (plugins, manual services, 
-    /// tests) and the HTTP hosting layer.
+    /// Represents a bundle of services that can be bound to and unbound from 
+    /// the service domain at runtime. This is the contract a service provider 
+    /// (plugin, manual service, test fixture, etc.) exposes to the hosting layer.
     /// </summary>
-    public interface IHttpServiceBinding
+    public interface IServiceBinding
     {
         /// <summary>
-        /// Gets the service provider whose services will be resolved and injected 
-        /// into the host's service pool for use during request processing. The provider
-        /// may expose endpoints via <see cref="IVirtualEndpointDefinition"/>, middleware
-        /// via <see cref="IHttpMiddleware"/> collections, and other request-scoped services.
+        /// Gets the service provider for this binding. The binder queries this 
+        /// provider to resolve and register services during the bind operation.
         /// </summary>
         IServiceProvider Services { get; }
     }

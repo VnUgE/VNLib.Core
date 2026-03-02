@@ -1,11 +1,11 @@
-/*
+﻿/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: HttpPluginStack.cs
+* File: PluginManager.cs
 *
-* HttpPluginStack.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* PluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -37,53 +37,52 @@ using VNLib.Utils.Extensions;
 using VNLib.Utils.Logging;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
-{
+{    
 
     /// <summary>
     /// Independently manages plugin lifecycle within the service stack context. 
-    /// Plugins are attached to an <see cref="IHttpServiceAttachable"/> target so that 
-    /// plugin services are dynamically wired into the HTTP domain during load/unload cycles.
+    /// Plugins are attached to an <see cref="IServiceBinder"/> target so that 
+    /// plugin services are dynamically bound to the service binder target during load/unload cycles.
     /// </summary>
-    public sealed class HttpPluginStack : VnDisposeable, IHttpPluginManager
+    public sealed class PluginManager : VnDisposeable, IPluginManager
     {
-        private readonly IHttpServiceAttachable _target;
-        private readonly ILogProvider _debugLog;
-        private readonly IHttpPluginStack _stack;
+        private readonly IPluginProvider _stack;
+        private readonly IServiceBinder _target;
+        private readonly ILogProvider _debugLog;       
 
         private PluginServiceBindingAdapter[]? _initializedPlugins;
 
-        private HttpPluginStack(IHttpServiceAttachable httpStack, ILogProvider debugLog)
+        private PluginManager(IServiceBinder binder, ILogProvider debugLog)
         {
-            ArgumentNullException.ThrowIfNull(httpStack);
+            ArgumentNullException.ThrowIfNull(binder);
             ArgumentNullException.ThrowIfNull(debugLog);
 
-            _target = httpStack;
+            _target = binder;
             _debugLog = debugLog;
             _stack = null!;
         }
 
-
         /// <summary>
-        /// Initializes a new <see cref="HttpPluginStack"/> with a runtime plugin stack
+        /// Initializes a new <see cref="PluginManager"/> with a runtime plugin stack
         /// </summary>
-        /// <param name="httpStack">The HTTP service target to attach plugins to</param>
+        /// <param name="binder">The service binder that plugins will be attached to</param>
         /// <param name="pluginStack">The runtime plugin stack to manage</param>
         /// <param name="debugLog">The log provider for plugin diagnostics</param>
-        public HttpPluginStack(IHttpServiceAttachable httpStack, IPluginStack pluginStack, ILogProvider debugLog)
-            : this(httpStack, debugLog)
+        public PluginManager(IServiceBinder binder, IPluginStack pluginStack, ILogProvider debugLog)
+            : this(binder, debugLog)
         {
             ArgumentNullException.ThrowIfNull(pluginStack);
             _stack = new DynamicPluginStackAdapter(this, pluginStack);
         }
 
         /// <summary>
-        /// Initializes a new <see cref="HttpPluginStack"/> with a custom plugin stack implementation
+        /// Initializes a new <see cref="PluginManager"/> with a custom plugin stack implementation
         /// </summary>
-        /// <param name="httpStack">The HTTP service target to attach plugins to</param>
+        /// <param name="binder">The service binder that plugins will be attached to</param>
         /// <param name="pluginStack">The custom plugin stack to manage</param>
         /// <param name="debugLog">The log provider for plugin diagnostics</param>
-        public HttpPluginStack(IHttpServiceAttachable httpStack, IHttpPluginStack pluginStack, ILogProvider debugLog)
-            : this(httpStack, debugLog)
+        public PluginManager(IServiceBinder binder, IPluginProvider pluginStack, ILogProvider debugLog)
+            : this(binder, debugLog)
         {
             ArgumentNullException.ThrowIfNull(pluginStack);
             _stack = pluginStack;
@@ -196,7 +195,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             {
                 /*
                  * Reloading should trigger dynamic unload and load events for all plugins
-                 * in the stack, which will cause the HTTP adapter to detach and re-attach 
+                 * in the stack, which will cause the binder to detach and re-attach 
                  * all plugin services, so we don't need to do anything else here
                  */
 
@@ -206,7 +205,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             {
                 /*
                  * Perform an ordered reload of plugins by first detaching them 
-                 * from the HTTP domain, then running unload and load logic, 
+                 * from the service binder, then running unload and load logic, 
                  * then re-attaching them. 
                  */
 
@@ -229,12 +228,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             if (_stack is DynamicPluginStackAdapter adapter)
             {
                 // Will force all assembly level plugins to unload and trigger
-                // the appropriate events to detach services from the HTTP domain
+                // the appropriate events to detach services from the service binder
                 adapter.UnloadAll();
             }
             else if (_initializedPlugins is not null)
             {
-                // Remove plugins from http domain before running unload logic
+                // Detach plugins from the service binder before running unload logic
                 // which might make the services undefined
                 _initializedPlugins.TryForeach(DetachService);
 
@@ -262,20 +261,19 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 
         private void AttachService(PluginServiceBindingAdapter adapter)
         {
-            // Ensure services are loaded into the adapter before
-            // attaching to the HTTP domain so that they are available
+            // Populate the adapter's service container before binding so
+            // services are available when the binder resolves them
             adapter.LoadExportedServices();
 
-            // Attach the adapter to the target so the plugin's services
-            // become available in the HTTP domain
-            _target!.AttachService(adapter);
+            // Register the adapter with the binder, making the plugin's
+            // exported services available for resolution
+            _target!.Bind(adapter);
         }
 
         private void DetachService(PluginServiceBindingAdapter adapter)
         {
-            // Detach the plugin's services from the HTTP
-            // domain before unloading it or reloading it
-            _target.DetachService(adapter);
+            // Remove the plugin's services from the binder before unloading or reloading
+            _target.Unbind(adapter);
 
             // Unload the plugin's services from the adapter to clean any stale
             // references and free resources
@@ -331,9 +329,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 
 
         private sealed class DynamicPluginStackAdapter(
-            HttpPluginStack http,
+            PluginManager manager,
             IPluginStack stack
-        ) : IHttpPluginStack, IPluginEventListener
+        ) : IPluginProvider, IPluginEventListener
         {
 
             ///<inheritdoc/>
@@ -369,9 +367,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
              * 
              * Since dynamic plugins manage the lifecycle of their services internally,
              * we have to register hooks to capture their load/unload events. Even
-             * though their operations and synchronous. That is because plugins can
+             * though their operations are synchronous. That is because plugins can
              * load and unload at any time, and it's important that all services are attached 
-             * and detached at the correct times to avoid stale references and errors in the HTTP domain.
+             * and detached at the correct times to avoid stale references and errors in the service domain.
              * 
              * Assumptions:
              *  - All manual plugins are wrapped in a PluginServiceBindingAdapter 
@@ -394,32 +392,32 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             void IPluginEventListener.OnPluginLoaded(PluginController controller, object? state)
             {
                 Debug.Assert(state is DynamicPluginWrapper, "State should be the plugin wrapper instance that was registered with the event listener");
-                Debug.Assert(http._initializedPlugins != null, "Initialized plugins collection should not be null when a plugin is loaded");
+                Debug.Assert(manager._initializedPlugins != null, "Initialized plugins collection should not be null when a plugin is loaded");
 
                 // Set in the register function and should have the same reference
                 // as the wrapper instance in the _initializePlugins collection
                 IManualPlugin plugin = (IManualPlugin)state!;
 
-                PluginServiceBindingAdapter binding = http._initializedPlugins!
+                PluginServiceBindingAdapter binding = manager._initializedPlugins!
                     .Single(b => ReferenceEquals(b.Plugin, plugin));
 
-                http.AttachService(binding);
+                manager.AttachService(binding);
             }
 
             ///<inheritdoc/>
             void IPluginEventListener.OnPluginUnloaded(PluginController controller, object? state)
             {
                 Debug.Assert(state is DynamicPluginWrapper, "State should be the plugin wrapper instance that was registered with the event listener");
-                Debug.Assert(http._initializedPlugins != null, "Initialized plugins collection should not be null when a plugin is loaded");
+                Debug.Assert(manager._initializedPlugins != null, "Initialized plugins collection should not be null when a plugin is loaded");
 
                 // Set in the register function and should have the same reference
                 // as the wrapper instance in the _initializePlugins collection
                 IManualPlugin plugin = (IManualPlugin)state!;
 
-                PluginServiceBindingAdapter binding = http._initializedPlugins!
+                PluginServiceBindingAdapter binding = manager._initializedPlugins!
                     .Single(b => ReferenceEquals(b.Plugin, plugin));
 
-                http.DetachService(binding);
+                manager.DetachService(binding);
             }
         }
 
@@ -461,13 +459,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
         }
 
         /// <summary>
-        /// Adapts an <see cref="IManualPlugin"/> into an <see cref="IHttpServiceBinding"/>
-        /// so the plugin layer can attach services to the HTTP domain without the HTTP 
+        /// Adapts an <see cref="IManualPlugin"/> into an <see cref="IServiceBinding"/>
+        /// so the plugin layer can attach services to service domains without the service 
         /// layer needing any knowledge of plugin types.
         /// </summary>
         private sealed record class PluginServiceBindingAdapter(
             IManualPlugin Plugin
-        ) : IHttpServiceBinding
+        ) : IServiceBinding
         {
 
             private ServiceContainer? Services;
@@ -504,7 +502,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             }
 
             ///<inheritdoc/>
-            IServiceProvider IHttpServiceBinding.Services
+            IServiceProvider IServiceBinding.Services
                 => Services ?? throw new InvalidOperationException("Plugin services have not been loaded yet, call LoadExportedServices first");
         }
 

@@ -125,7 +125,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             IEnumerable<ServiceGroup> groups = _serviceBuilder.BuildGroups();
 
             //Init the service domain
-            ServiceDomain sd = new(groups);          
+            ServiceDomain sd = new(groups);
 
             //Get http servers from the user callback for the service domain
             IHttpServer[] servers = _getServers.Invoke(sd.ServiceGroups);

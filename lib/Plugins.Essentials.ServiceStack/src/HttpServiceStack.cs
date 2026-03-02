@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -30,7 +30,6 @@ using System.Threading.Tasks;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
-using VNLib.Utils.Extensions;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -38,11 +37,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// An HTTP servicing stack that manages a collection of HTTP servers
     /// and their service domain. This type is concerned only with HTTP 
     /// server lifecycle — plugin management is handled externally through
-    /// the <see cref="IHttpServiceAttachable"/> interface.
+    /// the <see cref="IServiceBinder"/> interface.
     /// </summary>
-    public sealed class HttpServiceStack : VnDisposeable, IHttpServiceAttachable
-    {
-        private readonly HashSet<IHttpServiceBinding> _activeBindings = [];
+    public sealed class HttpServiceStack : VnDisposeable
+    {       
         private readonly IReadOnlyCollection<IHttpServer> _servers;
         private readonly ServiceDomain _serviceDomain;
 
@@ -53,6 +51,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         /// A collection of all loaded servers
         /// </summary>
         public IEnumerable<IHttpServer> Servers => _servers;
+
+        /// <summary>
+        /// The service domain containing all virtual hosts and their attached services
+        /// </summary>
+        public ServiceDomain ServiceDomain => _serviceDomain;
 
         /// <summary>
         /// Initializes a new <see cref="HttpServiceStack"/> that will 
@@ -89,13 +92,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             firstFault?.GetAwaiter().GetResult();
 
             //Task that waits for all to exit then cleans up
-            WaitForAllTask = Task.WhenAll(runners)
-                .ContinueWith(
-                    OnAllServerExit, 
-                    CancellationToken.None, 
-                    TaskContinuationOptions.RunContinuationsAsynchronously, 
-                    TaskScheduler.Default
-                );
+            WaitForAllTask = Task.WhenAll(runners);              
         }
 
         /// <summary>
@@ -109,80 +106,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 
             _cts?.Cancel();
             return WaitForAllTask;
-        }
-
-        ///<inheritdoc/>
-        public void AttachService(IHttpServiceBinding binding)
-        {
-            Check();
-
-            lock (_activeBindings)
-            {
-                if (!_activeBindings.Add(binding))
-                {
-                    //Already attached, ignore
-                    return;
-                }
-            }
-
-            /*
-             * Note: Lock is released before h.OnServiceAttach() calls. This creates a potential race
-             * where OnAllServerExit could snapshot _activeBindings and detach a binding that is
-             * still in the process of being attached to all virtual hosts. In practice, this requires
-             * a plugin to be loading at the exact moment servers finish exiting (non-scenario).
-             * We don't hold the lock across the external call to avoid deadlock risk.
-             */
-
-            //Attach to all service groups in the domain
-            _serviceDomain.ServiceGroups
-               .SelectMany(g => g.Hosts)
-               .ForEach(h => h.OnServiceAttach(binding));           
-        }
-
-        ///<inheritdoc/>
-        public void DetachService(IHttpServiceBinding binding)
-        {
-            Check();
-            DetachServiceCore(binding);
-        }
-
-        private void DetachServiceCore(IHttpServiceBinding binding)
-        {
-            //Detach from all service groups in the domain
-            _serviceDomain.ServiceGroups
-                .SelectMany(g => g.Hosts)
-                .ForEach(h => h.OnServiceDetach(binding));
-
-            lock (_activeBindings)
-            {
-                _activeBindings.Remove(binding);
-            }
-        }
-
-        private void OnAllServerExit(Task allExit)
-        {
-            IHttpServiceBinding[] activeBindings;
-
-            lock (_activeBindings)
-            {
-                activeBindings = [.. _activeBindings];
-            }
-
-            try
-            {
-                // Best-effort detach of all active bindings before teardown to
-                // avoid dangling service references in the virtual host pipeline.
-                // Uses DetachServiceCore to bypass the disposed-state guard since
-                // we are already executing in the server exit path.
-                activeBindings.TryForeach(DetachServiceCore);
-            }
-#pragma warning disable ERP022 // Unobserved exception in a generic exception handler
-            catch (AggregateException)
-            {
-                // Swallow — cleanup here is best-effort; the server is already exiting
-            }
-#pragma warning restore ERP022 // Unobserved exception in a generic exception handler
-        }
+        }       
 
         ///<inheritdoc/>
         protected override void Free()
