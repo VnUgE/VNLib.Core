@@ -129,7 +129,7 @@ namespace VNLib.WebServerTests.Config
                 Enabled     = false,
                 DirPath     = null,
                 Hostnames   = null,
-                Interfaces  = null!
+                Interfaces  = []
             };
 
             config.OnDeserialized();
@@ -422,15 +422,29 @@ namespace VNLib.WebServerTests.Config
         }
 
         /// <summary>
-        /// Verifies that valid boundary port values (1 and 65535) pass validation.
+        /// Verifies that port value 1 (minimum valid port) passes validation.
         /// </summary>
         [TestMethod]
-        public void OnDeserialized_BoundaryPorts_Success()
+        public void OnDeserialized_MinimumBoundaryPort_Success()
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.Interfaces = 
             [
-                new TransportInterface { Address = "127.0.0.1", Port = 1 },
+                new TransportInterface { Address = "127.0.0.1", Port = 1 }
+            ];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that port value 65535 (maximum valid port) passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_MaximumBoundaryPort_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Interfaces = 
+            [
                 new TransportInterface { Address = "127.0.0.1", Port = 65535 }
             ];
 
@@ -667,6 +681,19 @@ namespace VNLib.WebServerTests.Config
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.DownstreamServers = [];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a null downstream servers array is handled correctly.
+        /// The property defaults to an empty array, but null can be assigned directly.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_NullDownstreamServers_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DownstreamServers = null!;
 
             config.OnDeserialized();
         }
@@ -986,6 +1013,25 @@ namespace VNLib.WebServerTests.Config
             config.FileHttpCacheMaxAge = [];
 
             config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a bare dot key "." (no extension characters after the dot)
+        /// throws ServerConfigurationException. A valid extension must have at least
+        /// one character after the dot (e.g., ".js" not ".").
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_CacheMaxAgeBareDotKeyOnly_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.FileHttpCacheMaxAge = new Dictionary<string, int>
+            {
+                { ".", 3600 }
+            };
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
         }
 
         #endregion
