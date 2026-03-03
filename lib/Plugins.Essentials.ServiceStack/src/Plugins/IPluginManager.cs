@@ -27,8 +27,8 @@ using System;
 namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     /// <summary>
-    /// Represents a live plugin controller that manages all
-    /// plugins attached to the service stack
+    /// Represents a live plugin controller that manages the application
+    /// lifecycle of plugins.
     /// </summary>
     public interface IPluginManager
     {

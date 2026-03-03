@@ -36,7 +36,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
         /// Builds the plugin stack, discovering and preparing all plugins
         /// for initialization
         /// </summary>
-        void BuildStack();
+        void Build();
 
         /// <summary>
         /// Gets the collection of plugins that were discovered during stack building

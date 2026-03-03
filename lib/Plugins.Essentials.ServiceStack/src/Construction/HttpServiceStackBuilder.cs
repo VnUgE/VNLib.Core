@@ -33,9 +33,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
     /// <summary>
     /// A data structure used to build/create a <see cref="HttpServiceStack"/>
-    /// around a <see cref="ServiceDomain"/>. This builder is concerned only
-    /// with HTTP server and virtual host configuration — plugin management 
-    /// is handled separately via the plugin stack.
+    /// around a <see cref="ServiceDomain"/> mapping HTTP servers to their 
+    /// respective service hosts. 
     /// </summary>
     public sealed class HttpServiceStackBuilder
     {

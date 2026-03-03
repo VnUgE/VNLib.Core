@@ -42,7 +42,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
     /// <summary>
     /// Independently manages plugin lifecycle within the service stack context. 
     /// Plugins are attached to an <see cref="IServiceBinder"/> target so that 
-    /// plugin services are dynamically bound to the service binder target during load/unload cycles.
+    /// plugin services are dynamically bound to the service binder target during 
+    /// load/unload cycles.
     /// </summary>
     public sealed class PluginManager : VnDisposeable, IPluginManager
     {
@@ -90,7 +91,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 
         private PluginServiceBindingAdapter[] LazyInitPluginCallback()
         {
-            _stack.BuildStack();
+            _stack.Build();
 
             /*
              * Attempt to initialize all plugins before loading them. This causes all assemblies
@@ -248,6 +249,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
         ///<inheritdoc/>
         protected override void Free()
         {
+            /*
+             * When a dynamic plugin stack is being used, plugins must 
+             * be displosed by the loader, not individually on the 
+             * IManualPlugin.Dispose() interface. This will cause
+             * a Debug.Fail() or a noop in release mode. 
+             */
+
             if (_stack is DynamicPluginStackAdapter adapter)
             {
                 adapter.Dispose();
@@ -335,7 +343,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
         {
 
             ///<inheritdoc/>
-            public void BuildStack() => stack.BuildStack();
+            public void Build() => stack.BuildStack();
 
             ///<inheritdoc/>
             public IEnumerable<IManualPlugin> GetPlugins()

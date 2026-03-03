@@ -35,9 +35,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
     /// An HTTP servicing stack that manages a collection of HTTP servers
-    /// and their service domain. This type is concerned only with HTTP 
-    /// server lifecycle — plugin management is handled externally through
-    /// the <see cref="IServiceBinder"/> interface.
+    /// and their service domain. This stack manages the HTTP servers 
+    /// listening for requests, and the domain that responds to those 
+    /// requests.
     /// </summary>
     public sealed class HttpServiceStack : VnDisposeable
     {       
