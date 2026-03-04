@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: IHttpPluginManager.cs 
+* File: IPluginManager.cs 
 *
-* IHttpPluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
+* IPluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
 * is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
@@ -23,41 +23,39 @@
 */
 
 using System;
-using System.Collections.Generic;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
     /// <summary>
-    /// Represents a live plugin controller that manages all
-    /// plugins loaded in a <see cref="ServiceDomain"/>
+    /// Represents a live plugin controller that manages the application
+    /// lifecycle of plugins.
     /// </summary>
-    public interface IHttpPluginManager
+    public interface IPluginManager
     {
         /// <summary>
-        /// The the plugins managed by this <see cref="IHttpPluginManager"/>
+        /// Loads plugins into the current service manager. The log provider
+        /// passed to the constructor will be used for plugin diagnostics.
         /// </summary>
-        public IEnumerable<IManagedPlugin> Plugins { get; }
-
-        /// <summary>
-        /// Sends a message to a plugin identified by it's name.
-        /// </summary>
-        /// <param name="pluginName">The name of the plugin to pass the message to</param>
-        /// <param name="message">The message to pass to the plugin</param>
-        /// <param name="nameComparison">The name string comparison type</param>
-        /// <returns>True if the plugin was found and it has a message handler loaded</returns>
+        /// <param name="concurrent">A value that indicates if plugins should be loaded in parallel or serially</param>
+        /// <exception cref="AggregateException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        bool SendCommandToPlugin(string pluginName, string message, StringComparison nameComparison = StringComparison.Ordinal);
+        void LoadPlugins(bool concurrent);
 
         /// <summary>
         /// Manually reloads all plugins loaded to the current service manager
         /// </summary>
+        /// <param name="concurrent">A value that indicates if plugins should be loaded in parallel or serially</param>
         /// <exception cref="AggregateException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
-        void ForceReloadAllPlugins();
+        /// <exception cref="InvalidOperationException"></exception>
+        void ReloadPlugins(bool concurrent);
 
         /// <summary>
-        /// Unloads all loaded plugins and calls thier event handlers
+        /// Unloads all loaded plugins and calls their event handlers
         /// </summary>
+        /// <exception cref="AggregateException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         void UnloadPlugins();
     }
 }

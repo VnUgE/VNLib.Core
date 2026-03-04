@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
-* File: PluginAssemblyLoader.cs 
+* File: PluginAssemblyLoading.cs
 *
-* PluginAssemblyLoader.cs is part of VNLib.WebServer which is part of the larger 
+* PluginAssemblyLoading.cs is part of VNLib.WebServer which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.WebServer is free software: you can redistribute it and/or modify 
@@ -37,7 +37,7 @@ using VNLib.Utils.Resources;
 namespace VNLib.WebServer.Plugins
 {
 
-    internal static class PluginAsemblyLoading
+    internal static class PluginAssemblyLoading
     {
         public static IAssemblyLoader Create(IPluginAssemblyLoadConfig config) 
             => config.Unloadable ? new UnloadableAlc(config) : new ImmutableAl(config);

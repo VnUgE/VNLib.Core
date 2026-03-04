@@ -1,9 +1,9 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
-* File: CommandListener.cs 
+* File: CommandListener.cs
 *
 * CommandListener.cs is part of VNLib.WebServer which is part of 
 * the larger VNLib collection of libraries and utilities.
@@ -85,7 +85,6 @@ namespace VNLib.WebServer
 
 
         private readonly HttpServiceStack _serviceStack = server.ServiceStack;
-        private readonly IHttpPluginManager _plugins = server.ServiceStack.PluginManager;
 
 
         /// <summary>
@@ -116,9 +115,15 @@ namespace VNLib.WebServer
                                 break;
                             }
 
+                            if (server.PluginStack is null)
+                            {
+                                output.WriteLine("Plugin stack is not initialized");
+                                break;
+                            }
+
                             string message = string.Join(' ', s[2..]);
 
-                            bool sent = _plugins.SendCommandToPlugin(s[1], message, StringComparison.OrdinalIgnoreCase);
+                            bool sent = server.PluginStack.SendCommand(s[1], message);
 
                             if (!sent)
                             {
@@ -135,8 +140,14 @@ namespace VNLib.WebServer
                                 break;
                             }
 
+                            if (server.PluginStack is null)
+                            {
+                                output.WriteLine("Plugin stack is not initialized");
+                                break;
+                            }
+
                             //Enter plugin command loop
-                            EnterPluginLoop(input, output, s[1], _plugins);
+                            EnterPluginLoop(input, output, s[1], server.PluginStack);
                         }
                         break;
                     case "reload":
@@ -144,7 +155,7 @@ namespace VNLib.WebServer
                             try
                             {
                                 //Reload all plugins
-                                _plugins.ForceReloadAllPlugins();
+                                server.ReloadPlugins();
                             }
                             catch (Exception ex)
                             {
@@ -200,7 +211,7 @@ namespace VNLib.WebServer
                         shutdownEvent.Set();
                         return;
 
-                    case "":
+                    case "": // Print newline on empty input
                         break;
 
                     case "help":
@@ -222,15 +233,15 @@ namespace VNLib.WebServer
         private static void EnterPluginLoop(
             TextReader input,
             TextWriter output,
-            string pluignName, 
-            IHttpPluginManager man
+            string pluginName, 
+            PluginManager man
         )
         {
-            output.WriteLine("Entering plugin {0}. Type 'exit' to leave", pluignName);
+            output.WriteLine("Entering plugin {0}. Type 'exit' to leave", pluginName);
 
             while (true)
             {
-                output.Write("{0}> ", pluignName);
+                output.Write("{0}> ", pluginName);
 
                 string? cmdText = input.ReadLine();
 
@@ -245,8 +256,8 @@ namespace VNLib.WebServer
                     break;
                 }
 
-                //Exec command
-                if (!man.SendCommandToPlugin(pluignName, cmdText, StringComparison.OrdinalIgnoreCase))
+                // Exec command
+                if (!man.SendCommand(pluginName, cmdText))
                 {
                     output.WriteLine("Plugin does not exist exiting loop");
                     break;

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -46,7 +46,7 @@ namespace VNLib.WebServer
     static class Entry
     {
         const string STARTUP_MESSAGE =
-@"VNLib.Webserver - runtime host Copyright (C) Vaughn Nugent
+@"VNLib.WebServer - runtime host Copyright (C) Vaughn Nugent
 This program comes with ABSOLUTELY NO WARRANTY.
 Licensing for this software and other libraries can be found at https://www.vaughnnugent.com/resources/software
 Starting...
@@ -238,7 +238,7 @@ Starting...
         {
             const string TEMPLATE =
 @$"
-    VNLib.Webserver Copyright (C) 2025 Vaughn Nugent
+    VNLib.WebServer Copyright (C) 2026 Vaughn Nugent
 
     A high-performance, cross-platform, single process, reference webserver built on the .NET 8.0 Core runtime.
 
@@ -278,7 +278,7 @@ Starting...
         {MonoCypherLibrary.MONOCYPHER_LIB_ENVIRONMENT_VAR_NAME} - Specifies the path to the Monocypher native library
 
     Usage:
-        VNLib.Webserver --config <path> ... (other options)     #Starts the server from the configuration (basic usage)
+        VNLib.WebServer --config <path> ... (other options)     #Starts the server from the configuration (basic usage)
 
 ";
             Console.WriteLine(TEMPLATE);
@@ -298,14 +298,9 @@ Starting...
             string configPath = args.GetArgument("--config") ?? Path.Combine(EXE_DIR.FullName, DEFAULT_CONFIG_PATH);
 
             //Allow reading from stdin
-            if(configPath == "--")
-            {
-                return JsonServerConfig.FromStdin();
-            }
-            else
-            {
-                return JsonServerConfig.FromFile(configPath);
-            }
+            return configPath == "--" 
+                ? JsonServerConfig.FromStdin() 
+                : JsonServerConfig.FromFile(configPath);
         }
 
         private static WebserverBase GetWebserver(ServerLogger logger, IServerConfig config, ProcessArguments procArgs)
@@ -336,6 +331,7 @@ Starting...
             {
                 log.Fatal("UNHANDLED APPDOMAIN EXCEPTION \n {e}", e);
             };
+
             //If double verbose is specified, log app-domain messages
             if (args.DoubleVerbose)
             {
@@ -343,8 +339,9 @@ Starting...
 
                 currentDomain.FirstChanceException += delegate (object? sender, FirstChanceExceptionEventArgs e)
                 {
-                    log.Verbose(e.Exception, "Exception occured in app-domain ");
+                    log.Verbose(e.Exception, "Exception occurred in app-domain ");
                 };
+
                 currentDomain.AssemblyLoad += delegate (object? sender, AssemblyLoadEventArgs args)
                 {
                     log.Verbose(
@@ -354,6 +351,7 @@ Starting...
                         args.LoadedAssembly.Location
                     );
                 };
+
                 currentDomain.DomainUnload += delegate (object? sender, EventArgs e)
                 {
                     log.Verbose("Domain {domain} unloaded", currentDomain.FriendlyName);
