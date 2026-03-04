@@ -27,8 +27,8 @@ VNBUILD_CHECKSUM="d2e58c679929eb0312acda26a1ee0547190b8f00438a5d5cda2924291793b3
 CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v4.2.1/cmake-4.2.1-linux-x86_64.tar.gz"
 CMAKE_CHECKSUM="c059bff1e97a2b6b5b0c0872263627486345ad0ed083298cb21cff2eda883980"
 
-DOTNET_URL="https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.416/dotnet-sdk-8.0.416-linux-x64.tar.gz"
-DOTNET_CHECKSUM="633cb85673e3519c825532f780f6750ff24ed248ef8df68885540e510b559b6adc2c8d940e4c349fc0cf2c9caf184f1efeaccbc5e952d6e435f3da027cae4188"
+DOTNET_URL="https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.418/dotnet-sdk-8.0.418-linux-x64.tar.gz"
+DOTNET_CHECKSUM="fbd9fc9f0bca73f771e79c12d721a18da97ba23c43794b941b110ccaac0fcd16156c996a5b9cfc0650120601791f2909e93ecb268f687c7b82889934c766c2b9"
 
 # GitVersion tool
 GITVERSION_VERSION="6.3.0"
