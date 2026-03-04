@@ -16,8 +16,8 @@ export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
 # ============================================================================
 
 # GoTask installation
-GOTASK_TAR_URL="https://github.com/go-task/task/releases/download/v3.46.4/task_linux_amd64.tar.gz"
-GOTASK_CHECKSUM="4b0098862292de03d568c851b207bce5fdb8a59cb533d6ed4132386151926c46"
+GOTASK_TAR_URL="https://github.com/go-task/task/releases/download/v3.48.0/task_linux_amd64.tar.gz"
+GOTASK_CHECKSUM="f4bfc4eef1b2557b262f3cc0a79976a421885cb7b9e71cfe75568a2ebe4d7ae5"
 
 # vnbuild installation
 VNBUILD_URL="https://www.vaughnnugent.com/public/resources/software/builds/vnbuild/269c8d946a4826fcb3d06f4e5159ca6e2fab74de/vnbuild/linux-x64.tgz"
