@@ -24,8 +24,8 @@ VNBUILD_URL="https://www.vaughnnugent.com/public/resources/software/builds/vnbui
 VNBUILD_CHECKSUM="d2e58c679929eb0312acda26a1ee0547190b8f00438a5d5cda2924291793b327"
 
 # install cmake from a tarball (avoid old versions in apt/dnf)
-CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v4.2.1/cmake-4.2.1-linux-x86_64.tar.gz"
-CMAKE_CHECKSUM="c059bff1e97a2b6b5b0c0872263627486345ad0ed083298cb21cff2eda883980"
+CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v4.2.3/cmake-4.2.3-linux-x86_64.tar.gz"
+CMAKE_CHECKSUM="5bb505d5e0cca0480a330f7f27ccf52c2b8b5214c5bba97df08899f5ef650c23"
 
 DOTNET_URL="https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.418/dotnet-sdk-8.0.418-linux-x64.tar.gz"
 DOTNET_CHECKSUM="fbd9fc9f0bca73f771e79c12d721a18da97ba23c43794b941b110ccaac0fcd16156c996a5b9cfc0650120601791f2909e93ecb268f687c7b82889934c766c2b9"
