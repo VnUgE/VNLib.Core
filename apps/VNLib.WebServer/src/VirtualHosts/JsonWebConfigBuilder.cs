@@ -45,10 +45,7 @@ namespace VNLib.WebServer.VirtualHosts
     {
 
         [GeneratedRegex(@"(\/\.\.)|(\\\.\.)|[\[\]^*<>|`~'\n\r\t\n]|(\s$)|^(\s)", RegexOptions.Compiled)]
-        private static partial Regex DefaultPathFilterRegex();
-
-        //Use pre-compiled default regex
-        private static readonly Regex DefaultRootRegex = DefaultPathFilterRegex();
+        private static partial Regex DefaultPathFilterRegex();     
        
         ///<inheritdoc/>
         public static VirtualHostConfig GetBaseConfig(VirtualHostServerConfig VhConfig, ILogProvider logger)
@@ -72,7 +69,7 @@ namespace VNLib.WebServer.VirtualHosts
                 PathFilter              = GetPathFilter(VhConfig),               
                 AdditionalHeaders       = GetConfigHeaders(VhConfig),
                 SpecialHeaders          = GetSpecialHeaders(VhConfig),
-                FailureFiles            = GetFailureFiles(VhConfig, logger),               
+                FailureFiles            = GetFailureFiles(VhConfig, logger),
                 FileCacheHeaders        = GetFileCacheHeaders(VhConfig)
             };
         }
@@ -83,7 +80,7 @@ namespace VNLib.WebServer.VirtualHosts
         /// traversal and invalid characters.
         /// </summary>
         private static Regex GetPathFilter(VirtualHostServerConfig conf) 
-            => conf.PathFilter is not null ? new(conf.PathFilter!) : DefaultRootRegex;
+            => conf.PathFilter is not null ? new(conf.PathFilter!) : DefaultPathFilterRegex();        
 
         private static FrozenDictionary<HttpStatusCode, FileCache> GetFailureFiles(VirtualHostServerConfig conf, ILogProvider logger)
         {
