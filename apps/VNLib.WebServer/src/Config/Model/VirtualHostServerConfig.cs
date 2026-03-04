@@ -266,6 +266,7 @@ namespace VNLib.WebServer.Config.Model
 
                 Validate.EnsureNotNull(k, "File extension for HTTP cache max-age cannot be null");
                 Validate.Assert(k[0] == '.', $"File extension must start with a '.' character for {k}");
+                Validate.Assert(k.Length > 1, $"File extension must have at least one character after the '.' for {k}");
 
                 Validate.EnsureRange(v, 0, int.MaxValue, $"HTTP cache max-age must be non-negative for extension: {k}");
             }
