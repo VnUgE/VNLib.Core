@@ -60,6 +60,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 
             _target = binder;
             _debugLog = debugLog;
+
+            // Stack must be assigned by public constructors
             _stack = null!;
         }
 
