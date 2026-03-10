@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Rest.Client
@@ -128,7 +128,11 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="entity">The request entity model to send to the server</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>A task that resolves the response message with json resonse support</returns>
-        public static async Task<RestResponse<TJson>> ExecuteAsync<TModel, TJson>(this IRestSiteAdapter site, TModel entity, CancellationToken cancellation = default)
+        public static async Task<RestResponse<TJson>> ExecuteAsync<TModel, TJson>(
+            this IRestSiteAdapter site, 
+            TModel entity, 
+            CancellationToken cancellation = default
+        ) where TJson : notnull
         {
             ArgumentNullException.ThrowIfNull(site);
 
@@ -167,7 +171,11 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="model">The entity model that defines itself as an endpoint and the request information</param>
         /// <param name="cancellation">A token to cancel the operation</param>
         /// <returns>When completed, gets the <see cref="RestResponse"/></returns>
-        public static async Task<RestResponse> ExecuteSingleAsync<TModel>(this IRestSiteAdapter site, TModel model, CancellationToken cancellation = default) where TModel : IRestSingleEndpoint
+        public static async Task<RestResponse> ExecuteSingleAsync<TModel>(
+            this IRestSiteAdapter site, 
+            TModel model, 
+            CancellationToken cancellation = default
+        ) where TModel : IRestSingleEndpoint
         {
             ArgumentNullException.ThrowIfNull(site);
 
