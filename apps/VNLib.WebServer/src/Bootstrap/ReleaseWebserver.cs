@@ -264,6 +264,20 @@ namespace VNLib.WebServer.Bootstrap
                         if (vhConfig.RequestTrace)
                         {
                             conf.CustomMiddleware.Add(new ConnectionLogMiddleware(log));
+                            log.Debug("HTTP request tracing enabled.");
+                        }
+
+                        // If file compression is 
+                        if (
+                            vhConfig.FileCompressionConfig != null && 
+                            vhConfig.FileCompressionConfig.DisabledFileTypes?.Length > 0
+                        )
+                        {
+                            conf.CustomMiddleware.Add(new FileCompressionMiddleware(vhConfig.FileCompressionConfig));
+                            log.Debug(
+                                "File compression middleware enabled. Disabled compression for {types}", 
+                                vhConfig.FileCompressionConfig.DisabledFileTypes
+                            );
                         }
                     }
 

@@ -45,6 +45,7 @@ namespace VNLib.WebServer.Config.Model
                 {
                     Validate.EnsureNotNull(type, "File type cannot be null.");
                     Validate.Assert(type[0] == '.', $"File type '{type}' must start with a dot.");
+                    Validate.Assert(type.Length > 1, $"File type '{type}' is not a valid file extension");
                 }
             }
         }

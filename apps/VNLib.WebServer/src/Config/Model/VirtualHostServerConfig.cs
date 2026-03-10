@@ -177,6 +177,12 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("file_http_max_age")]
         public Dictionary<string, int> FileHttpCacheMaxAge { get; set; } = [];
 
+        /// <summary>
+        /// Allows users to control automatic http response compression for file serving
+        /// </summary>
+        [JsonPropertyName("file_compression")]
+        public FileCompressionConfig? FileCompressionConfig { get; init; }
+
         public void OnDeserialized()
         {
             if (!Enabled)

@@ -118,6 +118,12 @@
         }
       ],
 
+      // Controls automatic http response compression based on file types. disables compression for the specified extensions
+      // when serving file responses.
+      "file_compression": {
+        "disabled_file_types": [ ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".avi", ".mov", ".pdf", ".zip", ".rar", ".tgz", ".tar.gz" ]
+      },
+
       //Default http cache time for files
       "cache_default_sec": 864000,
 
