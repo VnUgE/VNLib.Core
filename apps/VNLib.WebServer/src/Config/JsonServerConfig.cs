@@ -159,7 +159,7 @@ namespace VNLib.WebServer.Config
                 catch(JsonException je)
                 {
                     Console.WriteLine(
-                        "ERROR: Failed to parse json configuration. Error occurred at line {0}, byte position {1}", 
+                        "ERROR: Failed to parse JSON configuration. Error occurred at line {0}, byte position {1}", 
                         je.LineNumber, 
                         je.BytePositionInLine
                     );

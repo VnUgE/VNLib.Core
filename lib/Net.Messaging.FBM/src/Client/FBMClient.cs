@@ -68,7 +68,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// Raised when the websocket has been closed because an error occurred.
         /// You may inspect the event args to determine the cause of the error.
         /// </summary>
-        public event EventHandler<FMBClientErrorEventArgs>? ConnectionClosedOnError;
+        public event EventHandler<FBMClientErrorEventArgs>? ConnectionClosedOnError;
 
         /// <summary>
         /// Raised when the client listener operaiton has completed as a normal closure
@@ -477,7 +477,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                         {
                             //Dispose the buffer before exiting
                             responseBuffer.Dispose();
-                            Debug("received a message that was too large, skipped");
+                            Debug("Received a message that was too large, skipped");
                             goto Skip;
                         }
 
@@ -500,7 +500,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             }
             catch (Exception ex)
             {                
-                FMBClientErrorEventArgs wsEventArgs = new()
+                FBMClientErrorEventArgs wsEventArgs = new()
                 {
                     Cause = ex,
                     ErrorClient = this

@@ -90,7 +90,7 @@ namespace VNLib.WebServer.Config.Model
         /// The size of the buffer used to store request headers.
         /// </summary>       
         [JsonPropertyName("request_header_buf_size")]
-        public int RequestHeaderBufSize { get; set; }       
+        public int RequestHeaderBufSize { get; set; }
 
         /// <summary>
         /// The size of the buffer used to store response headers.
