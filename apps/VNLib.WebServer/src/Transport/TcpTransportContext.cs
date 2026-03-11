@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
@@ -45,9 +45,9 @@ namespace VNLib.WebServer.Transport
         protected readonly Stream _connectionStream;
         protected readonly IPEndPoint _localEndoint;
         protected readonly IPEndPoint _remoteEndpoint;
-        protected readonly ITcpListner _server;
+        protected readonly ITcpListener _server;
 
-        public TcpTransportContext(ITcpListner server, ITcpConnectionDescriptor descriptor, Stream stream)
+        public TcpTransportContext(ITcpListener server, ITcpConnectionDescriptor descriptor, Stream stream)
         {
             _descriptor = descriptor;
             _connectionStream = stream;

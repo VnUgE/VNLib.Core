@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
@@ -188,7 +188,7 @@ namespace VNLib.WebServer.Transport
             }
 #endif
 
-            TCPConfig tcpConf = new()
+            TcpConfig tcpConf = new()
             {
                 LocalEndPoint           = iface.GetEndpoint(),
                 AcceptThreads           = baseConfig.AcceptThreads,
@@ -227,7 +227,7 @@ namespace VNLib.WebServer.Transport
         {
             VariableLogFormatter builder = new(logger, LogLevel.Verbose);
 
-            builder.Append("TCPConfig: ");
+            builder.Append("TcpConfig: ");
             builder.AppendFormat("{iface} | ", iface);
             builder.AppendFormat("tls={tls} | ", iface.Ssl);
             builder.AppendFormat("threads={thds} | ", global.AcceptThreads);

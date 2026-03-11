@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.Tcp
-* File: TCPConfig.cs 
+* File: TcpConfig.cs 
 *
-* TCPConfig.cs is part of VNLib.Net.Transport.Tcp which is part of the larger 
+* TcpConfig.cs is part of VNLib.Net.Transport.Tcp which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Transport.Tcp is free software: you can redistribute it and/or modify 
@@ -34,7 +34,7 @@ namespace VNLib.Net.Transport.Tcp
     /// <summary>
     /// Represents the required configuration variables for the transport
     /// </summary>
-    public readonly record struct TCPConfig
+    public readonly record struct TcpConfig
     {
         /// <summary>
         /// The <see cref="IPEndPoint"/> the listening socket will bind to

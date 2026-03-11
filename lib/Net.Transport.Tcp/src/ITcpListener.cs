@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Net.Transport.Tcp
-* File: ITcpListner.cs 
+* File: ITcpListener.cs 
 *
-* ITcpListner.cs is part of VNLib.Net.Transport.Tcp which is part of 
+* ITcpListener.cs is part of VNLib.Net.Transport.Tcp which is part of 
 * the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Transport.Tcp is free software: you can redistribute it and/or modify 
@@ -34,7 +34,7 @@ namespace VNLib.Net.Transport.Tcp
     /// An immutable TCP listening instance that has been configured to accept incoming 
     /// connections from a <see cref="TcpServer"/> instance
     /// </summary>
-    public interface ITcpListner : ICacheHolder
+    public interface ITcpListener : ICacheHolder
     {
         /// <summary>
         /// Accepts a connection and returns the connection descriptor.

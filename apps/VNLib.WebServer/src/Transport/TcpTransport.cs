@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
@@ -46,7 +46,7 @@ namespace VNLib.WebServer.Transport
         /// <param name="config">The server configuration</param>
         /// <param name="inlineScheduler">Use the inline pipeline scheduler</param>
         /// <returns>The configured <see cref="ITransportProvider"/></returns>
-        public static ITransportProvider CreateServer(ref readonly TCPConfig config, bool inlineScheduler)
+        public static ITransportProvider CreateServer(ref readonly TcpConfig config, bool inlineScheduler)
         {
             //Create tcp server
             TcpServer server = new (config, CreateCustomPipeOptions(in config, inlineScheduler));
@@ -61,7 +61,7 @@ namespace VNLib.WebServer.Transport
         /// <param name="config"></param>
         /// <param name="ssl">The server authentication options</param>
         /// <returns>The ssl configured transport context</returns>
-        public static ITransportProvider CreateServer(in TCPConfig config, SslServerAuthenticationOptions ssl)
+        public static ITransportProvider CreateServer(ref readonly TcpConfig config, SslServerAuthenticationOptions ssl)
         {
             /*
              * SSL STREAM WORKAROUND
@@ -80,7 +80,7 @@ namespace VNLib.WebServer.Transport
             return new SslTcpTransportProvider(server, ssl);
         }
 
-        private static PipeOptions CreateCustomPipeOptions(ref readonly TCPConfig config, bool inlineScheduler)
+        private static PipeOptions CreateCustomPipeOptions(ref readonly TcpConfig config, bool inlineScheduler)
         {
             return new PipeOptions(
                 config.BufferPool,
@@ -98,7 +98,7 @@ namespace VNLib.WebServer.Transport
         /// </summary>
         private class TcpTransportProvider(TcpServer Server) : ITransportProvider
         {
-            protected ITcpListner? _listener;
+            protected ITcpListener? _listener;
             protected CancellationTokenRegistration _reg;
 
             ///<inheritdoc/>

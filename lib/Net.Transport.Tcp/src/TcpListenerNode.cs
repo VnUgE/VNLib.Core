@@ -38,9 +38,9 @@ using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Transport.Tcp
 {
-    internal sealed class TcpListenerNode : ITcpListner
+    internal sealed class TcpListenerNode : ITcpListener
     {
-        public readonly TCPConfig Config;
+        public readonly TcpConfig Config;
         public readonly Socket ServerSocket;
         public readonly ObjectRental<AwaitableAsyncServerSocket> SockAsyncArgPool;
         public readonly AsyncQueue<ITcpConnectionDescriptor> WaitingSockets;       
@@ -51,7 +51,7 @@ namespace VNLib.Net.Transport.Tcp
         public bool IsCancelled;
         private Task _onExitTask;
 
-        public TcpListenerNode(in TCPConfig config, Socket serverSocket, PipeOptions pipeOptions)
+        public TcpListenerNode(in TcpConfig config, Socket serverSocket, PipeOptions pipeOptions)
         {
             Config = config;
             ServerSocket = serverSocket;

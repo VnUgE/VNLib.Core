@@ -45,22 +45,22 @@ namespace VNLib.Net.Transport.Tcp
     /// </summary>
     public sealed class TcpServer
     {
-        private readonly TCPConfig _config;
+        private readonly TcpConfig _config;
         private readonly PipeOptions _pipeOptions;
 
         /// <summary>
         /// The current <see cref="TcpServer"/> configuration
         /// </summary>
-        public ref readonly TCPConfig Config => ref _config;
+        public ref readonly TcpConfig Config => ref _config;
 
         /// <summary>
-        /// Initializes a new <see cref="TcpServer"/> with the specified <see cref="TCPConfig"/>
+        /// Initializes a new <see cref="TcpServer"/> with the specified <see cref="TcpConfig"/>
         /// </summary>
         /// <param name="config">Configuration to inalize with</param>
         /// <param name="pipeOptions">Optional <see cref="PipeOptions"/> otherwise uses default</param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public TcpServer(TCPConfig config, PipeOptions? pipeOptions = null)
+        public TcpServer(TcpConfig config, PipeOptions? pipeOptions = null)
         {
             //Check config
             if (pipeOptions == null)
@@ -98,13 +98,13 @@ namespace VNLib.Net.Transport.Tcp
         /// Begins listening for incoming TCP connections on the configured socket
         /// </summary>
         /// <returns>
-        /// A new immutable <see cref="ITcpListner"/>
+        /// A new immutable <see cref="ITcpListener"/>
         /// </returns>
         /// <exception cref="SocketException"></exception>
         /// <exception cref="SecurityException"></exception>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        public ITcpListner Listen()
+        public ITcpListener Listen()
         {
             //Configure socket on the current thread so exceptions will be raised to the caller
             Socket serverSock = new(_config.LocalEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
