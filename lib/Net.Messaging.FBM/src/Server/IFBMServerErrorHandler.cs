@@ -39,7 +39,7 @@ namespace VNLib.Net.Messaging.FBM.Server
 
         /// <summary>
         /// An exception handler for invalid messages that occur during a listening session.
-        /// NOTE: The context parameter is likely in an invlaid state and should be read carefully
+        /// NOTE: The context parameter is likely in an invalid state and should be read carefully
         /// </summary>
         /// <param name="context">The context that the error occurred while parsing on</param>
         /// <param name="ex">The exception explaining the reason this handler was invoked</param>

@@ -96,7 +96,7 @@ namespace VNLib.WebServer.Transport
         /// <summary>
         /// A TCP server transport provider class
         /// </summary>
-        private class TcpTransportProvider(TcpServer Server) : ITransportProvider
+        private class TcpTransportProvider(TcpServer server) : ITransportProvider
         {
             protected ITcpListener? _listener;
             protected CancellationTokenRegistration _reg;
@@ -111,7 +111,7 @@ namespace VNLib.WebServer.Transport
                 }
 
                 //Start the server
-                _listener = Server.Listen();
+                _listener = server.Listen();
                 _reg = stopToken.Register(_listener.Close, false);
             }
 
@@ -125,11 +125,11 @@ namespace VNLib.WebServer.Transport
             }
 
             ///<inheritdoc/>
-            public override string ToString() => $"{Server.Config.LocalEndPoint} tcp/ip";
+            public override string ToString() => $"{server.Config.LocalEndPoint} tcp/ip";
         }
 
-        private sealed class SslTcpTransportProvider(TcpServer Server, SslServerAuthenticationOptions AuthOptions) 
-            : TcpTransportProvider(Server)
+        private sealed class SslTcpTransportProvider(TcpServer server, SslServerAuthenticationOptions authOptions) 
+            : TcpTransportProvider(server)
         {
             /*
               * An SslStream may throw a win32 exception with HRESULT 0x80090327
@@ -140,7 +140,7 @@ namespace VNLib.WebServer.Transport
             private const int UNKNOWN_CERT_AUTH_HRESULT = unchecked((int)0x80090327);
 
             /// <summary>
-            /// An invlaid frame size may happen if data is recieved on an open socket
+            /// An invalid frame size may happen if data is received on an open socket
             /// but does not contain valid SSL handshake data
             /// </summary>
             private const int INVALID_FRAME_HRESULT = unchecked((int)0x80131501);
@@ -159,12 +159,12 @@ namespace VNLib.WebServer.Transport
                     try
                     {
                         //auth the new connection
-                        await stream.AuthenticateAsServerAsync(AuthOptions, cancellation);
+                        await stream.AuthenticateAsServerAsync(authOptions, cancellation);
                         return new SslTcpTransportContext(_listener, descriptor, stream);
                     }
                     catch (AuthenticationException ae) when (ae.HResult == INVALID_FRAME_HRESULT)
                     {
-                        Server.Config.Log.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
+                        server.Config.Log.Debug("A TLS connection attempt was made but an invalid TLS frame was received");
                         
                         await _listener.CloseConnectionAsync(descriptor, reuse: true);
                         await stream.DisposeAsync();
@@ -182,7 +182,7 @@ namespace VNLib.WebServer.Transport
             }
 
             ///<inheritdoc/>
-            public override string ToString() => $"{Server.Config.LocalEndPoint} tcp/ip (TLS enabled)";
+            public override string ToString() => $"{server.Config.LocalEndPoint} tcp/ip (TLS enabled)";
         }
     }
 }

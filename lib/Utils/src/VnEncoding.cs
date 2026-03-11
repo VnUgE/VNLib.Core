@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -1013,7 +1013,7 @@ namespace VNLib.Utils
         /// <param name="buffer">The intput binary buffer to base64url encode</param>
         /// <param name="dataLength">The data within the buffer to encode, must be smaller than the entire buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured.</returns>
+        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred.</returns>
         public static ERRNO Base64UrlEncodeInPlace(Span<byte> buffer, int dataLength, bool includePadding)
         {
             //Convert to base64
@@ -1071,7 +1071,7 @@ namespace VNLib.Utils
         /// <param name="input">The intput binary buffer to base64url encode</param>
         /// <param name="output">The output buffer to write the base64url safe encodded date to</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured.</returns>
+        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred.</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<byte> output, bool includePadding)
         {
             //Do bsae64 encoding avoiding the tripple copy
@@ -1141,7 +1141,7 @@ namespace VNLib.Utils
         /// <param name="output">The character output buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
         /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>
-        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured</returns>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<char> output, bool includePadding, Encoding? encoding = null)
         {
             encoding ??= Encoding.UTF8;

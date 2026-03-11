@@ -46,6 +46,6 @@ namespace VNLib.Utils.Extensions
         /// Releases the held System.Threading.Mutex once.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void ReleaseMutex() => Handle.ReleaseMutex();         
+        public readonly void ReleaseMutex() => Handle.ReleaseMutex();
     }
 }

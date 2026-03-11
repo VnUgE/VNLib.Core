@@ -37,7 +37,7 @@ namespace VNLib.Utils
         private readonly List<string> _args;
 
         /// <summary>
-        /// Initalzies a the argument parser by copying the given argument array
+        /// Initializes a the argument parser by copying the given argument array
         /// </summary>
         /// <param name="args">The array of arguments to clone</param>
         /// <exception cref="ArgumentNullException"></exception>

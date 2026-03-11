@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -27,10 +27,10 @@ using System;
 namespace VNLib.Plugins.Attributes
 {
     /// <summary>
-    /// Set this attribute on an <see cref="IPlugin"/> instance method to define the log initalizer.
+    /// Set this attribute on an <see cref="IPlugin"/> instance method to define the log initializer.
     /// This attribute can only be defined on a single instance method and cannot be overloaded.
     /// <br></br>
-    /// A plugin host should invoke this method before <see cref="IPlugin.Load"/> but after a <see cref="ConfigurationInitalizerAttribute"/> method
+    /// A plugin host should invoke this method before <see cref="IPlugin.Load"/> but after a <see cref="ConfigurationinitializerAttribute"/> method
     /// <br></br>
     /// Method signature <code>public void [methodname] (<see cref="string"/>[] cmdArgs)</code> 
     /// </summary>

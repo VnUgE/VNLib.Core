@@ -202,7 +202,7 @@ namespace VNLib.Utils.Memory
             {
                 //We can use win32 heaps
               
-                //Get inital size
+                //Get initial size
                 string? sharedSize = Environment.GetEnvironmentVariable(SHARED_HEAP_INTIAL_SIZE_ENV);
 
                 //Try to parse the shared size from the env

@@ -511,7 +511,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="InvalidJsonRequestException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool TryGetJsonFromArg<T>(this IHttpEvent ev, string key, out T? obj)=> TryGetJsonFromArg(ev, key, SR_OPTIONS, out obj);
+        public static bool TryGetJsonFromArg<T>(this IHttpEvent ev, string key, out T? obj) => TryGetJsonFromArg(ev, key, SR_OPTIONS, out obj);
         
         /// <summary>
         /// Attempts to read and deserialize a JSON object from the request body (form data or urlencoded)
