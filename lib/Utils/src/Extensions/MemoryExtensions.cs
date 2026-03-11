@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
@@ -126,24 +126,7 @@ namespace VNLib.Utils.Extensions
             MemoryHandle<T> handle = Alloc<T>(heap, size, zero);
             return ToMemoryManager(handle, ownsHandle: true);
         }
-
-        /// <summary>
-        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="IUnmanagedHeap"/> instance
-        /// of the specified number of elements
-        /// </summary>
-        /// <typeparam name="T">The unmanaged data type</typeparam>
-        /// <param name="heap"></param>
-        /// <param name="size">The number of elements to allocate on the heap</param>
-        /// <param name="zero">Optionally zeros conents of the block when allocated</param>
-        /// <returns>The <see cref="MemoryManager{T}"/> wrapper around the block of memory</returns>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("Use AllocMemory instead")]
-        public static MemoryManager<T> DirectAlloc<T>(this IUnmanagedHeap heap, int size, bool zero = false) where T : unmanaged 
-            => AllocMemory<T>(heap, size, zero);
-
+        
         /// <summary>
         /// Gets the integer length (number of elements) of the <see cref="IMemoryHandle{T}"/>
         /// </summary>

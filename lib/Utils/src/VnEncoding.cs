@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
@@ -1062,17 +1062,6 @@ namespace VNLib.Utils
             //Convert to string
             return Encoding.UTF8.GetString(rawData[..(int)converted]);
         }
-
-        /// <summary>
-        /// Converts binary data to it's base64url encoded representation and may allocate a temporary 
-        /// heap buffer.
-        /// </summary>
-        /// <param name="rawData">The binary data to encode</param>
-        /// <param name="includePadding">A value that indicates if the base64 padding characters should be included</param>
-        /// <returns>The base64url encoded string</returns>
-        /// <exception cref="ArgumentException"></exception>
-        [Obsolete("Use Base64UrlEncode instead")]
-        public static string ToBase64UrlSafeString(ReadOnlySpan<byte> rawData, bool includePadding) => Base64UrlEncode(rawData, includePadding);
 
         /// <summary>
         /// Encodes the binary input buffer to its base64url safe utf8 encoding, and writes the output 

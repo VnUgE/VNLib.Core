@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -74,32 +74,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <param name="cancellationToken">A token to cancel the operation</param>
         /// <returns>The user's <see cref="IUser"/> object, null if the user was not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        Task<IUser?> GetUserFromUsernameAsync(string username, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Creates a new user account in the store as per the request. The user-id field is optional, 
-        /// and if set to null or empty, will be generated automatically by the store.
-        /// </summary>
-        /// <param name="userId">An optional user id to force</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <param name="creation">The account email address</param>
-        /// <returns>An object representing a user's account if successful, null otherwise</returns>
-        /// <exception cref="UserExistsException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="UserCreationFailedException"></exception>
-        [Obsolete("Use overload that accepts hashing provider")]
-        public virtual Task<IUser> CreateUserAsync(IUserCreationRequest creation, string? userId, CancellationToken cancellation = default)
-        {
-            ArgumentNullException.ThrowIfNull(creation);
-
-            return CreateUserAsync(
-                creation,
-                userId,
-                //Pass null if password is not meant to be hashed
-                creation.UseRawPassword ? null : GetHashProvider(),
-                cancellation
-            );
-        }
+        Task<IUser?> GetUserFromUsernameAsync(string username, CancellationToken cancellationToken = default);       
 
         /// <summary>
         /// Creates a new user account in the store as per the request. The user-id field is optional, 
@@ -188,30 +163,6 @@ namespace VNLib.Plugins.Essentials.Users
             PrivateString newPass, 
             IPasswordHashingProvider? hashProvider, 
             CancellationToken cancellation = default
-        );
-
-        /// <summary>
-        /// Updates a password associated with the specified user. If the update fails, the transaction
-        /// is rolled back.
-        /// </summary>
-        /// <param name="user">The user account to update the password of</param>
-        /// <param name="newPass">The new password to set</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
-        [Obsolete("Use overload that accepts password hashing provider")]
-        public virtual Task<ERRNO> UpdatePasswordAsync(IUser user, PrivateString newPass, CancellationToken cancellation = default)
-        {
-            /*
-             * Added backward compatability for obsolete methods. The default 
-             * condition is to use the default password hashing provider.
-             */
-
-            return UpdatePasswordAsync(
-                user,
-                newPass,
-                GetHashProvider(),
-                cancellation
-            );
-        }
+        );        
     }
 }

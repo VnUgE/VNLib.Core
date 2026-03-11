@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2024 Vaughn Nugent
 * 
 * Library: VNLib
@@ -422,35 +422,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             server.SetCookie(in cookie);
         }
-
-
-        /// <summary>
-        /// Sets the desired http cookie for the current connection
-        /// </summary>
-        /// <param name="server"></param>
-        /// <param name="cookie">The cookie to set for the server</param>
-        /// <exception cref="ArgumentException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("HttpCookie type is obsolete in favor of HttpResponseCookie")]
-        public static void SetCookie(this IConnectionInfo server, in HttpCookie cookie)
-        {
-            //Set the cookie
-            HttpResponseCookie rCookie = new(cookie.Name)
-            {
-                Value = cookie.Value,
-                Domain = cookie.Domain,
-                Path = cookie.Path,
-                MaxAge = cookie.ValidFor,
-                IsSession = cookie.ValidFor == TimeSpan.MaxValue,
-                //If the connection is cross origin, then we need to modify the secure and samsite values
-                SameSite = cookie.SameSite,
-                HttpOnly = cookie.HttpOnly,
-                Secure = cookie.Secure | server.CrossOrigin,
-            };
-
-            server.SetCookie(in rCookie);
-        }
-
+       
         /// <summary>
         /// Determines if the current connection is the loopback/internal network adapter
         /// </summary>

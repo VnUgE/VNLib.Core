@@ -75,20 +75,6 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("hostnames")]
         public string[]? Hostnames { get; set; } = [];
 
-        [Obsolete("Prefer 'hostname' array")]
-        [JsonPropertyName("hostname")]
-        public string? Hostname
-        {
-            get => Hostnames?.FirstOrDefault();
-            set
-            {
-                if (value != null)
-                {
-                    Hostnames = [value];
-                }
-            }
-        }
-
         /// <summary>
         /// The directory that this virtual host will serve files from
         /// </summary>
