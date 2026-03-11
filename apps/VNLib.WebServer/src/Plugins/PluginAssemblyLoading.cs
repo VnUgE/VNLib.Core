@@ -43,7 +43,7 @@ namespace VNLib.WebServer.Plugins
             => config.Unloadable ? new UnloadableAlc(config) : new ImmutableAl(config);
 
         //Immutable assembly loader
-        internal sealed record class ImmutableAl(IPluginAssemblyLoadConfig Config) : IAssemblyLoader
+        internal sealed class ImmutableAl(IPluginAssemblyLoadConfig Config) : IAssemblyLoader
         {
             private readonly AssemblyLoadContext ctx = new(Config.AssemblyFile, Config.Unloadable);
             private ManagedLibrary ml = null!;
@@ -60,7 +60,7 @@ namespace VNLib.WebServer.Plugins
             public void Dispose() { }
         }
 
-        internal sealed record class UnloadableAlc(IPluginAssemblyLoadConfig Config) : IAssemblyLoader
+        internal sealed class UnloadableAlc(IPluginAssemblyLoadConfig Config) : IAssemblyLoader
         {
 
 #if USE_MCMASTER
@@ -84,11 +84,6 @@ namespace VNLib.WebServer.Plugins
                 {
                     //Cleanup old loader, dont invoke GC because runtime will handle it
                     _loader.Destroy(false);
-                    //ctx.Unload();
-                    //ml = null!;
-
-                    //Init new load context with the same name
-                    //ctx = new AssemblyLoadContext(Config.AssemblyFile, Config.Unloadable);
                 }
             }
 
