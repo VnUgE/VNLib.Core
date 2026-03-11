@@ -70,7 +70,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\lib\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
     <ProjectReference Include="..\..\..\lib\Net.Http\src\VNLib.Net.Http.csproj" />
-    <ProjectReference Include="..\..\..\lib\Net.Transport.SimpleTCP\src\VNLib.Net.Transport.SimpleTCP.csproj" />
+    <ProjectReference Include="..\..\..\lib\Net.Transport.Tcp\src\VNLib.Net.Transport.Tcp.csproj" />
     <ProjectReference Include="..\..\..\lib\Plugins.Essentials.ServiceStack\src\VNLib.Plugins.Essentials.ServiceStack.csproj" />
     <ProjectReference Include="..\..\..\third-party\DotNetCorePlugins\src\McMaster.NETCore.Plugins.csproj" />
   </ItemGroup>

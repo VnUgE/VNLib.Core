@@ -1,19 +1,19 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
-* Package: VNLib.Net.Transport.SimpleTCP
+* Package: VNLib.Net.Transport.Tcp
 * File: TcpServer.cs 
 *
-* TcpServer.cs is part of VNLib.Net.Transport.SimpleTCP which is part of the larger 
+* TcpServer.cs is part of VNLib.Net.Transport.Tcp which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
-* VNLib.Net.Transport.SimpleTCP is free software: you can redistribute it and/or modify 
+* VNLib.Net.Transport.Tcp is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
 * published by the Free Software Foundation, either version 2 of the
 * License, or (at your option) any later version.
 *
-* VNLib.Net.Transport.SimpleTCP is distributed in the hope that it will be useful,
+* VNLib.Net.Transport.Tcp is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 * GNU Affero General Public License for more details.
