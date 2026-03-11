@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -84,7 +84,7 @@ namespace VNLib.WebServer.Transport
         {
             return new PipeOptions(
                 config.BufferPool,
-                //Noticable performance increase when using inline scheduler for reader (handles send operations)
+                //Noticeable performance increase when using inline scheduler for reader (handles send operations)
                 readerScheduler: inlineScheduler ? PipeScheduler.Inline : PipeScheduler.ThreadPool,
                 writerScheduler: inlineScheduler ? PipeScheduler.Inline : PipeScheduler.ThreadPool,
                 pauseWriterThreshold: config.MaxRecvBufferData,
@@ -105,7 +105,7 @@ namespace VNLib.WebServer.Transport
             void ITransportProvider.Start(CancellationToken stopToken)
             {
                 //TEMPORARY (unless it works)
-                if(_listener is not null)
+                if (_listener is not null)
                 {
                     throw new InvalidOperationException("The server has already been started.");
                 }
@@ -137,7 +137,7 @@ namespace VNLib.WebServer.Transport
               * an issue on some clients (browsers)
               */
 
-            private const int UKNOWN_CERT_AUTH_HRESULT = unchecked((int)0x80090327);
+            private const int UNKNOWN_CERT_AUTH_HRESULT = unchecked((int)0x80090327);
 
             /// <summary>
             /// An invlaid frame size may happen if data is recieved on an open socket

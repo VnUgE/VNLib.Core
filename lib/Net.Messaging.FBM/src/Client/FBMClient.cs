@@ -531,7 +531,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         }
 
         /// <summary>
-        /// Syncrhonously processes a buffered response packet
+        /// Synchronously processes a buffered response packet
         /// </summary>
         /// <param name="responseMessage">The buffered response body received from the server</param>
         /// <remarks>This method blocks the listening task. So operations should be quick</remarks>

@@ -37,7 +37,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         : ISlidingWindowBuffer<byte>
     {
 
-        //Initlaizes a new handle but does not allocate usable memory yet
+        //Initializes a new handle but does not allocate usable memory yet
         private readonly IFBMMemoryHandle _handle = memManager.InitHandle();
 
         ///<inheritdoc/>

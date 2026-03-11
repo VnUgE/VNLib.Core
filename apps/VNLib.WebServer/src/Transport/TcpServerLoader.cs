@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -72,12 +72,12 @@ namespace VNLib.WebServer.Transport
         private readonly bool EnableTransportLogging    = args.HasArgument("--log-transport");
 
         /// <summary>
-        /// The user confiugred TCP transmission buffer size
+        /// The user configured TCP transmission buffer size
         /// </summary>
         public int TcpTxBufferSize => _conf.Instance.TcpSendBufferSize;
 
         /// <summary>
-        /// The user-conifuigred TCP receive buffer size
+        /// The user-configured TCP receive buffer size
         /// </summary>
         public int TcpRxBufferSize => _conf.Instance.TcpRecvBufferSize;
 
@@ -88,7 +88,7 @@ namespace VNLib.WebServer.Transport
              * TCP server instances that need to be created. 
              * 
              * The following code attempts to reorder the many-to-many set mapping of 
-             * transports to virtual hosts into a set of one-to-many http bingings.
+             * transports to virtual hosts into a set of one-to-many http bindings.
              * 
              * Example: 
              * 
@@ -135,9 +135,9 @@ namespace VNLib.WebServer.Transport
                     //Find any duplicate hostnames that share the same transport interface and raise validation exception
                     string[] sharedHostErrors = sharedTransportHosts.GroupBy(static h => h.Processor.Hostname)
                         .Where(static g => g.Count() > 1)
-                        .Select(duplicteGroup =>
+                        .Select(duplicateGroup =>
                         {
-                            string hostnames = string.Join(", ", duplicteGroup.Select(h => h.Processor.Hostname));
+                            string hostnames = string.Join(", ", duplicateGroup.Select(h => h.Processor.Hostname));
 
                             return $"Duplicate hostnames: {hostnames} share the same transport interface {sharedInterface}";
                         })
@@ -174,7 +174,7 @@ namespace VNLib.WebServer.Transport
                 tcpLogger.Warn("Socket option TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);
             }
 
-            //Print warning message, since inline scheduler is an avanced feature
+            //Print warning message, since inline scheduler is an advanced feature
             if (iface.Ssl && UseInlineScheduler)
             {
                 tcpLogger.Debug("[WARN]: Inline scheduler is not available on server {server} when using TLS", iface);
