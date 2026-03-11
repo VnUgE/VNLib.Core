@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -361,7 +361,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         /// <summary>
         /// Close a response to a connection with a character buffer using the server wide
-        /// <see cref="ConnectionInfo.Encoding"/> encoding
+        /// <see cref="IConnectionInfo.Encoding"/> encoding
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">The response status code</param>
@@ -409,7 +409,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="code">The response status code</param>
         /// <param name="type">The <see cref="ContentType"/> the data represents</param>
         /// <param name="data">The binary buffer to send</param>
-        /// <remarks>The data paramter is copied into an internal <see cref="IMemoryResponseReader"/></remarks>
+        /// <remarks>The data parameter is copied into an internal <see cref="IMemoryResponseReader"/></remarks>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
@@ -500,7 +500,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         #endregion
 
         /// <summary>
-        /// Attempts to read and deserialize a JSON object from the reqeust body (form data or urlencoded)
+        /// Attempts to read and deserialize a JSON object from the request body (form data or urlencoded)
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
@@ -511,10 +511,10 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="InvalidJsonRequestException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool TryGetJsonFromArg<T>(this IHttpEvent ev, string key, out T? obj) => TryGetJsonFromArg(ev, key, SR_OPTIONS, out obj);
+        public static bool TryGetJsonFromArg<T>(this IHttpEvent ev, string key, out T? obj)=> TryGetJsonFromArg(ev, key, SR_OPTIONS, out obj);
         
         /// <summary>
-        /// Attempts to read and deserialize a JSON object from the reqeust body (form data or urlencoded)
+        /// Attempts to read and deserialize a JSON object from the request body (form data or urlencoded)
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>

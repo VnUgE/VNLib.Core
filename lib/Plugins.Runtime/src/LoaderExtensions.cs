@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -40,7 +40,7 @@ namespace VNLib.Plugins.Runtime
     /// A callback function signature for plugin plugin loading errors on plugin
     /// stacks.
     /// </summary>
-    /// <param name="Loader">The loader that the exception occured on</param>
+    /// <param name="Loader">The loader that the exception occurred on</param>
     /// <param name="exception">The exception cause of the error</param>
     public delegate void PluginLoadErrorHandler(RuntimePluginLoader Loader, Exception exception);
 
@@ -191,7 +191,7 @@ namespace VNLib.Plugins.Runtime
             //Invoke load with onError callback
             InvokeLoad(runtime, concurrent, onError);
 
-            //If any exceptions occured, throw them now
+            //If any exceptions occurred, throw them now
             if(exceptions.Count > 0)
             {
                 throw new AggregateException(exceptions);
@@ -422,7 +422,7 @@ namespace VNLib.Plugins.Runtime
             static string GetDefaultFileNameCallback(IPluginAssemblyLoadConfig asmConfig)
             {
                 /*
-                 * Just changing the asm file extention means the the json file 
+                 * Just changing the asm file extension means the the json file 
                  * will be in the same directory as the plugin assembly file
                  */
                 return Path.ChangeExtension(asmConfig.AssemblyFile, ".json");

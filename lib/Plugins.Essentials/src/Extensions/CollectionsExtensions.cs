@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -64,7 +64,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <exception cref="ArgumentNullException"></exception>
         public static bool IsArgumentSet(this IReadOnlyDictionary<string, string> dict, string key, ReadOnlySpan<char> argument)
         {
-            //Try to get the value from the dict, if the value is null casting it to span (implicitly) should stop null excpetions and return false
+            //Try to get the value from the dict, if the value is null casting it to span (implicitly) should stop null exceptions and return false
             return dict.TryGetValue(key, out string? value) && string.GetHashCode(argument) == string.GetHashCode(value);
         }
         /// <summary>

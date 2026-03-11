@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -38,7 +38,7 @@ namespace VNLib.Plugins.Runtime
     /// for a single instance. 
     /// </para>
     /// <para>
-    /// Lifetime: for the existance of a single loaded 
+    /// Lifetime: for the existence of a single loaded 
     /// plugin instance. Created once per loaded plugin instance. Once the plugin
     /// is unloaded, it is no longer useable.
     /// </para>

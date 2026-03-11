@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -301,7 +301,7 @@ namespace VNLib.Hashing.Native.MonoCypher
                     throw new ArgumentNullException("key","The key pointer is null");
 
                 default:
-                    throw new Exception($"An unknown error occured while hashing: {result}");
+                    throw new Exception($"An unknown error occurred while hashing: {result}");
 
             }
 #pragma warning restore CA2208 // Instantiate argument exceptions correctly

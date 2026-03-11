@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -156,7 +156,7 @@ namespace VNLib.Plugins.Essentials
         public readonly DateTimeOffset RequestedTimeUtc;
 
         /// <summary>
-        /// The connection info object assocated with the entity
+        /// The connection info object associated with the entity
         /// </summary>
         public IConnectionInfo Server => Entity.Server;
 

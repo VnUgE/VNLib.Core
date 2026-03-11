@@ -39,7 +39,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
         /// <summary>
         /// Adds callback function that will add a collection of service hosts
-        /// and passes a state paramter to the callback
+        /// and passes a state parameter to the callback
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="state">The optional state parameter</param>

@@ -102,7 +102,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <param name="password">The password to test against the user</param>
         /// <param name="flags">Validation flags</param>
         /// <param name="cancellation">A token to cancel the validation</param>
-        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
+        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occurred</returns>
         public virtual Task<ERRNO> ValidatePasswordAsync(
             IUser user, 
             PrivateString password, 
@@ -126,7 +126,7 @@ namespace VNLib.Plugins.Essentials.Users
         /// <param name="password">The password to test against the user</param>
         /// <param name="hashProvider">The optional password hashing provider used to hash passwords for the recovered password</param>
         /// <param name="cancellation">A token to cancel the validation</param>
-        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
+        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occurred</returns>
         Task<ERRNO> ValidatePasswordAsync(
             IUser user, 
             PrivateString password, 

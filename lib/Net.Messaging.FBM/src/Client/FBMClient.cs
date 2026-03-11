@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -65,7 +65,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         public const int MAX_STREAM_BUFFER_SIZE = 128 * 1024;
 
         /// <summary>
-        /// Raised when the websocket has been closed because an error occured.
+        /// Raised when the websocket has been closed because an error occurred.
         /// You may inspect the event args to determine the cause of the error.
         /// </summary>
         public event EventHandler<FMBClientErrorEventArgs>? ConnectionClosedOnError;
@@ -361,7 +361,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 //wait for the server to respond
                 await request.Waiter.GetTask(timeout, cancellationToken).ConfigureAwait(true);
 
-                Debug("Response recieved {size} bytes for message {id}", request.Response?.Length ?? 0, request.MessageId);
+                Debug("Response received {size} bytes for message {id}", request.Response?.Length ?? 0, request.MessageId);
 
 
                 return request.GetResponse();
@@ -459,7 +459,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                     }
                     if (result.Count <= 4)
                     {
-                        Debug("Empty message recieved from server");
+                        Debug("Empty message received from server");
                         continue;
                     }
 
@@ -477,7 +477,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                         {
                             //Dispose the buffer before exiting
                             responseBuffer.Dispose();
-                            Debug("Recieved a message that was too large, skipped");
+                            Debug("received a message that was too large, skipped");
                             goto Skip;
                         }
 
@@ -533,7 +533,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <summary>
         /// Syncrhonously processes a buffered response packet
         /// </summary>
-        /// <param name="responseMessage">The buffered response body recieved from the server</param>
+        /// <param name="responseMessage">The buffered response body received from the server</param>
         /// <remarks>This method blocks the listening task. So operations should be quick</remarks>
         protected virtual void ProcessResponse(VnMemoryStream responseMessage)
         {

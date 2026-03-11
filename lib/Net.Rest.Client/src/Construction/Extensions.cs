@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -238,7 +238,7 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <typeparam name="TModel">The request entity type</typeparam>
         /// <param name="builder"></param>
         /// <param name="callback">The callback method that gets the query value</param>
-        /// <param name="parameter">The query paramter value to set</param>
+        /// <param name="parameter">The query parameter value to set</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
         public static IRestRequestBuilder<TModel> WithQuery<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, Func<TModel, string> callback)
         {
@@ -253,7 +253,7 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <typeparam name="TModel">The request entity type</typeparam>
         /// <param name="builder"></param>
         /// <param name="value">The constant query value</param>
-        /// <param name="parameter">The name of the query paramter to set</param>
+        /// <param name="parameter">The name of the query parameter to set</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
         public static IRestRequestBuilder<TModel> WithQuery<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, string value)
         {
@@ -401,7 +401,7 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <typeparam name="TModel">The request entity type</typeparam>
         /// <param name="builder"></param>
         /// <param name="callback">The callback method that gets the query value</param>
-        /// <param name="parameter">The body paramter value to set</param>
+        /// <param name="parameter">The body parameter value to set</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
         public static IRestRequestBuilder<TModel> WithParameter<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, Func<TModel, string> callback)
         {
@@ -415,7 +415,7 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <typeparam name="TModel">The request entity type</typeparam>
         /// <param name="builder"></param>
         /// <param name="value">The constant value</param>
-        /// <param name="parameter">The query paramter value to set</param>
+        /// <param name="parameter">The query parameter value to set</param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
         public static IRestRequestBuilder<TModel> WithParameter<TModel>(this IRestRequestBuilder<TModel> builder, string parameter, string value)
         {

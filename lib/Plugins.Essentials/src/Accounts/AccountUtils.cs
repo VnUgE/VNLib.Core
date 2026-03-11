@@ -85,7 +85,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="flags">Validation flags</param>
         /// <param name="cancellation">A token to cancel the validation</param>
         /// <exception cref="ArgumentNullException"></exception>
-        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
+        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occurred</returns>
         public static async Task<ERRNO> ValidatePasswordAsync(
             this IUserManager manager, 
             IUser user, 

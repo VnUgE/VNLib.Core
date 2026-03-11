@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -41,7 +41,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// An exception handler for invalid messages that occur during a listening session.
         /// NOTE: The context parameter is likely in an invlaid state and should be read carefully
         /// </summary>
-        /// <param name="context">The context that the error occured while parsing on</param>
+        /// <param name="context">The context that the error occurred while parsing on</param>
         /// <param name="ex">The exception explaining the reason this handler was invoked</param>
         /// <returns>A value that indicates if the server should continue processing</returns>
         bool OnInvalidMessage(FBMContext context, Exception ex);

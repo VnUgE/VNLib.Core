@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -455,7 +455,7 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="heap"></param>
         /// <param name="initialData">The initial data to set the buffer to</param>
-        /// <returns>The initalized <see cref="MemoryHandle{T}"/> block</returns>
+        /// <returns>The initialized <see cref="MemoryHandle{T}"/> block</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -480,7 +480,7 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="heap"></param>
         /// <param name="initialData">The initial data to set the buffer to</param>
-        /// <returns>The initalized <see cref="MemoryHandle{T}"/> block</returns>
+        /// <returns>The initialized <see cref="MemoryHandle{T}"/> block</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

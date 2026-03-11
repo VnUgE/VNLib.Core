@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -37,7 +37,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 {
 
     /// <summary>
-    /// Provides <see cref="ConnectionInfo"/> extension methods
+    /// Provides <see cref="IConnectionInfo"/> extension methods
     /// for common use cases
     /// </summary>
     public static class IConnectionInfoExtensions
@@ -290,12 +290,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Gets a value indicating whether the port number in the request is equivalent to the port number 
         /// on the local server. 
         /// </summary>
-        /// <returns>True if the port number in the <see cref="ConnectionInfo.RequestUri"/> matches the 
-        /// <see cref="ConnectionInfo.LocalEndpoint"/> port false if they do not match
+        /// <returns>True if the port number in the <see cref="IConnectionInfo.RequestUri"/> matches the 
+        /// <see cref="IConnectionInfo.LocalEndpoint"/> port false if they do not match
         /// </returns>
         /// <remarks>
         /// Users should call this method to help prevent port based attacks if your
-        /// code relies on the port number of the <see cref="ConnectionInfo.RequestUri"/>
+        /// code relies on the port number of the <see cref="IConnectionInfo.RequestUri"/>
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool EnpointPortsMatch(this IConnectionInfo server) => server.RequestUri.Port == server.LocalEndpoint.Port;

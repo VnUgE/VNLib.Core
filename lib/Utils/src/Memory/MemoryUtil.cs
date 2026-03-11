@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -1443,7 +1443,7 @@ namespace VNLib.Utils.Memory
             => checked(elementCount * Unsafe.SizeOf<T>());
 
         /// <summary>
-        /// Checks if the offset/count paramters for the given memory handle 
+        /// Checks if the offset/count parameters for the given memory handle 
         /// point outside the block wrapped in the handle
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -1456,7 +1456,7 @@ namespace VNLib.Utils.Memory
             => ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, handle.Length, nameof(count));
 
         /// <summary>
-        /// Checks if the offset/count paramters for the given block
+        /// Checks if the offset/count parameters for the given block
         /// point outside the block wrapped in the handle
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -1472,7 +1472,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Checks if the offset/count paramters for the given block
+        /// Checks if the offset/count parameters for the given block
         /// point outside the block wrapped in the handle
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -1485,7 +1485,7 @@ namespace VNLib.Utils.Memory
             => CheckBounds((ReadOnlySpan<T>)block, offset, count);
 
         /// <summary>
-        /// Checks if the offset/count paramters for the given block
+        /// Checks if the offset/count parameters for the given block
         /// point outside the block wrapped in the handle
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -1502,7 +1502,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Checks if the offset/count paramters for the given block
+        /// Checks if the offset/count parameters for the given block
         /// point outside the block wrapped in the handle
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -1515,7 +1515,7 @@ namespace VNLib.Utils.Memory
             => CheckBounds((ReadOnlyMemory<T>)block, offset, count);
 
         /// <summary>
-        /// Checks if the offset/count paramters for the given block
+        /// Checks if the offset/count parameters for the given block
         /// point outside the block bounds
         /// </summary>
         /// <typeparam name="T"></typeparam>
