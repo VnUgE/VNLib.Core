@@ -13,7 +13,7 @@
     <Company>Vaughn Nugent</Company>
     <Authors>Vaughn Nugent</Authors>
     <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
-    <Description>Provides a RestClient connection pool using the Utils.ObjectRental framework for reusing RestClients with a common configuration to execute RestRequests against. This library also implements an OAuth2 authenticator for the RestSharp IAuthenticator using the client credentials method.</Description>
+    <Description>Provides a RestClient connection pool using the Utils.ObjectRental framework for reusing RestClients with a common configuration to execute RestRequests against. Includes a type-safe fluent API for mapping request models to REST endpoints.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Rest.Client</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
