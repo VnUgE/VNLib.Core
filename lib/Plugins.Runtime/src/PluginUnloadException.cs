@@ -1,11 +1,11 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: PluginUnloadExcpetion.cs 
+* File: PluginUnloadException.cs 
 *
-* PluginUnloadExcpetion.cs is part of VNLib.Plugins.Runtime which is part of the larger 
+* PluginUnloadException.cs is part of VNLib.Plugins.Runtime which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
