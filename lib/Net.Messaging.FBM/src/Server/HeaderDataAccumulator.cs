@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -34,7 +34,7 @@ namespace VNLib.Net.Messaging.FBM.Server
     /// Reusable sliding window impl
     /// </summary>
     internal sealed class HeaderDataAccumulator(int bufferSize, IFBMMemoryManager memManager) 
-        : ISlindingWindowBuffer<byte>
+        : ISlidingWindowBuffer<byte>
     {
 
         //Initlaizes a new handle but does not allocate usable memory yet

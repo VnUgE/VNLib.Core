@@ -1,11 +1,11 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: ISlindingWindowBuffer.cs 
+* File: ISlidingWindowBuffer.cs 
 *
-* ISlindingWindowBuffer.cs is part of VNLib.Utils which is part of the larger 
+* ISlidingWindowBuffer.cs is part of VNLib.Utils which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -27,10 +27,10 @@ using System;
 namespace VNLib.Utils.IO
 {
     /// <summary>
-    /// Represents a sliding window buffer for reading/wiriting data
+    /// Represents a sliding window buffer for reading/writing data
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public interface ISlindingWindowBuffer<T> : IDataAccumulator<T>
+    public interface ISlidingWindowBuffer<T> : IDataAccumulator<T>
     {
         /// <summary>
         /// The number of elements remaining in the buffer
@@ -50,7 +50,7 @@ namespace VNLib.Utils.IO
         int IDataAccumulator<T>.AccumulatedSize => WindowEndPos - WindowStartPos;
 
         /// <summary>
-        /// The starting positon of the available data within the buffer
+        /// The starting position of the available data within the buffer
         /// </summary>
         int WindowStartPos { get; }
         /// <summary>
@@ -71,7 +71,7 @@ namespace VNLib.Utils.IO
         /// Advances the beginning of the accumulated data window.
         /// </para>
         /// <para>
-        /// This method is used during reading to singal that data 
+        /// This method is used during reading to signal that data 
         /// has been read from the internal buffer and the 
         /// accumulator window can be shifted.
         /// </para>

@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -41,7 +41,7 @@ namespace VNLib.Utils.IO
     {
         private bool disposedValue;
 
-        private readonly ISlindingWindowBuffer<byte> _buffer;
+        private readonly ISlidingWindowBuffer<byte> _buffer;
 
         ///<inheritdoc/>
         public virtual Stream BaseStream { get; }
@@ -95,9 +95,9 @@ namespace VNLib.Utils.IO
         /// </summary>
         /// <param name="baseStream">The underlying stream to read data from</param>
         /// <param name="encoding">The <see cref="Encoding"/> to use when reading from the stream</param>
-        /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
+        /// <param name="buffer">The internal <see cref="ISlidingWindowBuffer{T}"/> to use</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public VnStreamReader(Stream baseStream, Encoding encoding, ISlindingWindowBuffer<byte> buffer)
+        public VnStreamReader(Stream baseStream, Encoding encoding, ISlidingWindowBuffer<byte> buffer)
         {
             BaseStream = baseStream ?? throw new ArgumentNullException(nameof(buffer));
             Encoding = encoding ?? throw new ArgumentNullException(nameof(encoding));

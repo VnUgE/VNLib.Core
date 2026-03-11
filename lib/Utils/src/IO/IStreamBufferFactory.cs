@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -25,17 +25,17 @@
 namespace VNLib.Utils.IO
 {
     /// <summary>
-    /// An interface that allows creating a <see cref="ISlindingWindowBuffer{T}"/> of the specified type
+    /// An interface that allows creating a <see cref="ISlidingWindowBuffer{T}"/> of the specified type
     /// for stream reading/writing
     /// </summary>
     /// <typeparam name="T">The buffer element type</typeparam>
     public interface IStreamBufferFactory<T>
     {
         /// <summary>
-        /// Creates a new <see cref="ISlindingWindowBuffer{T}"/> of the specified size
+        /// Creates a new <see cref="ISlidingWindowBuffer{T}"/> of the specified size
         /// </summary>
         /// <param name="bufferSize">The minimum size of the buffer to allocate</param>
         /// <returns>The buffer instance</returns>
-        ISlindingWindowBuffer<T> CreateBuffer(int bufferSize);
+        ISlidingWindowBuffer<T> CreateBuffer(int bufferSize);
     }
 }

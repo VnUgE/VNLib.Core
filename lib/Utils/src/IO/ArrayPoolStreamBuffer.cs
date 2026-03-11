@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -34,7 +34,7 @@ namespace VNLib.Utils.IO
     /// </summary>
     /// <param name="array">The rented array to use</param>
     /// <param name="pool">The pool to return the array to when completed</param>
-    internal class ArrayPoolStreamBuffer<T>(T[] array, ArrayPool<T> pool) : ISlindingWindowBuffer<T>
+    internal class ArrayPoolStreamBuffer<T>(T[] array, ArrayPool<T> pool) : ISlidingWindowBuffer<T>
     {
         /// <summary>
         /// The shared <see cref="IStreamBufferFactory{T}"/> instance to allocate buffers 
@@ -79,7 +79,7 @@ namespace VNLib.Utils.IO
         private sealed class DefaultFactory : IStreamBufferFactory<T>
         {
             ///<inheritdoc/>
-            public ISlindingWindowBuffer<T> CreateBuffer(int bufferSize)
+            public ISlidingWindowBuffer<T> CreateBuffer(int bufferSize)
             {
                 //rent buffer
                 T[] array = ArrayPool<T>.Shared.Rent(bufferSize);
