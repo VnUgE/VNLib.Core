@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -132,7 +132,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <param name="attributes">The disallowed file attributes</param>
         /// <returns>The current instance for chaining</returns>
         public static IVirtualHostBuilder WithDisallowedAttributes(this IVirtualHostBuilder vhBuilder, FileAttributes attributes)
-            => vhBuilder.WithOption(c => c.DissallowedAttributes = attributes);
+            => vhBuilder.WithOption(c => c.DisallowedAttributes = attributes);
 
         /// <summary>
         /// Sets the downstream servers that connections will trust

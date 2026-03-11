@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -259,7 +259,7 @@ namespace VNLib.Plugins.Essentials
                     }
                     catch (Exception ex)
                     {
-                        config.Log.Error(ex, "Exception raised while releasing the assocated session");
+                        config.Log.Error(ex, "Exception raised while releasing the associated session");
                     }
                 }
 
@@ -664,7 +664,7 @@ namespace VNLib.Plugins.Essentials
                         //Get attributes
                         FileAttributes att = FileOperations.GetAttributes(path);
                         //Make sure the file is accessable and isnt an unsafe file
-                        return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DissallowedAttributes) == 0);
+                        return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
                     }
                 }
             }
@@ -674,7 +674,7 @@ namespace VNLib.Plugins.Essentials
                 //Get attributes
                 FileAttributes att = FileOperations.GetAttributes(path);
                 //Make sure the file is accessable and isnt an unsafe file
-                return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DissallowedAttributes) == 0);
+                return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
             }
             return false;
         }
