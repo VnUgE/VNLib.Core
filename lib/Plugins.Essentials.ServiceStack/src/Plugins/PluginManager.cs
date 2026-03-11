@@ -253,7 +253,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
         {
             /*
              * When a dynamic plugin stack is being used, plugins must 
-             * be displosed by the loader, not individually on the 
+             * be disposed by the loader, not individually on the 
              * IManualPlugin.Dispose() interface. This will cause
              * a Debug.Fail() or a noop in release mode. 
              */
@@ -373,7 +373,8 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             public void ReloadPlugins() => stack.ReloadAll();
 
             /*
-             * TODO: Reconsider these hooks.
+             * TODO: Reconsider these hooks. See #45
+             * https://www.vaughnnugent.com/resources/software/modules/VNLib.Core-issues?number=45
              * 
              * Since dynamic plugins manage the lifecycle of their services internally,
              * we have to register hooks to capture their load/unload events. Even
