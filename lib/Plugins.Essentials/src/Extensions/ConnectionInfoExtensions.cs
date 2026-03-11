@@ -298,7 +298,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// code relies on the port number of the <see cref="IConnectionInfo.RequestUri"/>
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool EnpointPortsMatch(this IConnectionInfo server) => server.RequestUri.Port == server.LocalEndpoint.Port;
+        public static bool EndpointPortsMatch(this IConnectionInfo server) 
+            => server.RequestUri.Port == server.LocalEndpoint.Port;
 
         /// <summary>
         /// Determines if the host of the current request URI matches the referer header host
