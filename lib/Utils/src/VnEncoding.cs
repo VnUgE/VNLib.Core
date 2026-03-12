@@ -45,66 +45,8 @@ namespace VNLib.Utils
     /// </summary>
     public static class VnEncoding
     {
-
-        /// <summary>
-        /// Encodes a <see cref="ReadOnlySpan{T}"/> with the specified <see cref="Encoding"/> to a <see cref="VnMemoryStream"/> that must be disposed by the user
-        /// </summary>
-        /// <param name="data">Data to be encoded</param>
-        /// <param name="encoding"><see cref="Encoding"/> to encode data with</param>
-        /// <param name="heap">Heap to allocate memory from</param>
-        /// <returns>A <see cref="Stream"/> contating the encoded data</returns>
-        public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding, IUnmanagedHeap? heap = null)
-        {
-            ArgumentNullException.ThrowIfNull(encoding);
-
-            //Assign default heap if not specified
-            heap ??= MemoryUtil.Shared;
-            
-            //Create new memory handle to copy data to
-            MemoryHandle<byte>? handle = null;
-            try
-            {
-                //get number of bytes
-                int byteCount = encoding.GetByteCount(data);
-                //resize the handle to fit the data
-                handle = heap.Alloc<byte>(byteCount);
-                //encode
-                int size = encoding.GetBytes(data, handle.Span);
-                //Consume the handle into a new vnmemstream and return it
-                return VnMemoryStream.ConsumeHandle(handle, size, readOnly: true);
-            }
-            catch
-            {
-                //Dispose the handle if there is an excpetion
-                handle?.Dispose();
-                throw;
-            }
-        }
-       
-        /// <summary>
-        /// Attempts to deserialze a json object from a stream of UTF8 data
-        /// </summary>
-        /// <typeparam name="T">The type of the object to deserialize</typeparam>
-        /// <param name="data">Binary data to read from</param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> object to pass to deserializer</param>
-        /// <param name="cancellationToken"></param>
-        /// <returns>The object decoded from the stream</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        public static ValueTask<T?> JSONDeserializeFromBinaryAsync<T>(
-            Stream? data, 
-            JsonSerializerOptions? options = null, 
-            CancellationToken cancellationToken = default
-        )
-        {
-            //Return default if null
-            return data == null || data.Length == 0 
-                ? ValueTask.FromResult<T?>(default) 
-                : JsonSerializer.DeserializeAsync<T>(data, options, cancellationToken);
-        }      
-
         #region Base32
-        
+
         private const string RFC_4648_BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
         /// <summary>

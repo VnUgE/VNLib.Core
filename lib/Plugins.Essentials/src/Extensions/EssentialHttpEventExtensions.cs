@@ -686,13 +686,20 @@ namespace VNLib.Plugins.Essentials.Extensions
                 return ValueTask.FromResult<T?>(default);
             }
 
+            // No data to deserialize
+            if (file.Length == 0)
+            {
+                return ValueTask.FromResult<T?>(default);
+            }
+
             //avoid copying the ev struct, so return deserialze task
             static async ValueTask<T?> Deserialze(Stream data, JsonSerializerOptions? options, CancellationToken token)
             {
                 try
                 {
-                    //Beware this will buffer the entire file object before it attmepts to de-serialize it
-                    return await VnEncoding.JSONDeserializeFromBinaryAsync<T?>(data, options, token);
+                    //Beware this will buffer the entire file object before it attmepts to de-serialize it                        
+                    return await JsonSerializer.DeserializeAsync<T?>(data, options, token)
+                        .ConfigureAwait(false);
                 }
                 catch (JsonException je)
                 {
