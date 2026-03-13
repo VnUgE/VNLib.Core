@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -25,6 +25,7 @@
 using System;
 
 using VNLib.Utils;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Memory;
 
 namespace VNLib.Plugins.Essentials.Accounts
@@ -50,7 +51,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             nonce.ComputeNonce(buffer.Span);
             
             //Return base32 string
-            return VnEncoding.ToBase32String(buffer.Span, false);
+            return Base32.Encode(buffer.Span, includePadding: false);
         }
         
         /// <summary>
@@ -59,14 +60,14 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// </summary>
         /// <param name="nonce"></param>
         /// <param name="base32Nonce">The base32 encoded nonce string</param>
-        /// <returns>True if the nonce values are equal, flase otherwise</returns>
+        /// <returns>True if the nonce values are equal, false otherwise</returns>
         public static bool VerifyNonce<T>(this T nonce, ReadOnlySpan<char> base32Nonce) where T : INonce
         {
             //Alloc bin buffer
             using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc(base32Nonce.Length);
             
             //Decode base32 nonce
-            ERRNO count = VnEncoding.TryFromBase32Chars(base32Nonce, buffer.Span);
+            ERRNO count = Base32.Decode(base32Nonce, buffer.Span);
             
             //Verify nonce
             return nonce.VerifyNonce(buffer.Span[..(int)count]);

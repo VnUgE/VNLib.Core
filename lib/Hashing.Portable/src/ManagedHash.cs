@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -28,6 +28,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 
 using VNLib.Utils;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Memory;
 
 namespace VNLib.Hashing
@@ -320,8 +321,8 @@ namespace VNLib.Hashing
             {
                 HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer),
                 HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer),
-                HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer),
-                HashEncodingMode.Base64Url => VnEncoding.Base64UrlEncode(hashBuffer, true),
+                HashEncodingMode.Base32 => Base32.Encode(hashBuffer, includePadding: true),
+                HashEncodingMode.Base64Url => Base64Url.Encode(hashBuffer, includePadding: true),
                 _ => throw new ArgumentException("Encoding mode is not supported"),
             };
         }
@@ -342,8 +343,8 @@ namespace VNLib.Hashing
             {
                 HashEncodingMode.Hexadecimal => Convert.ToHexString(hashBuffer),
                 HashEncodingMode.Base64 => Convert.ToBase64String(hashBuffer),
-                HashEncodingMode.Base32 => VnEncoding.ToBase32String(hashBuffer),
-                HashEncodingMode.Base64Url => VnEncoding.Base64UrlEncode(hashBuffer, true),
+                HashEncodingMode.Base32 => Base32.Encode(hashBuffer, includePadding: true),
+                HashEncodingMode.Base64Url => Base64Url.Encode(hashBuffer, includePadding: true),
                 _ => throw new ArgumentException("Encoding mode is not supported"),
             };
         }

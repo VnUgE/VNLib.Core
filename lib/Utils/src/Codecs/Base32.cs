@@ -252,10 +252,10 @@ namespace VNLib.Utils.Codecs
         /// Encodes the binary buffer to a base32 character string with optional padding characters
         /// </summary>
         /// <param name="binBuffer">The buffer to encode</param>
-        /// <param name="withPadding">Should padding be included in the result</param>
+        /// <param name="includePadding">Should padding be included in the result</param>
         /// <returns>The base32 encoded string representation of the specified buffer</returns>
         /// <exception cref="InternalBufferTooSmallException"></exception>
-        public static string Encode(ReadOnlySpan<byte> binBuffer, bool withPadding)
+        public static string Encode(ReadOnlySpan<byte> binBuffer, bool includePadding)
         {
             //Calculate the base32 entropy to alloc an appropriate buffer (minium buffer of 2 chars)
             int entropy = GetMaxBufferSize(binBuffer.Length);
@@ -271,7 +271,7 @@ namespace VNLib.Utils.Codecs
             }
 
             //Convert with or w/o padding
-            return withPadding
+            return includePadding
                 ? charBuffer.Span[0..(int)encoded].ToString()
                 : charBuffer.Span[0..(int)encoded].Trim('=').ToString();
         }
@@ -420,11 +420,11 @@ namespace VNLib.Utils.Codecs
         /// </summary>
         /// <typeparam name="T">The structure type</typeparam>
         /// <param name="value">The structure to encode</param>
-        /// <param name="withPadding">A value indicating if padding should be used</param>
+        /// <param name="includePadding">A value indicating if padding should be used</param>
         /// <returns>The base32 string representation of the structure</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="InternalBufferTooSmallException"></exception>
-        public static string Serialize<T>(T value, bool withPadding = false) where T : unmanaged
+        public static string Serialize<T>(T value, bool includePadding = false) where T : unmanaged
         {
             //get the size of the structure
             int binSize = Unsafe.SizeOf<T>();
@@ -433,7 +433,7 @@ namespace VNLib.Utils.Codecs
 
             MemoryMarshal.Write(binBuffer, in value);
 
-            return Encode(binBuffer, withPadding);
+            return Encode(binBuffer, includePadding);
         }
 
         /// <summary>

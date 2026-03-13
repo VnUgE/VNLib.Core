@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,7 +27,7 @@ using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
-using VNLib.Utils;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Essentials.Extensions;
 
@@ -60,10 +60,12 @@ namespace VNLib.Plugins.Essentials.Sessions
         public static void SetRefer(this ISession session, string? refer) => session[REFER_ENTRY] = refer;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SslProtocols GetSecurityProtocol(this ISession session) => (SslProtocols)session.GetValueType<string, int>(SECURE_ENTRY);
+        public static SslProtocols GetSecurityProtocol(this ISession session) 
+            => (SslProtocols)session.GetValueType<string, int>(SECURE_ENTRY);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetSecurityProtocol(this ISession session, SslProtocols protocol) => session[SECURE_ENTRY] = VnEncoding.ToBase32String((int)protocol);
+        public static void SetSecurityProtocol(this ISession session, SslProtocols protocol) 
+            => session[SECURE_ENTRY] = Base32.Serialize((int)protocol);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCrossOrigin(this ISession session) => session[CROSS_ORIGIN] == bool.TrueString;

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -686,13 +686,14 @@ namespace VNLib.Plugins.Essentials.Extensions
                 return ValueTask.FromResult<T?>(default);
             }
 
-            //avoid copying the ev struct, so return deserialze task
-            static async ValueTask<T?> Deserialze(Stream data, JsonSerializerOptions? options, CancellationToken token)
+            //avoid copying the ev struct, so return deserialize task
+            static async ValueTask<T?> Deserialize(Stream data, JsonSerializerOptions? options, CancellationToken token)
             {
                 try
                 {
                     //Beware this will buffer the entire file object before it attmepts to de-serialize it
-                    return await VnEncoding.JSONDeserializeFromBinaryAsync<T?>(data, options, token);
+                    return await JsonSerializer.DeserializeAsync<T?>(data, options, token)
+                        .ConfigureAwait(false);
                 }
                 catch (JsonException je)
                 {
@@ -700,13 +701,13 @@ namespace VNLib.Plugins.Essentials.Extensions
                 }
             }
 
-            return Deserialze(file.FileData, options, ev.EventCancellation);
+            return Deserialize(file.FileData, options, ev.EventCancellation);
         }
         
         static readonly Task<JsonDocument?> DocTaskDefault = Task.FromResult<JsonDocument?>(null);
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
         /// file. It will be parsed into a new <see cref="JsonDocument"/>
         /// </summary>
         /// <param name="ev"></param>

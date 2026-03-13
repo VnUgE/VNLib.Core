@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -27,6 +27,7 @@ using System.Text.Json;
 using System.Security.Cryptography;
 
 using VNLib.Utils;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
@@ -508,7 +509,7 @@ namespace VNLib.Hashing.IdentityUtility
                 Span<byte> buffer = stackalloc byte[64];
 
                 //base64url decode
-                ERRNO count = VnEncoding.Base64UrlDecode(base64, buffer);
+                ERRNO count = Base64Url.Decode(base64, buffer);
 
                 //Return buffer or null if failed
                 return count ? buffer[0.. (int)count].ToArray() : null;
@@ -519,7 +520,7 @@ namespace VNLib.Hashing.IdentityUtility
                 using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAlloc(base64.Length + 16, false);
 
                 //base64url decode
-                ERRNO count = VnEncoding.Base64UrlDecode(base64, binBuffer.Span);
+                ERRNO count = Base64Url.Decode(base64, binBuffer.Span);
 
                 //Return buffer or null if failed
                 return count ? binBuffer.AsSpan(0, count).ToArray() : null;

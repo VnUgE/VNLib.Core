@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -26,7 +26,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
-using VNLib.Utils;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Memory;
 
 namespace VNLib.Hashing
@@ -182,7 +182,7 @@ namespace VNLib.Hashing
                 GetRandomBytes(buffer.Span);
 
                 //Convert to hex
-                return VnEncoding.ToBase32String(buffer.Span);
+                return Base32.Encode(buffer.Span, includePadding: true);
             }
             else
             {
@@ -192,8 +192,8 @@ namespace VNLib.Hashing
                 //Generate non zero bytes
                 GetRandomBytes(buffer);
 
-                //Convert to hex
-                return VnEncoding.ToBase32String(buffer);
+                //Convert to base32
+                return Base32.Encode(buffer, includePadding: true);
             }
         }
 

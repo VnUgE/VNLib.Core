@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -25,6 +25,8 @@
 using System;
 using System.Collections.Generic;
 
+using VNLib.Utils.Codecs;
+
 
 namespace VNLib.Utils.Extensions
 {
@@ -49,7 +51,7 @@ namespace VNLib.Utils.Extensions
             //Get value
             string value = lookup[key];
             //If the string is set, recover the value and return it
-            return string.IsNullOrWhiteSpace(value) ? default : VnEncoding.FromBase32String<TValue>(value);
+            return string.IsNullOrWhiteSpace(value) ? default : Base32.Deserialize<TValue>(value);
         }
 
         /// <summary>
@@ -65,7 +67,7 @@ namespace VNLib.Utils.Extensions
             ArgumentNullException.ThrowIfNull(lookup);
             
             //encode string from value type and store in lookup
-            lookup[key] = VnEncoding.ToBase32String(value);
+            lookup[key] = Base32.Serialize(value);
         }
 
         /// <summary>

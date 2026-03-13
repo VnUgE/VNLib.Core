@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -28,6 +28,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 
 using VNLib.Utils;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
@@ -146,7 +147,7 @@ namespace VNLib.Hashing.IdentityUtility
         private static int CalcPadding(int length) => (4 - (length % 4)) & 0x03;
         private static int DecodeUnpadded(ReadOnlySpan<byte> prePadding, Span<byte> output)
         {
-            ERRNO count = VnEncoding.Base64UrlDecode(prePadding, output);            
+            ERRNO count = Base64Url.Decode(prePadding, output);            
             return count ? count : throw new FormatException($"Failed to decode the utf8 encoded data");
         }
 
@@ -363,7 +364,7 @@ namespace VNLib.Hashing.IdentityUtility
             }
 
             //Do an in-place base64 conversion of the signature to base64url
-            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, bytesWritten, false);
+            ERRNO encoded = Base64Url.EncodeInPlace(signatureBuffer, bytesWritten, includePadding: false);
           
             if (!encoded)
             {
@@ -382,7 +383,7 @@ namespace VNLib.Hashing.IdentityUtility
         /// <param name="jwt"></param>
         /// <param name="provider">The <see cref="IJwtSignatureVerifier"/> used to verify the message digest</param>
         /// <param name="alg">The <see cref="HashAlg"/> used to compute the message digest</param>
-        /// <returns>True if the siganture matches the computed on, false otherwise</returns>
+        /// <returns>True if the signature matches the computed on, false otherwise</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="InternalBufferTooSmallException"></exception>
         public static bool Verify<T>(this JsonWebToken jwt, ref readonly T provider, HashAlg alg) where T : IJwtSignatureVerifier
@@ -458,7 +459,7 @@ namespace VNLib.Hashing.IdentityUtility
             }
 
             //Do an in-place base64 conversion of the signature to base64url
-            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, alg.HashSize(), false);
+            ERRNO encoded = Base64Url.EncodeInPlace(signatureBuffer, alg.HashSize(), includePadding: false);
           
             if (!encoded)
             {

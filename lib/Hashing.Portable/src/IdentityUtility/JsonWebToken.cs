@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -28,6 +28,7 @@ using System.Buffers.Text;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
 
@@ -293,15 +294,15 @@ namespace VNLib.Hashing.IdentityUtility
             using UnsafeMemoryHandle<byte> binBuffer = Heap.UnsafeAlloc<byte>(base64BufSize);
 
             //Urlencode without base64 padding characters
-            ERRNO written = VnEncoding.Base64UrlEncode(value, binBuffer.Span, false);
+            ERRNO written = Base64Url.Encode(value, binBuffer.Span, includePadding: false);
 
-            //Slice off the begiing of the buffer for the base64 encoding
+            //Slice off the begining of the buffer for the base64 encoding
             if(!written)
             {
                 throw new InternalBufferTooSmallException("Failed to encode the specified value to base64");
             }
             
-            //Write the endoded buffer to the stream
+            //Write the encoded buffer to the stream
             DataStream.Write(binBuffer.Span[..(int)written]);
         }
         #endregion

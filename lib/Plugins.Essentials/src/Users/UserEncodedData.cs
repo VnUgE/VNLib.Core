@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,6 +27,7 @@ using System.Text.Json;
 
 using VNLib.Utils;
 using VNLib.Utils.IO;
+using VNLib.Utils.Codecs;
 using VNLib.Utils.Memory;
 
 namespace VNLib.Plugins.Essentials.Users
@@ -54,7 +55,7 @@ namespace VNLib.Plugins.Essentials.Users
             //Output buffer will always be smaller than actual input data due to base64 encoding
             using UnsafeMemoryHandle<byte> binBuffer = MemoryUtil.UnsafeAllocNearestPage(encodedData.Length, zero: true);
 
-            ERRNO bytes = VnEncoding.Base64UrlDecode(encodedData, binBuffer.Span);
+            ERRNO bytes = Base64Url.Decode(encodedData, binBuffer.Span);
 
             if (!bytes)
             {
@@ -100,7 +101,7 @@ namespace VNLib.Plugins.Essentials.Users
 
             JsonSerializer.Serialize(ms, instance, Statics.SR_OPTIONS);
 
-            return VnEncoding.Base64UrlEncode(ms.AsSpan(), includePadding: false);
+            return Base64Url.Encode(ms.AsSpan(), includePadding: false);
         }
 
         /// <summary>
