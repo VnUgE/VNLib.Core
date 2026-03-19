@@ -134,7 +134,7 @@ namespace VNLib.Plugins.Essentials
         public ref readonly SessionInfo Session => ref _session;
 
         /// <summary>
-        /// A value that indicates if the connecion came from a trusted downstream server
+        /// A value that indicates if the connection came from a trusted downstream server
         /// </summary>
         public readonly bool IsBehindDownStreamServer;
 
@@ -181,7 +181,7 @@ namespace VNLib.Plugins.Essentials
         public IReadOnlyDictionary<string, string> RequestArgs => Entity.RequestArgs;
 
         /// <summary>
-        /// Contains all files upladed with current request
+        /// Contains all files uploaded with current request
         /// </summary>
         public IReadOnlyList<FileUpload> Files => Entity.Files;
 
@@ -208,7 +208,7 @@ namespace VNLib.Plugins.Essentials
             }
 
             /*
-             * If the underlying stream is actaully a memory stream, 
+             * If the underlying stream is actually a memory stream, 
              * create a wrapper for it to read as a memory response.
              * This is done to avoid a user-space copy since we can 
              * get access to access the internal buffer
@@ -218,12 +218,12 @@ namespace VNLib.Plugins.Essentials
              * or cause an overflow during reading
              * 
              * Finally not all memory streams allow fetching the internal 
-             * buffer, so check that it can be aquired.
+             * buffer, so check that it can be acquired.
              */
             if (
-                stream is MemoryStream ms
-                && length < int.MaxValue
-                && ms.TryGetBuffer(out ArraySegment<byte> arrSeg)
+                stream is MemoryStream ms && 
+                length < int.MaxValue && 
+                ms.TryGetBuffer(out ArraySegment<byte> arrSeg)
             )
             {
                 Entity.CloseResponse(
@@ -238,6 +238,8 @@ namespace VNLib.Plugins.Essentials
             /*
              * Readonly vn streams can also use a shortcut to avoid http buffer allocation and 
              * async streaming. This is done by wrapping the stream in a memory response reader
+             * 
+             * Vnstream can only use the AsMemory() method if the buffer is smaller than int32.
              * 
              * Allocating a memory manager requires that the stream is readonly
              */
@@ -310,7 +312,8 @@ namespace VNLib.Plugins.Essentials
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler) => Entity.DangerousChangeProtocol(protocolHandler);
+        void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler) 
+            => Entity.DangerousChangeProtocol(protocolHandler);
 
 
         private sealed class VnStreamWrapper(VnMemoryStream memStream, int length) : IMemoryResponseReader

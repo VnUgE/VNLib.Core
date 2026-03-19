@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -44,19 +44,19 @@ namespace VNLib.Hashing.Checksums
         /// Computes the next 64-bit FNV-1a hash value using the current hash 
         /// value and the next byte of data. 
         /// </summary>
-        /// <param name="initalizer">The inital hash to begin the computation with</param>
+        /// <param name="seed">The initial hash to begin the computation with</param>
         /// <param name="data"></param>
         /// <param name="length"></param>
         /// <returns>The next value of the checksum representing current and previously computed segments</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static ulong Update64(ulong initalizer, ref readonly byte data, nuint length)
+        public static ulong Update64(ulong seed, ref readonly byte data, nuint length)
         {
             if (Unsafe.IsNullRef(in data))
             {
                 throw new ArgumentNullException(nameof(data));
             }
 
-            ulong digest = initalizer;
+            ulong digest = seed;
 
             ref byte baseAddr = ref Unsafe.AsRef(in data);
 
@@ -73,14 +73,14 @@ namespace VNLib.Hashing.Checksums
         /// Computes the next 64-bit FNV-1a hash value using the current hash
         /// value and the next byte of data.
         /// </summary>
-        /// <param name="initalizer">The initial hash to begin the computation with</param>
+        /// <param name="seed">The initial hash to begin the computation with</param>
         /// <param name="data">A span structure pointing to the memory block to compute the digest of</param>
         /// <returns>The next value of the checksum representing current and previously computed segments</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public static ulong Update64(ulong initalizer, ReadOnlySpan<byte> data)
+        public static ulong Update64(ulong seed, ReadOnlySpan<byte> data)
         {
             return Update64(
-                initalizer, 
+                seed, 
                 data: in MemoryMarshal.GetReference(data), 
                 length: (nuint)data.Length
             );
@@ -105,7 +105,7 @@ namespace VNLib.Hashing.Checksums
         /// value and the next byte of data. 
         /// </summary>
         /// <param name="data">A span structure pointing to the memory block to compute the digest of</param>
-        /// <returns>The 64bit unsigned integer representng the message sum or digest</returns>
+        /// <returns>The 64bit unsigned integer representing the message sum or digest</returns>
         /// <remarks>
         /// WARNING: This function produces a non-cryptographic hash and should not be used for
         /// security or cryptographic purposes. It is intended for fast data integrity checks

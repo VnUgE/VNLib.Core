@@ -1,9 +1,9 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
-* File: WhitelistMiddleware.cs 
+* File: IpWhitelistMiddleware.cs 
 *
 * WhitelistMiddleware.cs is part of VNLib.WebServer which is part of the larger 
 * VNLib collection of libraries and utilities.
@@ -33,7 +33,7 @@ using VNLib.Plugins.Essentials.Middleware;
 namespace VNLib.WebServer.Middlewares
 {
     /*
-     * Middelware that matches clients real ip addresses against a whitelist
+     * Middleware that matches clients real ip addresses against a whitelist
      * and blocks them if they are not on the list
      */
     [MiddlewareImpl(MiddlewareImplOptions.SecurityCritical)]
