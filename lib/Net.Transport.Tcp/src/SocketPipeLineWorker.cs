@@ -156,7 +156,8 @@ namespace VNLib.Net.Transport.Tcp
                 while (true)
                 {
                     //wait for data from the write pipe and write it to the socket
-                    _sendReadRes = await SendPipe.Reader.ReadAsync(CancellationToken.None);
+                    _sendReadRes = await SendPipe.Reader.ReadAsync(CancellationToken.None)
+                        .ConfigureAwait(false);
 
                     //Catch error/cancel conditions and break the loop
                     if (_sendReadRes.IsCanceled || _sendReadRes.Buffer.IsEmpty)
@@ -186,8 +187,9 @@ namespace VNLib.Net.Transport.Tcp
 
                         while (segmentReader.WindowSize > 0)
                         {
-                            //Write segment to socket, and upate written data
-                            int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None);
+                            //Write segment to socket, and update written data
+                            int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None)
+                                                .ConfigureAwait(false);
 
                             if (written < 0)
                             {
@@ -230,7 +232,8 @@ namespace VNLib.Net.Transport.Tcp
                 _sendEnum = default;
 
                 //Complete the send pipe reader
-                await SendPipe.Reader.CompleteAsync(errCause);
+                await SendPipe.Reader.CompleteAsync(errCause)
+                    .ConfigureAwait(false); 
             }
         }
 
@@ -254,7 +257,8 @@ namespace VNLib.Net.Transport.Tcp
                     RecvPipe.Writer.Advance(bytesTransferred);
 
                     //Flush initial data
-                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
+                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None)
+                                        .ConfigureAwait(false);
 
                     //Check flush result for error/cancel
                     if (IsPipeClosedAfterFlush(ref _recvFlushRes))
@@ -271,7 +275,8 @@ namespace VNLib.Net.Transport.Tcp
                     _recvBuffer = RecvPipe.Writer.GetMemory(recvBufferSize);
 
                     //Wait for data or error from socket
-                    int count = await sock.ReceiveAsync(_recvBuffer, SocketFlags.None);
+                    int count = await sock.ReceiveAsync(_recvBuffer, SocketFlags.None)
+                                    .ConfigureAwait(false);
 
                     if (count <= 0)
                     {
@@ -283,7 +288,8 @@ namespace VNLib.Net.Transport.Tcp
                     RecvPipe.Writer.Advance(count);
 
                     //Publish read data
-                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
+                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None)
+                                        .ConfigureAwait(false);
 
                     //Writing has completed, time to exit
                     if (IsPipeClosedAfterFlush(ref _recvFlushRes))
@@ -307,7 +313,9 @@ namespace VNLib.Net.Transport.Tcp
                 RecvTimer.Stop();
 
                 //Cleanup and complete the writer
-                await RecvPipe.Writer.CompleteAsync(cause);
+                await RecvPipe.Writer.CompleteAsync(cause)
+                    .ConfigureAwait(false);
+
                 //The recv reader is completed by the network stream
             }
         }
@@ -334,8 +342,11 @@ namespace VNLib.Net.Transport.Tcp
         internal async ValueTask ShutDownClientPipeAsync()
         {
             //Complete the data input so sending completes
-            await SendPipe.Writer.CompleteAsync();
-            await RecvPipe.Reader.CompleteAsync();
+            await SendPipe.Writer.CompleteAsync()
+                .ConfigureAwait(false);
+            
+            await RecvPipe.Reader.CompleteAsync()
+                .ConfigureAwait(false);
         }
 
         ///<inheritdoc/>

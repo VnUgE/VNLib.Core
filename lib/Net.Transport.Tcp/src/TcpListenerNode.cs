@@ -132,7 +132,8 @@ namespace VNLib.Net.Transport.Tcp
             OnClientDisconnected();
 
             //Close the socket and cleanup resources
-            SocketError err = await args.CloseConnectionAsync();
+            SocketError err = await args.CloseConnectionAsync()
+                                .ConfigureAwait(false);
 
             if (err != SocketError.Success)
             {
@@ -169,7 +170,8 @@ namespace VNLib.Net.Transport.Tcp
                     AwaitableAsyncServerSocket acceptArgs = SockAsyncArgPool.Rent();
 
                     //Accept new connection
-                    SocketError err = await acceptArgs.AcceptAsync(ServerSocket, _recvBufferSize, _sendBufferSize);
+                    SocketError err = await acceptArgs.AcceptAsync(ServerSocket, _recvBufferSize, _sendBufferSize)
+                                            .ConfigureAwait(false);
 
                     //Check canceled flag before proceeding
                     if (IsCancelled)
@@ -190,7 +192,8 @@ namespace VNLib.Net.Transport.Tcp
                              * connections must be dropped
                              */
 
-                            _ = await acceptArgs.CloseConnectionAsync();
+                            _ = await acceptArgs.CloseConnectionAsync()
+                                .ConfigureAwait(false);
 
                             /*
                              * Writing to log will likely compound resource exhaustion, but the user must be informed

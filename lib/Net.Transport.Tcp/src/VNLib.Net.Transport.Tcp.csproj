@@ -3,9 +3,12 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <RootNamespace>VNLib.Net.Transport</RootNamespace>
+    <RootNamespace>VNLib.Net.Transport.Tcp</RootNamespace>
     <AssemblyName>VNLib.Net.Transport.Tcp</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+
+    <!-- Enable configureAwait as an error for now for TCP. In time this will elevate module wide --> 
+    <WarningsAsErrors>CA2007;</WarningsAsErrors>    
   </PropertyGroup>
   
   <PropertyGroup>
