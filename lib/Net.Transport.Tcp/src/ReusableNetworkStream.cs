@@ -102,13 +102,16 @@ namespace VNLib.Net.Transport.Tcp
          */
 
         ///<inheritdoc/>
-        public void Advance(int count) => Transport.SendBuffer.Advance(count);
+        public void Advance(int count)
+            => Transport.SendBuffer.Advance(count);
 
         ///<inheritdoc/>
-        public Memory<byte> GetMemory(int sizeHint = 0) => Transport.SendBuffer.GetMemory(sizeHint);
+        public Memory<byte> GetMemory(int sizeHint = 0)
+            => Transport.SendBuffer.GetMemory(sizeHint);
 
         ///<inheritdoc/>
-        public Span<byte> GetSpan(int sizeHint = 0) => Transport.SendBuffer.GetSpan(sizeHint);
+        public Span<byte> GetSpan(int sizeHint = 0)
+            => Transport.SendBuffer.GetSpan(sizeHint);
 
         ///<inheritdoc/>
         public override void Flush() 

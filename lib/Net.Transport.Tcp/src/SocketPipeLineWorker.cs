@@ -40,7 +40,7 @@ namespace VNLib.Net.Transport.Tcp
 {
 
     /// <summary>
-    /// A reuseable socket pipeline provider, that marshals data from a network stream 
+    /// A reusable socket pipeline provider, that marshals data from a network stream 
     /// to a connected socket.
     /// </summary>
     internal sealed class SocketPipeLineWorker : ITransportInterface, IReusable
@@ -109,7 +109,7 @@ namespace VNLib.Net.Transport.Tcp
         /*
          * NOTES
          * 
-         * Timers used to maintain resource exhuastion independent 
+         * Timers used to maintain resource exhaustion independent 
          * of the actual socket pipeline, so to preserve the state 
          * of the pipelines until the writer is closed.
          * 
@@ -120,7 +120,7 @@ namespace VNLib.Net.Transport.Tcp
 
         private void OnRecvTimerElapsed(object? state)
         {
-            //cancel pending read on recv pipe when timout expires
+            //cancel pending read on recv pipe when timeout expires
             RecvPipe.Reader.CancelPendingRead();
         }
 
@@ -178,7 +178,7 @@ namespace VNLib.Net.Transport.Tcp
 
                         /*
                          * Using a forward only reader allows the following loop
-                         * to track the ammount of data written to the socket
+                         * to track the amount of data written to the socket
                          * until the entire segment has been sent or if it has
                          * move to the next segment
                          */
@@ -338,7 +338,7 @@ namespace VNLib.Net.Transport.Tcp
         /// <summary>
         /// Must be called when the pipeline is requested to be closed
         /// </summary>
-        /// <returns>A value task that complets when the piepline is completed</returns>
+        /// <returns>A value task that completes when the pipeline is completed</returns>
         internal async ValueTask ShutDownClientPipeAsync()
         {
             //Complete the data input so sending completes

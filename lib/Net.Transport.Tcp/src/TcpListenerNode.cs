@@ -171,7 +171,7 @@ namespace VNLib.Net.Transport.Tcp
 
                     //Accept new connection
                     SocketError err = await acceptArgs.AcceptAsync(ServerSocket, _recvBufferSize, _sendBufferSize)
-                                            .ConfigureAwait(false);
+                                        .ConfigureAwait(false);
 
                     //Check canceled flag before proceeding
                     if (IsCancelled)
@@ -193,7 +193,7 @@ namespace VNLib.Net.Transport.Tcp
                              */
 
                             _ = await acceptArgs.CloseConnectionAsync()
-                                .ConfigureAwait(false);
+                                    .ConfigureAwait(false);
 
                             /*
                              * Writing to log will likely compound resource exhaustion, but the user must be informed
@@ -201,7 +201,7 @@ namespace VNLib.Net.Transport.Tcp
                              */
                             Config.Log.Warn("Socket {e} disconnected because the waiting queue is overflowing", acceptArgs.GetHashCode());
 
-                            //Re-eqnue
+                            // Re-enqueue args to be reused
                             SockAsyncArgPool.Return(acceptArgs);
                         }
                         else
@@ -257,11 +257,14 @@ namespace VNLib.Net.Transport.Tcp
         private uint _acceptThreadsActive;
         private long _connectedClients;
 
-        private void OnClientConnected() => Interlocked.Increment(ref _connectedClients);
+        private void OnClientConnected() 
+            => Interlocked.Increment(ref _connectedClients);
 
-        private void OnClientDisconnected() => Interlocked.Decrement(ref _connectedClients);
+        private void OnClientDisconnected() 
+            => Interlocked.Decrement(ref _connectedClients);
 
-        private void OnAcceptThreadStart() => Interlocked.Increment(ref _acceptThreadsActive);
+        private void OnAcceptThreadStart() 
+            => Interlocked.Increment(ref _acceptThreadsActive);
 
         private void OnAcceptThreadExit()
         {

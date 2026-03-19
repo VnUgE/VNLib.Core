@@ -56,7 +56,7 @@ namespace VNLib.Net.Transport.Tcp
         /// <summary>
         /// Initializes a new <see cref="TcpServer"/> with the specified <see cref="TcpConfig"/>
         /// </summary>
-        /// <param name="config">Configuration to inalize with</param>
+        /// <param name="config">Tcp server configuration structure</param>
         /// <param name="pipeOptions">Optional <see cref="PipeOptions"/> otherwise uses default</param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>

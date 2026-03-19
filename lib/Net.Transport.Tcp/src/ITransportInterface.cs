@@ -34,7 +34,7 @@ namespace VNLib.Net.Transport.Tcp
     /// Abstraction layer for TCP transport operations with
     /// sync and async support.
     /// </summary>
-    interface ITransportInterface
+    internal interface ITransportInterface
     {
         /// <summary>
         /// Performs an asynchronous send operation
@@ -70,7 +70,7 @@ namespace VNLib.Net.Transport.Tcp
         int Recv(Span<byte> buffer, int timeout);
 
         /// <summary>
-        /// Gets as transport buffer writer for more effecient writes
+        /// Gets as transport buffer writer for more efficient writes
         /// </summary>
         IBufferWriter<byte> SendBuffer { get; }
 
