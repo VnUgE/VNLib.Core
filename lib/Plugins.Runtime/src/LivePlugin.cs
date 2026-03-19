@@ -88,13 +88,13 @@ namespace VNLib.Plugins.Runtime
         }
 
         /// <summary>
-        /// Sets the plugin's configuration if it defines a <see cref="ConfigurationInitalizerAttribute"/>
+        /// Sets the plugin's configuration if it defines a <see cref="ConfigurationInitializerAttribute"/>
         /// on an instance method
         /// </summary>
         /// <param name="configData">The host configuration DOM</param>
         internal void InitConfig(ReadOnlySpan<byte> configData)
         {
-            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitalizerAttribute, ConfigInitializer>(Plugin!)
+            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitializerAttribute, ConfigInitializer>(Plugin!)
                 .FirstOrDefault()
                 ?.Invoke(configData);
         }

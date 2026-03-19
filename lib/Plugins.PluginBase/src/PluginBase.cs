@@ -114,7 +114,7 @@ namespace VNLib.Plugins
         /// The host application may invoke this method when the assembly is loaded and this plugin is constructed to pass
         /// a configuration object to the instance. This method populates the configuration objects if applicable.
         /// </summary>
-        [ConfigurationInitalizer]
+        [ConfigurationInitializer]
         public virtual void InitConfig(ReadOnlySpan<byte> config)
         {
             if (config.IsEmpty)
