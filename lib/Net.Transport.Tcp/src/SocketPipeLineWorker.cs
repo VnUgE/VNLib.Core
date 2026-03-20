@@ -1,19 +1,19 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
-* Package: VNLib.Net.Transport.SimpleTCP
+* Package: VNLib.Net.Transport.Tcp
 * File: SocketPipeLineWorker.cs 
 *
-* SocketPipeLineWorker.cs is part of VNLib.Net.Transport.SimpleTCP which is part of the larger 
+* SocketPipeLineWorker.cs is part of VNLib.Net.Transport.Tcp which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
-* VNLib.Net.Transport.SimpleTCP is free software: you can redistribute it and/or modify 
+* VNLib.Net.Transport.Tcp is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
 * published by the Free Software Foundation, either version 2 of the
 * License, or (at your option) any later version.
 *
-* VNLib.Net.Transport.SimpleTCP is distributed in the hope that it will be useful,
+* VNLib.Net.Transport.Tcp is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 * GNU Affero General Public License for more details.
@@ -40,7 +40,7 @@ namespace VNLib.Net.Transport.Tcp
 {
 
     /// <summary>
-    /// A reuseable socket pipeline provider, that marshals data from a network stream 
+    /// A reusable socket pipeline provider, that marshals data from a network stream 
     /// to a connected socket.
     /// </summary>
     internal sealed class SocketPipeLineWorker : ITransportInterface, IReusable
@@ -55,7 +55,7 @@ namespace VNLib.Net.Transport.Tcp
         private bool _started;
 
         /// <summary>
-        /// Initalizes a new reusable socket pipeline worker
+        /// Initializes a new reusable socket pipeline worker
         /// </summary>
         /// <param name="pipeOptions"></param>
         public SocketPipeLineWorker(PipeOptions pipeOptions)
@@ -109,7 +109,7 @@ namespace VNLib.Net.Transport.Tcp
         /*
          * NOTES
          * 
-         * Timers used to maintain resource exhuastion independent 
+         * Timers used to maintain resource exhaustion independent 
          * of the actual socket pipeline, so to preserve the state 
          * of the pipelines until the writer is closed.
          * 
@@ -120,7 +120,7 @@ namespace VNLib.Net.Transport.Tcp
 
         private void OnRecvTimerElapsed(object? state)
         {
-            //cancel pending read on recv pipe when timout expires
+            //cancel pending read on recv pipe when timeout expires
             RecvPipe.Reader.CancelPendingRead();
         }
 
@@ -156,7 +156,8 @@ namespace VNLib.Net.Transport.Tcp
                 while (true)
                 {
                     //wait for data from the write pipe and write it to the socket
-                    _sendReadRes = await SendPipe.Reader.ReadAsync(CancellationToken.None);
+                    _sendReadRes = await SendPipe.Reader.ReadAsync(CancellationToken.None)
+                        .ConfigureAwait(false);
 
                     //Catch error/cancel conditions and break the loop
                     if (_sendReadRes.IsCanceled || _sendReadRes.Buffer.IsEmpty)
@@ -177,7 +178,7 @@ namespace VNLib.Net.Transport.Tcp
 
                         /*
                          * Using a forward only reader allows the following loop
-                         * to track the ammount of data written to the socket
+                         * to track the amount of data written to the socket
                          * until the entire segment has been sent or if it has
                          * move to the next segment
                          */
@@ -186,8 +187,9 @@ namespace VNLib.Net.Transport.Tcp
 
                         while (segmentReader.WindowSize > 0)
                         {
-                            //Write segment to socket, and upate written data
-                            int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None);
+                            //Write segment to socket, and update written data
+                            int written = await sock.SendAsync(segmentReader.Window, SocketFlags.None)
+                                                .ConfigureAwait(false);
 
                             if (written < 0)
                             {
@@ -230,7 +232,8 @@ namespace VNLib.Net.Transport.Tcp
                 _sendEnum = default;
 
                 //Complete the send pipe reader
-                await SendPipe.Reader.CompleteAsync(errCause);
+                await SendPipe.Reader.CompleteAsync(errCause)
+                    .ConfigureAwait(false); 
             }
         }
 
@@ -254,7 +257,8 @@ namespace VNLib.Net.Transport.Tcp
                     RecvPipe.Writer.Advance(bytesTransferred);
 
                     //Flush initial data
-                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
+                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None)
+                                        .ConfigureAwait(false);
 
                     //Check flush result for error/cancel
                     if (IsPipeClosedAfterFlush(ref _recvFlushRes))
@@ -271,7 +275,8 @@ namespace VNLib.Net.Transport.Tcp
                     _recvBuffer = RecvPipe.Writer.GetMemory(recvBufferSize);
 
                     //Wait for data or error from socket
-                    int count = await sock.ReceiveAsync(_recvBuffer, SocketFlags.None);
+                    int count = await sock.ReceiveAsync(_recvBuffer, SocketFlags.None)
+                                    .ConfigureAwait(false);
 
                     if (count <= 0)
                     {
@@ -283,7 +288,8 @@ namespace VNLib.Net.Transport.Tcp
                     RecvPipe.Writer.Advance(count);
 
                     //Publish read data
-                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None);
+                    _recvFlushRes = await RecvPipe.Writer.FlushAsync(CancellationToken.None)
+                                        .ConfigureAwait(false);
 
                     //Writing has completed, time to exit
                     if (IsPipeClosedAfterFlush(ref _recvFlushRes))
@@ -307,7 +313,9 @@ namespace VNLib.Net.Transport.Tcp
                 RecvTimer.Stop();
 
                 //Cleanup and complete the writer
-                await RecvPipe.Writer.CompleteAsync(cause);
+                await RecvPipe.Writer.CompleteAsync(cause)
+                    .ConfigureAwait(false);
+
                 //The recv reader is completed by the network stream
             }
         }
@@ -330,12 +338,15 @@ namespace VNLib.Net.Transport.Tcp
         /// <summary>
         /// Must be called when the pipeline is requested to be closed
         /// </summary>
-        /// <returns>A value task that complets when the piepline is completed</returns>
+        /// <returns>A value task that completes when the pipeline is completed</returns>
         internal async ValueTask ShutDownClientPipeAsync()
         {
             //Complete the data input so sending completes
-            await SendPipe.Writer.CompleteAsync();
-            await RecvPipe.Reader.CompleteAsync();
+            await SendPipe.Writer.CompleteAsync()
+                .ConfigureAwait(false);
+            
+            await RecvPipe.Reader.CompleteAsync()
+                .ConfigureAwait(false);
         }
 
         ///<inheritdoc/>

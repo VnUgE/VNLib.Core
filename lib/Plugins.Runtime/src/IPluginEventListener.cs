@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -34,7 +34,7 @@ namespace VNLib.Plugins.Runtime
         /// to notify this listener that the plugins within the collection
         /// have been initialized and loaded
         /// </summary>
-        /// <param name="controller">The collection on which the load event occured</param>
+        /// <param name="controller">The collection on which the load event occurred</param>
         /// <param name="state">The registration state parameter</param>
         void OnPluginLoaded(PluginController controller, object? state);
         /// <summary>

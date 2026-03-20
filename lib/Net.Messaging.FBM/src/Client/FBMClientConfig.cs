@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -52,7 +52,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         public readonly int MaxHeaderBufferSize { get; init; }
         /// <summary>
-        /// The maximum size (in bytes) of messages sent or recieved from the server
+        /// The maximum size (in bytes) of messages sent or received from the server
         /// </summary>
         public readonly int MaxMessageSize { get; init; }
         /// <summary>

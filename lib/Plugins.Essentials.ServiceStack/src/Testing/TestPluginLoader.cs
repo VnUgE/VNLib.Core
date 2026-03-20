@@ -231,7 +231,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Testing
 
         private static void InitConfig(T plugin, ReadOnlySpan<byte> configData)
         {
-            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitalizerAttribute, ConfigInitializer>(plugin!)
+            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitializerAttribute, ConfigInitializer>(plugin!)
                 .FirstOrDefault()
                 ?.Invoke(configData);
         }

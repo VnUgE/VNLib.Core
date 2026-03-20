@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -393,7 +393,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
              *  by the application logic. Otherwise it will fall back to the background of the loader.
              *  
              *  TODO: Known possible issue
-             *    If reload is called on the entire stack, it will cause all assembly loaders to re-initalize
+             *    If reload is called on the entire stack, it will cause all assembly loaders to re-initialize
              *    which means that plugins that might have failed to initialize when the stack was first loaded,
              *    might succeed during the reload, but are not in the _initializePlugins array. Which will cause
              *    the hooks below to raise exceptions. 

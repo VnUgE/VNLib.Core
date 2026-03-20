@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -225,7 +225,7 @@ namespace VNLib.WebServer.Bootstrap
                     conf.EventHooks = new VirtualHostHooks(conf);
 
                     //Init middleware stack
-                    conf.CustomMiddleware.Add(new MainServerMiddlware(log, conf, vhConfig.ForcePortCheck));
+                    conf.CustomMiddleware.Add(new MainServerMiddleware(log, conf, vhConfig.ForcePortCheck));
 
                     /*
                      * In benchmark mode, skip other middleware that might slow connections down

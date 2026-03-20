@@ -1,19 +1,19 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
-* Package: VNLib.Net.Transport.SimpleTCP
+* Package: VNLib.Net.Transport.Tcp
 * File: TcpListenerNode.cs 
 *
-* TcpListenerNode.cs is part of VNLib.Net.Transport.SimpleTCP which is part 
+* TcpListenerNode.cs is part of VNLib.Net.Transport.Tcp which is part 
 * of the larger VNLib collection of libraries and utilities.
 *
-* VNLib.Net.Transport.SimpleTCP is free software: you can redistribute it and/or modify 
+* VNLib.Net.Transport.Tcp is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
 * published by the Free Software Foundation, either version 2 of the
 * License, or (at your option) any later version.
 *
-* VNLib.Net.Transport.SimpleTCP is distributed in the hope that it will be useful,
+* VNLib.Net.Transport.Tcp is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 * GNU Affero General Public License for more details.
@@ -38,9 +38,9 @@ using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Transport.Tcp
 {
-    internal sealed class TcpListenerNode : ITcpListner
+    internal sealed class TcpListenerNode : ITcpListener
     {
-        public readonly TCPConfig Config;
+        public readonly TcpConfig Config;
         public readonly Socket ServerSocket;
         public readonly ObjectRental<AwaitableAsyncServerSocket> SockAsyncArgPool;
         public readonly AsyncQueue<ITcpConnectionDescriptor> WaitingSockets;       
@@ -51,7 +51,7 @@ namespace VNLib.Net.Transport.Tcp
         public bool IsCancelled;
         private Task _onExitTask;
 
-        public TcpListenerNode(in TCPConfig config, Socket serverSocket, PipeOptions pipeOptions)
+        public TcpListenerNode(in TcpConfig config, Socket serverSocket, PipeOptions pipeOptions)
         {
             Config = config;
             ServerSocket = serverSocket;
@@ -132,7 +132,8 @@ namespace VNLib.Net.Transport.Tcp
             OnClientDisconnected();
 
             //Close the socket and cleanup resources
-            SocketError err = await args.CloseConnectionAsync();
+            SocketError err = await args.CloseConnectionAsync()
+                                .ConfigureAwait(false);
 
             if (err != SocketError.Success)
             {
@@ -169,7 +170,8 @@ namespace VNLib.Net.Transport.Tcp
                     AwaitableAsyncServerSocket acceptArgs = SockAsyncArgPool.Rent();
 
                     //Accept new connection
-                    SocketError err = await acceptArgs.AcceptAsync(ServerSocket, _recvBufferSize, _sendBufferSize);
+                    SocketError err = await acceptArgs.AcceptAsync(ServerSocket, _recvBufferSize, _sendBufferSize)
+                                        .ConfigureAwait(false);
 
                     //Check canceled flag before proceeding
                     if (IsCancelled)
@@ -190,7 +192,8 @@ namespace VNLib.Net.Transport.Tcp
                              * connections must be dropped
                              */
 
-                            _ = await acceptArgs.CloseConnectionAsync();
+                            _ = await acceptArgs.CloseConnectionAsync()
+                                    .ConfigureAwait(false);
 
                             /*
                              * Writing to log will likely compound resource exhaustion, but the user must be informed
@@ -198,7 +201,7 @@ namespace VNLib.Net.Transport.Tcp
                              */
                             Config.Log.Warn("Socket {e} disconnected because the waiting queue is overflowing", acceptArgs.GetHashCode());
 
-                            //Re-eqnue
+                            // Re-enqueue args to be reused
                             SockAsyncArgPool.Return(acceptArgs);
                         }
                         else
@@ -254,11 +257,14 @@ namespace VNLib.Net.Transport.Tcp
         private uint _acceptThreadsActive;
         private long _connectedClients;
 
-        private void OnClientConnected() => Interlocked.Increment(ref _connectedClients);
+        private void OnClientConnected() 
+            => Interlocked.Increment(ref _connectedClients);
 
-        private void OnClientDisconnected() => Interlocked.Decrement(ref _connectedClients);
+        private void OnClientDisconnected() 
+            => Interlocked.Decrement(ref _connectedClients);
 
-        private void OnAcceptThreadStart() => Interlocked.Increment(ref _acceptThreadsActive);
+        private void OnAcceptThreadStart() 
+            => Interlocked.Increment(ref _acceptThreadsActive);
 
         private void OnAcceptThreadExit()
         {

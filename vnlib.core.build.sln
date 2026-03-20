@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNLib.Net.Http", "lib\Net.H
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNLib.Net.Messaging.FBM", "lib\Net.Messaging.FBM\src\VNLib.Net.Messaging.FBM.csproj", "{A88A4424-1537-4EA1-9B16-920CE450B83E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNLib.Net.Transport.SimpleTCP", "lib\Net.Transport.SimpleTCP\src\VNLib.Net.Transport.SimpleTCP.csproj", "{05E8CFD3-C678-4A75-8173-2E1C9F86C650}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNLib.Net.Transport.Tcp", "lib\Net.Transport.Tcp\src\VNLib.Net.Transport.Tcp.csproj", "{05E8CFD3-C678-4A75-8173-2E1C9F86C650}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNLib.Plugins", "lib\Plugins\src\VNLib.Plugins.csproj", "{4F7FD27D-F7A9-4BFA-AE82-81C1BD27F6D5}"
 EndProject

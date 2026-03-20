@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -38,7 +38,7 @@ namespace VNLib.Plugins.Runtime
     /// for a single instance. 
     /// </para>
     /// <para>
-    /// Lifetime: for the existance of a single loaded 
+    /// Lifetime: for the existence of a single loaded 
     /// plugin instance. Created once per loaded plugin instance. Once the plugin
     /// is unloaded, it is no longer useable.
     /// </para>
@@ -88,19 +88,19 @@ namespace VNLib.Plugins.Runtime
         }
 
         /// <summary>
-        /// Sets the plugin's configuration if it defines a <see cref="ConfigurationInitalizerAttribute"/>
+        /// Sets the plugin's configuration if it defines a <see cref="ConfigurationInitializerAttribute"/>
         /// on an instance method
         /// </summary>
         /// <param name="configData">The host configuration DOM</param>
         internal void InitConfig(ReadOnlySpan<byte> configData)
         {
-            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitalizerAttribute, ConfigInitializer>(Plugin!)
+            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitializerAttribute, ConfigInitializer>(Plugin!)
                 .FirstOrDefault()
                 ?.Invoke(configData);
         }
         
         /// <summary>
-        /// Invokes the plugin's log initalizer method if it defines a <see cref="LogInitializerAttribute"/>
+        /// Invokes the plugin's log initializer method if it defines a <see cref="LogInitializerAttribute"/>
         /// on an instance method
         /// </summary>
         /// <param name="cliArgs">The current process's CLI args</param>

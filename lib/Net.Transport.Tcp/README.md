@@ -1,4 +1,4 @@
-# VNLib.Net.Transport.SimpleTCP
+# VNLib.Net.Transport.Tcp
 
 *A managed .NET simple, high performance - single process, low/no allocation, fully asynchronous, TCP socket server.*
 
@@ -10,7 +10,7 @@ Debug build w/ symbols & xml docs, release builds, NuGet packages, and individua
 ## Docs and Guides
 Documentation, specifications, and setup guides are available on my website.
 
-[Docs and Articles](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Net.Transport.SimpleTCP)  
+[Docs and Articles](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_VNLib.Net.Transport.Tcp)  
 [Builds and Source](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core)  
 
 ## License 

@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
-* File: MainServerMiddlware.cs 
+* File: MainServerMiddleware.cs 
 *
-* MainServerMiddlware.cs is part of VNLib.WebServer which is part of the larger 
+* MainServerMiddleware.cs is part of VNLib.WebServer which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.WebServer is free software: you can redistribute it and/or modify 
@@ -39,11 +39,11 @@ namespace VNLib.WebServer.Middlewares
 {
 
     /// <summary>
-    /// Provides required/essential server functionality as a middelware processor
+    /// Provides required/essential server functionality as a middleware processor
     /// </summary>
     /// <param name="Log"></param>
     /// <param name="VirtualHostOptions"></param>
-    internal sealed class MainServerMiddlware(ILogProvider Log, VirtualHostConfig VirtualHostOptions, bool forcePorts) : IHttpMiddleware
+    internal sealed class MainServerMiddleware(ILogProvider Log, VirtualHostConfig VirtualHostOptions, bool forcePorts) : IHttpMiddleware
     {
         public ValueTask<FileProcessArgs> ProcessAsync(HttpEntity entity)
         {
@@ -67,7 +67,7 @@ namespace VNLib.WebServer.Middlewares
             //If not behind upstream server, uri ports and server ports must match
             bool enforcePortCheck = !entity.IsBehindDownStreamServer && forcePorts;
            
-            if (enforcePortCheck && !entity.Server.EnpointPortsMatch())
+            if (enforcePortCheck && !entity.Server.EndpointPortsMatch())
             {
                 Log.Debug("Connection {ip} received on port {p} but the client host port did not match at {pp}",
                     entity.TrustedRemoteIp,

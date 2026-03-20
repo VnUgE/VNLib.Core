@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -48,7 +48,7 @@ using static VNLib.Plugins.Essentials.Statics;
 namespace VNLib.Plugins.Essentials.Sessions
 {   
     /// <summary>
-    /// When attached to a connection, provides persistant session storage and inforamtion based
+    /// When attached to a connection, provides persistent session storage and information based
     /// on a connection.
     /// </summary>
     /// <remarks>

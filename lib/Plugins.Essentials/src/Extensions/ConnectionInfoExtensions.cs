@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -37,7 +37,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 {
 
     /// <summary>
-    /// Provides <see cref="ConnectionInfo"/> extension methods
+    /// Provides <see cref="IConnectionInfo"/> extension methods
     /// for common use cases
     /// </summary>
     public static class IConnectionInfoExtensions
@@ -290,15 +290,16 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Gets a value indicating whether the port number in the request is equivalent to the port number 
         /// on the local server. 
         /// </summary>
-        /// <returns>True if the port number in the <see cref="ConnectionInfo.RequestUri"/> matches the 
-        /// <see cref="ConnectionInfo.LocalEndpoint"/> port false if they do not match
+        /// <returns>True if the port number in the <see cref="IConnectionInfo.RequestUri"/> matches the 
+        /// <see cref="IConnectionInfo.LocalEndpoint"/> port false if they do not match
         /// </returns>
         /// <remarks>
         /// Users should call this method to help prevent port based attacks if your
-        /// code relies on the port number of the <see cref="ConnectionInfo.RequestUri"/>
+        /// code relies on the port number of the <see cref="IConnectionInfo.RequestUri"/>
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool EnpointPortsMatch(this IConnectionInfo server) => server.RequestUri.Port == server.LocalEndpoint.Port;
+        public static bool EndpointPortsMatch(this IConnectionInfo server) 
+            => server.RequestUri.Port == server.LocalEndpoint.Port;
 
         /// <summary>
         /// Determines if the host of the current request URI matches the referer header host
@@ -422,35 +423,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             server.SetCookie(in cookie);
         }
-
-
-        /// <summary>
-        /// Sets the desired http cookie for the current connection
-        /// </summary>
-        /// <param name="server"></param>
-        /// <param name="cookie">The cookie to set for the server</param>
-        /// <exception cref="ArgumentException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("HttpCookie type is obsolete in favor of HttpResponseCookie")]
-        public static void SetCookie(this IConnectionInfo server, in HttpCookie cookie)
-        {
-            //Set the cookie
-            HttpResponseCookie rCookie = new(cookie.Name)
-            {
-                Value = cookie.Value,
-                Domain = cookie.Domain,
-                Path = cookie.Path,
-                MaxAge = cookie.ValidFor,
-                IsSession = cookie.ValidFor == TimeSpan.MaxValue,
-                //If the connection is cross origin, then we need to modify the secure and samsite values
-                SameSite = cookie.SameSite,
-                HttpOnly = cookie.HttpOnly,
-                Secure = cookie.Secure | server.CrossOrigin,
-            };
-
-            server.SetCookie(in rCookie);
-        }
-
+       
         /// <summary>
         /// Determines if the current connection is the loopback/internal network adapter
         /// </summary>

@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -52,7 +52,7 @@ namespace VNLib.Utils.Memory
         public HeapCreation CreationFlags { get; } = HeapCreation.Shared | HeapCreation.SupportsRealloc;
 
         /// <summary>
-        /// Initalizes a new global (cross platform) process heap
+        /// Initializes a new global (cross platform) process heap
         /// </summary>
         public ProcessHeap(HeapCreation flags = HeapCreation.None)
         {

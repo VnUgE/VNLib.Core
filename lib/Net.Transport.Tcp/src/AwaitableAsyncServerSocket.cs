@@ -1,19 +1,19 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
-* Package: VNLib.Net.Transport.SimpleTCP
+* Package: VNLib.Net.Transport.Tcp
 * File: AwaitableAsyncServerSocket.cs 
 *
-* AwaitableAsyncServerSocket.cs is part of VNLib.Net.Transport.SimpleTCP which 
+* AwaitableAsyncServerSocket.cs is part of VNLib.Net.Transport.Tcp which 
 * is part of the larger VNLib collection of libraries and utilities.
 *
-* VNLib.Net.Transport.SimpleTCP is free software: you can redistribute it and/or modify 
+* VNLib.Net.Transport.Tcp is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
 * published by the Free Software Foundation, either version 2 of the
 * License, or (at your option) any later version.
 *
-* VNLib.Net.Transport.SimpleTCP is distributed in the hope that it will be useful,
+* VNLib.Net.Transport.Tcp is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 * GNU Affero General Public License for more details.
@@ -80,7 +80,8 @@ namespace VNLib.Net.Transport.Tcp
             }
 
             //Begin the accept, and attempt to reuse the socket if available
-            SocketError error = await _allArgs.AcceptAsync(serverSocket, _socket);
+            SocketError error = await _allArgs.AcceptAsync(serverSocket, _socket)
+                                    .ConfigureAwait(false);
 
             if (error == SocketError.Success)
             {
@@ -108,13 +109,15 @@ namespace VNLib.Net.Transport.Tcp
             _ = _socket ?? throw new InvalidOperationException("Socket is not connected");
 
             //Wait for the pipeline to end before disconnecting the socket
-            await SocketWorker.ShutDownClientPipeAsync();
+            await SocketWorker.ShutDownClientPipeAsync()
+                .ConfigureAwait(false);
 
             //Wait for the send task to complete before disconnecting
             await _sendTask.ConfigureAwait(false);
 
             //Disconnect the socket
-            SocketError error = await _allArgs.DisconnectAsync(_socket);
+            SocketError error = await _allArgs.DisconnectAsync(_socket)
+                                    .ConfigureAwait(false);
 
             /*
              * Release hooks will take care of socket cleanup 
@@ -126,7 +129,7 @@ namespace VNLib.Net.Transport.Tcp
 
             /*
              * Sockets can be reused as much as possible on Windows. If the socket
-             * failes to disconnect cleanly, the release function won't clean it up
+             * fails to disconnect cleanly, the release function won't clean it up
              * so it needs to be cleaned up here so at least our args instance
              * can be reused.
              */
@@ -162,7 +165,7 @@ namespace VNLib.Net.Transport.Tcp
 
         void IReusable.Prepare()
         {
-            Debug.Assert(_socket == null || _reuseSocket, "Exepcted stale socket to be NULL on non-Windows platform");
+            Debug.Assert(_socket == null || _reuseSocket, "Expected stale socket to be NULL on non-Windows platform");
 
             _allArgs.Prepare();
             _recvArgs.Prepare();
@@ -291,7 +294,7 @@ namespace VNLib.Net.Transport.Tcp
             }
 
             /// <summary>
-            /// Begins an async disconnect operation on a currentl connected socket
+            /// Begins an async disconnect operation on a currently connected socket
             /// </summary>
             /// <returns>True if the operation is pending</returns>
             public ValueTask<SocketError> DisconnectAsync(Socket serverSock)

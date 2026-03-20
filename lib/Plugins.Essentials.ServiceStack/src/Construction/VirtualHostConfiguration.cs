@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -81,7 +81,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// Files that match any attribute flag set will be denied
         /// <para>Default: <see cref="FileAttributes.System"/></para>
         /// </summary>
-        public FileAttributes DissallowedAttributes { get; set; } = FileAttributes.System;
+        public FileAttributes DisallowedAttributes { get; set; } = FileAttributes.System;
 
         /// <summary>
         /// A table of known downstream servers/ports that can be trusted to proxy connections

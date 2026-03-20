@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -67,64 +67,6 @@ namespace VNLib.Utils.Extensions
     public static class JsonExtensions
     {
         /// <summary>
-        /// Converts a JSON encoded binary data to an object of the specified type
-        /// </summary>
-        /// <typeparam name="T">Output type of the object</typeparam>
-        /// <param name="utf8bin"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> to use during de-serialization</param>
-        /// <returns>The new object or default if the string is null or empty</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        [Obsolete("Unused and unsupported, will be removed in a future release.")]
-        public static T? AsJsonObject<T>(this ReadOnlySpan<byte> utf8bin, JsonSerializerOptions? options = null)
-        {
-            return utf8bin.IsEmpty ? default : JsonSerializer.Deserialize<T>(utf8bin, options);
-        }
-
-        /// <summary>
-        /// Converts a JSON encoded binary data to an object of the specified type
-        /// </summary>
-        /// <typeparam name="T">Output type of the object</typeparam>
-        /// <param name="utf8bin"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> to use during de-serialization</param>
-        /// <returns>The new object or default if the string is null or empty</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        [Obsolete("Unused and unsupported, will be removed in a future release.")]
-        public static T? AsJsonObject<T>(this ReadOnlyMemory<byte> utf8bin, JsonSerializerOptions? options = null)
-        {
-            return utf8bin.IsEmpty ? default : JsonSerializer.Deserialize<T>(utf8bin.Span, options);
-        }
-
-        /// <summary>
-        /// Converts a JSON encoded binary data to an object of the specified type
-        /// </summary>
-        /// <typeparam name="T">Output type of the object</typeparam>
-        /// <param name="utf8bin"></param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> to use during de-serialization</param>
-        /// <returns>The new object or default if the string is null or empty</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        [Obsolete("Unused and unsupported, will be removed in a future release.")]
-        public static T? AsJsonObject<T>(this byte[] utf8bin, JsonSerializerOptions? options = null)
-        {
-            return utf8bin == null ? default : JsonSerializer.Deserialize<T>(utf8bin.AsSpan(), options);
-        }
-
-        /// <summary>
-        /// Parses a json encoded string to a json documen
-        /// </summary>
-        /// <param name="jsonString"></param>
-        /// <param name="options"></param>
-        /// <returns>If the json string is null, returns null, otherwise the json document around the data</returns>
-        /// <exception cref="JsonException"></exception>
-        [Obsolete("Unused and unsupported, will be removed in a future release.")]
-        public static JsonDocument? AsJsonDocument(this string jsonString, JsonDocumentOptions options = default)
-        {
-            return jsonString == null ? null : JsonDocument.Parse(jsonString, options);
-        }
-
-        /// <summary>
         /// Shortcut extension to <see cref="JsonElement.GetProperty(string)"/> and returns a string 
         /// only if the property exists and is a string value.
         /// </summary>
@@ -153,17 +95,7 @@ namespace VNLib.Utils.Extensions
                 && el.ValueKind == JsonValueKind.String
                 ? el.GetString()
                 : null;
-        }
-
-        /// <summary>
-        /// Shortcut extension to <see cref="JsonElement.GetProperty(string)"/> and returns a string 
-        /// </summary>
-        /// <param name="conf"></param>
-        /// <param name="propertyName">The name of the property to get the string value of</param>
-        /// <returns>If the property exists, returns the string stored at that property</returns>
-        [Obsolete("Use the IReadOnlyDictionary overload instead, this will be removed in a future release.")]
-        public static string? GetPropString(this IDictionary<string, JsonElement> conf, string propertyName) 
-            => GetPropString((IReadOnlyDictionary<string, JsonElement>)conf, propertyName);
+        }      
 
         /// <summary>
         /// Merges the current <see cref="JsonDocument"/> with another <see cref="JsonDocument"/> to 

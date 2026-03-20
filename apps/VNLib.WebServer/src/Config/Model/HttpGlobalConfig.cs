@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -91,17 +91,6 @@ namespace VNLib.WebServer.Config.Model
         /// </summary>       
         [JsonPropertyName("request_header_buf_size")]
         public int RequestHeaderBufSize { get; set; }
-
-        /// <summary>
-        /// This property is deprecated and will be removed in a future version.
-        /// </summary>
-        [JsonPropertyName("header_buf_size")]
-        [Obsolete("Use RequestHeaderBufSize instead. This property will be removed in a future version.")]
-        public int HeaderBufferSize
-        {
-            get => RequestHeaderBufSize;
-            init => RequestHeaderBufSize = value;
-        }
 
         /// <summary>
         /// The size of the buffer used to store response headers.

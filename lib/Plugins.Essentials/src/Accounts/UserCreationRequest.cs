@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -43,16 +43,6 @@ namespace VNLib.Plugins.Essentials.Accounts
 
         ///<inheritdoc/>
         public string Username { get; init; } = string.Empty;
-
-        /// <summary>
-        /// Obsolete: Use the Username property instead
-        /// </summary>
-        [Obsolete("Use the Username property instead")]
-        public string EmailAddress
-        {
-            get => Username;
-            init => Username = value;
-        }
 
         ///<inheritdoc/>
         public bool UseRawPassword { get; init; }

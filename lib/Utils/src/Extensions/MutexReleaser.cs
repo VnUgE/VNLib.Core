@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -47,12 +47,5 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void ReleaseMutex() => Handle.ReleaseMutex();
-
-        /// <summary>
-        /// Releases the held System.Threading.Mutex once.
-        /// </summary>
-        [Obsolete]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void ReleaseMutext() => ReleaseMutex();       
     }
 }

@@ -1,23 +1,26 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <RootNamespace>VNLib.Net.Transport</RootNamespace>
-    <AssemblyName>VNLib.Net.Transport.SimpleTCP</AssemblyName>
+    <RootNamespace>VNLib.Net.Transport.Tcp</RootNamespace>
+    <AssemblyName>VNLib.Net.Transport.Tcp</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+
+    <!-- Enable configureAwait as an error for now for TCP. In time this will elevate module wide --> 
+    <WarningsAsErrors>CA2007;</WarningsAsErrors>    
   </PropertyGroup>
   
   <PropertyGroup>
-    <PackageId>VNLib.Net.Transport.SimpleTCP</PackageId>
+    <PackageId>VNLib.Net.Transport.Tcp</PackageId>
     <Product>VNLib Simple Transport Library</Product>
-    <PackageTags>vnlib, tcp, transport, simpletcp, networking</PackageTags>
+    <PackageTags>vnlib, tcp, transport, networking</PackageTags>
     <Description>Provides a library for single process asynchronous, event driven, TCP socket listening and supporting structures to implement simple high performance TCP servers with or without TLS security.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Transport.SimpleTCP</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Transport.Tcp</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>

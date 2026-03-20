@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -186,8 +186,8 @@ namespace VNLib.Hashing.IdentityUtility
         /// current tokens payload segment
         /// </summary>
         /// <param name="jwt"></param>
-        /// <param name="initCapacity">The inital cliam capacity</param>
-        /// <returns>The fluent chainable stucture</returns>
+        /// <param name="initCapacity">The initial claim capacity</param>
+        /// <returns>The fluent chainable structure</returns>
         public static JwtPayload InitPayloadClaim(this JsonWebToken jwt, int initCapacity = 0) => new(jwt, initCapacity);
 
         /// <summary>

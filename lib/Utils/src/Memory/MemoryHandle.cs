@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -136,7 +136,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Initialzies an empty memory handle. Properties will raise exceptions
         /// when accessed, however <see cref="IMemoryHandle{T}"/> operations are 
-        /// considered "safe" meaning they should never raise excpetions
+        /// considered "safe" meaning they should never raise exceptions
         /// </summary>
         public MemoryHandle() : base(false)
         {

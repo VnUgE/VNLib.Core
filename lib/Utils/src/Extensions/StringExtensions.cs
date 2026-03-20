@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -39,7 +39,7 @@ namespace VNLib.Utils.Extensions
     public delegate void StatelessSpanAction(ReadOnlySpan<char> line);
 
     /// <summary>
-    /// Extention methods for string (character buffer)
+    /// Extension methods for string (character buffer)
     /// </summary>
     public static class StringExtensions
     {

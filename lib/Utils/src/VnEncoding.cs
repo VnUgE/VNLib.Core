@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -45,66 +45,8 @@ namespace VNLib.Utils
     /// </summary>
     public static class VnEncoding
     {
-
-        /// <summary>
-        /// Encodes a <see cref="ReadOnlySpan{T}"/> with the specified <see cref="Encoding"/> to a <see cref="VnMemoryStream"/> that must be disposed by the user
-        /// </summary>
-        /// <param name="data">Data to be encoded</param>
-        /// <param name="encoding"><see cref="Encoding"/> to encode data with</param>
-        /// <param name="heap">Heap to allocate memory from</param>
-        /// <returns>A <see cref="Stream"/> contating the encoded data</returns>
-        public static VnMemoryStream GetMemoryStream(ReadOnlySpan<char> data, Encoding encoding, IUnmanagedHeap? heap = null)
-        {
-            ArgumentNullException.ThrowIfNull(encoding);
-
-            //Assign default heap if not specified
-            heap ??= MemoryUtil.Shared;
-            
-            //Create new memory handle to copy data to
-            MemoryHandle<byte>? handle = null;
-            try
-            {
-                //get number of bytes
-                int byteCount = encoding.GetByteCount(data);
-                //resize the handle to fit the data
-                handle = heap.Alloc<byte>(byteCount);
-                //encode
-                int size = encoding.GetBytes(data, handle.Span);
-                //Consume the handle into a new vnmemstream and return it
-                return VnMemoryStream.ConsumeHandle(handle, size, readOnly: true);
-            }
-            catch
-            {
-                //Dispose the handle if there is an excpetion
-                handle?.Dispose();
-                throw;
-            }
-        }
-       
-        /// <summary>
-        /// Attempts to deserialze a json object from a stream of UTF8 data
-        /// </summary>
-        /// <typeparam name="T">The type of the object to deserialize</typeparam>
-        /// <param name="data">Binary data to read from</param>
-        /// <param name="options"><see cref="JsonSerializerOptions"/> object to pass to deserializer</param>
-        /// <param name="cancellationToken"></param>
-        /// <returns>The object decoded from the stream</returns>
-        /// <exception cref="JsonException"></exception>
-        /// <exception cref="NotSupportedException"></exception>
-        public static ValueTask<T?> JSONDeserializeFromBinaryAsync<T>(
-            Stream? data, 
-            JsonSerializerOptions? options = null, 
-            CancellationToken cancellationToken = default
-        )
-        {
-            //Return default if null
-            return data == null || data.Length == 0 
-                ? ValueTask.FromResult<T?>(default) 
-                : JsonSerializer.DeserializeAsync<T>(data, options, cancellationToken);
-        }      
-
         #region Base32
-        
+
         private const string RFC_4648_BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
         /// <summary>
@@ -1013,7 +955,7 @@ namespace VNLib.Utils
         /// <param name="buffer">The intput binary buffer to base64url encode</param>
         /// <param name="dataLength">The data within the buffer to encode, must be smaller than the entire buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured.</returns>
+        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred.</returns>
         public static ERRNO Base64UrlEncodeInPlace(Span<byte> buffer, int dataLength, bool includePadding)
         {
             //Convert to base64
@@ -1064,17 +1006,6 @@ namespace VNLib.Utils
         }
 
         /// <summary>
-        /// Converts binary data to it's base64url encoded representation and may allocate a temporary 
-        /// heap buffer.
-        /// </summary>
-        /// <param name="rawData">The binary data to encode</param>
-        /// <param name="includePadding">A value that indicates if the base64 padding characters should be included</param>
-        /// <returns>The base64url encoded string</returns>
-        /// <exception cref="ArgumentException"></exception>
-        [Obsolete("Use Base64UrlEncode instead")]
-        public static string ToBase64UrlSafeString(ReadOnlySpan<byte> rawData, bool includePadding) => Base64UrlEncode(rawData, includePadding);
-
-        /// <summary>
         /// Encodes the binary input buffer to its base64url safe utf8 encoding, and writes the output 
         /// to the supplied buffer. Be sure to call <see cref="Base64.GetMaxEncodedToUtf8Length(int)"/>
         /// to allocate the correct size buffer for encoding
@@ -1082,7 +1013,7 @@ namespace VNLib.Utils
         /// <param name="input">The intput binary buffer to base64url encode</param>
         /// <param name="output">The output buffer to write the base64url safe encodded date to</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured.</returns>
+        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred.</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<byte> output, bool includePadding)
         {
             //Do bsae64 encoding avoiding the tripple copy
@@ -1152,7 +1083,7 @@ namespace VNLib.Utils
         /// <param name="output">The character output buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
         /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>
-        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occured</returns>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<char> output, bool includePadding, Encoding? encoding = null)
         {
             encoding ??= Encoding.UTF8;

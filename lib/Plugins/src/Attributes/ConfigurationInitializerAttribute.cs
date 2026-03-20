@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
-* File: ConfigurationInitalizerAttribute.cs 
+* File: ConfigurationInitializerAttribute.cs 
 *
-* ConfigurationInitalizerAttribute.cs is part of VNLib.Plugins which is part of the larger 
+* ConfigurationInitializerAttribute.cs is part of VNLib.Plugins which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins is free software: you can redistribute it and/or modify 
@@ -36,7 +36,7 @@ namespace VNLib.Plugins.Attributes
     /// Method signature <code>public void [methodname] (<see cref="ReadOnlySpan{Byte}"/> config)</code> 
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-    public sealed class ConfigurationInitalizerAttribute : Attribute
+    public sealed class ConfigurationInitializerAttribute : Attribute
     { }
 
     /// <summary>

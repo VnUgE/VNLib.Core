@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -158,7 +158,7 @@ namespace VNLib.Utils.Async.Tests
              * to the allocation copy, and assignment, to cause a race condition.
              * 
              * Testing to make sure the string is updated consitently during a multi threaded 
-             * process, and that a race condition occured when not using the serializer is a 
+             * process, and that a race condition occurred when not using the serializer is a 
              * non-ideal test, but it is a simple test to confirm the serializer is working.
              */
 

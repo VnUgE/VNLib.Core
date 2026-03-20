@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -231,7 +231,7 @@ namespace VNLib.Utils.IO
 
             if (!destination.CanWrite)
             {
-                throw new IOException("The destinaion stream is not writeable");
+                throw new IOException("The destination stream is not writeable");
             }
 
             while (LenToPosDiff > 0)
@@ -267,7 +267,7 @@ namespace VNLib.Utils.IO
 
             if (!destination.CanWrite)
             {
-                throw new IOException("The destinaion stream is not writeable");
+                throw new IOException("The destination stream is not writable");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -597,7 +597,7 @@ namespace VNLib.Utils.IO
 
         /// <summary>
         /// Returns a <see cref="ReadOnlyMemory{T}"/> structure which is a window of the buffered
-        /// data as it currently sits. For writeable straems, you must call this function 
+        /// data as it currently sits. For writeable streams, you must call this function 
         /// every time the size of the stream changes. The memory structure is just a "pointer" to 
         /// the internal buffer.
         /// </summary>
@@ -611,8 +611,8 @@ namespace VNLib.Utils.IO
         public ReadOnlyMemory<byte> AsMemory()
         {
             /*
-             * Safe cast stram length to int, because memory window requires a 32bit 
-             * integer. Also will throw before allocating the mmemory manager
+             * Safe cast stream length to int, because memory window requires a 32bit 
+             * integer. Also will throw before allocating the memory manager
              */
 
             int len = Convert.ToInt32(_length);
@@ -623,7 +623,7 @@ namespace VNLib.Utils.IO
             Debug.Assert(asMemory != null);
 
             /*
-             * Buffer window may be larger than the actual stream legnth, so 
+             * Buffer window may be larger than the actual stream length, so 
              * slice the memory to the actual length of the stream
              */
             return asMemory.Memory[..len];

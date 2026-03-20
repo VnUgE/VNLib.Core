@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -47,7 +47,7 @@ namespace VNLib.WebServer.VirtualHosts
         {
             //Update file attributes
             AllowedAttributes = FileAttributes.Archive | FileAttributes.Compressed | FileAttributes.Normal | FileAttributes.ReadOnly;
-            DissallowedAttributes = FileAttributes.Device
+            DisallowedAttributes = FileAttributes.Device
                 | FileAttributes.Directory
                 | FileAttributes.Encrypted
                 | FileAttributes.Hidden

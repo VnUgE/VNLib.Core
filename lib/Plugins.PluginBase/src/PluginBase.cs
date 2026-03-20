@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.PluginBase
@@ -114,7 +114,7 @@ namespace VNLib.Plugins
         /// The host application may invoke this method when the assembly is loaded and this plugin is constructed to pass
         /// a configuration object to the instance. This method populates the configuration objects if applicable.
         /// </summary>
-        [ConfigurationInitalizer]
+        [ConfigurationInitializer]
         public virtual void InitConfig(ReadOnlySpan<byte> config)
         {
             if (config.IsEmpty)
@@ -129,7 +129,7 @@ namespace VNLib.Plugins
         }
 
         /// <summary>
-        /// Responsible for initalizing the log provider. The host should invoke this method
+        /// Responsible for initializing the log provider. The host should invoke this method
         /// directly after the configuration is initialized
         /// </summary>
         /// <param name="cmdArgs"></param>
