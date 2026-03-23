@@ -43,7 +43,7 @@ using static VNLib.Plugins.Essentials.Statics;
  * should not be cached until a safe use policy is created.
  */
 
-#pragma warning disable CA1051 // Do not declare visible instance fields
+
 
 namespace VNLib.Plugins.Essentials.Sessions
 {   
@@ -89,7 +89,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// <summary>
         /// Was the session Initially established on a secure connection?
         /// </summary>
-        public readonly SslProtocols SecurityProcol;
+        public readonly SslProtocols SecurityProtocol;
 
         /// <summary>
         /// Session stored User-Agent
@@ -130,18 +130,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.Created;
-        }  
-
-        /// <summary>
-        /// Gets or sets the session's login token, if set to a non-empty/null value, will trigger an upgrade on close
-        /// </summary>
-        public readonly string Token
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.Token;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => UserSession.Token = value;
-        }
+        }       
 
         /// <summary>
         /// <para>
@@ -250,14 +239,14 @@ namespace VNLib.Plugins.Essentials.Sessions
                 //Since all values will be the same as the connection, cache the connection values
                 UserAgent = ci.UserAgent;
                 SpecifiedOrigin = ci.Origin;
-                SecurityProcol = ci.GetSslProtocol();
+                SecurityProtocol = ci.GetSslProtocol();
             }
             else
             {
                 //Load/decode stored variables
                 UserAgent = session.GetUserAgent();
                 SpecifiedOrigin = session.GetOriginUri();
-                SecurityProcol = session.GetSecurityProtocol();
+                SecurityProtocol = session.GetSecurityProtocol();
             }
         }
 
