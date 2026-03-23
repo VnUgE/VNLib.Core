@@ -219,7 +219,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <returns>True if the connection has the desired authorization status</returns>
         /// <exception cref="NotSupportedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsClientAuthorized(this HttpEntity entity, AuthorzationCheckLevel mode = AuthorzationCheckLevel.Critical)
+        public static bool IsClientAuthorized(this HttpEntity entity, AuthorizationCheckLevel mode = AuthorizationCheckLevel.Critical)
         {
             IAccountSecurityProvider prov = entity.GetSecProviderOrThrow();
 

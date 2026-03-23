@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -56,9 +56,9 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// security level
         /// </summary>
         /// <param name="entity">The connection to determine the status of</param>
-        /// <param name="level">The authorziation level to check for</param>
-        /// <returns>True if the given connection meets the desired authorzation status</returns>
-        bool IsClientAuthorized(HttpEntity entity, AuthorzationCheckLevel level);
+        /// <param name="level">The authorization level to check for</param>
+        /// <returns>True if the given connection meets the desired authorization status</returns>
+        bool IsClientAuthorized(HttpEntity entity, AuthorizationCheckLevel level);
 
         /// <summary>
         /// Encryptes data using the stored client's authorization information. 

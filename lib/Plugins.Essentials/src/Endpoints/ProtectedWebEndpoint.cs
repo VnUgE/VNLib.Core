@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -32,15 +32,15 @@ namespace VNLib.Plugins.Essentials.Endpoints
 {
     /// <summary>
     /// Implements <see cref="UnprotectedWebEndpoint"/> to provide 
-    /// authoriation checks before processing
+    /// authorization checks before processing
     /// </summary>
     public abstract class ProtectedWebEndpoint : UnprotectedWebEndpoint
     {
         /// <summary>
-        /// Gets the minium <see cref="AuthorzationCheckLevel"/> required by a client to
+        /// Gets the minimum <see cref="AuthorizationCheckLevel"/> required by a client to
         /// access this endpoint
         /// </summary>
-        protected virtual AuthorzationCheckLevel AuthLevel { get; } = AuthorzationCheckLevel.Critical;
+        protected virtual AuthorizationCheckLevel AuthLevel { get; } = AuthorizationCheckLevel.Critical;
 
         ///<inheritdoc/>
         protected override ERRNO PreProccess(HttpEntity entity)
