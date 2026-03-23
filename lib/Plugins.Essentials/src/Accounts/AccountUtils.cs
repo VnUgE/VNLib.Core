@@ -260,7 +260,7 @@ namespace VNLib.Plugins.Essentials.Accounts
 
             //Store variables
             entity.Session.UserID = user.UserID;
-            entity.Session.Privilages = user.Privileges;
+            entity.Session.Privileges = user.Privileges;
 
             //Store client id for later use
             entity.Session[BROWSER_ID_ENTRY] = secInfo.ClientId;
@@ -424,7 +424,9 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="level">64bit privilege level to compare</param>
         /// <returns>true if the current user has at least the specified level or higher</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasLevel(this in SessionInfo session, byte level) => (session.Privilages & LEVEL_MSK) >= (((ulong)level << LEVEL_MSK_OFFSET) & LEVEL_MSK);
+        public static bool HasLevel(this in SessionInfo session, byte level) 
+            => (session.Privileges & LEVEL_MSK) >= (((ulong)level << LEVEL_MSK_OFFSET) & LEVEL_MSK);
+
         /// <summary>
         /// Determines if the group ID of the current user matches the specified group
         /// </summary>
@@ -432,7 +434,9 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="groupId">Group ID to compare</param>
         /// <returns>true if the user belongs to the group, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasGroup(this in SessionInfo session, ushort groupId) => (session.Privilages & GROUP_MSK) == (((ulong)groupId << GROUP_MSK_OFFSET) & GROUP_MSK);
+        public static bool HasGroup(this in SessionInfo session, ushort groupId)
+            => (session.Privileges & GROUP_MSK) == (((ulong)groupId << GROUP_MSK_OFFSET) & GROUP_MSK);
+
         /// <summary>
         /// Determines if the current user has an equivalent option code
         /// </summary>
@@ -440,26 +444,33 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="option">Option code check</param>
         /// <returns>true if the user options field equals the option</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasOption(this in SessionInfo session, byte option) => (session.Privilages & OPTIONS_MSK) == (((ulong)option << OPTIONS_MSK_OFFSET) & OPTIONS_MSK);
+        public static bool HasOption(this in SessionInfo session, byte option) 
+            => (session.Privileges & OPTIONS_MSK) == (((ulong)option << OPTIONS_MSK_OFFSET) & OPTIONS_MSK);
 
         /// <summary>
-        /// Returns the status of the user's privlage read bit
+        /// Returns the status of the user's privilege read bit
         /// </summary>
         /// <returns>true if the current user has the read permission, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CanRead(this in SessionInfo session) => (session.Privilages & READ_MSK) == READ_MSK;
+        public static bool CanRead(this in SessionInfo session) 
+            => (session.Privileges & READ_MSK) == READ_MSK;
+
         /// <summary>
-        /// Returns the status of the user's privlage write bit
+        /// Returns the status of the user's privilege write bit
         /// </summary>
         /// <returns>true if the current user has the write permission, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CanWrite(this in SessionInfo session) => (session.Privilages & WRITE_MSK) == WRITE_MSK;
+        public static bool CanWrite(this in SessionInfo session) 
+            => (session.Privileges & WRITE_MSK) == WRITE_MSK;
+
         /// <summary>
-        /// Returns the status of the user's privlage delete bit
+        /// Returns the status of the user's privilege delete bit
         /// </summary>
         /// <returns>true if the current user has the delete permission, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CanDelete(this in SessionInfo session) => (session.Privilages & DELETE_MSK) == DELETE_MSK;
+        public static bool CanDelete(this in SessionInfo session) 
+            => (session.Privileges & DELETE_MSK) == DELETE_MSK;
+
         #endregion
 
         #region flc       

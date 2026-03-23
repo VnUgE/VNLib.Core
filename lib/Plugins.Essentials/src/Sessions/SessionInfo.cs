@@ -160,14 +160,14 @@ namespace VNLib.Plugins.Essentials.Sessions
         }
 
         /// <summary>
-        /// Privilages associated with user specified during login
+        /// Privileges associated with user specified during login
         /// </summary>
-        public readonly ulong Privilages
+        public readonly ulong Privileges
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.Privilages;
+            get => UserSession.Privileges;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => UserSession.Privilages = value;
+            set => UserSession.Privileges = value;
         }
 
         /// <summary>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -107,7 +107,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         }
      
         ///<inheritdoc/>
-        public virtual ulong Privilages
+        public virtual ulong Privileges
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => string.IsNullOrWhiteSpace(this[PRIV_ENTRY]) ? 0 : Convert.ToUInt64(this[PRIV_ENTRY], 16);

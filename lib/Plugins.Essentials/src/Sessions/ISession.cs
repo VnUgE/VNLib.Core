@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -48,9 +48,9 @@ namespace VNLib.Plugins.Essentials.Sessions
         DateTimeOffset Created { get; }
 
         /// <summary>
-        /// Privilages associated with user specified during login
+        /// Privileges associated with user specified during login
         /// </summary>
-        ulong Privilages { get; set; }
+        ulong Privileges { get; set; }
 
         /// <summary>
         /// Key that identifies the current session. (Identical to cookie::sessionid)
