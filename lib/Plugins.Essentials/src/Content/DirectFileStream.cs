@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -30,8 +30,6 @@ using Microsoft.Win32.SafeHandles;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
-
-#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
 namespace VNLib.Plugins.Essentials.Content
 {
@@ -66,7 +64,8 @@ namespace VNLib.Plugins.Essentials.Content
         public async ValueTask<int> ReadAsync(Memory<byte> buffer)
         {
             //Read data from the file into the buffer, using the current position as the starting offset
-            long read = await RandomAccess.ReadAsync(fileHandle, buffer, _position, default);
+            long read = await RandomAccess.ReadAsync(fileHandle, buffer, _position, default)
+                    .ConfigureAwait(false);
 
             _position += read;
 
@@ -76,13 +75,14 @@ namespace VNLib.Plugins.Essentials.Content
         ///<inheritdoc/>
         public ValueTask DisposeAsync()
         {
-            //Interal dispose
+            //Internal dispose
             Dispose();
             return ValueTask.CompletedTask;
         }
 
         ///<inheritdoc/>
-        protected override void Free() => fileHandle.Dispose();
+        protected override void Free() 
+            => fileHandle.Dispose();
 
         /// <summary>
         /// Equivalent to <see cref="FileStream.Seek(long, SeekOrigin)"/> but for a 

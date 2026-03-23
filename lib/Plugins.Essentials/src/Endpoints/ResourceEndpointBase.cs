@@ -107,14 +107,12 @@ namespace VNLib.Plugins.Essentials.Endpoints
                     return VfReturnType.VirtualSkip;
                 }
 
-                //If websockets are quested allow them to be processed in a logged-in/secure context
-                if (entity.Server.IsWebSocketRequest)
-                {
-                    return await WebsocketRequestedAsync(entity);
-                }
+                //If websockets are requested allow them to be processed in a logged-in/secure context
+                ValueTask<VfReturnType> result = entity.Server.IsWebSocketRequest
+                    ? WebsocketRequestedAsync(entity)
+                    : OnProcessAsync(entity);
                
-                //Call process method
-                return await OnProcessAsync(entity);
+                return await result.ConfigureAwait(false);
             }
             catch (InvalidJsonRequestException ije)
             {
@@ -135,10 +133,10 @@ namespace VNLib.Plugins.Essentials.Endpoints
                 {
                     Result = "Request body is not valid json"
                 };
+
                 //Set the response webm
-                entity.CloseResponseJson(HttpStatusCode.BadRequest, webm);
-                //return virtual
-                return VfReturnType.VirtualSkip;
+                
+                return VirtualCloseJson(entity, webm, HttpStatusCode.BadRequest);
             }
             catch (TerminateConnectionException)
             {
