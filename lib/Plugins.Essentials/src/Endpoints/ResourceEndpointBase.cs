@@ -40,8 +40,23 @@ namespace VNLib.Plugins.Essentials.Endpoints
     /// Provides a base class for implementing un-authenticated resource endpoints
     /// with basic (configurable) security checks
     /// </summary>
-    public abstract class ResourceEndpointBase : VirtualEndpoint<HttpEntity>
+    public abstract class ResourceEndpointBase : MarshalByRefObject, IVirtualEndpoint<HttpEntity>
     {
+        /*
+         * These fields allow for dynamic initialization of the endpoint properties
+         * after construction, which is necessary for upstream projects. 
+         * 
+         * Path and log properties can be overridden by child classes. This is 
+         * not an ideal workaround, but is at least pulls the properties into 
+         * the current class instead of upstream abstract classes. 
+         * 
+         * We may choose to remove this class from the package at some point in favor
+         * of extension libraries.
+         */
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+        private string _path;
+        private ILogProvider _log;
+#pragma warning restore CS8618
 
         /// <summary>
         /// Default protection settings. Protection settings are the most 
@@ -49,8 +64,33 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// </summary>
         protected virtual ProtectionSettings EndpointProtectionSettings { get; }
 
+        /// <summary>
+        /// An <see cref="ILogProvider"/> to write logs to
+        /// </summary>
+        protected virtual ILogProvider Log => _log;
+
+        /// <inheritdoc/>
+        public virtual string Path => _path;
+
+        /// <summary>
+        /// Exposes a protected method for initializing the endpoint with a path and 
+        /// log provider. This is necessary because endpoints are often constructed by 
+        /// the runtime and needs to dynamically assign properties to the endpoint after 
+        /// construction.
+        /// </summary>
+        /// <param name="path">The path to assign to the endpoint</param>
+        /// <param name="log">The log provider to assign to the endpoint</param>
+        protected void InitEndpoint(string path, ILogProvider log)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(path);
+            ArgumentNullException.ThrowIfNull(log);
+
+            _log = log;
+            _path = path;
+        }
+
         ///<inheritdoc/>
-        public override async ValueTask<VfReturnType> Process(HttpEntity entity)
+        public virtual async ValueTask<VfReturnType> Process(HttpEntity entity)
         {
             try
             {
