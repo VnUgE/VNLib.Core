@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -43,33 +43,48 @@ namespace VNLib.Plugins.Essentials.Sessions
         public const string LOCAL_TIME_ENTRY = "__.lot";     
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string GetUserAgent(this ISession session) => session[USER_AGENT_ENTRY];
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetUserAgent(this ISession session, string? userAgent) => session[USER_AGENT_ENTRY] = userAgent;
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string GetOrigin(this ISession session) => session[ORIGIN_ENTRY];
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Uri? GetOriginUri(this ISession session) => Uri.TryCreate(session[ORIGIN_ENTRY], UriKind.Absolute, out Uri? origin) ? origin : null;
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetOrigin(this ISession session, string origin) => session[ORIGIN_ENTRY] = origin;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string GetRefer(this ISession session) => session[REFER_ENTRY];
+        public static string GetUserAgent(this ISession session) 
+            => session[USER_AGENT_ENTRY];
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetRefer(this ISession session, string? refer) => session[REFER_ENTRY] = refer;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SslProtocols GetSecurityProtocol(this ISession session) => (SslProtocols)session.GetValueType<string, int>(SECURE_ENTRY);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void SetSecurityProtocol(this ISession session, SslProtocols protocol) => session[SECURE_ENTRY] = VnEncoding.ToBase32String((int)protocol);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsCrossOrigin(this ISession session) => session[CROSS_ORIGIN] == bool.TrueString;
+        public static void SetUserAgent(this ISession session, string? userAgent) 
+            => session[USER_AGENT_ENTRY] = userAgent;
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void IsCrossOrigin(this ISession session, bool crossOrign) => session[CROSS_ORIGIN] = crossOrign.ToString();
+        public static string GetOrigin(this ISession session) 
+            => session[ORIGIN_ENTRY];
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Uri? GetOriginUri(this ISession session) 
+            => Uri.TryCreate(session[ORIGIN_ENTRY], UriKind.Absolute, out Uri? origin) ? origin : null;
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void SetOrigin(this ISession session, string origin) 
+            => session[ORIGIN_ENTRY] = origin;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string GetRefer(this ISession session) 
+            => session[REFER_ENTRY];
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void SetRefer(this ISession session, string? refer) 
+            => session[REFER_ENTRY] = refer;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SslProtocols GetSecurityProtocol(this ISession session) 
+            => (SslProtocols)session.GetValueType<string, int>(SECURE_ENTRY);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void SetSecurityProtocol(this ISession session, SslProtocols protocol) 
+            => session[SECURE_ENTRY] = VnEncoding.ToBase32String((int)protocol);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsCrossOrigin(this ISession session) 
+            => session[CROSS_ORIGIN] == bool.TrueString;
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void IsCrossOrigin(this ISession session, bool crossOrigin) 
+            => session[CROSS_ORIGIN] = crossOrigin.ToString();
 
         /// <summary>
         /// Initializes a "new" session with initial varaibles from the current connection

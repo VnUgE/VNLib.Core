@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -45,7 +45,8 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// <param name="sessionData">The session data instance</param>
     /// <param name="callback">A callback that is invoked when the handle is released</param>
     /// <param name="entityStatus"></param>
-    public readonly struct SessionHandle(ISession? sessionData, FileProcessArgs entityStatus, SessionReleaseCallback? callback) : IEquatable<SessionHandle>
+    public readonly struct SessionHandle(ISession? sessionData, FileProcessArgs entityStatus, SessionReleaseCallback? callback) 
+        : IEquatable<SessionHandle>
     {
         /// <summary>
         /// An empty <see cref="SessionHandle"/> instance. (A handle without a session object)

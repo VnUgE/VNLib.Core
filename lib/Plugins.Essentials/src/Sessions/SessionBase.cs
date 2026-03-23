@@ -147,6 +147,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             Flags.Set(INVALID_MSK);
             Flags.Set(ALL_INVALID_MSK, all);
         }
+
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public virtual void RegenID() => Flags.Set(REGEN_ID_MSK);
@@ -160,6 +161,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// <param name="key">The key/index to get the value for</param>
         /// <returns>The value stored at the specified key</returns>
         protected abstract string IndexerGet(string key);
+
         /// <summary>
         /// Sets a value requested by the indexer
         /// </summary>

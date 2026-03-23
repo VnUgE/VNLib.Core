@@ -61,7 +61,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         bool IsClientAuthorized(HttpEntity entity, AuthorizationCheckLevel level);
 
         /// <summary>
-        /// Encryptes data using the stored client's authorization information. 
+        /// Encrypts data using the stored client's authorization information. 
         /// </summary>
         /// <param name="entity">The connection to encrypt data for</param>
         /// <param name="data">The data to encrypt</param>

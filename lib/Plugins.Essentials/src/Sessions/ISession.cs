@@ -68,9 +68,9 @@ namespace VNLib.Plugins.Essentials.Sessions
         string UserID { get; set; }
 
         /// <summary>
-        /// Marks the session as invalid
+        /// The IP address belonging to the client
         /// </summary>
-        void Invalidate(bool all = false);
+        IPAddress UserIP { get; }
 
         /// <summary>
         /// Gets or sets the session's authorization token
@@ -78,9 +78,9 @@ namespace VNLib.Plugins.Essentials.Sessions
         string Token { get; set; }
 
         /// <summary>
-        /// The IP address belonging to the client
+        /// Marks the session as invalid
         /// </summary>
-        IPAddress UserIP { get; }
+        void Invalidate(bool all = false);
 
         /// <summary>
         /// Sets the session ID to be regenerated if applicable

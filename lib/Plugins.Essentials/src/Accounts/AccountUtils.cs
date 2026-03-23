@@ -39,7 +39,7 @@ namespace VNLib.Plugins.Essentials.Accounts
 
     /// <summary>
     /// Provides essential constants, static methods, and session/user extensions 
-    /// to facilitate unified user-controls, athentication, and security
+    /// to facilitate unified user-controls, authentication, and security
     /// application-wide
     /// </summary>
     public static partial class AccountUtil
@@ -212,10 +212,10 @@ namespace VNLib.Plugins.Essentials.Accounts
         }
 
         /// <summary>
-        /// Determines if the current client has the authroziation level to access a given resource
+        /// Determines if the current client has the authorization level to access a given resource
         /// </summary>
         /// <param name="entity"></param>
-        /// <param name="mode">The authoziation level</param>
+        /// <param name="mode">The authorization level</param>
         /// <returns>True if the connection has the desired authorization status</returns>
         /// <exception cref="NotSupportedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
