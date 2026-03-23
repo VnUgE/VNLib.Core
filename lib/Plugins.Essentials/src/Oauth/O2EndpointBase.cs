@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -49,7 +49,7 @@ namespace VNLib.Plugins.Essentials.Oauth
             try
             {
                 VfReturnType rt;
-                ERRNO preProc = PreProccess(entity);
+                ERRNO preProc = PreProcess(entity);
 
                 //Entity was responded to by the pre-processor
                 if (preProc < 0)
@@ -129,7 +129,7 @@ namespace VNLib.Plugins.Essentials.Oauth
         /// </summary>
         /// <param name="entity">The request entity to process</param>
         /// <inheritdoc/>
-        protected override ERRNO PreProccess(HttpEntity entity)
+        protected override ERRNO PreProcess(HttpEntity entity)
         {
             //Make sure session is loaded (token is valid)
             if (!entity.Session.IsSet)
@@ -142,7 +142,7 @@ namespace VNLib.Plugins.Essentials.Oauth
             {
                 return false;
             }
-            return base.PreProccess(entity);
+            return base.PreProcess(entity);
         }
 
         public static VfReturnType O2VirtualClose(HttpEntity entity, HttpStatusCode statusCode, ErrorType type, string message)

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -33,7 +33,9 @@ namespace VNLib.Plugins.Essentials.Endpoints
     public abstract class UnprotectedWebEndpoint : ResourceEndpointBase
     {
         ///<inheritdoc/>
-        protected override ERRNO PreProccess(HttpEntity entity) 
-            => base.PreProccess(entity) && entity.Session.IsSet && entity.Session.SessionType == Sessions.SessionType.Web;
+        protected override ERRNO PreProcess(HttpEntity entity) 
+            => base.PreProcess(entity) && 
+            entity.Session.IsSet && 
+            entity.Session.SessionType == Sessions.SessionType.Web;
     }
 }

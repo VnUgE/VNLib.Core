@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -54,7 +54,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
         {
             try
             {
-                ERRNO preProc = PreProccess(entity);
+                ERRNO preProc = PreProcess(entity);
 
                 if (preProc == ERRNO.E_FAIL)
                 {
@@ -137,7 +137,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// <see cref="VfReturnType.Forbidden"/>, less than 0 if entity was 
         /// responded to.
         /// </returns>
-        protected virtual ERRNO PreProccess(HttpEntity entity)
+        protected virtual ERRNO PreProcess(HttpEntity entity)
         {
             //Disable cache if requested
             if (!EndpointProtectionSettings.EnableCaching)

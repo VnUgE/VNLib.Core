@@ -43,9 +43,9 @@ namespace VNLib.Plugins.Essentials.Endpoints
         protected virtual AuthorizationCheckLevel AuthLevel { get; } = AuthorizationCheckLevel.Critical;
 
         ///<inheritdoc/>
-        protected override ERRNO PreProccess(HttpEntity entity)
+        protected override ERRNO PreProcess(HttpEntity entity)
         {
-            if (!base.PreProccess(entity))
+            if (!base.PreProcess(entity))
             {
                 return false;
             }
