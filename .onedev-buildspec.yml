@@ -92,7 +92,7 @@ jobs:
   - type: CommandStep
     name: ubuntu-x64 tests
     runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:8.0.418-noble-amd64@@sha256:e5d18e717d5adfd5fa07cea81741270cd91b141701934d4967761af92a081519
+    image: mcr.microsoft.com/dotnet/sdk:8.0.419-noble-amd64@@sha256:ec8b57d812bc72d1986abf1637ac183896129c35e08d1a858d94d355c8045ab4
     interpreter:
       type: DefaultInterpreter
       commands: |
@@ -132,7 +132,7 @@ jobs:
   - type: CommandStep
     name: fedora-x64 tests
     runInContainer: true
-    image: docker.io/fedora:43@@sha256:2ad3073554aef41c15b2c52e968ec0540c931bc3dab8c599ca6eb6f32f3f2d14
+    image: docker.io/fedora:43@@sha256:781b7642e8bf256e9cf75d2aa58d86f5cc695fd2df113517614e181a5eee9138
     interpreter:
       type: DefaultInterpreter
       commands: |
