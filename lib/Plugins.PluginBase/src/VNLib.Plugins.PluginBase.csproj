@@ -6,6 +6,7 @@
     <RootNamespace>VNLib.Plugins</RootNamespace>
     <AssemblyName>VNLib.Plugins.PluginBase</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   
   <PropertyGroup>

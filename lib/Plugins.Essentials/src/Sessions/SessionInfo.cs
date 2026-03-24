@@ -43,7 +43,7 @@ using static VNLib.Plugins.Essentials.Statics;
  * should not be cached until a safe use policy is created.
  */
 
-#pragma warning disable CA1051 // Do not declare visible instance fields
+
 
 namespace VNLib.Plugins.Essentials.Sessions
 {   
@@ -72,8 +72,8 @@ namespace VNLib.Plugins.Essentials.Sessions
         private readonly SessionFlags _flags;
 
         /// <summary>
-        /// A value indicating if the current instance has been initiailzed 
-        /// with a session. Otherwise properties are undefied
+        /// A value indicating if the current instance has been initialized 
+        /// with a session. Otherwise properties are undefined
         /// </summary>
         public readonly bool IsSet
         {
@@ -87,9 +87,9 @@ namespace VNLib.Plugins.Essentials.Sessions
         public readonly Uri? SpecifiedOrigin;
 
         /// <summary>
-        /// Was the session Initialy established on a secure connection?
+        /// Was the session Initially established on a secure connection?
         /// </summary>
-        public readonly SslProtocols SecurityProcol;
+        public readonly SslProtocols SecurityProtocol;
 
         /// <summary>
         /// Session stored User-Agent
@@ -130,18 +130,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.Created;
-        }  
-
-        /// <summary>
-        /// Gets or sets the session's login token, if set to a non-empty/null value, will trigger an upgrade on close
-        /// </summary>
-        public readonly string Token
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.Token;
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => UserSession.Token = value;
-        }
+        }       
 
         /// <summary>
         /// <para>
@@ -160,14 +149,14 @@ namespace VNLib.Plugins.Essentials.Sessions
         }
 
         /// <summary>
-        /// Privilages associated with user specified during login
+        /// Privileges associated with user specified during login
         /// </summary>
-        public readonly ulong Privilages
+        public readonly ulong Privileges
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.Privilages;
+            get => UserSession.Privileges;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => UserSession.Privilages = value;
+            set => UserSession.Privileges = value;
         }
 
         /// <summary>
@@ -192,33 +181,38 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// Flags the session as invalid. IMPORTANT: the user's session data is no longer valid, no data 
         /// will be saved to the session store when the session closes
         /// </summary>
-        public readonly void Invalidate(bool all = false) => UserSession.Invalidate(all);
+        public readonly void Invalidate(bool all = false)
+            => UserSession.Invalidate(all);
 
         /// <summary>
         /// Marks the session ID to be regenerated during closing event
         /// </summary>
-        public readonly void RegenID() => UserSession.RegenID();
+        public readonly void RegenID()
+            => UserSession.RegenID();
 
         /// <summary>
         /// Marks the session to be detached from the current connection.
         /// </summary>
-        public readonly void Detach() => UserSession.Detach();
+        public readonly void Detach()
+            => UserSession.Detach();
 
 
 #nullable disable
 
         ///<inheritdoc/>
-        public T GetObject<T>(string key) => JsonSerializer.Deserialize<T>(this[key], SR_OPTIONS);
+        public T GetObject<T>(string key) 
+            => JsonSerializer.Deserialize<T>(this[key], SR_OPTIONS);
         
         ///<inheritdoc/>
-        public void SetObject<T>(string key, T obj) => this[key] = obj == null ? null: JsonSerializer.Serialize(obj, SR_OPTIONS);
+        public void SetObject<T>(string key, T obj) 
+            => this[key] = obj == null ? null: JsonSerializer.Serialize(obj, SR_OPTIONS);
 
 #nullable enable
 
         /// <summary>
         /// Accesses the session's general storage
         /// </summary>
-        /// <param name="index">Key for specifie data</param>
+        /// <param name="index">Key for specified data</param>
         /// <returns>Value associated with the key from the session's general storage</returns>
         public readonly string this[string index]
         {
@@ -237,7 +231,7 @@ namespace VNLib.Plugins.Essentials.Sessions
             //Set ip match flag if current ip and stored ip match
             _flags |= trueIp.Equals(session.UserIP) ? SessionFlags.IpMatch : SessionFlags.None;
           
-            //If the session is new, we can store intial security variables
+            //If the session is new, we can store initial security variables
             if (session.IsNew)
             {
                 session.InitNewSession(ci);
@@ -245,31 +239,35 @@ namespace VNLib.Plugins.Essentials.Sessions
                 //Since all values will be the same as the connection, cache the connection values
                 UserAgent = ci.UserAgent;
                 SpecifiedOrigin = ci.Origin;
-                SecurityProcol = ci.GetSslProtocol();
+                SecurityProtocol = ci.GetSslProtocol();
             }
             else
             {
                 //Load/decode stored variables
                 UserAgent = session.GetUserAgent();
                 SpecifiedOrigin = session.GetOriginUri();
-                SecurityProcol = session.GetSecurityProtocol();
+                SecurityProtocol = session.GetSecurityProtocol();
             }
         }
 
         ///<inheritdoc/>
-        public readonly bool Equals(SessionInfo other) => SessionID.Equals(other.SessionID, StringComparison.Ordinal);
+        public readonly bool Equals(SessionInfo other) 
+            => SessionID.Equals(other.SessionID, StringComparison.Ordinal);
 
         ///<inheritdoc/>
-        public readonly override bool Equals(object? obj) => obj is SessionInfo si && Equals(si);
+        public readonly override bool Equals(object? obj) 
+            => obj is SessionInfo si && Equals(si);
 
         ///<inheritdoc/>
-        public readonly override int GetHashCode() => SessionID.GetHashCode(StringComparison.Ordinal);
+        public readonly override int GetHashCode() 
+            => SessionID.GetHashCode(StringComparison.Ordinal);
 
         ///<inheritdoc/>
-        public static bool operator ==(SessionInfo left, SessionInfo right) => left.Equals(right);
+        public static bool operator ==(SessionInfo left, SessionInfo right) 
+            => left.Equals(right);
 
         ///<inheritdoc/>
-        public static bool operator !=(SessionInfo left, SessionInfo right) => !(left == right);
-        
+        public static bool operator !=(SessionInfo left, SessionInfo right) 
+            => !(left == right);
     }
 }

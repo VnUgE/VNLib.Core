@@ -113,13 +113,13 @@ namespace VNLib.Plugins.Essentials
 
 
         /*
-         * Okay. So this is suposed to be a stupid fast lookup table for lock-free 
+         * Okay. So this is supposed to be a stupid fast lookup table for lock-free 
          * service pool exchanges. The goal is for future runtime service expansion.
          * 
-         * The reason lookups must be unnoticabyly fast is because the should be
-         * VERY rarley changed and will be read on every request.
+         * The reason lookups must be unnoticeably fast is because they should be
+         * VERY rarely changed and will be read on every request.
          * 
-         * The goal of this table specifially is to make sure requesting a desired 
+         * The goal of this table specifically is to make sure requesting a desired 
          * service is extremely fast and does not require any locks or synchronization.
          */
         const int SESS_INDEX = 0;
@@ -183,7 +183,8 @@ namespace VNLib.Plugins.Essentials
                 if (sessions != null)
                 {
                     //Get the session
-                    entity.EventSessionHandle = await sessions.GetSessionAsync(httpEvent, entity.EventCancellation);
+                    entity.EventSessionHandle = await sessions.GetSessionAsync(httpEvent, entity.EventCancellation)
+                                                    .ConfigureAwait(false);
 
                     //If the processor had an error recovering the session, return the result to the processor
                     if (entity.EventSessionHandle.EntityStatus != FileProcessArgs.Continue)
@@ -206,7 +207,7 @@ namespace VNLib.Plugins.Essentials
                     }
 
                     //Exec middleware
-                    if (!await _middleware.ProcessAsync(entity))
+                    if (!await _middleware.ProcessAsync(entity).ConfigureAwait(false))
                     {
                         goto RespondAndExit;
                     }
@@ -217,7 +218,8 @@ namespace VNLib.Plugins.Essentials
                         if (config.EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
                         {
                             //Invoke the page handler process method
-                            VfReturnType rt = await vf.Process(entity);
+                            VfReturnType rt = await vf.Process(entity)
+                                                .ConfigureAwait(false);
 
                             //Process a virtual file
                             GetArgsFromVirtualReturn(entity, rt, out entity.EventArgs);
@@ -238,7 +240,8 @@ namespace VNLib.Plugins.Essentials
                     else
                     {
                         //Finally route the connection as a file
-                        entity.EventArgs = await RouteFileAsync(router, entity);
+                        entity.EventArgs = await RouteFileAsync(router, entity)
+                                                .ConfigureAwait(false);
                     }
 
                 RespondAndExit:
@@ -255,7 +258,8 @@ namespace VNLib.Plugins.Essentials
                     try
                     {
                         //Release the session
-                        await entity.EventSessionHandle.ReleaseAsync(httpEvent);
+                        await entity.EventSessionHandle.ReleaseAsync(httpEvent)
+                                .ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
