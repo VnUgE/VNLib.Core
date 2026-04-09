@@ -36,9 +36,9 @@ namespace VNLib.Plugins.Essentials
 {
     /// <summary>
     /// An immutable configuration object for the <see cref="EventProcessor"/> that services the 
-    /// lifetieme of the processor.
+    /// lifetime of the processor.
     /// </summary>
-    /// <param name="Directory"> The filesystem entrypoint path for the site</param>
+    /// <param name="Directory"> The filesystem entry point path for the site</param>
     /// <param name="Hostname">The hostname the server will listen for, and the hostname that will identify this root when a connection requests it</param>
     /// <param name="Log">The application log provider for writing logging messages to</param>
     /// <param name="Options">Gets the EP processing options</param>
@@ -48,7 +48,7 @@ namespace VNLib.Plugins.Essentials
         /// The table of virtual endpoints that will be used to process requests
         /// </summary>
         /// <remarks>
-        /// May be overriden to provide a custom endpoint table
+        /// May be overridden to provide a custom endpoint table
         /// </remarks>
         public IVirtualEndpointTable EndpointTable { get; init; } = new SemiConsistentVeTable();
 
@@ -56,7 +56,7 @@ namespace VNLib.Plugins.Essentials
         /// The middleware chain that will be used to process requests
         /// </summary>
         /// <remarks>
-        /// If derrieved, may be overriden to provide a custom middleware chain
+        /// If derived, may be overridden to provide a custom middleware chain
         /// </remarks>
         public IHttpMiddlewareChain MiddlewareChain { get; init; } = new SemiConistentMiddlewareChain();
 

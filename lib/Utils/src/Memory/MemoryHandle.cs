@@ -34,7 +34,7 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Provides a wrapper for using umanged memory handles from an assigned <see cref="Win32PrivateHeap"/> for <see cref="UnmanagedType"/> types
+    /// Provides a wrapper for using unmanaged memory handles from an assigned <see cref="Win32PrivateHeap"/> for <see cref="UnmanagedType"/> types
     /// </summary>
     /// <remarks>
     /// Handles are configured to address blocks larger than 2GB,
@@ -134,7 +134,7 @@ namespace VNLib.Utils.Memory
          * allow 
          */
         /// <summary>
-        /// Initialzies an empty memory handle. Properties will raise exceptions
+        /// Initializes an empty memory handle. Properties will raise exceptions
         /// when accessed, however <see cref="IMemoryHandle{T}"/> operations are 
         /// considered "safe" meaning they should never raise exceptions
         /// </summary>
@@ -177,7 +177,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Gets an offset pointer from the base postion to the number of bytes specified. Performs bounds checks
+        /// Gets an offset pointer from the base position to the number of bytes specified. Performs bounds checks
         /// </summary>
         /// <param name="elements">Number of elements of type to offset</param>
         /// <exception cref="ObjectDisposedException"></exception>

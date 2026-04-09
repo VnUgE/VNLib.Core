@@ -214,7 +214,7 @@ namespace VNLib.Plugins.Essentials
 
                     if (!config.EndpointTable.IsEmpty)
                     {
-                        //See if the virtual file is servicable
+                        //See if the virtual file is serviceable
                         if (config.EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
                         {
                             //Invoke the page handler process method
