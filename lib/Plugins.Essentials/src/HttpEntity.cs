@@ -114,7 +114,7 @@ namespace VNLib.Plugins.Essentials
         {
             if (EventSessionHandle.IsSet)
             {
-                _session = new(EventSessionHandle.SessionData!, _entity.Server, TrustedRemoteIp);
+                _session = new(EventSessionHandle.SessionData!);
             }
         }
 

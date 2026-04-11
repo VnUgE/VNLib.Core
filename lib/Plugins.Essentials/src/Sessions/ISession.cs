@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Net;
 
 using VNLib.Utils;
 
@@ -40,17 +39,12 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// <summary>
         /// A value specifying the type of the loaded session
         /// </summary>
-        SessionType SessionType { get; }
+        string SessionType { get; }
 
         /// <summary>
         /// UTC time in when the session was created
         /// </summary>
-        DateTimeOffset Created { get; }
-
-        /// <summary>
-        /// Privileges associated with user specified during login
-        /// </summary>
-        ulong Privileges { get; set; }
+        DateTimeOffset Created { get; }       
 
         /// <summary>
         /// Key that identifies the current session. (Identical to cookie::sessionid)
@@ -63,19 +57,14 @@ namespace VNLib.Plugins.Essentials.Sessions
         bool IsNew { get; }
 
         /// <summary>
+        /// Privileges associated with user specified during login
+        /// </summary>
+        ulong Privileges { get; set; }
+
+        /// <summary>
         /// User ID associated with session
         /// </summary>
-        string UserID { get; set; }
-
-        /// <summary>
-        /// The IP address belonging to the client
-        /// </summary>
-        IPAddress UserIP { get; }
-
-        /// <summary>
-        /// Gets or sets the session's authorization token
-        /// </summary>
-        string Token { get; set; }
+        string UserID { get; set; }      
 
         /// <summary>
         /// Marks the session as invalid
