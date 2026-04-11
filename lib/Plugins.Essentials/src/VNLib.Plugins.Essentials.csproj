@@ -14,8 +14,8 @@
     <PackageId>VNLib.Plugins.Essentials</PackageId>
     <Product>VNLib Essentials Plugin Library</Product>
     <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
-    <Description>Provides essential web, sessions, users abstractions for building extensible web applications with stateful sessions, user based interaction with login and account security extensions.</Description>
-    <PackageTags>VNLib, Plugins, VNLib.Plugins.Essentials, Essentials, Essential Plugins, HTTP Essentials, OAuth2</PackageTags>
+    <Description>Provides core web framework primitives for building extensible VNLib HTTP applications. Includes virtual endpoint routing, middleware pipeline, session contracts, user and password hashing abstractions, and HTTP utility extensions.</Description>
+    <PackageTags>VNLib, Plugins, VNLib.Plugins.Essentials, Essentials, HTTP, Middleware, Sessions, Users</PackageTags>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins.Essentials</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
