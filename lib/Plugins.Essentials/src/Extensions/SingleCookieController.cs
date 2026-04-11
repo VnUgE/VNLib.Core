@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -30,11 +30,11 @@ using VNLib.Net.Http;
 namespace VNLib.Plugins.Essentials.Extensions
 {
     /// <summary>
-    /// Implements a sinlge cookie controller
+    /// Implements a single cookie controller
     /// </summary>
     /// <param name="Name">The name of the cookie to manage</param>
     /// <param name="ValidFor">The max-age cookie value</param>
-    public record class SingleCookieController(string Name, TimeSpan ValidFor) : ICookieController
+    public class SingleCookieController(string Name, TimeSpan ValidFor) : ICookieController
     {
         /// <summary>
         /// The domain of the cookie
@@ -91,7 +91,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         private void SetCookieInternal(IHttpEvent entity, string value, bool force)
         {
-            //Only set cooke if already exists or force is true
+            //Only set cookie if already exists or force is true
             if (entity.Server.RequestCookies.ContainsKey(Name) || force)
             {
                 CookieSameSite ss = SameSite;

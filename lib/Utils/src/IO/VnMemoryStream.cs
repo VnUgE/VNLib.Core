@@ -239,7 +239,7 @@ namespace VNLib.Utils.IO
                 //Calc the remaining bytes to read no larger than the buffer size
                 int bytesToRead = (int)Math.Min(LenToPosDiff, bufferSize);
 
-                //Create a span wrapper by using the offet function to support memory handles larger than 2gb
+                //Create a span wrapper by using the offset function to support memory handles larger than 2gb
                 ReadOnlySpan<byte> span = _buffer.Value.GetOffsetSpan(_position, bytesToRead);
 
                 destination.Write(span);
@@ -255,7 +255,7 @@ namespace VNLib.Utils.IO
         /// </summary>
         /// <param name="destination">The stream to write output data to</param>
         /// <param name="bufferSize">The size of the buffer to use when copying data</param>
-        /// <param name="cancellationToken">A token to cancel the opreation</param>
+        /// <param name="cancellationToken">A token to cancel the operation</param>
         /// <returns>A task that resolves when the remaining data in the stream has been written to the destination</returns>
         /// <exception cref="IOException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
@@ -317,7 +317,7 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// <inheritdoc/>
         /// <para>
-        /// This propery is always true
+        /// This property is always true
         /// </para>
         /// </summary>
         public override bool CanSeek => true;
@@ -416,7 +416,7 @@ namespace VNLib.Utils.IO
         ///<inheritdoc/>
         public override long Seek(long offset, SeekOrigin origin)
         {
-            //gaurd for overflow, offset cannot be greater than platform pointer size
+            //guard for overflow, offset cannot be greater than platform pointer size
             ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, nint.MaxValue);
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(offset, nint.MinValue);
 
@@ -567,16 +567,22 @@ namespace VNLib.Utils.IO
 
             if (_length < Int32.MaxValue)
             {
-                //Alloc uninialized, since were going to overwite it anyway
+                //Alloc unfinalized, since were going to overwrite it anyway
                 data = GC.AllocateUninitializedArray<byte>((int)_length, false);
             }
             else
             {
-                //Use new opperator if larger than 32bit
+                //Use new operator if larger than 32bit
                 data = new byte[_length];
             }
 
-            MemoryUtil.CopyArray(_buffer.Value, 0, data, 0, (nuint)_length);
+            MemoryUtil.CopyArray(
+                _buffer.Value, 
+                sourceOffset: 0, 
+                data, 
+                destOffset: 0, 
+                count: (nuint)_length
+            );
 
             return data;
         }
