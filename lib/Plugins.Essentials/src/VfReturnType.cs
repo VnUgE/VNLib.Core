@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -26,7 +26,7 @@ namespace VNLib.Plugins.Essentials
 {
 
     /// <summary>
-    /// Represents the result of a virutal endpoint processing operation
+    /// Represents the result of a virtual endpoint processing operation
     /// </summary>
     public enum VfReturnType
     {
@@ -34,25 +34,30 @@ namespace VNLib.Plugins.Essentials
         /// Signals that the virtual endpoint 
         /// </summary>
         ProcessAsFile,
+
         /// <summary>
         /// Signals that the virtual endpoint generated a response, and 
         /// the connection should be completed
         /// </summary>
         VirtualSkip,
+
         /// <summary>
         /// Signals that the virtual endpoint determined that the connection 
         /// should be denied.
         /// </summary>
         Forbidden,
+
         /// <summary>
         /// Signals that the resource the virtual endpoint was processing 
         /// does not exist.
         /// </summary>
         NotFound,
+
         /// <summary>
-        /// Signals that the virutal endpoint determined the request was invalid
+        /// Signals that the virtual endpoint determined the request was invalid
         /// </summary>
         BadRequest,
+
         /// <summary>
         /// Signals that the virtual endpoint had an error
         /// </summary>

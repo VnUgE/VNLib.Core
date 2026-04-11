@@ -29,7 +29,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-using VNLib.Plugins.Essentials.Runtime;
+using VNLib.Plugins.Essentials.Endpoints;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Testing
 {

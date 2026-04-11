@@ -1,8 +1,8 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
-* Package: VNLib.Plugins
+* Package: VNLib.Plugins.Essentials
 * File: IEndpoint.cs 
 *
 * IEndpoint.cs is part of VNLib.Plugins which is part of the larger 
@@ -22,7 +22,7 @@
 * along with VNLib.Plugins. If not, see http://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Plugins
+namespace VNLib.Plugins.Essentials.Endpoints
 {
     /// <summary>
     /// A base class for all entity processing endpoints to listen for requests
@@ -32,6 +32,6 @@ namespace VNLib.Plugins
         /// <summary>
         /// The location path for which to match this handler
         /// </summary>
-        public string Path { get; }
+        string Path { get; }
     }
 }

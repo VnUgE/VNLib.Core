@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -28,9 +28,8 @@ using System.Net;
 using VNLib.Net.Http;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-using VNLib.Plugins.Essentials.Extensions;
 
-namespace VNLib.Plugins.Essentials.Oauth
+namespace VNLib.Plugins.Essentials.Extensions
 {
     /// <summary>
     /// An OAuth2 specification error code
