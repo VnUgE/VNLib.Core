@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -23,7 +23,6 @@
 */
 
 using VNLib.Net.Http;
-using VNLib.Plugins.Essentials.Accounts;
 
 namespace VNLib.Plugins.Essentials
 {
@@ -35,12 +34,7 @@ namespace VNLib.Plugins.Essentials
         /// <summary>
         /// Gets the EP processing options
         /// </summary>
-        EventProcessorConfig Options { get; }
-
-        /// <summary>
-        /// Gets the account security provider
-        /// </summary>
-        IAccountSecurityProvider? AccountSecurity { get; }
+        EventProcessorConfig Options { get; }        
        
         /// <summary>
         /// <para>

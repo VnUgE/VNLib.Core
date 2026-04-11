@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,7 +27,7 @@ using System;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 
-namespace VNLib.Plugins.Essentials.Accounts
+namespace VNLib.Plugins.Essentials.Users
 {
     /// <summary>
     /// Represents a common abstraction for password hashing providers/libraries

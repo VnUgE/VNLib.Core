@@ -28,7 +28,6 @@ using System.Threading.Tasks;
 
 using VNLib.Utils;
 using VNLib.Utils.Memory;
-using VNLib.Plugins.Essentials.Accounts;
 
 namespace VNLib.Plugins.Essentials.Users
 {
