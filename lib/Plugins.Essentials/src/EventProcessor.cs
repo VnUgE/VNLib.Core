@@ -29,7 +29,6 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
 using VNLib.Utils.IO;
@@ -58,117 +57,82 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         public static EventProcessor? Current => _currentProcessor.Value;
 
-        /// <summary>
-        /// <para>
-        /// Called when the server intends to process a file and requires translation from a 
-        /// uri path to a usable filesystem path 
-        /// </para>
-        /// <para>
-        /// NOTE: This function must be thread-safe!
-        /// </para>
-        /// </summary>
-        /// <param name="requestPath">The path requested by the request </param>
-        /// <returns>The translated and filtered filesystem path used to identify the file resource</returns>
-        public abstract string TranslateResourcePath(string requestPath);
+        private readonly MiddlewareController _middleware = new(config);
+        private readonly FilePathCache _pathCache = FilePathCache.GetCacheStore(config.FilePathCacheMaxAge);
+
+        private void CloseWithError(HttpStatusCode code, IHttpEvent entity)
+        {
+            //Invoke the inherited error handler
+            if (!ErrorHandler(code, entity))
+            {
+                //Disable cache
+                entity.Server.SetNoCache();
+                //Error handler does not have a response for the error code, so return a generic error code
+                entity.CloseResponse(code);
+            }
+        }
+
+        private bool FindFileResourceInternal(string resourcePath, out string path)
+        {
+            //Check after fully qualified path name because above is a special case
+            path = TranslateResourcePath(resourcePath);
+            string extension = Path.GetExtension(path);
+            //Make sure extension isn't blocked
+            if (Options.ExcludedExtensions.Contains(extension))
+            {
+                return false;
+            }
+            //Trailing / means dir, so look for a default file (index.html etc) (most likely so check first?)
+            if (Path.EndsInDirectorySeparator(path))
+            {
+                string comp = path;
+                //Find default file if blank
+                foreach (string d in Options.DefaultFiles)
+                {
+                    path = Path.Combine(comp, d);
+                    if (FileOperations.FileExists(path))
+                    {
+                        //Get attributes
+                        FileAttributes att = FileOperations.GetAttributes(path);
+                        //Make sure the file is accessible and isn't an unsafe file
+                        return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
+                    }
+                }
+            }
+            //try the file as is
+            else if (FileOperations.FileExists(path))
+            {
+                //Get attributes
+                FileAttributes att = FileOperations.GetAttributes(path);
+                //Make sure the file is accessible and isn't an unsafe file
+                return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
+            }
+            return false;
+        }
 
         /// <summary>
-        /// <para>
-        /// When an error occurs and is handled by the library, this event is invoked 
-        /// </para>
-        /// <para>
-        /// NOTE: This function must be thread-safe!
-        /// </para>
+        /// The internal service pool for the processor
         /// </summary>
-        /// <param name="errorCode">The error code that was created during processing</param>
-        /// <param name="entity">The active IHttpEvent representing the faulted request</param>
-        /// <returns>A value indicating if the entity was proccsed by this call</returns>
-        public abstract bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity);
-
-        /// <summary>
-        /// For pre-processing a request entity before all processing happens, but after 
-        /// a session is attached to the entity.
-        /// </summary>
-        /// <param name="entity">The http entity to process</param>
-        /// <param name="result">The results to return to the file processor, or <see cref="FileProcessArgs.Continue"/> to continue further processing</param>
-        public abstract void PreProcessEntity(HttpEntity entity, out FileProcessArgs result);
-
-        /// <summary>
-        /// Allows for post processing of a selected <see cref="FileProcessArgs"/> for the given entity
-        /// <para>
-        /// Post processing may mutate the <paramref name="chosenRoutine"/> to change the 
-        /// result of the operation. Consider events with the <see cref="FileProcessArgs.VirtualSkip"/>
-        /// have already been responded to.
-        /// </para>
-        /// </summary>
-        /// <param name="entity">The http entity to process</param>
-        /// <param name="chosenRoutine">The selected file processing routine for the given request</param>
-        public abstract void PostProcessEntity(HttpEntity entity, ref FileProcessArgs chosenRoutine);
+        protected readonly HttpProcessorServicePool ServicePool = new();
 
         ///<inheritdoc/>
         public virtual EventProcessorConfig Options => config;
 
         ///<inheritdoc/>
-        public string Hostname => config.Hostname;
-
-
-        /*
-         * Okay. So this is supposed to be a stupid fast lookup table for lock-free 
-         * service pool exchanges. The goal is for future runtime service expansion.
-         * 
-         * The reason lookups must be unnoticeably fast is because they should be
-         * VERY rarely changed and will be read on every request.
-         * 
-         * The goal of this table specifically is to make sure requesting a desired 
-         * service is extremely fast and does not require any locks or synchronization.
-         */
-        const int SESS_INDEX = 0;
-        const int ROUTER_INDEX = 1;
-        const int SEC_INDEX = 2;
-
-        /// <summary>
-        /// The internal service pool for the processor
-        /// </summary>
-        protected readonly HttpProcessorServicePool ServicePool = new([
-            //Order must match the indexes above
-            typeof(ISessionProvider),
-            typeof(IPageRouter),
-            typeof(IAccountSecurityProvider)
-        ]);
-
-
-        /*
-         * Fields are not marked as volatile because they should not 
-         * really be updated at all in production uses, and if hot-reload
-         * is used, I don't consider a dirty read to be a large enough 
-         * problem here.
-         */
-
-        private IAccountSecurityProvider? _accountSec;
-        private ISessionProvider? _sessions;
-        private IPageRouter? _router;
-
-        ///<inheritdoc/>
-        public IAccountSecurityProvider? AccountSecurity
-        {
-            //Exchange the version of the account security provider
-            get => ServicePool.ExchangeVersion(ref _accountSec, SEC_INDEX);
-        }
-
-        private readonly MiddlewareController _middleware = new(config);
-
-        private readonly FilePathCache _pathCache = FilePathCache.GetCacheStore(config.FilePathCacheMaxAge);
+        public string Hostname => config.Hostname;       
 
         ///<inheritdoc/>
         public virtual async ValueTask ClientConnectedAsync(IHttpEvent httpEvent)
         {
             /*
-             * read any "volatile" properties into local copies for the duration
-             * of the request processing. This is to ensure that the properties
-             * are not changed during the processing of the request.
+             * Dotnet guarantees atomic reads/writes from reference fields, these fields 
+             * can be loaded/unloaded at any time by dynamic plugin/service providers, 
+             * so we must cache references to any services we intend to use for the 
+             * duration of the request
              */
 
-            ISessionProvider? sessions = ServicePool.ExchangeVersion(ref _sessions, SESS_INDEX);
-            IPageRouter? router = ServicePool.ExchangeVersion(ref _router, ROUTER_INDEX);
+            ISessionProvider? sessions = ServicePool.SessionProvider;
+            IPageRouter? router = ServicePool.PageRouter;
 
             //event cancellation token
             HttpEntity entity = new(httpEvent, this);
@@ -240,7 +204,7 @@ namespace VNLib.Plugins.Essentials
                     {
                         //Finally route the connection as a file
                         entity.EventArgs = await RouteFileAsync(router, entity)
-                                                .ConfigureAwait(false);
+                                            .ConfigureAwait(false);
                     }
 
                 RespondAndExit:
@@ -258,7 +222,7 @@ namespace VNLib.Plugins.Essentials
                     {
                         //Release the session
                         await entity.EventSessionHandle.ReleaseAsync(httpEvent)
-                                .ConfigureAwait(false);
+                            .ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -504,19 +468,7 @@ namespace VNLib.Plugins.Essentials
                 CloseWithError(HttpStatusCode.InternalServerError, entity);
                 return;
             }
-        }
-
-        private void CloseWithError(HttpStatusCode code, IHttpEvent entity)
-        {
-            //Invoke the inherited error handler
-            if (!ErrorHandler(code, entity))
-            {
-                //Disable cache
-                entity.Server.SetNoCache();
-                //Error handler does not have a response for the error code, so return a generic error code
-                entity.CloseResponse(code);
-            }
-        }
+        }      
 
         /// <summary>
         /// Gets the <see cref="FileProcessArgs"/> that will finalize the response from the 
@@ -620,6 +572,52 @@ namespace VNLib.Plugins.Essentials
         }
 
         /// <summary>
+        /// <para>
+        /// Called when the server intends to process a file and requires translation from a 
+        /// uri path to a usable filesystem path 
+        /// </para>
+        /// <para>
+        /// NOTE: This function must be thread-safe!
+        /// </para>
+        /// </summary>
+        /// <param name="requestPath">The path requested by the request </param>
+        /// <returns>The translated and filtered filesystem path used to identify the file resource</returns>
+        public abstract string TranslateResourcePath(string requestPath);
+
+        /// <summary>
+        /// <para>
+        /// When an error occurs and is handled by the library, this event is invoked 
+        /// </para>
+        /// <para>
+        /// NOTE: This function must be thread-safe!
+        /// </para>
+        /// </summary>
+        /// <param name="errorCode">The error code that was created during processing</param>
+        /// <param name="entity">The active IHttpEvent representing the faulted request</param>
+        /// <returns>A value indicating if the entity was proccsed by this call</returns>
+        public abstract bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity);
+
+        /// <summary>
+        /// For pre-processing a request entity before all processing happens, but after 
+        /// a session is attached to the entity.
+        /// </summary>
+        /// <param name="entity">The http entity to process</param>
+        /// <param name="result">The results to return to the file processor, or <see cref="FileProcessArgs.Continue"/> to continue further processing</param>
+        public abstract void PreProcessEntity(HttpEntity entity, out FileProcessArgs result);
+
+        /// <summary>
+        /// Allows for post processing of a selected <see cref="FileProcessArgs"/> for the given entity
+        /// <para>
+        /// Post processing may mutate the <paramref name="chosenRoutine"/> to change the 
+        /// result of the operation. Consider events with the <see cref="FileProcessArgs.VirtualSkip"/>
+        /// have already been responded to.
+        /// </para>
+        /// </summary>
+        /// <param name="entity">The http entity to process</param>
+        /// <param name="chosenRoutine">The selected file processing routine for the given request</param>
+        public abstract void PostProcessEntity(HttpEntity entity, ref FileProcessArgs chosenRoutine);
+
+        /// <summary>
         /// Determines if a requested resource exists within the <see cref="EventProcessor"/> and is allowed to be accessed.
         /// </summary>
         /// <param name="resourcePath">The path to the resource</param>
@@ -642,60 +640,33 @@ namespace VNLib.Plugins.Essentials
             }
 
             return false;
-        }
+        }       
 
-        private bool FindFileResourceInternal(string resourcePath, out string path)
-        {
-            //Check after fully qualified path name because above is a special case
-            path = TranslateResourcePath(resourcePath);
-            string extension = Path.GetExtension(path);
-            //Make sure extension isn't blocked
-            if (Options.ExcludedExtensions.Contains(extension))
-            {
-                return false;
-            }
-            //Trailing / means dir, so look for a default file (index.html etc) (most likely so check first?)
-            if (Path.EndsInDirectorySeparator(path))
-            {
-                string comp = path;
-                //Find default file if blank
-                foreach (string d in Options.DefaultFiles)
-                {
-                    path = Path.Combine(comp, d);
-                    if (FileOperations.FileExists(path))
-                    {
-                        //Get attributes
-                        FileAttributes att = FileOperations.GetAttributes(path);
-                        //Make sure the file is accessible and isn't an unsafe file
-                        return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
-                    }
-                }
-            }
-            //try the file as is
-            else if (FileOperations.FileExists(path))
-            {
-                //Get attributes
-                FileAttributes att = FileOperations.GetAttributes(path);
-                //Make sure the file is accessible and isn't an unsafe file
-                return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
-            }
-            return false;
-        }
+        /*
+         * 4-9-26
+         * Backward compatible refactor removes the complex service pool system and just 
+         * wraps the required services into the existing "service pool" to avoid breaking 
+         * changes. 
+         * 
+         * External code relies on the Types array and the SetService method to set and update
+         * services at runtime, so those are maintained as internal fields 
+         */
 
         /// <summary>
         /// A pool of services that an <see cref="EventProcessor"/> will use can be exchanged at runtime
         /// </summary>
-        /// <param name="expectedTypes">An ordered array of desired types</param>
-        protected sealed class HttpProcessorServicePool(Type[] expectedTypes)
+        protected sealed class HttpProcessorServicePool
         {
-            private readonly uint[] _serviceTable = new uint[expectedTypes.Length];
-            private readonly WeakReference<object?>[] _objects = CreateServiceArray(expectedTypes.Length);
-            private readonly ImmutableArray<Type> _types = [.. expectedTypes];
+            internal ISessionProvider? SessionProvider;
+            internal IPageRouter? PageRouter;
 
             /// <summary>
             /// Gets all of the desired types for the service pool
             /// </summary>
-            public ImmutableArray<Type> Types => _types;
+            public ImmutableArray<Type> Types => [
+                typeof(ISessionProvider),
+                typeof(IPageRouter)
+            ];
 
             /// <summary>
             /// Sets a desired service instance in the pool, or clears it
@@ -705,59 +676,15 @@ namespace VNLib.Plugins.Essentials
             /// <param name="instance">The service instance to store</param>
             public void SetService(Type service, object? instance)
             {
-                ArgumentNullException.ThrowIfNull(service);
-
-                //Make sure the instance is of the correct type
-                if (instance is not null && !service.IsInstanceOfType(instance))
+                if (service.IsAssignableTo(typeof(ISessionProvider)))
                 {
-                    throw new ArgumentException("The instance does not match the service type");
+                    SessionProvider = (ISessionProvider?)instance;
                 }
-
-                //If the service type is not desired, return
-                int index = _types.IndexOf(service, 0);
-                if (index != -1)
+                else if (service.IsAssignableTo(typeof(IPageRouter)))
                 {
-                    //Set the service as a new weak reference atomically
-                    Volatile.Write(ref _objects[index], new(instance));
-
-                    //Notify that the service has been updated
-                    Interlocked.Exchange(ref _serviceTable[index], 1);
+                    PageRouter = (IPageRouter?)instance;
                 }
-            }
-
-            /// <summary>
-            /// Determines if a desired service has been modified within
-            /// the pool, if it has, the service will be exchanged for the
-            /// new service.
-            /// </summary>
-            /// <typeparam name="T"></typeparam>
-            /// <param name="instance">A reference to the internal instance to exchange</param>
-            /// <param name="tableIndex">The constant index for the service type</param>
-            /// <returns>The exchanged service instance</returns>
-            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-            internal T? ExchangeVersion<T>(ref T? instance, int tableIndex) where T : class?
-            {
-                //Clear modified flag
-                if (Interlocked.Exchange(ref _serviceTable[tableIndex], 0) == 1)
-                {
-                    //Atomic read on the reference instance
-                    WeakReference<object?> wr = Volatile.Read(ref _objects[tableIndex]);
-
-                    //Try to get the object instance
-                    _ = wr.TryGetTarget(out object? value);
-
-                    instance = (T?)value;
-                }
-
-                return instance;
-            }
-
-            private static WeakReference<object?>[] CreateServiceArray(int size)
-            {
-                WeakReference<object?>[] arr = new WeakReference<object?>[size];
-                Array.Fill(arr, new(null));
-                return arr;
-            }
+            }          
         }
     }
 }
