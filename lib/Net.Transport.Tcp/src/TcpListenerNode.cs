@@ -67,7 +67,11 @@ namespace VNLib.Net.Transport.Tcp
             SockAsyncArgPool = ObjectRental.CreateReusable(ArgsConstructor, config.CacheQuota);
 
             //Init waiting socket queue, always multi-threaded
-            WaitingSockets = new(singleWriter: false, singleReader: false);
+            WaitingSockets = new(
+                singleWriter: false, 
+                singleReader: false, 
+                capacity: config.MaxConnections
+            );
 
             _onExitTask = Task.CompletedTask;
         }
@@ -123,13 +127,7 @@ namespace VNLib.Net.Transport.Tcp
             //Recover args
             AwaitableAsyncServerSocket args = (AwaitableAsyncServerSocket)descriptor;
 
-            PrintConnectionInfo(args, SocketAsyncOperation.Disconnect);
-
-            /*
-             * Technically a user can mess this counter up by continually calling 
-             * this function even if the connection is already closed.
-             */
-            OnClientDisconnected();
+            PrintConnectionInfo(args, SocketAsyncOperation.Disconnect);           
 
             //Close the socket and cleanup resources
             SocketError err = await args.CloseConnectionAsync()
@@ -162,6 +160,15 @@ namespace VNLib.Net.Transport.Tcp
 
             OnAcceptThreadStart();
 
+            /*
+             * Main accept work loop entrypoint. This function is reentrant and expected
+             * to be called by multiple threads during normal operation. All function
+             * calls must be thread-safe or synchronized.
+             * 
+             * In addition, library function calls should NEVER raise exceptions during normal
+             * operation. Exceptions will cause an accept thread to exit. 
+             */
+
             try
             {
                 do
@@ -182,43 +189,32 @@ namespace VNLib.Net.Transport.Tcp
                     }
                     else if (err == SocketError.Success)
                     {
-                        bool maxConsReached = _connectedClients > Config.MaxConnections;
-
-                        //Add to waiting queue
-                        if (maxConsReached || !WaitingSockets!.TryEnqueue(acceptArgs))
+                        /*
+                         * Always try to enqueue the socket on the queue syncronously.
+                         * 
+                         * If the queue is full, apply backpressure by waiting on the queue async 
+                         * instead of dropping back into an accept. 
+                         */
+                        if (WaitingSockets!.TryEnqueue(acceptArgs))
                         {
-                            /*
-                             * If max connections are reached or the queue is overflowing, 
-                             * connections must be dropped
-                             */
-
-                            _ = await acceptArgs.CloseConnectionAsync()
-                                    .ConfigureAwait(false);
-
-                            /*
-                             * Writing to log will likely compound resource exhaustion, but the user must be informed
-                             * connections are being dropped.
-                             */
-                            Config.Log.Warn("Socket {e} disconnected because the waiting queue is overflowing", acceptArgs.GetHashCode());
-
-                            // Re-enqueue args to be reused
-                            SockAsyncArgPool.Return(acceptArgs);
+                            // Success,
+                            PrintConnectionInfo(acceptArgs, SocketAsyncOperation.Accept);
                         }
                         else
-                        {
-                            //Success
-                            PrintConnectionInfo(acceptArgs, SocketAsyncOperation.Accept);
-
-                            OnClientConnected();
+                        { 
+                            await WaitingSockets.EnqueueAsync(acceptArgs)
+                                .ConfigureAwait(false);
                         }
                     }
                     else
                     {
                         //Error
                         Config.Log.Debug("Socket accept failed with error code {ec}", err);
+
                         //Safe to return args to the pool as long as the server is listening
                         SockAsyncArgPool.Return(acceptArgs);
                     }
+
                 } while (!IsCancelled);
             }
             catch (Exception ex)
@@ -255,13 +251,6 @@ namespace VNLib.Net.Transport.Tcp
          * accept threads
          */
         private uint _acceptThreadsActive;
-        private long _connectedClients;
-
-        private void OnClientConnected() 
-            => Interlocked.Increment(ref _connectedClients);
-
-        private void OnClientDisconnected() 
-            => Interlocked.Decrement(ref _connectedClients);
 
         private void OnAcceptThreadStart() 
             => Interlocked.Increment(ref _acceptThreadsActive);

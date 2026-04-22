@@ -68,9 +68,10 @@ namespace VNLib.Net.Transport.Tcp
         public required readonly int MaxRecvBufferData { get; init; }
 
         /// <summary>
-        /// The maximum number of allowed socket connections to this server
+        /// The maximum number of allowed socket connections to this server, 
+        /// before backpressure is applied down to the OS.
         /// </summary>
-        public required readonly long MaxConnections { get; init; }
+        public required readonly int MaxConnections { get; init; }
 
         /// <summary>
         /// The listener socket backlog count
