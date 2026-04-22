@@ -108,28 +108,36 @@ namespace VNLib.Net.Transport.Tcp
         {
             //Configure socket on the current thread so exceptions will be raised to the caller
             Socket serverSock = new(_config.LocalEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            
-            serverSock.Bind(_config.LocalEndPoint);
 
-            //See if keepalive should be used
-            if (_config.TcpKeepAliveTime > 0)
+            try
             {
-                //Setup socket keepalive from config
-                serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, _config.KeepaliveInterval);
-                serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, _config.TcpKeepAliveTime);
+                serverSock.Bind(_config.LocalEndPoint);
+
+                //See if keepalive should be used
+                if (_config.TcpKeepAliveTime > 0)
+                {
+                    //Setup socket keepalive from config
+                    serverSock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, _config.KeepaliveInterval);
+                    serverSock.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, _config.TcpKeepAliveTime);
+                }
+
+                //Invoke socket created callback
+                _config.OnSocketCreated?.Invoke(serverSock);
+
+                serverSock.Listen(_config.BackLog);
+
+                TcpListenerNode listener = new(in Config, serverSock, _pipeOptions);
+
+                listener.StartWorkers();
+
+                return listener;
             }
-
-            //Invoke socket created callback
-            _config.OnSocketCreated?.Invoke(serverSock);
-
-            serverSock.Listen(_config.BackLog);
-
-            TcpListenerNode listener = new(in Config, serverSock, _pipeOptions);
-
-            listener.StartWorkers();
-
-            return listener;
+            catch
+            {
+                serverSock.Dispose();
+                throw;
+            }
         }
     }
 }
