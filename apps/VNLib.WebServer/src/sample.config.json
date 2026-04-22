@@ -42,7 +42,7 @@
   "virtual_hosts": [
     {
 
-      "enabled": true,         //A flag that enables or disables this virtual host
+      "enabled": true,         //A flag that enables or disables this virtual host (if unset default is true)
     
       "path": "path/to/website/root",    //The directory path for files served by this endpoint
 
