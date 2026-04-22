@@ -54,8 +54,12 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("backlog")]
         public int BackLog { get; set; } = 1000;
 
+        /// <summary>
+        /// Sets the maximum number of concurrent connections the server will
+        /// accept before dropping new connections. This is a hard limit.
+        /// </summary>
         [JsonPropertyName("max_connections")]
-        public long MaxConnections { get; set; } = long.MaxValue;
+        public int MaxConnections { get; set; } = int.MaxValue;
 
         [JsonPropertyName("no_delay")]
         public bool NoDelay { get; set; } = false;
@@ -91,7 +95,7 @@ namespace VNLib.WebServer.Config.Model
             Validate.EnsureRange(TcpKeepAliveTime, 0, 60);
             Validate.EnsureRange(KeepaliveInterval, 0, 60);
             Validate.EnsureRange(BackLog, 0, 10000);
-            Validate.EnsureRange(MaxConnections, 0, long.MaxValue);
+            Validate.EnsureRange(MaxConnections, 0, int.MaxValue);
             Validate.EnsureRange(MaxRecvBufferData, 0, 10 * 1024 * 1024); //10MB
             Validate.EnsureRange(TcpSendBufferSize, 0, 10 * 1024 * 1024); //10MB
         }
