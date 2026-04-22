@@ -64,7 +64,6 @@ namespace VNLib.Net.Transport.Tcp
             _allArgs.DisconnectReuseSocket = _reuseSocket;
         }
 
-
         public async ValueTask<SocketError> AcceptAsync(Socket serverSocket, int recvBuffSize, int sendBuffSize)
         {
             /*
@@ -77,7 +76,7 @@ namespace VNLib.Net.Transport.Tcp
                 //get buffer from the pipe to write initial accept data to
                 Memory<byte> buffer = SocketWorker.GetMemory(recvBuffSize);
                 _allArgs.SetBuffer(buffer);
-            }
+            }           
 
             //Begin the accept, and attempt to reuse the socket if available
             SocketError error = await _allArgs.AcceptAsync(serverSocket, _socket)
@@ -313,14 +312,11 @@ namespace VNLib.Net.Transport.Tcp
 
                 SetBuffer(buffer);
 
-                if (socket.SendAsync(this))
-                {
-                    //Async send
-                    return new ValueTask<int>(this, AsyncTaskCore.Version);
-                }
-
-                // Syncronous send
-                return GetSyncTxRxResult();
+                // Send returns true when the operation is running async, false is
+                // sync, so return the result immediately
+                return socket.SendAsync(this) 
+                    ? new ValueTask<int>(this, AsyncTaskCore.Version) 
+                    : GetSyncTxRxResult();
             }
 
             public ValueTask<int> ReceiveAsync(Socket socket, Memory<byte> buffer, SocketFlags flags)
@@ -329,14 +325,11 @@ namespace VNLib.Net.Transport.Tcp
 
                 SetBuffer(buffer);
 
-                if (socket.ReceiveAsync(this))
-                {
-                    //Async receive
-                    return new ValueTask<int>(this, AsyncTaskCore.Version);
-                }
-
-                // Syncronous receive
-                return GetSyncTxRxResult();
+                // Receive returns true when the operation is running async, false is
+                // sync, so return the result immediately
+                return socket.ReceiveAsync(this) 
+                    ? new ValueTask<int>(this, AsyncTaskCore.Version) 
+                    : GetSyncTxRxResult();
             }
 
             private ValueTask<int> GetSyncTxRxResult()

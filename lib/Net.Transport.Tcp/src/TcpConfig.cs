@@ -91,7 +91,7 @@ namespace VNLib.Net.Transport.Tcp
 
         /// <summary>
         /// <para>
-        /// The maxium number of event objects that will be cached 
+        /// The maximum number of event objects that will be cached 
         /// during normal operation
         /// </para>
         /// <para>
