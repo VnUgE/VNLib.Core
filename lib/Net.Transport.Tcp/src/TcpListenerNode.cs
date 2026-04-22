@@ -66,9 +66,16 @@ namespace VNLib.Net.Transport.Tcp
 
             SockAsyncArgPool = ObjectRental.CreateReusable(ArgsConstructor, config.CacheQuota);
 
-            //Init waiting socket queue, always multi-threaded
+            /*
+             *  Prepare the waiting queue for accept sockets. It's maximum value will be used to
+             *  apply backpressure when the queue fills faster than workers can process incoming
+             *  connections. 
+             *  
+             *  - Always assume that multiple threads will be dequeuing work.
+             *  - If only one accept thread is used, optimize the queue for single writer
+             */
             WaitingSockets = new(
-                singleWriter: false, 
+                singleWriter: config.AcceptThreads == 1, 
                 singleReader: false, 
                 capacity: config.MaxConnections
             );
@@ -190,7 +197,7 @@ namespace VNLib.Net.Transport.Tcp
                     else if (err == SocketError.Success)
                     {
                         /*
-                         * Always try to enqueue the socket on the queue syncronously.
+                         * Always try to enqueue the socket on the queue synchronously.
                          * 
                          * If the queue is full, apply backpressure by waiting on the queue async 
                          * instead of dropping back into an accept. 
