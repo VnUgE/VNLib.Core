@@ -30,6 +30,8 @@ using System.IO.Pipelines;
 
 using VNLib.Utils.Logging;
 
+using VNLib.Net.Transport.Tcp.Internal;
+
 namespace VNLib.Net.Transport.Tcp
 {
 
@@ -67,6 +69,12 @@ namespace VNLib.Net.Transport.Tcp
             {
                 //Pool is required when using default pipe options
                 ArgumentNullException.ThrowIfNull(config.BufferPool);
+            }
+
+            // Can only reuse sockets on windows platforms 
+            if (config.ReuseSocket && !OperatingSystem.IsWindows())
+            {
+                throw new PlatformNotSupportedException("Socket reuse is only supported on Windows platforms.");
             }
 
             ArgumentNullException.ThrowIfNull(config.Log, nameof(config.Log));

@@ -28,7 +28,7 @@ using System.Threading.Tasks;
 
 
 
-namespace VNLib.Net.Transport.Tcp
+namespace VNLib.Net.Transport.Tcp.Internal
 {
     internal interface ISocketIo
     {

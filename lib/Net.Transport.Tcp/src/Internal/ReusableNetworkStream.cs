@@ -40,7 +40,7 @@ using System.Threading.Tasks;
 
 using VNLib.Utils.Extensions;
 
-namespace VNLib.Net.Transport.Tcp
+namespace VNLib.Net.Transport.Tcp.Internal
 {
 
     /// <summary>
