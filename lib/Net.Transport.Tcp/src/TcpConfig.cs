@@ -82,6 +82,9 @@ namespace VNLib.Net.Transport.Tcp
         /// Reuse the TCP socket descriptor after a socket has been closed.
         /// Only available on Windows platforms.
         /// </summary>
+        /// <remarks>
+        /// NOTE: If set to true on Windows platforms will raise a not supported exception.
+        /// </remarks>
         public required readonly bool ReuseSocket { get; init; }
 
         /// <summary>

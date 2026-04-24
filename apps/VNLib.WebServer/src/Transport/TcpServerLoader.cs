@@ -177,7 +177,13 @@ namespace VNLib.WebServer.Transport
             //Print warning message, since inline scheduler is an advanced feature
             if (iface.Ssl && UseInlineScheduler)
             {
-                tcpLogger.Debug("[WARN]: Inline scheduler is not available on server {server} when using TLS", iface);
+                tcpLogger.Debug("[NOTICE]: Inline scheduler is not available on server {server} when using TLS", iface);
+            }
+
+            // Notify user socket instance reuse is not allowed on non-windows platforms
+            if (baseConfig.ReuseSocket && !OperatingSystem.IsWindows())
+            {
+                tcpLogger.Debug("[NOTICE]: Socket reuse is only supported on Windows platforms");               
             }
 
 #if !DEBUG
@@ -200,7 +206,7 @@ namespace VNLib.WebServer.Transport
                 TcpKeepAliveTime        = baseConfig.TcpKeepAliveTime,
                 KeepaliveInterval       = baseConfig.KeepaliveInterval,
                 MaxRecvBufferData       = baseConfig.MaxRecvBufferData,
-                ReuseSocket             = baseConfig.ReuseSocket,
+                ReuseSocket             = baseConfig.ReuseSocket && OperatingSystem.IsWindows(),  // Only available on windows
                 OnSocketCreated         = OnSocketConfiguring,
                 BufferPool              = MemoryPoolManager.GetTcpPool(args.ZeroAllocations, MemoryUtil.Shared)
             };
