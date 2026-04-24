@@ -35,23 +35,37 @@ namespace VNLib.WebServer.Transport
     internal sealed class SslTcpTransportContext(ITcpListener server, ITcpConnectionDescriptor descriptor, SslStream stream) 
         : TcpTransportContext(server, descriptor, stream)
     {
-        private TransportSecurityInfo? _securityInfo;
-        private readonly SslStream _baseStream = stream;
+        private TransportSecurityInfo? _securityInfo;     
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async override ValueTask CloseConnectionAsync()
         {
+            /*
+             * Overrides base close method entirely. This is because the ssl stream
+             * now owns the transport stream. Dispose is called for correctness but 
+             * not expected to do much. Internal (Net.Transport.Tcp) the stream signals
+             * the internal workers that the connection is closed. 
+             * 
+             * We MUST always close the descriptor to cleanup any resources, and attempt
+             * to return it to the pool if possible. 
+             */
+
             try
             {
                 //Shutdown the ssl stream before cleaning up the connection
-                await _baseStream.ShutdownAsync();
-                await _connectionStream.DisposeAsync();
+                await (_connectionStream as SslStream)!.ShutdownAsync()
+                    .ConfigureAwait(false);
+
+                // Disposing signals end of data transfers
+                await _connectionStream.DisposeAsync()
+                    .ConfigureAwait(false);
             }
             finally
             {
-                //Always close the underlying connection
-                await base.CloseConnectionAsync();
+                // Must always close/return the descriptor to the server
+                await _server.CloseConnectionAsync(_descriptor, true)
+                    .ConfigureAwait(false);
             }
         }
 
@@ -62,7 +76,7 @@ namespace VNLib.WebServer.Transport
             if (!_securityInfo.HasValue)
             {
                 //Create sec info from the ssl stream
-                GetSecInfo(ref _securityInfo, _baseStream);
+                GetSecInfo(ref _securityInfo, (SslStream)_connectionStream);
             }
 
             return ref _securityInfo;

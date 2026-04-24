@@ -82,8 +82,11 @@ namespace VNLib.WebServer.Transport
         public virtual async ValueTask CloseConnectionAsync()
         {
             //Close the stream before the descriptor
-            await _connectionStream.DisposeAsync();
-            await _server.CloseConnectionAsync(_descriptor, true);
+            await _connectionStream.DisposeAsync()
+                .ConfigureAwait(false);
+
+            await _server.CloseConnectionAsync(_descriptor, true)
+                .ConfigureAwait(false);
         }
 
         //Ssl is not supported in this transport
