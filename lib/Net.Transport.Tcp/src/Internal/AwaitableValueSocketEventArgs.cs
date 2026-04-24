@@ -39,7 +39,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
         /// </summary>
         /// <param name="args">The <see cref="AwaitableValueSocketEventArgs"/> instance to use for the operation</param>
         /// <param name="sock">The server socket to accept the connection</param>
-        /// <returns>True if the IO operation is pending</returns>
+        /// <returns>The <see cref="SocketError"/> result of the accept operation.</returns>
         public static ValueTask<SocketError> AcceptAsync(AwaitableValueSocketEventArgs args, Socket sock)
         {
             args.OnBeforeOperation(SocketFlags.None);
@@ -131,6 +131,13 @@ namespace VNLib.Net.Transport.Tcp.Internal
             };
         }
 
+        /// <summary>
+        /// Sends data to the remote endpoint asynchronously using this event args instance.
+        /// </summary>
+        /// <param name="socket">The connected socket to send data on.</param>
+        /// <param name="buffer">The buffer containing data to send.</param>
+        /// <param name="flags">A bitwise combination of the enumeration values that specifies the send behavior.</param>
+        /// <returns>The number of bytes sent to the remote endpoint.</returns>
         public ValueTask<int> SendAsync(Socket socket, Memory<byte> buffer, SocketFlags flags)
         {
             OnBeforeOperation(flags);
@@ -144,6 +151,13 @@ namespace VNLib.Net.Transport.Tcp.Internal
                 : GetSyncTxRxResult();
         }
 
+        /// <summary>
+        /// Receives data from the remote endpoint asynchronously using this event args instance.
+        /// </summary>
+        /// <param name="socket">The connected socket to receive data from.</param>
+        /// <param name="buffer">The buffer into which received data is written.</param>
+        /// <param name="flags">A bitwise combination of the enumeration values that specifies the receive behavior.</param>
+        /// <returns>The number of bytes received from the remote endpoint.</returns>
         public ValueTask<int> ReceiveAsync(Socket socket, Memory<byte> buffer, SocketFlags flags)
         {
             OnBeforeOperation(flags);

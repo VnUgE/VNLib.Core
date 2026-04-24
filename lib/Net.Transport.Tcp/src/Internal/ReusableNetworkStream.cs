@@ -83,9 +83,13 @@ namespace VNLib.Net.Transport.Tcp.Internal
         }
 
         //Timer used to cancel pipeline recv timeouts
-        private readonly ITransportInterface Transport;
+        private readonly ITransportInterface _transport;
 
-        internal ReusableNetworkStream(ITransportInterface transport) => Transport = transport;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ReusableNetworkStream"/> class.
+        /// </summary>
+        /// <param name="transport">The transport interface that backs the stream's send and receive operations.</param>
+        internal ReusableNetworkStream(ITransportInterface transport) => _transport = transport;
 
         ///<inheritdoc/>
         public override void Close() 
@@ -93,7 +97,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
 
         ///<inheritdoc/>
         public override Task FlushAsync(CancellationToken cancellationToken) 
-            => Transport.FlushSendAsync(_sendTimeoutMs, cancellationToken).AsTask();
+            => _transport.FlushSendAsync(_sendTimeoutMs, cancellationToken).AsTask();
 
 
         /*
@@ -103,15 +107,15 @@ namespace VNLib.Net.Transport.Tcp.Internal
 
         ///<inheritdoc/>
         public void Advance(int count)
-            => Transport.SendBuffer.Advance(count);
+            => _transport.SendBuffer.Advance(count);
 
         ///<inheritdoc/>
         public Memory<byte> GetMemory(int sizeHint = 0)
-            => Transport.SendBuffer.GetMemory(sizeHint);
+            => _transport.SendBuffer.GetMemory(sizeHint);
 
         ///<inheritdoc/>
         public Span<byte> GetSpan(int sizeHint = 0)
-            => Transport.SendBuffer.GetSpan(sizeHint);
+            => _transport.SendBuffer.GetSpan(sizeHint);
 
         ///<inheritdoc/>
         public override void Flush() 
@@ -121,7 +125,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
         public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
 
         ///<inheritdoc/>
-        public override int Read(Span<byte> buffer) => Transport.Recv(buffer, _recvTimeoutMs);
+        public override int Read(Span<byte> buffer) => _transport.Recv(buffer, _recvTimeoutMs);
 
         ///<inheritdoc/>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -130,13 +134,13 @@ namespace VNLib.Net.Transport.Tcp.Internal
 
         ///<inheritdoc/>
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) 
-            => Transport.RecvAsync(buffer, _recvTimeoutMs, cancellationToken);
+            => _transport.RecvAsync(buffer, _recvTimeoutMs, cancellationToken);
 
         ///<inheritdoc/>
         public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
 
         ///<inheritdoc/>
-        public override void Write(ReadOnlySpan<byte> buffer) => Transport.Send(buffer, _sendTimeoutMs);
+        public override void Write(ReadOnlySpan<byte> buffer) => _transport.Send(buffer, _sendTimeoutMs);
 
         ///<inheritdoc/>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) 
@@ -146,7 +150,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
         ///<exception cref="IOException"></exception>
         ///<exception cref="ObjectDisposedException"></exception>
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellation = default) 
-            => Transport.SendAsync(buffer, _sendTimeoutMs, cancellation);
+            => _transport.SendAsync(buffer, _sendTimeoutMs, cancellation);
 
         /*
          * Override dispose to intercept base cleanup until the internal release

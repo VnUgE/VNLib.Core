@@ -28,13 +28,21 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Transport.Tcp.Internal
 {
+    /// <summary>
+    /// A lightweight, readonly struct wrapper around a <see cref="Timer"/> that implements
+    /// <see cref="INetTimer"/> for arming and disarming operation timeouts in the socket pipeline.
+    /// </summary>
+    /// <param name="timer">The underlying timer instance to control.</param>
+    /// <param name="timeout">The timeout duration in milliseconds.</param>
     internal readonly struct TpTimerWrapper(Timer timer, int timeout) : INetTimer
     {
         private readonly Timer _timer = timer;
         private readonly int _timeout = timeout;
 
+        /// <inheritdoc/>
         public readonly void Start() => _timer.Restart(_timeout);
 
+        /// <inheritdoc/>
         public readonly void Stop() => _timer.Stop();
     }
 }

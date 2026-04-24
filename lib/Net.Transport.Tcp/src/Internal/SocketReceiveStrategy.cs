@@ -24,6 +24,7 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipelines;
 using System.Net.Sockets;
@@ -34,16 +35,29 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Net.Transport.Tcp.Internal
 {
+    /// <summary>
+    /// Implements the receive direction of the socket pipeline. Reads data from the socket
+    /// and publishes it to the receive pipe for downstream consumption. Supports optional read
+    /// timeouts via the generic <see cref="INetTimer"/> pattern.
+    /// </summary>
     internal sealed class SocketReceiveStrategy : SocketStrategyBase
     {
+        /// <summary>
+        /// Gets the <see cref="Stream"/> view of the receive pipe reader, used to
+        /// expose buffered socket data to callers that consume via the <see cref="Stream"/> API.
+        /// </summary>
         public Stream RecvStream { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SocketReceiveStrategy"/> class.
+        /// </summary>
+        /// <param name="pipeOptions">The options used to configure the internal receive <see cref="System.IO.Pipelines.Pipe"/>.</param>
         public SocketReceiveStrategy(PipeOptions pipeOptions) : base(pipeOptions) 
             => RecvStream = Pipe.Reader.AsStream(true);
 
         /// <summary>
-        /// Gets a buffer write for the receive buffer to be used for accept operations
-        /// that may publish initial data.
+        /// Gets an <see cref="IBufferWriter{T}"/> that writes directly into the receive pipe.
+        /// Used by the accept path to publish pre-read bytes before the pipeline worker task starts.
         /// </summary>
         public IBufferWriter<byte> ReceiveBuffer => Pipe.Writer;
 
@@ -58,14 +72,13 @@ namespace VNLib.Net.Transport.Tcp.Internal
             => Pipe.Reader.CancelPendingRead();
 
         /// <summary>
-        /// Begins the receive loop, which waits for data on the socket and publishes it to the receive pipe 
-        /// until the socket is closed or an error occurs
+        /// Begins the receive loop, which reads data from the socket and publishes it to the receive pipe until 
+        /// the socket is closed or an error occurs.
         /// </summary>
-        /// <typeparam name="TIO"></typeparam>
-        /// <param name="sock"></param>
-        /// <param name="bytesTransferred">The number of bytes pre-read into the producer side of the pipe from an accept operation</param>
-        /// <param name="recvBufferSize">A hint to the worker how large to allocate buffers for buffering incoming data</param>
-        /// <returns>A task that resolves once the pipeline work has completed or cancelled</returns>
+        /// <typeparam name="TIO">The socket I/O interface type; generic to avoid virtual dispatch on the hot path.</typeparam>
+        /// <param name="sock">The socket from which data will be received.</param>
+        /// <param name="recvBufferSize">A hint to the worker for how large to allocate each receive buffer from the pipe writer.</param>
+        /// <returns>A task that completes once the pipeline work has finished or been cancelled.</returns>
         /// <remarks>
         /// This function will never raise an exception on the task. Any exceptions that occur during 
         /// normal operation will be propagated to the pipeline.
@@ -77,7 +90,8 @@ namespace VNLib.Net.Transport.Tcp.Internal
             FlushResult recvFlushRes;
             Memory<byte> recvBuffer;
 
-            IsStarted |= true;
+            Debug.Assert(!IsStarted, "Receive pipeline worker was already started or was not properly reset.");
+            IsStarted = true;
 
             try
             {
@@ -211,7 +225,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
         /// <param name="buffer">The buffer to write received data into</param>
         /// <param name="timeout">An optional timeout (in milliseconds) to cancel blocking (async yield) reads. Timer is enabled when > 0</param>
         /// <param name="cancellation">A token to cancel the read operation</param>
-        /// <returns>A task the completes with the number of bytes read into the buffer</returns>
+        /// <returns>A task that completes with the number of bytes read into the buffer.</returns>
         public ValueTask<int> ReceiveAsync(Memory<byte> buffer, int timeout, CancellationToken cancellation)
         {
             //See if timer is required

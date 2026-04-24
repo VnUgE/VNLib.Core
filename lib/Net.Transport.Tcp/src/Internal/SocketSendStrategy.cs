@@ -35,6 +35,11 @@ using VNLib.Utils.Memory;
 
 namespace VNLib.Net.Transport.Tcp.Internal
 {
+    /// <summary>
+    /// Implements the send direction of the socket pipeline. Reads data written to the send pipe
+    /// and transmits it to the socket in chunks bounded by the socket's send buffer size hint.
+    /// Supports optional flush timeouts via the generic <see cref="INetTimer"/> pattern.
+    /// </summary>
     internal sealed class SocketSendStrategy(PipeOptions pipeOptions) : SocketStrategyBase(pipeOptions)
     {      
         private int _sysSocketSendBufSizeHint = 0;
@@ -48,6 +53,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
          * Fired when the send timer has expired. For sending, we need to 
          * cancel the pending flush and let the caller return.
          */
+        /// <inheritdoc/>
         protected override void OnTimeoutExpired(object? state)
             => Pipe.Writer.CancelPendingFlush();
 
@@ -125,7 +131,8 @@ namespace VNLib.Net.Transport.Tcp.Internal
             ReadOnlySequence<byte>.Enumerator sendEnum;
             ForwardOnlyMemoryReader<byte> segmentReader;
 
-            IsStarted |= true;
+            Debug.Assert(!IsStarted, "Send pipeline worker was already started or was not properly reset.");
+            IsStarted = true;
 
             try
             {

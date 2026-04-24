@@ -30,6 +30,11 @@ using VNLib.Utils.Memory.Caching;
 
 namespace VNLib.Net.Transport.Tcp.Internal
 {
+    /// <summary>
+    /// Provides the abstract base for a unidirectional socket pipeline strategy, owning a
+    /// <see cref="System.IO.Pipelines.Pipe"/>, an operation timer, and lifecycle state.
+    /// Subclasses implement the producer or consumer direction of the pipeline.
+    /// </summary>
     internal abstract class SocketStrategyBase : VnDisposeable, IReusable
     {
         /// <summary>
@@ -44,11 +49,15 @@ namespace VNLib.Net.Transport.Tcp.Internal
         protected readonly Pipe Pipe;
 
         /// <summary>
-        /// A value used to track the state of the strategy, to determine if it has been 
-        /// started and if the pipe needs to be reset on release
+        /// Gets or sets a value indicating whether the strategy's pipeline has been started at least once.
+        /// Used to determine whether <see cref="System.IO.Pipelines.Pipe.Reset"/> is required on release.
         /// </summary>
         protected bool IsStarted;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SocketStrategyBase"/> class with the supplied pipe options.
+        /// </summary>
+        /// <param name="pipeOptions">The options used to configure the internal <see cref="System.IO.Pipelines.Pipe"/>.</param>
         public SocketStrategyBase(PipeOptions pipeOptions)
         {
             Pipe = new(pipeOptions);
@@ -74,10 +83,10 @@ namespace VNLib.Net.Transport.Tcp.Internal
         protected override void Free() => OpTimer.Dispose();
 
         /// <summary>
-        /// Configured to fire when the <see cref="OpTimer"/> elapses, typically 
-        /// used for notifying consumers that the operation has been cancelled
+        /// Called when the operation timer expires. Implementations should cancel the relevant
+        /// pending pipe operation so that the blocked caller returns with a canceled result.
         /// </summary>
-        /// <param name="state"></param>
+        /// <param name="state">The timer callback state object; typically unused.</param>
         protected abstract void OnTimeoutExpired(object? state);
 
         /// <summary>

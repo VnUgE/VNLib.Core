@@ -40,10 +40,21 @@ namespace VNLib.Net.Transport.Tcp.Internal
 {
     internal sealed class TcpListenerNode : ITcpListener
     {
+        /// <summary>
+        /// The configuration for this listener node.
+        /// </summary>
         public readonly TcpConfig Config;
+
+        /// <summary>
+        /// The bound and listening server socket.
+        /// </summary>
         public readonly Socket ServerSocket;
-        public readonly ObjectRental<SocketIoManager> SockAsyncArgPool;
-        public readonly AsyncQueue<SocketIoManager> WaitingSockets;
+        
+        // Pools socket IO managers when not in use.
+        private readonly ObjectRental<SocketIoManager> _ioManagerCache;
+
+        // Producer/consumer queue (channel) for passing sockets to waiting applications
+        private readonly AsyncQueue<SocketIoManager> _waitingSockets;
 
         // Caches for system socket buffer sizes to avoid syscalls
         private readonly int _recvBufferSize;
@@ -52,7 +63,8 @@ namespace VNLib.Net.Transport.Tcp.Internal
 
         // Tracks when the server is required cancelled.
         private bool _isCancelled;
-       
+
+        // Assigned when accept worker tasks are started and allows waiting for completion
         private Task _onExitTask;
 
         //A reference counter for tracking accept threads
@@ -87,7 +99,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             SocketIoManager ArgsConstructor() => new(Config.ReuseSocket, pipeOptions);
 
-            SockAsyncArgPool = ObjectRental.CreateReusable(ArgsConstructor, config.CacheQuota);
+            _ioManagerCache = ObjectRental.CreateReusable(ArgsConstructor, config.CacheQuota);
 
             /*
              *  Prepare the waiting queue for accept sockets. It's maximum value will be used to
@@ -97,7 +109,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
              *  - Always assume that multiple threads will be dequeuing work.
              *  - If only one accept thread is used, optimize the queue for single writer
              */
-            WaitingSockets = new(
+            _waitingSockets = new(
                 singleWriter: config.AcceptThreads == 1,
                 singleReader: false,
                 capacity: config.MaxConnections
@@ -112,10 +124,10 @@ namespace VNLib.Net.Transport.Tcp.Internal
         /// </summary>
         private void Cleanup()
         {
-            SockAsyncArgPool.Dispose();
+            _ioManagerCache.Dispose();
 
             //Dispose any queued client sockets that need to exit
-            while (WaitingSockets!.TryDequeue(out SocketIoManager? args))
+            while (_waitingSockets!.TryDequeue(out SocketIoManager? args))
             {
                 args.Dispose();
             }
@@ -137,7 +149,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
 
         private SocketIoManager PrepNewConnection(AwaitableValueSocketEventArgs acceptArgs)
         {
-            SocketIoManager? newConnection = SockAsyncArgPool.Rent();
+            SocketIoManager? newConnection = _ioManagerCache.Rent();
 
             // Windows is the only platform that supports receive during accept async
             if (_isWindows)
@@ -210,14 +222,14 @@ namespace VNLib.Net.Transport.Tcp.Internal
                          * If the queue is full, apply backpressure by waiting on the queue async 
                          * instead of dropping back into an accept. 
                          */
-                        if (WaitingSockets!.TryEnqueue(newConnection))
+                        if (_waitingSockets!.TryEnqueue(newConnection))
                         {                            
                             PrintConnectionInfo(newConnection, SocketAsyncOperation.Accept);
                         }
                         else
                         {
                             // Apply backpressure by waiting
-                            await WaitingSockets.EnqueueAsync(newConnection)
+                            await _waitingSockets.EnqueueAsync(newConnection)
                                 .ConfigureAwait(false);
                         }
 
@@ -229,7 +241,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
                         Config.Log.Debug("Accept thread {id}: Socket accept failed with error code {ec}", listenerId, err);
 
                         //Safe to return args to the pool as long as the server is listening
-                        SockAsyncArgPool.Return(newConnection);
+                        _ioManagerCache.Return(newConnection);
                         
                         newConnection = null;
                     }
@@ -268,6 +280,10 @@ namespace VNLib.Net.Transport.Tcp.Internal
             }
         }
 
+        /// <summary>
+        /// Starts the configured number of accept worker tasks, each of which will loop accepting
+        /// connections and enqueuing them onto <see cref="_waitingSockets"/> until <see cref="Close"/> is called.
+        /// </summary>
         internal void StartWorkers()
         {
             Task[] acceptWorkers = new Task[Config.AcceptThreads];
@@ -294,10 +310,10 @@ namespace VNLib.Net.Transport.Tcp.Internal
         }
 
         ///<inheritdoc/>
-        public void CacheClear() => SockAsyncArgPool.CacheClear();
+        public void CacheClear() => _ioManagerCache.CacheClear();
 
         ///<inheritdoc/>
-        public void CacheHardClear() => SockAsyncArgPool.CacheHardClear();
+        public void CacheHardClear() => _ioManagerCache.CacheHardClear();
 
         ///<inheritdoc/>
         public Task WaitForExitAsync() => _onExitTask;
@@ -305,7 +321,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
         ///<inheritdoc/>
         public async ValueTask<ITcpConnectionDescriptor> AcceptConnectionAsync(CancellationToken cancellation)
         {
-            SocketIoManager desc = await WaitingSockets!.DequeueAsync(cancellation)
+            SocketIoManager desc = await _waitingSockets!.DequeueAsync(cancellation)
                 .ConfigureAwait(false);
 
             // Start the pipeline worker tasks now that the app is ready to use the socket
@@ -340,7 +356,7 @@ namespace VNLib.Net.Transport.Tcp.Internal
             if (reuse)
             {
                 //Return to pool
-                SockAsyncArgPool.Return(args);
+                _ioManagerCache.Return(args);
             }
             else
             {

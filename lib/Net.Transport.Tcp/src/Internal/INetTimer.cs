@@ -22,12 +22,23 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Net.Transport.Tcp
+namespace VNLib.Net.Transport.Tcp.Internal
 {
+    /// <summary>
+    /// Defines a timer abstraction for bounding socket pipeline operations with a configurable timeout.
+    /// Implementations may arm a real timer or perform no operation, enabling zero-cost substitution
+    /// via the generic <see cref="INetTimer"/> constraint where no timeout is needed.
+    /// </summary>
     internal interface INetTimer
     {
+        /// <summary>
+        /// Starts or restarts the timer with its configured duration.
+        /// </summary>
         void Start();
 
+        /// <summary>
+        /// Stops the timer and cancels any pending expiration callback.
+        /// </summary>
         void Stop();
     }
 }

@@ -30,10 +30,26 @@ using System.Threading.Tasks;
 
 namespace VNLib.Net.Transport.Tcp.Internal
 {
+    /// <summary>
+    /// Defines low-level asynchronous send and receive operations over a connected socket,
+    /// used internally by the pipeline worker tasks.
+    /// </summary>
     internal interface ISocketIo
     {
+        /// <summary>
+        /// Sends data to the remote endpoint asynchronously.
+        /// </summary>
+        /// <param name="buffer">The buffer containing the data to send.</param>
+        /// <param name="socketFlags">A bitwise combination of the enumeration values that specifies the send behavior.</param>
+        /// <returns>The number of bytes sent to the remote endpoint.</returns>
         ValueTask<int> SendAsync(ReadOnlyMemory<byte> buffer, SocketFlags socketFlags);
 
+        /// <summary>
+        /// Receives data from the remote endpoint asynchronously.
+        /// </summary>
+        /// <param name="buffer">The buffer into which received data is written.</param>
+        /// <param name="socketFlags">A bitwise combination of the enumeration values that specifies the receive behavior.</param>
+        /// <returns>The number of bytes received from the remote endpoint.</returns>
         ValueTask<int> ReceiveAsync(Memory<byte> buffer, SocketFlags socketFlags);
     }
 }

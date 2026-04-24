@@ -24,9 +24,16 @@
 
 namespace VNLib.Net.Transport.Tcp.Internal
 {
+    /// <summary>
+    /// A no-operation implementation of <see cref="INetTimer"/> used when no timeout is required.
+    /// All methods are empty and have no effect.
+    /// </summary>
     internal readonly struct NoOpTimerWrapper : INetTimer
     {
+        /// <inheritdoc/>
         public readonly void Start() { }
+
+        /// <inheritdoc/>
         public readonly void Stop() { }
     }
 }
