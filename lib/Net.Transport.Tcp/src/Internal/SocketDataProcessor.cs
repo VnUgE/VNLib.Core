@@ -24,6 +24,7 @@
 
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,6 +43,9 @@ namespace VNLib.Net.Transport.Tcp.Internal
         public readonly ReusableNetworkStream NetworkStream;
         private readonly SocketSendStrategy _sender;
         private readonly SocketReceiveStrategy _receiver;
+
+        // Used to guard the shutdown behavior
+        private bool _isShutDown;
 
         /// <summary>
         /// Gets the send strategy for this pipeline, which is responsible for
@@ -72,6 +76,9 @@ namespace VNLib.Net.Transport.Tcp.Internal
         /// <inheritdoc/>
         public void Prepare()
         {
+            // clear shutdown flag
+            _isShutDown = false;
+
             _receiver.Prepare();
             _sender.Prepare();
 
@@ -82,9 +89,10 @@ namespace VNLib.Net.Transport.Tcp.Internal
         /// <inheritdoc/>
         public bool Release()
         {
+            Debug.Assert(_isShutDown, "Expected pipeline to be shutdown before release");
+
             // Use bitwise and to ensure both release methods are called even if the first one returns false
-            return _receiver.Release() &
-                _sender.Release();
+            return _receiver.Release() & _sender.Release();
         }
 
         /// <summary>
@@ -97,21 +105,45 @@ namespace VNLib.Net.Transport.Tcp.Internal
             _sender.Dispose();
         }
 
+        /*
+         * In normal operation. The network stream is used and expected to be disposed by the consumer.
+         * Previously this was a no-op, changed to allow for better control flow. If consumers dispose the 
+         * stream it means they are no longer using the pipeline, so we can eagerly complete the workers 
+         * instead of deferring until the transport is disconnected/returned to the pool.
+         * 
+         * The shutdown method is still exposed here incase the consumer does not properly call 
+         * dispose on the stream as a safetynet as the workers will not completed otherwise causing the 
+         * worker tasks to wait indefinitely. 
+         * 
+         * Also concurrency note. It's know that the shutdown/close functions _should_ be called from 
+         * a single thread context. It's more expensive to make it thread safe so it's a best effort.
+         */
+
         /// <summary>
         /// Must be called when the pipeline is requested to be closed
         /// </summary>
         internal void ShutDownClientPipe()
         {
+            if (_isShutDown)
+            {
+                return;
+            }
+
             /*
-             * Completing the pipelines will close the consumer side of the 
-             * receiving loop, which should cause the receive loop to exit as completed
-             * and complete the producer side of the sending loop, which should cause 
-             * the send loop to exit as completed
-             */
+            * Completing the pipelines will close the consumer side of the 
+            * receiving loop, which should cause the receive loop to exit as completed
+            * and complete the producer side of the sending loop, which should cause 
+            * the send loop to exit as completed
+            */
+
+            _isShutDown = true;
 
             _receiver.CompletePipeline();
             _sender.CompletePipeline();
         }
+
+        ///<inheritdoc/>
+        void ITransportInterface.Close() => ShutDownClientPipe();
 
         ///<inheritdoc/>
         IBufferWriter<byte> ITransportInterface.SendBuffer => _sender.SendBuffer;

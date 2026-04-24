@@ -81,5 +81,11 @@ namespace VNLib.Net.Transport.Tcp
         /// <param name="cancellation"></param>
         /// <returns>A task that completes when pending write data has been sent</returns>
         ValueTask FlushSendAsync(int timeout, CancellationToken cancellation);
+
+        /// <summary>
+        /// Signals to the transport that the listener wishes to close comunications
+        /// with the network. No more data will be read or written after this is called.
+        /// </summary>
+        void Close();
     }
 }

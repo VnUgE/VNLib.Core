@@ -91,9 +91,13 @@ namespace VNLib.Net.Transport.Tcp.Internal
         /// <param name="transport">The transport interface that backs the stream's send and receive operations.</param>
         internal ReusableNetworkStream(ITransportInterface transport) => _transport = transport;
 
+
+        /*
+         * Close now completes the pipeline to signal to the transport that the consumer is 
+         * no longer transferring data.
+         */
         ///<inheritdoc/>
-        public override void Close() 
-        { }
+        public override void Close() => _transport.Close();
 
         ///<inheritdoc/>
         public override Task FlushAsync(CancellationToken cancellationToken) 
@@ -154,9 +158,19 @@ namespace VNLib.Net.Transport.Tcp.Internal
 
         /*
          * Override dispose to intercept base cleanup until the internal release
+         * 
+         * 4-24-2026:
+         * Manually call close and return a default value task. This avoids the base 
+         * stream logic and gc "dispose" logic. Still a hack becaus this stream is designed to be 
+         * reused.
          */
 
-        public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
-     
+        public override ValueTask DisposeAsync()
+        {
+            //Call close to trigger transport shutdown
+            Close();
+            return default;
+        }
+
     }
 }
