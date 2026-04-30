@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -22,11 +22,11 @@
 * along with VNLib.Plugins.Runtime. If not, see http://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Plugins.Runtime
+namespace VNLib.Plugins.Runtime.Events
 {
     /// <summary>
-    /// Represents a type that accepts <see cref="IPluginEventListener"/>
-    /// event handlers and allow them to unload events
+    /// Defines a contract for registering and unregistering <see cref="IPluginEventListener"/>
+    /// handlers for plugin lifecycle events.
     /// </summary>
     public interface IPluginEventRegistrar
     {
@@ -34,14 +34,14 @@ namespace VNLib.Plugins.Runtime
         /// Registers a plugin event listener
         /// </summary>
         /// <param name="listener">The event handler instance to register</param>
-        /// <param name="state">An optional state paremeter to pass to the event handler</param>
+        /// <param name="state">An optional state parameter to pass to the event handler</param>
         void Register(IPluginEventListener listener, object? state = null);
 
         /// <summary>
         /// Unregisters the event listener
         /// </summary>
         /// <param name="listener">The event handler instance to unregister</param>
-        /// <returns>A value that indicates if the event handler was successfully unregistered</returns>
+        /// <returns><see langword="true"/> if the handler was successfully unregistered; otherwise, <see langword="false"/>.</returns>
         bool Unregister(IPluginEventListener listener);
     }
 }

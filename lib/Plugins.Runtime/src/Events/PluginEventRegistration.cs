@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -24,7 +24,7 @@
 
 using System;
 
-namespace VNLib.Plugins.Runtime
+namespace VNLib.Plugins.Runtime.Events
 {
     /// <summary>
     /// Holds a registration for events to a given <see cref="IPluginEventRegistrar"/>.
@@ -35,34 +35,36 @@ namespace VNLib.Plugins.Runtime
         private readonly IPluginEventRegistrar _registrar;
         private readonly IPluginEventListener _listener;
 
-        internal PluginEventRegistration(IPluginEventRegistrar container, IPluginEventListener listener)
+        internal PluginEventRegistration(
+            IPluginEventRegistrar container, 
+            IPluginEventListener listener
+        )
         {
             _listener = listener;
             _registrar = container;
         }
 
         /// <summary>
-        /// Unreigsers the listner and releases held resources
+        /// Unregisters the listener and releases held resources
         /// </summary>
-        public readonly void Dispose()
-        {
-            _ = _registrar?.Unregister(_listener);
-        }
+        public readonly void Dispose() 
+            => _ = _registrar?.Unregister(_listener);
 
         /// <summary>
         /// Unregisters a previously registered <see cref="IPluginEventListener"/>
         /// from the <see cref="PluginController"/> it was registered to
         /// </summary>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="InvalidOperationException">The listener was already unregistered or was never registered with this registration.</exception>
         public readonly void Unregister()
         {
             if (_registrar == null)
             {
                 return;
             }
+
             if (!_registrar.Unregister(_listener))
             {
-                throw new InvalidOperationException("The listner has already been unregistered");
+                throw new InvalidOperationException("The listener has already been unregistered");
             }
         }
     }

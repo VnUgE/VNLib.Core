@@ -1,12 +1,12 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: IPluginDiscoveryManager.cs 
+* File: IPluginReloadEventHandler.cs 
 *
-* IPluginDiscoveryManager.cs is part of VNLib.Plugins.Runtime which is part of the larger 
-* VNLib collection of libraries and utilities.
+* IPluginReloadEventHandler.cs is part of VNLib.Plugins.Runtime which 
+* is part of the larger VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU General Public License as published
@@ -22,18 +22,14 @@
 * along with VNLib.Plugins.Runtime. If not, see http://www.gnu.org/licenses/.
 */
 
-namespace VNLib.Plugins.Runtime
+namespace VNLib.Plugins.Runtime.Watcher
 {
-    /// <summary>
-    /// Represents a plugin discovery manager that, when requestesd, discovers 
-    /// all plugin assembly files.
-    /// </summary>
-    public interface IPluginDiscoveryManager
+    internal interface IPluginReloadEventHandler
     {
         /// <summary>
-        /// Gets all plugin assembly files that should be loaded
+        /// Called every time a watched <see cref="IPluginAssemblyLoadConfig"/> assembly file changes 
+        /// on disk and a reload should be triggered.
         /// </summary>
-        /// <returns></returns>
-        string[] DiscoverPluginFiles();
+        void OnAssemblyFileChanged();
     }
 }

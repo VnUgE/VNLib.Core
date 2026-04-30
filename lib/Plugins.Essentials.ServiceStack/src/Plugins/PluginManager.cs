@@ -23,313 +23,98 @@
 */
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
+using System.IO;
 using System.Threading.Tasks;
 
+using VNLib.Plugins.Runtime;
 using VNLib.Utils;
 using VNLib.Utils.Extensions;
 using VNLib.Utils.Logging;
-using VNLib.Plugins.Runtime;
-using VNLib.Plugins.Runtime.Services;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
-{    
+{
 
     /// <summary>
-    /// Independently manages plugin lifecycle within the service stack context. 
-    /// Plugins are attached to an <see cref="IServiceBinder"/> target so that 
-    /// plugin services are dynamically bound to the service binder target during 
-    /// load/unload cycles.
+    /// A convenience class for managing the lifecycle of a <see cref="IPluginStack"/> and 
+    /// its associated plugins. This class provides methods for loading, reloading, and unloading plugins
+    /// while also handling diagnostics and error logging. 
     /// </summary>
-    public sealed class PluginManager : VnDisposeable, IPluginManager
+    public sealed class PluginManager : VnDisposeable
     {
-        private readonly IPluginProvider _stack;
-        private readonly IServiceBinder _target;
-        private readonly ILogProvider _debugLog;       
+        private readonly IPluginStack _stack;       
+        private readonly ILogProvider _debugLog;
 
-        private PluginServiceBindingAdapter[]? _initializedPlugins;
-
-        private PluginManager(IServiceBinder binder, ILogProvider debugLog)
-        {
-            ArgumentNullException.ThrowIfNull(binder);
-            ArgumentNullException.ThrowIfNull(debugLog);
-
-            _target = binder;
-            _debugLog = debugLog;
-
-            // Stack must be assigned by public constructors
-            _stack = null!;
-        }
+        private bool _isBuilt;
 
         /// <summary>
         /// Initializes a new <see cref="PluginManager"/> with a runtime plugin stack
         /// </summary>
-        /// <param name="binder">The service binder that plugins will be attached to</param>
         /// <param name="pluginStack">The runtime plugin stack to manage</param>
         /// <param name="debugLog">The log provider for plugin diagnostics</param>
-        public PluginManager(IServiceBinder binder, IPluginStack pluginStack, ILogProvider debugLog)
-            : this(binder, debugLog)
+        public PluginManager(IPluginStack pluginStack, ILogProvider debugLog)
         {
             ArgumentNullException.ThrowIfNull(pluginStack);
-            _stack = new DynamicPluginStackAdapter(this, pluginStack);
-        }
+            ArgumentNullException.ThrowIfNull(debugLog);
 
-        /// <summary>
-        /// Initializes a new <see cref="PluginManager"/> with a custom plugin stack implementation
-        /// </summary>
-        /// <param name="binder">The service binder that plugins will be attached to</param>
-        /// <param name="pluginStack">The custom plugin stack to manage</param>
-        /// <param name="debugLog">The log provider for plugin diagnostics</param>
-        public PluginManager(IServiceBinder binder, IPluginProvider pluginStack, ILogProvider debugLog)
-            : this(binder, debugLog)
-        {
-            ArgumentNullException.ThrowIfNull(pluginStack);
             _stack = pluginStack;
+            _debugLog = debugLog;
         }
 
-        private PluginServiceBindingAdapter[] LazyInitPluginCallback()
+        private void LoadPluginCore(RuntimePluginLoader loader)
         {
-            _stack.Build();
+            Stopwatch sw = new();
 
-            /*
-             * Attempt to initialize all plugins before loading them. This causes all assemblies
-             * config, and dependencies to be discovered, validated, and loaded into memory.
-             * 
-             * Only continue with loading plugins that were successfully initialized
-             */
-            PluginServiceBindingAdapter[] initializedPlugins = _stack
-                .GetPlugins()
-                .Where(p => TryInitializePluginCore(p, _debugLog))
-                .Select(p => new PluginServiceBindingAdapter(p))
-                .ToArray();
+            sw.Start();
 
-            return initializedPlugins;
-        }
-
-        /// <summary>
-        /// Sends a command to a plugin by its name. This is used for console command 
-        /// routing to plugins. Only plugins that were successfully initialized will 
-        /// be able to receive commands.
-        /// </summary>
-        /// <param name="pluginName">The name of the plugin to send the command to</param>
-        /// <param name="command">The command text to forward to the named plugin</param>
-        /// <returns>True if the plugin was found and the command was sent, false otherwise</returns>
-        /// <exception cref="InvalidOperationException">Thrown if plugins have not been loaded yet</exception>
-        public bool SendCommand(string pluginName, string command)
-        {
-            if (_initializedPlugins is null)
-            {
-                throw new InvalidOperationException("Plugins have not been initialized yet");
-            }
-
-            /*
-             * This is a bit hacky but since dynamic plugins are assembly level, they may expose 
-             * multiple internal plugin instances that all need to receive console commands, so we 
-             * have to search the entire plugin stack for the correct instance to send the command to.
-             */
-
-            if (_stack is DynamicPluginStackAdapter rt)
-            {
-                // Select from all dynamic LivePlugin instances to send commands to
-                LivePlugin? pl = _initializedPlugins
-                    .Select(p => p.Plugin)
-                    .Cast<DynamicPluginWrapper>()
-                    .SelectMany(p => p.Plugins)
-                    .FirstOrDefault(p => string.Equals(p.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
-
-                if (pl is not null)
-                {
-                    pl.SendConsoleMessage(command);
-                    return true;
-                }
-            }
-            else
-            {
-                IManualPlugin? pl = _initializedPlugins
-                    .Select(p => p.Plugin)
-                    .FirstOrDefault(p => string.Equals(p.Name, pluginName, StringComparison.OrdinalIgnoreCase));
-                
-                if (pl is not null)
-                {
-                    pl.OnConsoleCommand(command);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <inheritdoc/>
-        public void LoadPlugins(bool loadConcurrently)
-        {
-            Check();
-
-            _initializedPlugins = LazyInitializer.EnsureInitialized(ref _initializedPlugins, LazyInitPluginCallback);
-
-            /*
-             * Optional concurrency for loading plugins, which can be expensive if there are 
-             * many plugins with heavy initialization logic.
-             */
-            if (loadConcurrently)
-            {
-                Parallel.ForEach(_initializedPlugins, p => LoadPluginCore(p.Plugin, _debugLog));
-            }
-            else
-            {
-                _initializedPlugins.TryForeach(p => LoadPluginCore(p.Plugin, _debugLog));
-            }
-
-            if (_stack is not DynamicPluginStackAdapter)
-            {
-                _initializedPlugins.ForEach(AttachService);
-            }
-        }
-
-        ///<inheritdoc/>
-        public void ReloadPlugins(bool concurrent)
-        {
-            Check();
-
-            if (_stack is DynamicPluginStackAdapter adapter)
-            {
-                /*
-                 * Reloading should trigger dynamic unload and load events for all plugins
-                 * in the stack, which will cause the binder to detach and re-attach 
-                 * all plugin services, so we don't need to do anything else here
-                 */
-
-                adapter.ReloadPlugins();
-            }
-            else if (_initializedPlugins is not null)
-            {
-                /*
-                 * Perform an ordered reload of plugins by first detaching them 
-                 * from the service binder, then running unload and load logic, 
-                 * then re-attaching them. 
-                 */
-
-                _initializedPlugins.TryForeach(DetachService);
-                _initializedPlugins.TryForeach(p => p.Plugin.Unload());
-
-                LoadPlugins(concurrent);
-            }
-            else
-            {
-                throw new InvalidOperationException("Cannot reload plugins because they have not been initialized yet");
-            }
-        }
-
-        ///<inheritdoc/>
-        public void UnloadPlugins()
-        {
-            Check();
-
-            if (_stack is DynamicPluginStackAdapter adapter)
-            {
-                // Will force all assembly level plugins to unload and trigger
-                // the appropriate events to detach services from the service binder
-                adapter.UnloadAll();
-            }
-            else if (_initializedPlugins is not null)
-            {
-                // Detach plugins from the service binder before running unload logic
-                // which might make the services undefined
-                _initializedPlugins.TryForeach(DetachService);
-
-                _initializedPlugins.TryForeach(p => p.Plugin.Unload());
-            }
-            else
-            {
-                throw new InvalidOperationException("Cannot unload plugins because they have not been initialized yet");
-            }
-        }
-
-        ///<inheritdoc/>
-        protected override void Free()
-        {
-            /*
-             * When a dynamic plugin stack is being used, plugins must 
-             * be disposed by the loader, not individually on the 
-             * IManualPlugin.Dispose() interface. This will cause
-             * a Debug.Fail() or a noop in release mode. 
-             */
-
-            if (_stack is DynamicPluginStackAdapter adapter)
-            {
-                adapter.Dispose();
-            }
-            else if (_initializedPlugins is not null)
-            {
-                _initializedPlugins.TryForeach(p => p.Free());
-                _initializedPlugins = null;
-            }
-        }
-
-        private void AttachService(PluginServiceBindingAdapter adapter)
-        {
-            // Populate the adapter's service container before binding so
-            // services are available when the binder resolves them
-            adapter.LoadExportedServices();
-
-            // Register the adapter with the binder, making the plugin's
-            // exported services available for resolution
-            _target!.Bind(adapter);
-        }
-
-        private void DetachService(PluginServiceBindingAdapter adapter)
-        {
-            // Remove the plugin's services from the binder before unloading or reloading
-            _target.Unbind(adapter);
-
-            // Unload the plugin's services from the adapter to clean any stale
-            // references and free resources
-            adapter.UnloadServices();
-        }
-
-        private static bool TryInitializePluginCore(IManualPlugin plugin, ILogProvider debugLog)
-        {
             try
             {
-                plugin.Initialize();
-                return true;
+                loader.InitializeController();
             }
             catch (Exception ex)
             {
-                debugLog.Error("Exception raised during initialization of {pl}. It has been removed from the collection\n{ex}", plugin.Name, ex);
-                return false;
-            }
-        }
+                _debugLog.Error(
+                    "Exception raised during initialization of {pl}. Failed to install plugin\n{ex}",
+                    loader.Config.AssemblyFile,
+                    ex
+                );
 
-        private static void LoadPluginCore(IManualPlugin plugin, ILogProvider debugLog)
-        {
-            Stopwatch sw = new();
+                sw.Stop();
+
+                // exit now
+                return;
+            }
+
+            long initTime = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+
             try
             {
-                sw.Start();
-
-                plugin.Load();
+                loader.LoadPlugins();
 
                 // Try to detect if the dynamic assembly did not unify correctly and
                 // give the user feedback instead of a silent fail
-                if (plugin is DynamicPluginWrapper wr && !wr.HasExports())
+                if (loader.Controller.Plugins.Count == 0)
                 {
-                    debugLog.Warn(
-                        "No plugin instances were exposed via {asm} assembly. This may be due to an assembly mismatch",
-                        wr.Name
+                    _debugLog.Warn(
+                        "No plugin instances were exposed via {asm} assembly. This may be due to an assembly or version mismatch",
+                        loader
                     );
                 }
 
                 sw.Stop();
 
-                debugLog.Debug("Loaded {pl} in {tm} ms", plugin.Name, sw.ElapsedMilliseconds);
+                // Print short name for readability during normal operation
+                _debugLog.Debug("Loaded {pl}. Init time {init} ms, load time {tm} ms",
+                    Path.GetFileName(loader.Config.AssemblyFile),
+                    initTime,
+                    sw.ElapsedMilliseconds
+                );
             }
             catch (Exception ex)
             {
-                debugLog.Error("Exception raised during loading {asf}. Failed to load plugin \n{ex}", plugin.Name, ex);
+                _debugLog.Error("Exception raised during loading {asf}. Failed to load plugin \n{ex}", loader.Config.AssemblyFile, ex);
             }
             finally
             {
@@ -337,185 +122,79 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
             }
         }
 
-
-        private sealed class DynamicPluginStackAdapter(
-            PluginManager manager,
-            IPluginStack stack
-        ) : IPluginProvider, IPluginEventListener
+        /// <summary>
+        /// Loads plugins into the current service manager. The log provider
+        /// passed to the constructor will be used for plugin diagnostics.
+        /// </summary>
+        /// <param name="concurrent"><see langword="true"/> to load plugins concurrently; otherwise, <see langword="false"/> to load serially.</param>
+        /// <exception cref="AggregateException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public void LoadPlugins(bool concurrent)
         {
+            Check();       
 
-            ///<inheritdoc/>
-            public void Build() => stack.BuildStack();
-
-            ///<inheritdoc/>
-            public IEnumerable<IManualPlugin> GetPlugins()
+            // First time build stack
+            if (!_isBuilt)
             {
-                /*
-                 * Captures all the plugins and registers event
-                 * handlers for them before returning, so that any plugins 
-                 * loaded after this point
-                 */
-
-                return stack.Plugins.Select(p =>
-                {
-                    DynamicPluginWrapper wrapper = new(p);
-
-                    p.Controller.Register(this, wrapper);
-
-                    return wrapper;
-                });
-            }
-
-            public void Dispose() => stack.Dispose();
-
-            public void UnloadAll() => stack.UnloadAll();
-
-            public void ReloadPlugins() => stack.ReloadAll();
-
-            /*
-             * TODO: Reconsider these hooks. See #45
-             * https://www.vaughnnugent.com/resources/software/modules/VNLib.Core-issues?number=45
-             * 
-             * Since dynamic plugins manage the lifecycle of their services internally,
-             * we have to register hooks to capture their load/unload events. Even
-             * though their operations are synchronous. That is because plugins can
-             * load and unload at any time, and it's important that all services are attached 
-             * and detached at the correct times to avoid stale references and errors in the service domain.
-             * 
-             * Assumptions:
-             *  - All manual plugins are wrapped in a PluginServiceBindingAdapter 
-             *  - All wrapped plugins are stored in the _initializePlugins collection
-             *  - All plugins successfully initialized are in _initializePlugins and never out of sync 
-             *  with the dynamic plugin stack
-             *  
-             *  .Single() will throw if the plugin instance is not found. It should never happen, and 
-             *  if it does it will propagate up to the Load() or Unload() method if the plugin was loaded
-             *  by the application logic. Otherwise it will fall back to the background of the loader.
-             *  
-             *  TODO: Known possible issue
-             *    If reload is called on the entire stack, it will cause all assembly loaders to re-initialize
-             *    which means that plugins that might have failed to initialize when the stack was first loaded,
-             *    might succeed during the reload, but are not in the _initializePlugins array. Which will cause
-             *    the hooks below to raise exceptions. 
-             */
-
-            ///<inheritdoc/>
-            void IPluginEventListener.OnPluginLoaded(PluginController controller, object? state)
-            {
-                Debug.Assert(state is DynamicPluginWrapper, "State should be the plugin wrapper instance that was registered with the event listener");
-                Debug.Assert(manager._initializedPlugins != null, "Initialized plugins collection should not be null when a plugin is loaded");
-
-                // Set in the register function and should have the same reference
-                // as the wrapper instance in the _initializePlugins collection
-                IManualPlugin plugin = (IManualPlugin)state!;
-
-                PluginServiceBindingAdapter binding = manager._initializedPlugins!
-                    .Single(b => ReferenceEquals(b.Plugin, plugin));
-
-                manager.AttachService(binding);
-            }
-
-            ///<inheritdoc/>
-            void IPluginEventListener.OnPluginUnloaded(PluginController controller, object? state)
-            {
-                Debug.Assert(state is DynamicPluginWrapper, "State should be the plugin wrapper instance that was registered with the event listener");
-                Debug.Assert(manager._initializedPlugins != null, "Initialized plugins collection should not be null when a plugin is loaded");
-
-                // Set in the register function and should have the same reference
-                // as the wrapper instance in the _initializePlugins collection
-                IManualPlugin plugin = (IManualPlugin)state!;
-
-                PluginServiceBindingAdapter binding = manager._initializedPlugins!
-                    .Single(b => ReferenceEquals(b.Plugin, plugin));
-
-                manager.DetachService(binding);
-            }
-        }
-
-        private sealed class DynamicPluginWrapper(RuntimePluginLoader loader) : IManualPlugin
-        {
-            ///<inheritdoc/>
-            public string Name => loader.Config.AssemblyFile;
-
-            public IEnumerable<LivePlugin> Plugins => loader.Controller.Plugins;
-
-            ///<inheritdoc/>
-            public void Dispose()
-                => Debug.Fail("DynamicPluginWrapper should not be disposed directly, it is managed by the plugin stack adapter");
-
-            ///<inheritdoc/>
-            public void GetAllExportedServices(IServiceContainer container)
-            {
-                PluginServiceExport[] exports = loader.Controller.GetExportedServices();
-                Array.ForEach(exports, e => container.AddService(e.ServiceType, e.Service, true));
+                _stack.BuildStack();
+                _isBuilt = true;
             }
 
             /*
-             * If the plugin assembly does not expose any plugin types or there is an issue loading the assembly, 
-             * its types may not unify, then we should give the user feedback instead of a silent fail.
+             * Optional concurrency for loading plugins, which can be expensive if there are 
+             * many plugins with heavy initialization logic.
              */
-            public bool HasExports() => loader.Controller.Plugins.Any();
-
-            ///<inheritdoc/>
-            public void Initialize() => loader.InitializeController();
-
-            ///<inheritdoc/>
-            public void Load() => loader.LoadPlugins();
-
-            ///<inheritdoc/>
-            public void OnConsoleCommand(string command) => throw new NotImplementedException();
-
-            ///<inheritdoc/>
-            public void Unload() => loader.UnloadPlugins();
+            if (concurrent)
+            {
+                Parallel.ForEach(_stack.Plugins, LoadPluginCore);
+            }
+            else
+            {
+                _stack.Plugins.TryForeach(LoadPluginCore);
+            }
         }
 
         /// <summary>
-        /// Adapts an <see cref="IManualPlugin"/> into an <see cref="IServiceBinding"/>
-        /// so the plugin layer can attach services to service domains without the service 
-        /// layer needing any knowledge of plugin types.
+        /// Manually reloads all plugins loaded to the current service manager
         /// </summary>
-        private sealed record class PluginServiceBindingAdapter(
-            IManualPlugin Plugin
-        ) : IServiceBinding
+        /// <param name="concurrent"><see langword="true"/> to reload plugins concurrently; otherwise, <see langword="false"/> to reload serially.</param>
+        /// <exception cref="AggregateException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void ReloadPlugins(bool concurrent)
         {
+            Check();
 
-            private ServiceContainer? Services;
-
-            /// <summary>
-            /// Ensures that all services exported by the plugin are added to 
-            /// the service container so they can be consumed
-            /// </summary>
-            public void LoadExportedServices()
+            if (concurrent)
             {
-                Services = new();
-                Plugin.GetAllExportedServices(Services);
-            }
+                // Attempt to reload plugins concurrently.
+                Parallel.ForEach(_stack.Plugins, static rtl => rtl.ReloadPlugins(false));
 
-            /// <summary>
-            /// Removes all services from the container and disposes it to free resources.
-            /// This should be called when the plugin is unloaded or reloaded to avoid stale 
-            /// references and free resources
-            /// </summary>
-            public void UnloadServices()
+                // Invoke GC once completed
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+            else
             {
-                Services?.Dispose();
-                Services = null;
-            }
-
-            /// <summary>
-            /// Cleans up any internal resources and frees the plugin instance. Call
-            /// this function when the plugin stack is being disposed.
-            /// </summary>
-            public void Free()
-            {
-                UnloadServices();
-                Plugin.Dispose();
-            }
-
-            ///<inheritdoc/>
-            IServiceProvider IServiceBinding.Services
-                => Services ?? throw new InvalidOperationException("Plugin services have not been loaded yet, call LoadExportedServices first");
+                // Helper extension reload sequentially
+                _stack.ReloadAll();
+            }           
         }
 
+        /// <summary>
+        /// Unloads all loaded plugins and calls their event handlers
+        /// </summary>
+        /// <exception cref="AggregateException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void UnloadPlugins()
+        {
+            Check();
+
+            _stack.UnloadAll();            
+        }
+
+        ///<inheritdoc/>
+        protected override void Free() => _stack.Dispose();
     }
 }

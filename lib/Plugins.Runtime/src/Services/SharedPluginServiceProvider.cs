@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -23,12 +23,14 @@
 */
 
 using System;
+using System.Linq;
 using System.ComponentModel.Design;
 
 using VNLib.Utils;
-using VNLib.Plugins.Runtime.Services;
+using VNLib.Utils.Extensions;
+using VNLib.Plugins.Runtime.Events;
 
-namespace VNLib.Plugins.Runtime
+namespace VNLib.Plugins.Runtime.Services
 {
     /// <summary>
     /// Represents a single shared pool for a collection of plugins to 
@@ -43,73 +45,67 @@ namespace VNLib.Plugins.Runtime
         private readonly object _syncRoot = new();
 
         ///<inheritdoc/>
-        public object? GetService(Type serviceType) => _serviceContainer.GetService(serviceType);
+        public object? GetService(Type serviceType)
+        {
+            Check();
+
+            return _serviceContainer.GetService(serviceType);
+        }
 
         /// <summary>
-        ///  Gets the service object of the specified type.
+        /// Gets the service object of the specified type.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">The type of service to locate.</typeparam>
         /// <returns>
-        /// A service object of type serviceType. -or- null if 
+        /// A service object of type serviceType. -or- null if
         /// there is no service object of type serviceType.
         /// </returns>
+        /// <exception cref="ObjectDisposedException">The provider has been disposed.</exception>
         public T? GetService<T>() where T : class => GetService(typeof(T)) as T;
 
+        ///<inheritdoc/>
         void IPluginEventListener.OnPluginLoaded(PluginController controller, object? state)
         {
-            //Add services
-            AddOrRemoveServices(controller, true);
-        }
-
-        void IPluginEventListener.OnPluginUnloaded(PluginController controller, object? state)
-        {
-            //Remove services
-            AddOrRemoveServices(controller, false);
-        }
-
-        private void AddOrRemoveServices(PluginController controller, bool add)
-        {
-            /*
-             * Depending on when services are loaded/unloaded, this instances
-             * may be disposeed so avoid raising an exception for a condition
-             * that doenst matter. If disposed, we dont need to clean anything up
-             */
             if (Disposed)
             {
                 return;
             }
 
-            //Get all exported services
             PluginServiceExport[] exports = controller.GetExportedServices();
 
-            //We need to hold a lock to synchronize access to the service container
+            // Take lock and add services to container
             lock (_syncRoot)
             {
-                //if add flag is set, add the serivces, otherwise remove them
-                if (add)
-                {
-                    Array.ForEach(exports, e => _serviceContainer.AddService(e.ServiceType, e.Service));
-                }
-                else
-                {
-                    Array.ForEach(exports, e => _serviceContainer.RemoveService(e.ServiceType));
-                }
-            }
-
-            //cleanup any disposable services when removing
-            if (!add)
-            {
-                foreach(PluginServiceExport export in exports)
-                {
-                    if(export.Service is IDisposable disposable)
-                    {
-                        disposable.Dispose();
-                    }
-                }
+                Array.ForEach(exports, e => _serviceContainer.AddService(e.ServiceType, e.Service));
             }
         }
 
         ///<inheritdoc/>
+        void IPluginEventListener.OnPluginUnloaded(PluginController controller, object? state)
+        {
+            if (Disposed)
+            {
+                return;
+            }
+
+            PluginServiceExport[] exports = controller.GetExportedServices();
+
+            // Take lock and attempt to remove services from container
+            lock (_syncRoot)
+            {
+                Array.ForEach(exports, e => _serviceContainer.RemoveService(e.ServiceType));
+            }
+
+            // Attempt to dispose any disposable services that were removed from the container
+            exports.Select(s => s.Service)
+                .Where(s => s is IDisposable)
+                .Cast<IDisposable>()
+                .TryForeach(s => s.Dispose());
+        }         
+        
+
+        ///<inheritdoc/>
         protected override void Free() => _serviceContainer.Dispose();
+        
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -31,19 +31,18 @@ using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
 
 
-namespace VNLib.Plugins.Runtime
+namespace VNLib.Plugins.Runtime.Watcher
 {    
 
     internal static class AssemblyWatcher
     {
-
-        internal static IDisposable WatchAssembly(IPluginReloadEventHandler handler, IPluginAssemblyLoader loader)
+        internal static IDisposable WatchAssembly(IPluginReloadEventHandler handler, IPluginAssemblyLoadConfig config)
         {
             ArgumentNullException.ThrowIfNull(handler);
-            ArgumentNullException.ThrowIfNull(loader);
+            ArgumentNullException.ThrowIfNull(config);
 
-            DebouncedFSEventHandler dbh = new(loader, handler);
-            FileWatcher.Subscribe(loader.Config.AssemblyFile, dbh);
+            DebouncedFSEventHandler dbh = new(config, handler);
+            FileWatcher.Subscribe(config.AssemblyFile, dbh);
 
             return dbh;
         }
@@ -52,44 +51,44 @@ namespace VNLib.Plugins.Runtime
         {
 
             private readonly IPluginReloadEventHandler _handler;
-            private readonly IPluginAssemblyLoader _loaderSource;
+            private readonly IPluginAssemblyLoadConfig _config;
             private readonly Timer _delayTimer;
 
             private bool _pause;
 
-            public DebouncedFSEventHandler(IPluginAssemblyLoader loader, IPluginReloadEventHandler handler)
+            public DebouncedFSEventHandler(IPluginAssemblyLoadConfig config, IPluginReloadEventHandler handler)
             {
                 _handler = handler;
-                _loaderSource = loader;
+                _config = config;
 
-                //setup delay timer to wait on the config
+                // Setup delay timer to wait on the config
                 _delayTimer = new(OnTimeout, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             }
 
             ///<inheritdoc/>
             void IFSChangeHandler.OnFileChanged(FileSystemEventArgs e)
             {
-                //if were already waiting to process an event, we dont need to stage another
+                // if we're already waiting to process an event, we don't need to stage another
                 if (_pause)
                 {
                     return;
                 }
 
-                //Set pause flag
+                // Set pause flag
                 _pause = true;
 
-                //Restart the timer to trigger reload event on elapsed
-                _delayTimer.Restart(_loaderSource.Config.ReloadDelay);
+                // Restart the timer to trigger reload event on elapsed
+                _delayTimer.Restart(_config.ReloadDelay);
             }
 
             private void OnTimeout(object? state)
             {
                 _delayTimer.Stop();
 
-                //Fire event, let exception crash app
-                _handler.OnPluginUnloaded(_loaderSource);
+                // Fire event, let exception crash app
+                _handler.OnAssemblyFileChanged();
 
-                //Clear pause flag
+                // Clear pause flag
                 _pause = false;
             }
 
@@ -97,7 +96,7 @@ namespace VNLib.Plugins.Runtime
             {
                 _delayTimer.Dispose();
 
-                FileWatcher.Unsubscribe(_loaderSource.Config.AssemblyFile, this);
+                FileWatcher.Unsubscribe(_config.AssemblyFile, this);
             }
         }
     }

@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
-* File: IPluginStack.cs 
+* File: IPluginAssemblyResolver.cs 
 *
-* IPluginStack.cs is part of VNLib.Plugins.Runtime which is part of the larger 
+* IPluginAssemblyResolver.cs is part of VNLib.Plugins.Runtime which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Runtime is free software: you can redistribute it and/or modify 
@@ -22,26 +22,22 @@
 * along with VNLib.Plugins.Runtime. If not, see http://www.gnu.org/licenses/.
 */
 
-using System;
 using System.Collections.Generic;
 
-namespace VNLib.Plugins.Runtime
+namespace VNLib.Plugins.Runtime.Construction
 {
     /// <summary>
-    /// Provides a container and functionality to manage an entire collection
-    /// of plugins.
+    /// Defines a contract for discovering plugin assemblies and providing assembly loaders for them. This allows
+    /// for a flexible and extensible plugin system where different loading strategies can be applied based on the
+    /// configuration of each plugin assembly.
     /// </summary>
-    public interface IPluginStack : IDisposable
+    public interface IPluginAssemblyResolver
     {
         /// <summary>
-        /// The collection of all plugin loaders
+        /// Discovers plugin assemblies and returns a configuration for each assembly. The configuration
+        /// is used to determine how the assembly should be loaded and managed by the plugin stack.
         /// </summary>
-        IReadOnlyCollection<RuntimePluginLoader> Plugins { get; }
-
-        /// <summary>
-        /// Discovers all plugins for the runtime and populates 
-        /// the <see cref="Plugins"/> collection.
-        /// </summary>
-        void BuildStack();
+        /// <returns>An enumerable of <see cref="IPluginAssemblyLoadConfig"/> instances describing each discovered plugin assembly.</returns>
+        IEnumerable<IPluginAssemblyLoadConfig> DiscoverAssemblies();
     }
 }

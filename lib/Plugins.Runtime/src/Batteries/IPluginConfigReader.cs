@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -24,11 +24,11 @@
 
 using System.IO;
 
-namespace VNLib.Plugins.Runtime
+namespace VNLib.Plugins.Runtime.Batteries
 {
     /// <summary>
     /// Represents an object that gets configuration data for the desired assembly configuration
-    /// and writes that conifguration to the output stream.
+    /// and writes that configuration to the output stream.
     /// </summary>
     public interface IPluginConfigReader
     {
@@ -36,8 +36,8 @@ namespace VNLib.Plugins.Runtime
         /// Gets the configuration data for the desired assembly configuration and writes that
         /// configuration to the output stream.
         /// </summary>
-        /// <param name="asmConfig">The assembly configuration to get the configuration data for</param>
+        /// <param name="config">The assembly configuration to get the configuration data for</param>
         /// <param name="outputStream">The stream to write the configuration file data to</param>
-        void ReadPluginConfigData(IPluginAssemblyLoadConfig asmConfig, Stream outputStream);
+        void ReadPluginConfigData(IPluginAssemblyLoadConfig config, Stream outputStream);
     }
 }

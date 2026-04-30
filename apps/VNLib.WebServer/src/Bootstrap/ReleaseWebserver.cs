@@ -23,23 +23,26 @@
 */
 
 using System;
-using System.Data;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Collections.Generic;
 
-using VNLib.Utils.Memory;
-using VNLib.Utils.Logging;
 using VNLib.Net.Http;
-using VNLib.Plugins.Runtime;
+using VNLib.Plugins.Runtime.Batteries;
+using VNLib.Plugins.Runtime.Construction;
+using VNLib.Plugins.Essentials.ServiceStack.Construction;
+using VNLib.Plugins.Essentials.ServiceStack.Plugins;
+using VNLib.Utils.Logging;
+using VNLib.Utils.Memory;
 
+using VNLib.WebServer.Compression;
 using VNLib.WebServer.Config;
 using VNLib.WebServer.Config.Model;
-using VNLib.WebServer.Plugins;
-using VNLib.WebServer.Compression;
 using VNLib.WebServer.Middlewares;
+using VNLib.WebServer.Plugins;
 using VNLib.WebServer.RuntimeLoading;
 using VNLib.WebServer.VirtualHosts;
+
 using static VNLib.WebServer.Entry;
 
 namespace VNLib.WebServer.Bootstrap
@@ -63,12 +66,19 @@ namespace VNLib.WebServer.Bootstrap
  | Directory: {dir}
  | Hot Reload: {hr}
  | Reload Delay: {delay}s
+ | Config dir: {conf}
 ----------------------------------";
 
         private readonly ProcessArguments args = procArgs;
 
+        /// <summary>
+        /// If plugins are enabled, bridges console commands to plugins with 
+        /// console event handlers. 
+        /// </summary>
+        public PluginConsoleEventHandler ConsoleEventHandler { get; } = new();
+
         ///<inheritdoc/>
-        protected override PluginStackBuilder? ConfigurePlugins()
+        protected override PluginManager? ConfigurePlugins()
         {
             //do not load plugins if disabled
             if (args.HasArgument("--no-plugins"))
@@ -90,38 +100,45 @@ namespace VNLib.WebServer.Bootstrap
                 return null;
             }
 
-            //Init new plugin stack builder
-            PluginStackBuilder pluginBuilder = PluginStackBuilder.Create()
-                                    .WithDebugLog(logger.AppLog)
-                                    .WithSearchDirectories([conf.Path])
-                                    .WithLoaderFactory(PluginAssemblyLoading.Create);
+            // Load plugin configuration reader from the host config with
+            // optional plugin configuration directory
+            IPluginConfigReader configReader = PluginConfigLoader.CreateConfigReader(
+                hostConfig: config.GetDocumentRoot(), 
+                configDir: conf.ConfigDir
+            );
 
-            //Setup plugin config data
-            if (!string.IsNullOrWhiteSpace(conf.ConfigDir))
-            {
-                pluginBuilder.WithJsonConfigDir(
-                    hostConfig: config.GetDocumentRoot(), 
-                    configDir: new (conf.ConfigDir)
-                );
-            }
-            else
-            {
-                pluginBuilder.WithLocalJsonConfig(config.GetDocumentRoot());
-            }
-
-            if (conf.HotReload)
-            {
-                Validate.EnsureRange(conf.ReloadDelaySec, 1, 120);
-
-                pluginBuilder.EnableHotReload(TimeSpan.FromSeconds(conf.ReloadDelaySec));
-            }
+            /*
+             * Creates a new plugin stack that will register "static" event listeners to
+             * the stack once it's built. Add the runtime-batteries for the dynamic config
+             * initializer. It will use reflection to inject config and setup loggers 
+             * 
+             * Config initializer must be added first to handle config events before other listeners, 
+             * such as the console event handler.
+             * 
+             * Console event handler bridges a console interface to loaded plugins that export handlers.
+             * 
+             * Finally, add the http service stack binder to listen for plugin loading and exports
+             * their services to the http stack. Should be added to the end of the chain for steady 
+             * state capture. Assumes the service stack has been configured.
+             * 
+             */
+            PluginStack ps = new(
+                resolver: new PluginAssemblyResolver(conf, logger.AppLog),
+                debugLog: logger.AppLog,
+                listeners: [ 
+                    new PluginConfigInitializer(configReader), 
+                    ConsoleEventHandler,
+                    new RuntimePluginServiceExporter(ServiceStack.CreateBinder()) 
+                ]
+            );
 
             logger.AppLog.Information(
                 PLUGIN_DATA_TEMPLATE,
                 true,
                 conf.Path,
                 conf.HotReload,
-                conf.ReloadDelaySec
+                conf.ReloadDelaySec,
+                conf.ConfigDir ?? "(local)"
             );
 
             if (conf.HotReload)
@@ -129,7 +146,7 @@ namespace VNLib.WebServer.Bootstrap
                 logger.AppLog.Warn("Plugin hot-reload is not recommended for production deployments!");
             }
 
-            return pluginBuilder;
+            return new (pluginStack: ps, debugLog: logger.AppLog);
         }
 
         ///<inheritdoc/>
