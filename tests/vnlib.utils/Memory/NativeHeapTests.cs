@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -26,6 +26,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace VNLib.Utils.Memory.Tests
 {
@@ -49,7 +50,12 @@ namespace VNLib.Utils.Memory.Tests
         public void LoadInTreeRpmallocTest()
         {
             //Try to rpmalloc shared heap
-            using NativeHeap heap = NativeHeap.LoadHeap(RpMallocLibPath!, DllImportSearchPath.SafeDirectories, _defaultFlags, flags: 0);
+            using NativeHeap heap = NativeHeap.LoadHeap(
+                RpMallocLibPath!, 
+                DllImportSearchPath.SafeDirectories, 
+                _defaultFlags, 
+                flags: 0
+            );
 
             Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.Shared), "Heap should be created with Shared flag");
 
@@ -60,7 +66,12 @@ namespace VNLib.Utils.Memory.Tests
         public void LoadInTreeMimallocTest()
         {
             //Try to load Mimalloc shared heap
-            using NativeHeap heap = NativeHeap.LoadHeap(MimallocLibPath!, DllImportSearchPath.SafeDirectories, _defaultFlags, flags: 0);
+            using NativeHeap heap = NativeHeap.LoadHeap(
+                MimallocLibPath!, 
+                DllImportSearchPath.SafeDirectories, 
+                _defaultFlags, 
+                flags: 0
+            );
 
             Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.Shared), "Heap should be created with Shared flag");
 
@@ -92,6 +103,80 @@ namespace VNLib.Utils.Memory.Tests
             Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.Shared), "Heap should be created with Shared flag");
 
             TestBasicHeapApi(heap);
+        }
+
+        /// <summary>
+        /// Tests that first-class heap support works for mimalloc and multi-threaded allocations
+        /// don't cause corruption.
+        /// </summary>
+        [TestMethod]
+        public void Mimalloc_FirstClass_SupportsMultithreaded()
+        {
+            using NativeHeap heap = NativeHeap.LoadHeap(
+                MimallocLibPath!, 
+                DllImportSearchPath.SafeDirectories, 
+                creationFlags: HeapCreation.UseSynchronization, // default enable synchronization since we know it's multithreaded
+                flags: 0
+            );
+
+            Assert.IsFalse(
+                heap.CreationFlags.HasFlag(HeapCreation.Shared), 
+                "Mimalloc heap should be private/first-class "
+            );
+
+            MultithreadedAllocAndFree(heap);
+        }
+
+        /// <summary>
+        /// Tests that first-class heap support works for rpmalloc and multi-threaded allocations
+        /// don't cause corruption.
+        /// </summary>
+        [TestMethod]
+        public void RpMalloc_FirstClass_SupportsMultithreaded()
+        {
+            using NativeHeap heap = NativeHeap.LoadHeap(
+                RpMallocLibPath!,
+                DllImportSearchPath.SafeDirectories,
+                creationFlags: HeapCreation.UseSynchronization,  // default enable synchronization since we know it's multithreaded
+                flags: 0
+            );
+
+            Assert.IsFalse(
+                heap.CreationFlags.HasFlag(HeapCreation.Shared),
+                "rpmalloc heap should be private/first-class "
+            );
+
+            MultithreadedAllocAndFree(heap);
+        }
+
+       /// <summary>
+       /// Attempts to allocate a bunch of blocks from the heap in parallel 
+       /// then free them in parallel. Parallel should introduce some uncertainty 
+       /// in which thread ids are used to allocate/free blocks testing the heaps 
+       /// durability during-cross thread allocations/frees
+       /// </summary>
+       /// <param name="heap">The heap to test support for</param>
+        private static void MultithreadedAllocAndFree(IUnmanagedHeap heap)
+        {
+            IntPtr[] blocks = new IntPtr[5000];
+
+            Parallel.For(0, blocks.Length, (i) =>
+            {
+                blocks[i] = heap.Alloc((uint)i, sizeof(int), false);
+                Assert.AreNotEqual(0, blocks[i]);
+            });
+
+            /*
+             * Add some randomness to the ordering of the blocks to ensure that the loop 
+             * does not have any ordering from alloc to free to help ensure that thread ID
+             * used to alloc should be different for free.
+             */
+            Random.Shared.Shuffle(blocks);
+
+            Parallel.For(0, blocks.Length, (i) =>
+            {
+                Assert.IsTrue(heap.Free(ref blocks[i]));
+            });
         }
 
         private static void TestBasicHeapApi(IUnmanagedHeap heap)
