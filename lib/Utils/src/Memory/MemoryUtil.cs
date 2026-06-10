@@ -760,8 +760,7 @@ namespace VNLib.Utils.Memory
             CopyUtilCore.Memmove(
                 srcByte: ref Refs.AsByte(source, (nuint)sourceOffset),
                 dstByte: ref Refs.AsByte(dest, destOffset),
-                byteCount: ByteCount<T>((uint)count),
-                forceAcceleration: false
+                byteCount: ByteCount<T>((uint)count)
             );
         }
 
@@ -792,7 +791,7 @@ namespace VNLib.Utils.Memory
             RMemCopyHandle<T> src = new(source, (nuint)sourceOffset);
             MemhandleCopyHandle<T> dst = new(dest, destOffset);
 
-            MemmoveInternal<T, RMemCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, (nuint)count, forceAcceleration: false);
+            MemmoveInternal<T, RMemCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, (nuint)count);
         }
 
         /// <summary>
@@ -826,8 +825,7 @@ namespace VNLib.Utils.Memory
             CopyUtilCore.Memmove(
                 srcByte: ref Refs.AsByte(source, (nuint)sourceOffset), 
                 dstByte: ref Refs.AsByte(dest, (nuint)destOffset),
-                byteCount: ByteCount<T>((uint)count),
-                forceAcceleration: false
+                byteCount: ByteCount<T>((uint)count)
             );
         }
 
@@ -860,7 +858,7 @@ namespace VNLib.Utils.Memory
             MemhandleCopyHandle<T> src = new(source, (nuint)sourceOffset);
             WMemCopyHandle<T> dst = new(dest, (nuint)destOffset);
 
-            MemmoveInternal<T, MemhandleCopyHandle<T>, WMemCopyHandle<T>>(in src, in dst, (nuint)count, forceAcceleration: false);
+            MemmoveInternal<T, MemhandleCopyHandle<T>, WMemCopyHandle<T>>(in src, in dst, (nuint)count);
         }
 
         /// <summary>
@@ -890,7 +888,7 @@ namespace VNLib.Utils.Memory
             MemhandleCopyHandle<T> src = new(source, sourceOffset);
             MemhandleCopyHandle<T> dst = new(dest, destOffset);
 
-            MemmoveInternal<T, MemhandleCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, count, forceAcceleration: false);
+            MemmoveInternal<T, MemhandleCopyHandle<T>, MemhandleCopyHandle<T>>(in src, in dst, count);
         }
 
         /// <summary>
@@ -919,7 +917,7 @@ namespace VNLib.Utils.Memory
             MemhandleCopyHandle<T> src = new(source, sourceOffset);
             ArrayCopyHandle<T> dst = new(dest, destOffset);
 
-            MemmoveInternal<T, MemhandleCopyHandle<T>, ArrayCopyHandle<T>>(in src, in dst, count, forceAcceleration: false);
+            MemmoveInternal<T, MemhandleCopyHandle<T>, ArrayCopyHandle<T>>(in src, in dst, count);
         }
 
         /// <summary>
@@ -948,7 +946,7 @@ namespace VNLib.Utils.Memory
             ArrayCopyHandle<T> ach = new(source, sourceOffset);
             MemhandleCopyHandle<T> mch = new(dest, destOffset);
 
-            MemmoveInternal<T, ArrayCopyHandle<T>, MemhandleCopyHandle<T>>(in ach, in mch, count, forceAcceleration: false);
+            MemmoveInternal<T, ArrayCopyHandle<T>, MemhandleCopyHandle<T>>(in ach, in mch, count);
         }
 
         /// <summary>
@@ -977,7 +975,7 @@ namespace VNLib.Utils.Memory
             ArrayCopyHandle<T> srcH = new(source, sourceOffset);
             ArrayCopyHandle<T> dstH = new(dest, destOffset);
 
-            MemmoveInternal<T, ArrayCopyHandle<T>, ArrayCopyHandle<T>>(in srcH, in dstH, count, forceAcceleration: false);
+            MemmoveInternal<T, ArrayCopyHandle<T>, ArrayCopyHandle<T>>(in srcH, in dstH, count);
         }
 
         /// <summary>
@@ -1046,8 +1044,7 @@ namespace VNLib.Utils.Memory
             CopyUtilCore.Memmove(
                 srcByte: in Refs.AsByteR(in src, srcOffset),
                 dstByte: ref Refs.AsByte(ref dst, dstOffset),
-                byteCount: ByteCount<T>(elementCount),
-                forceAcceleration: false
+                byteCount: ByteCount<T>(elementCount)
             );
         }
 
@@ -1076,25 +1073,19 @@ namespace VNLib.Utils.Memory
         /// <param name="elementCount"></param>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
+        [Obsolete("Acceleration is now automatic and cannot be forced. Use Memmove() instead")]
         public static void AcceleratedMemmove<T>(ref readonly T src, nuint srcOffset, ref T dst, nuint dstOffset, nuint elementCount) where T : struct
         {
-            ThrowIfNullRef(in src, nameof(src));
-            ThrowIfNullRef(in dst, nameof(dst));
-
-            if(elementCount == 0)
-            {
-                return;
-            }
-
-            CopyUtilCore.Memmove(
-                srcByte: in Refs.AsByteR(in src, srcOffset),
-                dstByte: ref Refs.AsByte(ref dst, dstOffset),
-                byteCount: ByteCount<T>(elementCount),
-                forceAcceleration: CopyUtilCore.IsHwAccelerationSupported
+            Memmove(
+                src: in src,
+                srcOffset: srcOffset,
+                dst: ref dst,
+                dstOffset: dstOffset,
+                elementCount: elementCount
             );
         }
 
-        private static void MemmoveInternal<T, TSrc, TDst>(ref readonly TSrc src, ref readonly TDst dst, nuint elementCount, bool forceAcceleration)
+        private static void MemmoveInternal<T, TSrc, TDst>(ref readonly TSrc src, ref readonly TDst dst, nuint elementCount)
             where T : unmanaged
             where TSrc : I64BitBlock
             where TDst : I64BitBlock
@@ -1112,7 +1103,7 @@ namespace VNLib.Utils.Memory
              * better pinning performance for handles that that have zero-cost pinning
              * such as unmanaged blocks.
              */
-            if (CopyUtilCore.RequiresPinning(byteCount, forceAcceleration))
+            if (CopyUtilCore.RequiresPinning(byteCount))
             {
                 //Pin before calling memmove
                 using MemoryHandle srcH = src.Pin();
@@ -1121,8 +1112,7 @@ namespace VNLib.Utils.Memory
                 CopyUtilCore.Memmove(
                     srcByte: in Refs.AsByte<T>(srcH.Pointer, src.Offset),
                     dstByte: ref Refs.AsByte<T>(dstH.Pointer, dst.Offset),
-                    byteCount,
-                    forceAcceleration
+                    byteCount
                 );
             }
             else
@@ -1131,8 +1121,7 @@ namespace VNLib.Utils.Memory
                 CopyUtilCore.Memmove(
                     srcByte: in src.GetOffsetRef(),
                     dstByte: ref dst.GetOffsetRef(),
-                    byteCount,
-                    forceAcceleration
+                    byteCount
                 );
             }
         }
@@ -1767,23 +1756,23 @@ namespace VNLib.Utils.Memory
                 => ref AsByte(ref Unsafe.AsRef<T>(ptr), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByteR<T>(scoped ref readonly T ptr, nuint elementOffset)
+            public static ref byte AsByteR<T>(scoped ref readonly T ptr, nuint elementOffset) 
                 => ref AsByte(ref Unsafe.AsRef(in ptr), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(T[] arr, nuint elementOffset)
+            public static ref byte AsByte<T>(T[] arr, nuint elementOffset) 
                 => ref AsByte(ref MemoryMarshal.GetArrayDataReference(arr), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(Span<T> span, nuint elementOffset)
+            public static ref byte AsByte<T>(Span<T> span, nuint elementOffset) 
                 => ref AsByte(ref MemoryMarshal.GetReference(span), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset)
+            public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset) 
                 => ref AsByte(ref MemoryMarshal.GetReference(span), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset)
+            public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset) 
                 => ref AsByte(ref handle.GetReference(), elementOffset);
         }
 

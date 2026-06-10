@@ -459,7 +459,7 @@ namespace VNLib.Net.Transport.Tcp
                 Span<byte> dest = writer.GetSpan(dataToCopy);
 
                 //Copy data to the buffer at the new position (attempt to use hardware acceleration)
-                MemoryUtil.AcceleratedMemmove(
+                MemoryUtil.Memmove(
                     src: in srcRef,
                     srcOffset: written,
                     dst: ref MemoryMarshal.GetReference(dest),

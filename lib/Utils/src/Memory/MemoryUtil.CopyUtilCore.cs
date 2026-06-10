@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -27,7 +27,6 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 
 using VNLib.Utils.Resources;
 
@@ -39,10 +38,19 @@ namespace VNLib.Utils.Memory
         private static class CopyUtilCore
         {
             /// <summary>
-            /// Gets a value that indicates if the platform supports hardware 
-            /// acceleration for memmove operations.
+            /// Determines whether two memory regions of the same size overlap.
             /// </summary>
-            public static readonly bool IsHwAccelerationSupported = AvxCopyStrategy.Features.HasFlag(CopyFeatures.HwAccelerated);
+            /// <param name="src">A reference to the start of the source region</param>
+            /// <param name="dst">A reference to the start of the destination region</param>
+            /// <param name="size">The size of both regions in bytes</param>
+            /// <returns><c>true</c> if the regions overlap; otherwise <c>false</c></returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static bool RegionsOverlap(ref readonly byte src, ref readonly byte dst, nuint size)
+            {
+                nint offset = Unsafe.ByteOffset(in src, in dst);
+                nuint absOffset = offset >= 0 ? (nuint)offset : (nuint)(-offset);
+                return absOffset < size;
+            }
 
             /*
              * The following function allows callers to determine if a memmove 
@@ -59,38 +67,18 @@ namespace VNLib.Utils.Memory
             /// Determines if the given block size to copy will require memory pinning.
             /// </summary>
             /// <param name="byteSize">The number of bytes to copy in a memmove operation</param>
-            /// <param name="forceAcceleration">A value that indicates that hardware acceleration is requested</param>
             /// <returns>A value that indicates if pinning will be required</returns>
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static bool RequiresPinning(nuint byteSize, bool forceAcceleration)
-            {
-                /*
-                 * Pinning is required, if reflected memmove is not supported on the platform
-                 * AND the size of the data to copy is larger than 32 bit width.
-                 * 
-                 * Otherwise if accleration is forced, pinning will always be required.
-                 */
-
-                if (byteSize > uint.MaxValue && ReflectedInternalMemmove.Features == CopyFeatures.NotSupported)
-                {
-                    return true;
-                }
-
-                if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteSize))
-                {
-                    return true;
-                }
-
-                return false;
-            }
+            public static bool RequiresPinning(nuint byteSize)
+                => byteSize > uint.MaxValue && !ReflectedInternalMemmove.IsSupported;
 
             /*
              * Why does this function exist? For centralized memmove operations primarily.
              * 
              * When the block is known to be small, all of the branches in memmove can be
-             * alot of overhead including the possability of Avx2 being used for really 
-             * small blocks if they are aligned. If the block is known to be small, we
+             * alot of overhead including the possibility of Avx2 being used for really 
+             * small blocks if they are sized correctly. If the block is known to be small, we
              * can just skip all of that and use the fastest method for small blocks,
              * which is currently the Unsafe.CopyBlock method. It is intrinsic to 
              * the CLR at the moment.
@@ -103,45 +91,44 @@ namespace VNLib.Utils.Memory
             /// <param name="srcByte">A reference to the first byte in the source sequence</param>
             /// <param name="dstByte">A reference to the first byte in the target sequence</param>
             /// <param name="byteCount">The number of bytes to copy</param>
-            [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SmallMemmove(ref readonly byte srcByte, ref byte dstByte, uint byteCount)
             {
                 Debug.Assert(!Unsafe.IsNullRef(in srcByte), "Null source reference passed to MemmoveByRef");
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
-                Unsafe.CopyBlock(ref dstByte, in srcByte, byteCount);
+                Unsafe.CopyBlockUnaligned(ref dstByte, in srcByte, byteCount);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-            public static void Memmove(ref readonly byte srcByte, ref byte dstByte, nuint byteCount, bool forceAcceleration)
+            public static void Memmove(ref readonly byte srcByte, ref byte dstByte, nuint byteCount)
             {
                 Debug.Assert(!Unsafe.IsNullRef(in srcByte), "Null source reference passed to MemmoveByRef");
                 Debug.Assert(!Unsafe.IsNullRef(in dstByte), "Null destination reference passed to MemmoveByRef");
 
-                // Always try to accelerate if the caller has requested it
-                if (forceAcceleration || AvxCopyStrategy.CanAccelerate(byteCount))
+                if (byteCount == 1)
                 {
-                    AvxCopyStrategy.Memmove(in srcByte, ref dstByte, byteCount);
-                    return;
+                    dstByte = srcByte;
                 }
-
-                //Check for 64bit copy (should get optimized away when sizeof(nuint == uint) aka 32bit platforms)
-                if (byteCount > uint.MaxValue)
+                // Prefer vector copy if non-overlapping & backend supports the copy
+                else if (Vector256Copy.CanAccelerate(byteCount) && !RegionsOverlap(in srcByte, in dstByte, byteCount))
                 {
-                    //try reflected memove incase it supports 64bit blocks
-                    if (ReflectedInternalMemmove.Features != CopyFeatures.NotSupported)
-                    {
-                        ReflectedInternalMemmove.Memmove(in srcByte, ref dstByte, byteCount);
-                        return;
-                    }
-
+                    Vector256Copy.Copy(in srcByte, ref dstByte, byteCount);
+                }
+                else if (ReflectedInternalMemmove.IsSupported)   // always prefer memmove when available
+                {
+                    ReflectedInternalMemmove.Memmove(in srcByte, ref dstByte, byteCount);
+                }
+                //Check for 64bit copy (should get optimized away when sizeof(nuint == uint) aka 32bit platforms)
+                else if (byteCount > uint.MaxValue)
+                {
                     /*
                      * At the moment, .NET's Buffer.MemoryCopy just calls Memmove internally
                      * by passing pointers by reference. So it's a fallback to avoid pinning.
                      * Memmove will pin internally if it has to fall back to the PInvoke.
                      * 
                      * Anyway, the point with the reflected version is to avoid pinning, 
-                     * unless completly necessary, so it should be available on most 
+                     * unless completely necessary, so it should be available on most 
                      * .NET 8.0 supported platforms, but this is fallback incase it's not.
                      * 
                      */
@@ -150,22 +137,12 @@ namespace VNLib.Utils.Memory
                     {
                         Buffer.MemoryCopy(srcPtr, dstPtr, byteCount, byteCount);
                     }
-
-                    return;
                 }
-
-                //fallback to unsafe.copy on 32bit copy
-                SmallMemmove(in srcByte, ref dstByte, (uint)byteCount);
-                return;
-            }        
-
-            private enum CopyFeatures
-            {
-                None = 0,
-                NotSupported = 1,
-                Supports64Bit = 2,
-                HwAccelerated = 4
-            }          
+                else
+                {
+                    SmallMemmove(in srcByte, ref dstByte, checked((uint)byteCount));
+                }
+            }
 
             private static class ReflectedInternalMemmove
             {
@@ -178,7 +155,7 @@ namespace VNLib.Utils.Memory
                 private static readonly BigMemmove? _clrMemmove = ManagedLibrary.TryGetStaticMethod<BigMemmove>(typeof(Buffer), "Memmove", BindingFlags.NonPublic);
 
                 //Cache features flags
-                public static readonly CopyFeatures Features = _clrMemmove is null ? CopyFeatures.NotSupported : CopyFeatures.Supports64Bit;
+                public static readonly bool IsSupported = _clrMemmove != null;
 
                 ///<inheritdoc/>
                 [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -187,54 +164,57 @@ namespace VNLib.Utils.Memory
                     Debug.Assert(_clrMemmove != null, "Memmove delegate is null and flags assumed is was supported");
                     _clrMemmove!.Invoke(ref dst, in src, byteCount);
                 }
-            }         
+            }
 
-            private sealed class AvxCopyStrategy 
+            private static class Vector256Copy
             {
-                const nuint _avx32ByteAlignment = 0x20u;
-
-                //If avx is supported, then set 64bit flags and hw acceleration
-                public static readonly CopyFeatures Features = Avx2.IsSupported ? CopyFeatures.HwAccelerated | CopyFeatures.Supports64Bit : CopyFeatures.NotSupported;
+                private const nuint _alignment = 0x20u; // sizeof(Vector256<byte>)
+                private static readonly bool _supported = Vector256.IsHardwareAccelerated;
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                public static bool CanAccelerate(nuint size) 
-                    => unchecked(size % _avx32ByteAlignment) == 0 && (Features & CopyFeatures.HwAccelerated) > 0;
+                public static bool CanAccelerate(nuint size) => _supported && size >= _alignment;
 
-                ///<inheritdoc/>
                 [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-                public static void Memmove(ref readonly byte src, ref byte dst, nuint byteCount)
+                public static void Copy(ref readonly byte src, ref byte dst, nuint byteCount)
                 {
-                    Debug.Assert(Avx2.IsSupported, "AVX2 is not supported on this platform");
-                    Debug.Assert(_avx32ByteAlignment == (nuint)Vector256<byte>.Count, "AVX2 vector size is not 32 bytes");
+                    const nuint Unroll    = 4;  // Matches the number of vectors unrolled in the main loop.
+                    nuint ptrOffset       = 0;
+                    nuint totalVectors    = byteCount / _alignment;
+                    nuint unrolledVectors = totalVectors / Unroll;
+                    nuint remainingVecs   = totalVectors % Unroll;
 
-                    //determine the number of loops
-                    nuint loopCount = byteCount / _avx32ByteAlignment;
-
-                    //Remaining bytes if not exactly 32 byte aligned
-                    nuint remaingBytes = byteCount % _avx32ByteAlignment;
-
-                    fixed (byte* srcPtr = &src, dstPtr = &dst)
+                    // Unrolled main loop: 4 vectors per iteration
+                    for (nuint i = 0; i < unrolledVectors; i++)
                     {
-                        //local mutable copies
-                        byte* srcOffset = srcPtr;
-                        byte* dstOffset = dstPtr;
+                        Vector256<byte> v0 = Vector256.LoadUnsafe(in src, ptrOffset);
+                        Vector256<byte> v1 = Vector256.LoadUnsafe(in src, ptrOffset + _alignment);
+                        Vector256<byte> v2 = Vector256.LoadUnsafe(in src, ptrOffset + _alignment * 2);
+                        Vector256<byte> v3 = Vector256.LoadUnsafe(in src, ptrOffset + _alignment * 3);
 
-                        for (nuint i = 0; i < loopCount; i++)
-                        {
-                            //avx vector load
-                            Vector256<byte> srcVector = Avx.LoadVector256(srcOffset);
-                            Avx.Store(dstOffset, srcVector);
+                        Vector256.StoreUnsafe(v0, ref dst, ptrOffset);
+                        Vector256.StoreUnsafe(v1, ref dst, ptrOffset + _alignment);
+                        Vector256.StoreUnsafe(v2, ref dst, ptrOffset + _alignment * 2);
+                        Vector256.StoreUnsafe(v3, ref dst, ptrOffset + _alignment * 3);
 
-                            //Upshift pointers
-                            srcOffset += _avx32ByteAlignment;
-                            dstOffset += _avx32ByteAlignment;
-                        }
+                        ptrOffset += _alignment * Unroll;
+                    }
 
-                        //finish copy manually since it will always be less than 32 bytes
-                        for (nuint i = 0; i < remaingBytes; i++)
-                        {
-                            dstOffset[i] = srcOffset[i];
-                        }
+                    // Handle 0..3 remaining aligned vectors
+                    for (nuint r = 0; r < remainingVecs; r++)
+                    {
+                        Vector256<byte> v = Vector256.LoadUnsafe(in src, ptrOffset);
+                        Vector256.StoreUnsafe(v, ref dst, ptrOffset);
+
+                        ptrOffset += _alignment;
+                    }
+
+                    // Overlapping tail covers any sub-32-byte remainder
+                    if ((byteCount & (_alignment - 1)) != 0)
+                    {
+                        nuint tailOffset = byteCount - _alignment;
+
+                        Vector256<byte> tail = Vector256.LoadUnsafe(in src, tailOffset);
+                        Vector256.StoreUnsafe(tail, ref dst, tailOffset);
                     }
                 }
             }
