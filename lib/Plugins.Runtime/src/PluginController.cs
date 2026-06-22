@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -27,9 +27,9 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 
-using VNLib.Utils.IO;
 using VNLib.Utils.Extensions;
 using VNLib.Plugins.Runtime.Services;
+using VNLib.Plugins.Runtime.Events;
 
 namespace VNLib.Plugins.Runtime
 {
@@ -41,123 +41,195 @@ namespace VNLib.Plugins.Runtime
     public sealed class PluginController : IPluginEventRegistrar
     {
         /*
-         * Lock must be held any time the internals lists are read/written
-         * to avoid read/write enumeration issues.
-         * 
-         * This can happen when a manual unload is called duiring an automatic 
-         * reload, or a runtime is tearing down the plugin environment 
-         * when an automatic reload is happening.
-         * 
-         * This also allows thread safe register/unregister event listeners
+         * Listeners are stored in a plain List to preserve insertion order — dispatch order
+         * is documented as part of the public API contract. The list is only mutated under
+         * _listenerLock; dispatch always operates on a snapshot taken under the lock so no
+         * handler is ever called while the lock is held.
          */
-        private readonly object _stateLock = new();
-
-        private readonly List<LivePlugin> _plugins = [];
-        private readonly List<KeyValuePair<IPluginEventListener, object?>> _listeners = [];
+        private readonly object _listenerLock = new();
+        private readonly List<ListenerRegistration> _listeners = [];
         private readonly PluginServicePool _servicePool = new();
+
+        private LivePlugin[] _plugins = [];
+
+        internal PluginController(IPluginAssemblyLoadConfig config) => LoaderConfig = config;
+
+        /// <summary>
+        /// Gets the <see cref="IPluginAssemblyLoadConfig"/> to which this controller belongs
+        /// </summary>
+        public IPluginAssemblyLoadConfig LoaderConfig { get; }
 
         /// <summary>
         /// The current collection of plugins. Valid before the unload event.
         /// </summary>
-        public IEnumerable<LivePlugin> Plugins => _plugins;     
+        public IReadOnlyCollection<LivePlugin> Plugins => _plugins;
 
-        ///<inheritdoc/>
-        ///<exception cref="ArgumentNullException"></exception>
+        /// <summary>
+        /// <para>
+        /// Registers a listener for plugin lifecycle events.
+        /// </para>
+        /// <para>
+        /// Overwrites any pre-existing registrations if called more than once with the same 
+        /// listener instance. Preserves dispatch order when updating existing registrations.
+        /// </para>
+        /// </summary>
+        /// <remarks>
+        /// Calling <see cref="Register(IPluginEventListener, object?)"/>
+        /// or <see cref="Unregister(IPluginEventListener)"/> during lifecycle events (loading/unload/reload) may cause the
+        /// hooks to be missed.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"></exception>
         public void Register(IPluginEventListener listener, object? state = null)
         {
             ArgumentNullException.ThrowIfNull(listener);
 
-            lock (_stateLock)
+            lock (_listenerLock)
             {
-                _listeners.Add(new(listener, state));
+                // Find existing registration by listener reference
+                for (int i = 0; i < _listeners.Count; i++)
+                {
+                    if (ReferenceEquals(_listeners[i].Listener, listener))
+                    {
+                        // Update state in-place to preserve registration order
+                        _listeners[i] = new ListenerRegistration(listener, state);
+                        return;
+                    }
+                }
+
+                // No existing registration found, add to end
+                _listeners.Add(new ListenerRegistration(listener, state));
             }
         }
 
-        ///<inheritdoc/>
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Calling <see cref="Register(IPluginEventListener, object?)"/>
+        /// or <see cref="Unregister(IPluginEventListener)"/> during lifecycle events (loading/unload/reload) may cause the
+        /// hooks to be missed.
+        /// </remarks>
         public bool Unregister(IPluginEventListener listener)
         {
-            lock(_stateLock)
+            ArgumentNullException.ThrowIfNull(listener);
+
+            lock (_listenerLock)
             {
-                //Remove listener
-                return _listeners.RemoveAll(p => ReferenceEquals(p.Key, listener)) > 0;
+                return _listeners.RemoveAll(l => ReferenceEquals(l.Listener, listener)) > 0;
             }
         }
 
         /// <summary>
-        /// Returns an array of all exported services from all loaded plugins
+        /// Gets all services exported by the currently loaded plugins.
         /// </summary>
+        /// <returns>An array of <see cref="PluginServiceExport"/> instances from all loaded plugins.</returns>
         public PluginServiceExport[] GetExportedServices() => _servicePool.GetServices();
 
+        /// <summary>
+        /// Discovers plugin types from the supplied assembly, creates plugin instances, and 
+        /// stores them in the controller.
+        /// </summary>
+        /// <param name="asm">The assembly to scan for plugin types</param>
         internal void InitializePlugins(Assembly asm)
         {
-            lock (_stateLock)
-            {
-                //get all Iplugin types
-                Type[] types = asm.GetTypes().Where(static type => !type.IsAbstract && typeof(IPlugin).IsAssignableFrom(type)).ToArray();
+            //get all IPlugin types
+            Type[] types = asm
+                .GetTypes()
+                .Where(static type => !type.IsAbstract && typeof(IPlugin).IsAssignableFrom(type))
+                .ToArray();
 
-                //Initialize the new plugin instances
-                IPlugin[] plugins = types.Select(static t => (IPlugin)Activator.CreateInstance(t)!).ToArray();
+            //Initialize the new plugin instances
+            IPlugin[] plugins = types
+                .Select(static t => (IPlugin)Activator.CreateInstance(t)!)
+                .ToArray();
 
-                //Crate new containers
-                LivePlugin[] lps = plugins.Select(p => new LivePlugin(p, asm)).ToArray();
-
-                //Store containers
-                _plugins.AddRange(lps);
-            }
-        }
-
-        internal void ConfigurePlugins(VnMemoryStream configData, string[] cliArgs)
-        {
-            lock (_stateLock)
-            {
-                _plugins.ForEach(lp => lp.InitConfig(configData.AsSpan()));
-                _plugins.ForEach(lp => lp.InitLog(cliArgs));
-            }
+            //Create new containers
+            _plugins = plugins
+                .Select(p => new LivePlugin(p, asm))
+                .ToArray();
         }
 
         internal void LoadPlugins()
         {
-            lock( _stateLock)
+            ListenerRegistration[] hooks;
+            lock (_listenerLock)
             {
-                //Load all plugins
-                _plugins.TryForeach(static p => p.LoadPlugin());
-
-                //Load all services into the service pool
-                _plugins.ForEach(p => p.GetServices(_servicePool));
-
-                //Notify event handlers
-                _listeners.ForEach(l => l.Key.OnPluginLoaded(this, l.Value));
+                hooks = _listeners.ToArray();
             }
+
+            // Notify of pre-load
+            hooks.ForEach(l => l.OnBeforeLoad(this));
+
+            // Load all plugins
+            _plugins.TryForeach(static p => p.LoadPlugin());
+
+            // Load all services into the service pool
+            _plugins.ForEach(p => p.GetServices(_servicePool));
+
+            // Notify event handlers
+            hooks.ForEach(l => l.OnLoaded(this));
         }
 
         internal void UnloadPlugins()
         {
-            lock (_stateLock)
+            ListenerRegistration[] hooks;
+            lock (_listenerLock)
             {
-                try
-                {
-                    //Notify event handlers
-                    _listeners.ForEach(l => l.Key.OnPluginUnloaded(this, l.Value));
+                hooks = _listeners.ToArray();
+            }
 
-                    //Unload plugin instances
-                    _plugins.TryForeach(static p => p.UnloadPlugin());
-                }
-                finally
-                {
-                    //Always clear plugins
-                    _plugins.Clear();
-                    //always make sure service pool is clear
-                    _servicePool.Clear();
-                }
+            try
+            {
+                //Notify event handlers
+                hooks.ForEach(l => l.OnUnloaded(this));
+
+                // Best effort unload all plugins.
+                _plugins.TryForeach(static p => p.UnloadPlugin());
+
+                // Best effort call after unloaded for cleanup tasks
+                hooks.TryForeach(l => l.OnAfterUnloaded(this));
+            }
+            finally
+            {
+                /*
+                 * Always clear stateful collections during unload regardless of 
+                 * exceptions to avoid leaving the controller in a broken state.
+                 * 
+                 * Unload is considered the "end" of the plugin lifecycle. Init must
+                 * be called again with Load following to reuse the controller.
+                 */
+
+                _plugins = [];
+                _servicePool.Clear();
             }
         }
 
         internal void Dispose()
         {
-            _plugins.Clear();
-            _listeners.Clear();
+            _plugins = [];
             _servicePool.Clear();
+
+            lock (_listenerLock)
+            {
+                _listeners.Clear();
+            }
         }
 
+
+        private sealed record ListenerRegistration(
+            IPluginEventListener Listener,
+            object? State
+        )
+        {
+            internal void OnBeforeLoad(PluginController controller) 
+                => Listener.OnBeforeLoading(controller, State);
+
+            internal void OnLoaded(PluginController controller) 
+                => Listener.OnPluginLoaded(controller, State);
+
+            internal void OnUnloaded(PluginController controller)
+                => Listener.OnPluginUnloaded(controller, State);
+
+            internal void OnAfterUnloaded(PluginController controller)
+                => Listener.OnAfterUnloaded(controller, State);
+        }
     }
 }

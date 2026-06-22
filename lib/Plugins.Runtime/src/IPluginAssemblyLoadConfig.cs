@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -23,40 +23,49 @@
 */
 
 using System;
-using System.IO;
 
 namespace VNLib.Plugins.Runtime
 {
     /// <summary>
-    /// Represents configuration information for a <see cref="IPluginAssemblyLoader"/>
+    /// Represents runtime plugin load configuration
     /// instance.
     /// </summary>
     public interface IPluginAssemblyLoadConfig
     {
         /// <summary>
-        /// A value that indicates if the instance is unlodable.
+        /// Gets a value that indicates whether the plugin assembly can be unloaded from its load context.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the assembly supports unloading; otherwise, <see langword="false"/>.
+        /// </value>
         bool Unloadable { get; }
 
         /// <summary>
-        /// The full file path to the assembly file to load
+        /// Gets the full file-system path of the assembly file to load.
         /// </summary>
+        /// <value>The absolute path to the plugin assembly file.</value>
         string AssemblyFile { get; }
 
         /// <summary>
-        /// A value that indicates if the plugin assembly should be watched for reload
+        /// Gets a value that indicates whether the plugin assembly should be monitored for hot-reload.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the assembly file should be watched for changes; otherwise, <see langword="false"/>.
+        /// </value>
         bool WatchForReload { get; }
 
         /// <summary>
-        /// The delay which a watcher should wait to trigger a plugin reload after an assembly file changes
+        /// Gets the delay between a detected assembly file change and the triggered plugin reload.
         /// </summary>
+        /// <value>The reload delay as a <see cref="TimeSpan"/>.</value>
         TimeSpan ReloadDelay { get; }
 
         /// <summary>
-        /// Reads the host configuration into the given stream
+        /// Gets an <see cref="IAssemblyLoader"/> appropriate for this configuration instance.
+        /// Implementations may return a new instance on each call, so callers are advised
+        /// to store and reuse the returned loader for the lifetime of the plugin.
         /// </summary>
-        /// <param name="outputStream">The stream to write configurationd data to</param>
-        void ReadConfigurationData(Stream outputStream);
+        /// <returns>An <see cref="IAssemblyLoader"/> configured for this plugin instance</returns>
+        IAssemblyLoader GetLoader();
     }
 }
