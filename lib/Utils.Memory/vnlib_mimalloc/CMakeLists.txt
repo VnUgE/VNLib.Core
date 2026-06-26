@@ -52,30 +52,33 @@ endif()
 set(_MI_COMP_ARGS)
 set(_MI_COMP_DEFS)
 
+#enable warnings as errors for all platforms
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+
 #setup flags for windows compilation
 if(MSVC)
 
 	#only target our project
 	list(APPEND _MI_COMP_ARGS
-		/Qspectre 
+		/Qspectre
 		/sdl
 		/TC
-		/GS 
+		/GS
 
-		#disable warnings for struct padding and spectre mitigation wuen WX is enabled
+		/FC
+		/showIncludes
+
+		#disable warnings for struct padding and spectre mitigation when WX is enabled
 		$<$<CONFIG:Debug>:/wd5045>
 		$<$<CONFIG:Debug>:/wd4820>
 		$<$<CONFIG:Debug>:/wd4574>
 
 		#for debug configs
 		$<$<CONFIG:Debug>:/options:strict>
-		#disable warnings for struct padding and spectre mitigation wuen WX is enabled
 		$<$<CONFIG:Debug>:/Wall>
 		$<$<CONFIG:Debug>:/WX>	#warnings as errors (only for our project)
 		$<$<CONFIG:Debug>:/Zi>
 		$<$<CONFIG:Debug>:/Zo>
-		$<$<CONFIG:Debug>:/FC>
-		$<$<CONFIG:Debug>:/showIncludes>		
 	)
 
 	#set build macros
@@ -92,17 +95,26 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 		-fstack-protector
 	)
 
-	#enable debug compiler options
+	#if debug build enable additional debug flags
 	if(build_type STREQUAL "debug")
 		list(APPEND _MI_COMP_ARGS
-			-g				#enable debugger info
-			-Og				#disable optimizations
-			-Wall			#enable all warnings
-			-Werror			#treat warnings as errors
-			-pedantic		#enable pedantic mode
+			-g
+			-Og
+			-Wall
+			-pedantic
+			-Winit-self
+			-Wpointer-arith
+			-Wstrict-prototypes
+			-Wswitch-default
+			-Wshadow
+			-Wformat=2
+			-Wundef
+			-Wcast-align
+			-Wmissing-prototypes
+			-Wmissing-declarations
 		)
 
-		list(APPEND _MI_COMP_DEFS 
+		list(APPEND _MI_COMP_DEFS
 			DEBUG
 		)
 

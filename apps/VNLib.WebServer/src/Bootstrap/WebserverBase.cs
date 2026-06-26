@@ -28,8 +28,8 @@ using System.Diagnostics;
 
 using VNLib.Net.Http;
 using VNLib.Utils;
+using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
-using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Essentials.ServiceStack;
 using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 using VNLib.Plugins.Essentials.ServiceStack.Construction;
@@ -66,23 +66,15 @@ namespace VNLib.WebServer.Bootstrap
         /// Gets the internal <see cref="PluginManager"/> this controller is managing, 
         /// or null if plugin loading is disabled
         /// </summary>
-        public PluginManager? PluginStack => _plugins;
-
-        /// <summary>
-        /// Configures the http server for the application so
-        /// its ready to start
-        /// </summary>
-        public virtual void Configure()
-        {
-            _serviceStack = ConfigureServiceStack();
-            _plugins = ConfigurePluginStack(_serviceStack);
-        }
+        public PluginManager? Plugins => _plugins;
 
         protected virtual HttpServiceStack ConfigureServiceStack()
         {
             HttpConfig http = GetHttpConfig();
 
             VirtualHostConfig[] virtualHosts = GetAllVirtualHosts();
+
+            logger.AppLog.Verbose("Discovered {count} virtual hosts. Configuring service stack...", virtualHosts.Length);
 
             HttpServiceStackBuilder builder = new HttpServiceStackBuilder()
                 .WithBuiltInHttp(TcpConfig.ReduceBindingsForGroups, http)
@@ -103,27 +95,21 @@ namespace VNLib.WebServer.Bootstrap
             return builder.Build();
         }
 
-        protected virtual PluginManager? ConfigurePluginStack(HttpServiceStack http)
-        {
-            PluginStackBuilder? plugins = ConfigurePlugins();
-
-            if (plugins is null)
-            {
-                return null;
-            }
-
-            return new PluginManager(
-                binder: http.CreateBinder(),
-                pluginStack: plugins.ConfigureStack(),
-                debugLog: logger.AppLog
-            );
-        }
-
         protected abstract VirtualHostConfig[] GetAllVirtualHosts();
 
         protected abstract HttpConfig GetHttpConfig();
 
-        protected abstract PluginStackBuilder? ConfigurePlugins();
+        protected abstract PluginManager? ConfigurePlugins();
+
+        /// <summary>
+        /// Configures the http server for the application so
+        /// its ready to start
+        /// </summary>
+        public virtual void Configure()
+        {
+            _serviceStack = ConfigureServiceStack();          
+            _plugins = ConfigurePlugins();         
+        }
 
         /// <summary>
         /// Starts the server and returns immediately 
@@ -157,20 +143,7 @@ namespace VNLib.WebServer.Bootstrap
                 .GetAwaiter()
                 .GetResult();
         }
-
-        /// <summary>
-        /// Manually reloads all plugins loaded to the current service manager. This 
-        /// is useful for plugin development and testing when you want to quickly 
-        /// reload plugins without restarting the server.
-        /// </summary>
-        public void ReloadPlugins()
-        {
-            Debug.Assert(Disposed == false, "Server was disposed");
-            Debug.Assert(_serviceStack != null, "Server was not configured");
-
-            _plugins?.ReloadPlugins(_loadPluginsConcurrently);
-        }
-
+     
         private void PrintLogicalRouting(VirtualHostConfig[] hosts)
         {
             const string header =@" 
