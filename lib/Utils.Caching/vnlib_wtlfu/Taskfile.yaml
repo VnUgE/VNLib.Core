@@ -1,0 +1,201 @@
+# https://taskfile.dev
+
+# Called by the vnbuild system to produce builds for my website
+# https://www.vaughnnugent.com/resources/software
+
+# This taskfile is called in this directory and is specific to the vnlib_wtlfu project
+# that handles the CMake build outside of the solution file
+
+version: '3.45'
+
+vars:
+  PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_wtlfu" }}'
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
+  ARTIFACT_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
+
+  # default cmake build parameters
+  CMAKE_BUILD_DIR: 'build/{{ OS }}'
+  CMAKE_BUILD_VERSION: '{{ .ASSEMBLY_SEMVER | default "0.0.0.0" }}'
+  CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE | default "Release" }}'
+  CMAKE_TEST_STATUS: '{{ .CMAKE_TEST_STATUS | default "OFF" }}'
+
+tasks:
+
+  default:
+    desc: "Builds the entire project from source code without using the VNBuild build system for target machines"
+    cmds:
+      - cmd: echo "Building {{ .PROJECT_NAME }} in mode {{ .CMAKE_BUILD_TYPE }}"
+        silent: true
+
+      - task: cmake-build
+        vars: 
+          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+          CMAKE_BUILD_VERSION: '{{ .CMAKE_BUILD_VERSION }}'
+          CMAKE_TEST_STATUS: '{{ .CMAKE_TEST_STATUS }}'
+          CMAKE_CONFIG_ARGS: '{{ .CMAKE_CONFIG_ARGS }} {{ .CLI_ARGS }}'
+
+      - cmd: echo -e "\033[0;32mYour {{ .PROJECT_NAME }} library files can be found in {{ .USER_WORKING_DIR }}/{{ .CMAKE_BUILD_DIR }}\033[0m"
+        silent: true
+
+  build-debug:
+    desc: "Build libraries and test executables in debug mode"
+    summary: |
+      Runs the CMake configure and compile steps to build the library 
+      and test executable in debug mode.
+    cmds:
+     - task: default
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: 'Debug'
+         CMAKE_BUILD_VERSION: '{{ .CMAKE_BUILD_VERSION }}'
+         CMAKE_TEST_STATUS: 'ON'
+         CMAKE_CONFIG_ARGS: '{{ .CMAKE_CONFIG_ARGS }}'
+
+  test:
+    desc: "Builds a local copy of the library in a debug configuration, then runs the test executable"
+    cmds:
+     - task: build-debug
+ 
+     - task: cmake-test
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: 'Debug'
+
+  cmake-test:
+    desc: 'Runs the CMake test suite for the current build'
+    internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
+    cmds:
+     - cmd: ctest 
+        --test-dir '{{ .CMAKE_BUILD_DIR }}' 
+        --build-config '{{ .CMAKE_BUILD_TYPE }}' 
+        --output-on-failure
+        --verbose
+
+  cmake-configure:
+    desc: 'Configures the build for the current platform'
+    internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_VERSION, CMAKE_BUILD_TYPE, CMAKE_TEST_STATUS]
+    cmds:
+      - cmd: cmake
+          {{ .CMAKE_ARGS }}
+          -S .
+          -B{{ .CMAKE_BUILD_DIR }}
+          -DCMAKE_BUILD_TYPE={{ .CMAKE_BUILD_TYPE }}
+          -DCMAKE_PROJECT_VERSION={{ .CMAKE_BUILD_VERSION }}
+          -DVNLIB_BUILD_TESTS={{ .CMAKE_TEST_STATUS }}
+          {{ .CMAKE_CONFIG_ARGS }}
+
+  cmake-compile:
+    desc: 'Compiles the project for the current platform'
+    internal: true
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
+    cmds:
+     - cmd: cmake 
+        --build {{ .CMAKE_BUILD_DIR }} 
+        --config {{ .CMAKE_BUILD_TYPE }}
+        -j {{ numCPU }}
+
+  cmake-build:
+    internal: true
+    requires: 
+      vars: [CMAKE_BUILD_VERSION, CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE, CMAKE_TEST_STATUS, CMAKE_CONFIG_ARGS]
+    cmds:
+     - task: cmake-configure
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+         CMAKE_BUILD_VERSION: '{{ .CMAKE_BUILD_VERSION }}'
+         CMAKE_TEST_STATUS: '{{ .CMAKE_TEST_STATUS }}'
+         CMAKE_CONFIG_ARGS: '{{ .CMAKE_CONFIG_ARGS }}'
+
+     - task: cmake-compile
+       vars: 
+         CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+         CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+
+  # called by ci pipeline to build the winx64 project
+  build:
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
+    cmds:
+      - task: cmake-build
+        vars:
+          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
+          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
+          CMAKE_ARGS: '
+            {{ .CLI_ARGS }}
+            {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
+            {{ if eq OS "windows" }}-A x64{{ end }}'
+
+  postbuild_success:
+    desc: 'DO NOT USE. This is an internal task'
+    requires:
+      vars: [ARTIFACT_DIR]
+    cmds:
+      - cmd: mkdir -p '{{ .ARTIFACT_DIR }}'
+        ignore_error: true
+
+      - task: pack-parallel
+
+  pack-parallel:
+    desc: 'Packs the binary artifacts into tar files for distribution for various builds in parallel'
+    internal: true
+    deps:
+      - task: pack-source
+
+      - task: pack-dist
+        vars: { BUILD_MODE: 'debug' }
+      - task: pack-dist
+        vars: { BUILD_MODE: 'release' }
+
+  pack-dist:
+    desc: 'Packs the binary artifacts into a tar file for distribution'
+    internal: true
+    requires:
+      vars: [ARTIFACT_DIR, BUILD_MODE, PROJECT_NAME]
+    vars:
+      TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/{{ OS }}-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
+    cmds:
+      - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
+        ignore_error: true
+
+      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
+
+  pack-source:
+    desc: 'Packs the source code into a tar file for distribution'
+    internal: true
+    requires:
+      vars: [ARTIFACT_DIR, PROJECT_NAME]
+    vars:
+      TARGET_SOURCE: '{{ .ARTIFACT_DIR }}/{{ .PROJECT_NAME }}-source.tgz'
+      SOURCE_FILES:
+        - src
+        - include
+        - tests
+        - CMakeLists.txt
+        - Taskfile.yaml
+        - LICENSE
+        - README.md
+    cmds:
+      - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
+
+  dev-init:
+    desc: 'Configures the project for local development'
+    cmds:
+      - task: debug
+      - cmd: echo "dev init complete"
+        silent: true
+
+  clean:
+    desc: 'Cleans any build artifacts and output directories'
+    ignore_error: true
+    cmds:
+      - for: [ bin/, build/ ]
+        cmd: rm -rf "{{ .ITEM }}"
