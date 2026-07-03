@@ -121,13 +121,9 @@ tasks:
   # called by ci pipeline to build the winx64 project
   build:
     desc: 'DO NOT USE. This is an internal task'
-    requires:
-      vars: [CMAKE_BUILD_DIR, CMAKE_BUILD_TYPE]
     cmds:
-      - task: cmake-build
+      - task: default
         vars:
-          CMAKE_BUILD_DIR: '{{ .CMAKE_BUILD_DIR }}'
-          CMAKE_BUILD_TYPE: '{{ .CMAKE_BUILD_TYPE }}'
           CMAKE_ARGS: '
             {{ .CLI_ARGS }}
             {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
@@ -140,7 +136,7 @@ tasks:
     cmds:
       - cmd: mkdir -p '{{ .ARTIFACT_DIR }}'
         ignore_error: true
-
+      - cmd: echo '{{ .VERSION }}' > VERSION
       - task: pack-parallel
 
   pack-parallel:
@@ -161,10 +157,12 @@ tasks:
       vars: [ARTIFACT_DIR, BUILD_MODE, PROJECT_NAME]
     vars:
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
-      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/{{ OS }}-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
+      ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}.tgz'
     cmds:
       - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
         ignore_error: true
+
+      - cmd: cp VERSION '{{ .TARGET_DIR }}/'
 
       - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
 
@@ -174,7 +172,7 @@ tasks:
     requires:
       vars: [ARTIFACT_DIR, PROJECT_NAME]
     vars:
-      TARGET_SOURCE: '{{ .ARTIFACT_DIR }}/{{ .PROJECT_NAME }}-source.tgz'
+      TARGET_SOURCE: '{{ .ARTIFACT_DIR }}/src.tgz'
       SOURCE_FILES:
         - src
         - include
@@ -183,13 +181,14 @@ tasks:
         - Taskfile.yaml
         - LICENSE
         - README.md
+        - VERSION
     cmds:
       - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
   dev-init:
     desc: 'Configures the project for local development'
     cmds:
-      - task: debug
+      - task: build-debug
       - cmd: echo "dev init complete"
         silent: true
 

@@ -90,6 +90,7 @@ tasks:
       VNCOMPRESS_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Net.Compression/vnlib_compress/{{ .NATIVE_BUILD_PATH }}{{ .LIB_PREFIX }}_compress'
       MONOCYPHER_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Cryptography/monocypher/{{ .NATIVE_BUILD_PATH }}{{ .LIB_PREFIX }}_monocypher'
       ARGON2_LIB_PATH: '{{ .USER_WORKING_DIR }}/lib/Utils.Cryptography/argon2/{{ .NATIVE_BUILD_PATH }}{{ if eq OS "linux"}}lib{{end}}argon2'
+      VNLIB_WTLFU_SOURCE_DIR: '{{ .USER_WORKING_DIR }}/lib/Utils.Caching/vnlib_wtlfu'
     cmds:
      - cmd: echo "Ensure you have run 'task dev-init' before running tests to build native libraries"
        silent: true
@@ -114,6 +115,9 @@ tasks:
         --environment VNLIB_ARGON2_DLL_PATH="{{ .ARGON2_LIB_PATH }}"
         {{ .CLI_ARGS }}
 
+    # run native wtlfu unit tests
+     - cmd: cd '{{ .VNLIB_WTLFU_SOURCE_DIR }}' && task test
+
      #run the web server tests without XML comment warnings
      - cmd: cd apps/VNLib.WebServer && task test
 
@@ -134,6 +138,7 @@ tasks:
       NATIVE_LIB_DIRS: '
         lib/Utils.Memory/vnlib_rpmalloc
         lib/Utils.Memory/vnlib_mimalloc
+        lib/Utils.Caching/vnlib_wtlfu
         lib/Utils.Cryptography/monocypher
         lib/Utils.Cryptography/argon2
         lib/Net.Compression/vnlib_compress'
@@ -161,6 +166,7 @@ tasks:
       NATIVE_LIB_DIRS: '
         lib/Utils.Memory/vnlib_rpmalloc
         lib/Utils.Memory/vnlib_mimalloc
+        lib/Utils.Caching/vnlib_wtlfu
         lib/Net.Compression/vnlib_compress
         lib/Utils.Cryptography/monocypher
         lib/Utils.Cryptography/argon2'
