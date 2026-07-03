@@ -163,7 +163,9 @@ if(VNLIB_BUILD_TESTS)
 		# always add the test-base.c file 
 		add_executable(${TEST_NAME} ${ARG_SOURCES})
 
-		target_link_libraries(${TEST_NAME} bcrypt.lib)
+		if (MSVC)
+			target_link_libraries(${TEST_NAME} bcrypt.lib)
+		endif()
 
 		if(ARG_STATIC)
 			target_link_libraries(${TEST_NAME} ${_WTL_PROJ_NAME}_static)
