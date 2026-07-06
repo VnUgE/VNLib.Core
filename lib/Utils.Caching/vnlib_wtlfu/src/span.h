@@ -45,7 +45,10 @@
 #include "debug.h"
 
 #define _nc_fn_inline _vn_inline
-#define _NC_IS_WINDOWS _VN_IS_WINDOWS
+
+#ifdef  _VN_IS_WINDOWS
+	#define _NC_IS_WINDOWS
+#endif //  _VN_IS_WINDOWS
 
 /*
 * By default span copies are performed with memmove for performance.
