@@ -36,9 +36,11 @@ jobs:
     interpreter: !DefaultInterpreter
       commands: |
          git clone @server_url@/@project_path@ --branch @branch@ @project_name@
-         cd @project_name@  
-         task -t Module.Taskfile.yaml dev-init
-         task -t Module.Taskfile.yaml test
+         cd @project_name@/ci
+
+         mise trust mise.toml
+         mise install
+         mise test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -61,8 +63,12 @@ jobs:
       type: DefaultInterpreter
       commands: |
         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
-        vnbuild build --no-delay --verbose
-        vnbuild publish --verbose
+        cd @project_name@/ci
+
+        mise trust mise.toml
+        mise install
+        mise vnbuild-build
+        mise vnbuild-publish
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -77,6 +83,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+
 - name: Ubuntu Tests
   jobExecutor: docker
   steps:
@@ -92,19 +99,17 @@ jobs:
   - type: CommandStep
     name: ubuntu-x64 tests
     runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:8.0.420-noble-amd64@@sha256:1aea676f769ae62f5588873f4ad9ab7d5ed04d859b6a7614599ccb54f5a8f89a
+    image: docker.io/ubuntu:24.04@@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd @project_name@
-
-        export DOTNET_ROOT=$(pwd)/.dotnet
-        export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
-        export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-        bash ci/scripts/linux-setup-amd64.sh install
-
-        task -t Module.Taskfile.yaml dev-init
-        task -t Module.Taskfile.yaml test
+        cd @project_name@/ci
+        
+        apt update; apt install curl -y
+        chmod +x ./mise
+        ./mise settings experimental=true
+        ./mise bootstrap --yes
+        ./mise test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -132,19 +137,16 @@ jobs:
   - type: CommandStep
     name: fedora-x64 tests
     runInContainer: true
-    image: docker.io/fedora:43@@sha256:781b7642e8bf256e9cf75d2aa58d86f5cc695fd2df113517614e181a5eee9138
+    image: docker.io/fedora:44@@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd @project_name@
+        cd @project_name@/ci
 
-        export DOTNET_ROOT=$(pwd)/.dotnet
-        export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
-        export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-        bash ci/scripts/linux-setup-amd64.sh install
-
-        task -t Module.Taskfile.yaml dev-init
-        task -t Module.Taskfile.yaml test
+        chmod +x ./mise
+        ./mise settings experimental=true
+        ./mise bootstrap --yes
+        ./mise test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
