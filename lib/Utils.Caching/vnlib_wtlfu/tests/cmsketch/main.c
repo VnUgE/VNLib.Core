@@ -98,7 +98,7 @@ static int BasicCreateTest(void)
 
 /*
 * Does a basic test to track memory allocations and frees made directly
-* by the cmksketch unit. Two allocations should be made, one for the sketch
+* by the cmsketch unit. Two allocations should be made, one for the sketch
 * state and one for the internal counter table.
 * 
 * Adds a local stats counter to the local test allocator to track allocations
@@ -393,7 +393,7 @@ static int Record_Saturation(void)
     WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
     ENSURE(sketch);
 
-    // fill but ensure saturation does not occur until exactly UTINT8_MAX
+    // fill but ensure saturation does not occur until exactly UINT8_MAX
     for (int i = 0; i < UINT8_MAX - 1; i++)
     {
         wtlfuSketchRecord(sketch, spanToC(key));

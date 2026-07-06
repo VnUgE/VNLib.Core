@@ -43,7 +43,7 @@
 *
 * BORROWED REFERENCES:
 *   WtlCacheGet returns a borrowed reference (const WtlValue*) into the
-*   cache's internal memory. The caller MUST call WtlCacheRelease when
+*   cache's internal memory. The caller MUST call WtlCacheReleaseValue when
 *   done with the value. If an entry is evicted or removed while borrowed,
 *   its memory is kept alive until the last reference is released.
 *   A new WtlCacheGet or WtlCacheInsert for the same key will return the
@@ -145,7 +145,7 @@ VNLIB_EXPORT WtlCache* VNLIB_CC WtlCacheCreate(const WtlConfig* config);
 /*
 * Destroys the cache and frees all internal memory through the allocator.
 * Any outstanding borrowed references become dangling — the caller must
-* call WtlCacheRelease on all borrowed values before destroying.
+* call WtlCacheReleaseValue on all borrowed values before destroying.
 *
 * @param cache  Cache to destroy (may be NULL, no-op)
 */
@@ -187,13 +187,13 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlCacheInsert(
 *     it overflows (then faces admission).
 *   - The entry's refcount is incremented (borrowed reference).
 *   - *outValue points directly into the cache's memory (zero-copy).
-*   - Caller MUST call WtlCacheRelease when done with the pointer.
+*   - Caller MUST call WtlCacheReleaseValue when done with the pointer.
 *
 * @param cache     Cache handle
 * @param key       Pointer to key bytes
 * @param keyLen    Number of key bytes
 * @param outValue  Receives a borrowed value reference on hit
-* @return A pointer to the found value, null if not found or an error occured
+* @return A pointer to the found value, null if not found or an error occurred
 */
 VNLIB_EXPORT const WtlValue* VNLIB_CC WtlCacheGet(WtlCache* cache, const uint8_t* key, uint32_t keyLen);
 
@@ -211,7 +211,7 @@ VNLIB_EXPORT void VNLIB_CC WtlCacheReleaseValue(WtlCache* cache, const WtlValue*
 * Checks for a key's existence without affecting frequency or recency.
 * Returns a value pointer valid only until the next cache mutation
 * (Insert, Remove, or Get that triggers eviction). Does NOT borrow —
-* no WtlCacheRelease call needed.
+* no WtlCacheReleaseValue call needed.
 *
 * @param cache     Cache handle
 * @param key       Pointer to key bytes
@@ -268,7 +268,7 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlCacheAgeSketch(WtlCache* cache);
 *
 * These provide read-only access to a borrowed value's bytes.
 * The pointers are valid for the lifetime of the borrow (until
-* WtlCacheRelease is called) or until the cache is destroyed.
+* WtlCacheReleaseValue is called) or until the cache is destroyed.
 */
 
 VNLIB_EXPORT uint32_t VNLIB_CC WtlValueGetData(const WtlValue* val,  const void** dataOut);

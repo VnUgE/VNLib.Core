@@ -38,7 +38,7 @@
 * Three-tier dispatch by input length:
 *   - Short  (0-16 B):   one accumulator, reads widest chunk that fits
 *   - Medium (17-128 B):  one accumulator, 32 bytes chunks, strip end
-*   - Long   (>128 B):   four lane accumulators, striped stripes, merge
+*   - Long   (>128 B):   four lane accumulators, striped lanes, merge
 *
 * The mixing constants (PRIME_1..PRIME_5), the ROUND/MERGE
 * structure, and the final avalanche sequence are derived from the

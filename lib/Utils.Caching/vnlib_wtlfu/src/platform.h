@@ -41,7 +41,7 @@
 * and C standards
 */
 
-#if defined(_VN_IS_WINDOWS) || defined(inline) || defined(__clang__)
+#if defined(_VN_IS_WINDOWS) || defined(__clang__)
     #define _vn_inline inline
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L /* C99 allows usage of inline keyword */
     #define _vn_inline inline

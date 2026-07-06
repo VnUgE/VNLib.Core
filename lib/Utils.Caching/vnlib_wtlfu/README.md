@@ -10,7 +10,7 @@ _A C library implementing a W-TinyLFU based LRU cache._
 
 - [Home Page](https://www.vaughnnugent.com) - Website home page
 - [Documentation](https://www.vaughnnugent.com/resources/software/articles?tags=docs,vnlib_wtlfu) - Docs and articles for this project
-- [Builds for VNLib.Core](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core) - Per-project build artifacts, source code and precombiled binaries
+- [Builds for VNLib.Core](https://www.vaughnnugent.com/resources/software/modules/VNLib.Core) - Per-project build artifacts, source code and precompiled binaries
 
 ## Third-Party Notices
 

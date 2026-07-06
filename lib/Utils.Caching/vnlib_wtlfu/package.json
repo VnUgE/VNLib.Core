@@ -4,7 +4,7 @@
   "output_dir": "bin",
   "author": "Vaughn Nugent",
   "description": "A C library implementing a W-TinyLFU-like LRU memory cache.",
-  "copyright": "Copyright © 2026 Vaughn Nugent",
+  "copyright": "Copyright \u00A9 2026 Vaughn Nugent",
   "company": "Vaughn Nugent",
   "repository": "https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/tree/lib/Utils.Caching/vnlib_wtlfu",
   "output_files": "msvc-x64-debug.tgz,msvc-x64-release.tgz,src.tgz"
