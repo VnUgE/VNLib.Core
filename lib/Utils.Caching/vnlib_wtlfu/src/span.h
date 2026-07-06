@@ -41,7 +41,7 @@
 #define _SPAN_H
 
 #include <stdint.h>
-#include <platform.h>
+#include "platform.h"
 #include "debug.h"
 
 #define _nc_fn_inline _vn_inline

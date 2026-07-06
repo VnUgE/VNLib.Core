@@ -28,6 +28,7 @@ string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
 # installed or distributed with the public API.
 set(WTLFU_SRCS
 	"src/hash.c"
+	"src/cmsketch.c"
 )
 
 set(WTLFU_HEADERS
@@ -36,6 +37,7 @@ set(WTLFU_HEADERS
 	"src/debug.h"
 	"src/span.h"
 	"src/hash.h"
+	"src/cmsketch.h"
 )
 
 # Build both shared and static variants from the same sources.
@@ -189,7 +191,10 @@ if(VNLIB_BUILD_TESTS)
 	# In debug/test builds, internal symbols are exported from the
 	# shared library via the _VN_WTLFU_INTERNAL macro, so the test
 	# can link against the DLL like any other consumer.
-	add_wtl_test(wtl_hash_test SOURCES tests/test-base.c tests/hash/main.c)
+
+	add_wtl_test(WtlHashTest SOURCES tests/test-base.c tests/hash/main.c)
+
+	add_wtl_test(WtlSketchTest SOURCES tests/test-base.c tests/cmsketch/main.c)
 
 endif()
 
