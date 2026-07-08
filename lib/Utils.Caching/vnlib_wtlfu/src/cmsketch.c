@@ -159,7 +159,6 @@ _VN_WTLFU_INTERNAL WtlSketch* wtlfuSketchCreate(const WtlSketchConfig* config, c
     return sketch;
 }
 
-
 _VN_WTLFU_INTERNAL void wtlfuSketchDestroy(WtlSketch* sketch)
 {
     const WtlAllocator* allocator;
@@ -216,7 +215,6 @@ _VN_WTLFU_INTERNAL void wtlfuSketchRecord(WtlSketch* sketch, cspan_t key)
     }
 }
 
-
 _VN_WTLFU_INTERNAL uint32_t wtlfuSketchEstimate(const WtlSketch* sketch, cspan_t key)
 {
     // Seed the minimum with the first row's counter. The table is
@@ -265,7 +263,7 @@ _VN_WTLFU_INTERNAL void wtlfuSketchAge(WtlSketch* sketch)
 
     // Halve every counter. Integer division naturally rounds down,
     // which is the desired exponential decay behavior.
-    for (uint32_t i = 0; i < sketch->table.size; i++)
+    for (uint32_t i = 0; i < spanGetSize(sketch->table); i++)
     {
         (*spanGetOffset(sketch->table, i)) >>= 1;
     }
@@ -284,6 +282,6 @@ _VN_WTLFU_INTERNAL void wtlfuSketchReset(WtlSketch* sketch)
     }
 
     // Clear the table and access count
-    memset(sketch->table.data, 0, sketch->table.size);
+    memset(sketch->table.data, 0, spanGetSize(sketch->table));
     sketch->accessCount = 0;
 }
