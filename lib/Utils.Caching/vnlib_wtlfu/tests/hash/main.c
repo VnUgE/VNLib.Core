@@ -1,10 +1,36 @@
 
+/*
+ * Copyright (c) 2026 Vaughn Nugent
+ *
+ * Library: VNLib
+ * Package: vnlib_wtlfu
+ * File: tests/hash/main.c
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License
+ * as published by the Free Software Foundation; either version 2.1
+ * of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with vnlib_wtlfu. If not, see http://www.gnu.org/licenses/.
+ */
+
 #include <test.h>
 #include <hex.h>
 #include <hash.h>
 
 #include "vectors.h"
 
+/*
+ * Fills the supplied buffer with an ascending byte pattern (0, 1, 2, ...)
+ * up to the span's length. Used by AlignmentTests to produce predictable
+ * key material at arbitrary offsets.
+ */
 static void FillAscending(span_t buffer)
 {
     uint8_t* ptr = spanGetOffset(buffer, 0);
@@ -15,6 +41,12 @@ static void FillAscending(span_t buffer)
     }
 }
 
+/*
+ * Validates the hash implementation against known-answer test vectors.
+ * Each vector supplies a hex-encoded key, a seed, and the expected 64-bit
+ * and 32-bit hash outputs. Both wtlfuHash and wtlfuHash32 are checked
+ * against every vector.
+ */
 static int VectorTests(void)
 {
     cspan_t key;
@@ -44,6 +76,10 @@ static int VectorTests(void)
     return 0;
 }
 
+/*
+ * Verifies that hashing the same key with the same seed produces
+ * identical results across repeated calls (determinism property).
+ */
 static int DeterminismTests(void)
 {
     span_t keyA = FromHexString(
@@ -83,6 +119,11 @@ static int DeterminismTests(void)
     return 0;
 }
 
+/*
+ * Verifies that different seeds produce different hash values for the
+ * same key, and that the same seed produces the same hash (domain
+ * separation property).
+ */
 static int SeedIsolationTests(void)
 {
     // Ascending 64-byte key used across all sub-tests
@@ -134,6 +175,11 @@ static int SeedIsolationTests(void)
     return 0;
 }
 
+/*
+ * Verifies that the 32-bit hash fold (wtlfuHash32) is a correct
+ * derivation of the full 64-bit hash, by checking the upper and
+ * lower 32 bits against the expected vector values independently.
+ */
 static int Hash32FoldTests(void)
 {    
     cspan_t key;
@@ -165,6 +211,12 @@ static int Hash32FoldTests(void)
     return 0;
 }
 
+/*
+ * Verifies that the hash function produces identical results regardless
+ * of the key buffer's memory alignment. Tests keys placed at various
+ * offsets within a scratch buffer to ensure unaligned reads are handled
+ * correctly across all internal dispatch paths (short, medium, long).
+ */
 static int AlignmentTests(void)
 {
     /* Lengths that exercise all three dispatch paths: short, medium, long. */
