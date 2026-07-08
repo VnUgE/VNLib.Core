@@ -193,9 +193,14 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlCacheInsert(
 * @param key       Pointer to key bytes
 * @param keyLen    Number of key bytes
 * @param outValue  Receives a borrowed value reference on hit
-* @return A pointer to the found value, null if not found or an error occurred
+* @return WTL_SUCCESS if the cache value is found, WTL_ERROR on failure
 */
-VNLIB_EXPORT const WtlValue* VNLIB_CC WtlCacheGet(WtlCache* cache, const uint8_t* key, uint32_t keyLen);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheGet(
+    WtlCache* cache, 
+    const uint8_t* key, 
+    uint32_t keyLen, 
+    WtlValue** outValue
+);
 
 /*
 * Releases a borrowed reference obtained from WtlCacheGet.
@@ -204,8 +209,9 @@ VNLIB_EXPORT const WtlValue* VNLIB_CC WtlCacheGet(WtlCache* cache, const uint8_t
 *
 * @param cache  Cache handle
 * @param value  The borrowed value reference obtained from WtlCacheGet
+* @return WTL_SUCCESS on successful release, WTL_ERROR otherwise
 */
-VNLIB_EXPORT void VNLIB_CC WtlCacheReleaseValue(WtlCache* cache, const WtlValue* value);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheReleaseValue(WtlCache* cache, const WtlValue* value);
 
 /*
 * Checks for a key's existence without affecting frequency or recency.
@@ -219,7 +225,12 @@ VNLIB_EXPORT void VNLIB_CC WtlCacheReleaseValue(WtlCache* cache, const WtlValue*
 * @param outValue  Receives a value pointer valid until next mutation
 * @return WTL_SUCCESS on hit, WTL_ERR_NOT_FOUND on miss
 */
-VNLIB_EXPORT const WtlValue* VNLIB_CC WtlCachePeek(WtlCache* cache, const uint8_t* key, uint32_t keyLen);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCachePeek(
+    WtlCache* cache, 
+    const uint8_t* key, 
+    uint32_t keyLen, 
+    WtlValue** outValue
+);
 
 /*
 * Explicitly removes an entry by key. If the entry is currently borrowed
