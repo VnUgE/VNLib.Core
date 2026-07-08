@@ -29,6 +29,7 @@ string(TOLOWER ${CMAKE_BUILD_TYPE} build_type)
 set(WTLFU_SRCS
 	"src/hash.c"
 	"src/cmsketch.c"
+	"src/lru.c"
 )
 
 set(WTLFU_HEADERS
@@ -38,6 +39,7 @@ set(WTLFU_HEADERS
 	"src/span.h"
 	"src/hash.h"
 	"src/cmsketch.h"
+	"src/internal.h"
 )
 
 # Build both shared and static variants from the same sources.
@@ -195,6 +197,9 @@ if(VNLIB_BUILD_TESTS)
 	add_wtl_test(WtlHashTest SOURCES tests/test-base.c tests/hash/main.c)
 
 	add_wtl_test(WtlSketchTest SOURCES tests/test-base.c tests/cmsketch/main.c)
+
+	# the lru unit tests
+	add_wtl_test(WtlLruTests SOURCES tests/test-base.c tests/lru/main.c)
 
 endif()
 
