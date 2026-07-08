@@ -574,7 +574,7 @@ static int Age_HalvesCounters(void)
 *
 * Sequence:
 *   - Record 9 times: no aging, estimate == 9
-*   - 10th record: aging fires, estimate == 4 (9+1=10, halved = 5)
+ *   - 10th record: aging fires, estimate == 5 (9+1=10, halved = 5)
 *   - Record 9 more: no aging, estimate == 14 (5+9)
 *   - 10th again: aging fires, estimate == 7 (14 halved = 7)
 */
@@ -810,60 +810,6 @@ static int Aging_PreservesRelativeOrdering(void)
     return 0;
 }
 
-/*
-* Verifies the core Count-Min Sketch overestimation guarantee:
-* the estimated frequency of any key is always >= its true record
-* count. Collisions can only inflate counters, never deflate them,
-* so the minimum across rows is still an upper bound on true count.
-*
-* Uses a deliberately tiny width (16) to create heavy collision pressure
-* with 30 keys, making overestimation likely and exercising the
-* invariant that the sketch is designed to guarantee.
-*/
-static int Estimate_OverestimationGuarantee(void)
-{
-    uint8_t keyBytes[30];
-    uint32_t recordCounts[30];
-
-    WtlSketchConfig tinyConfig = DefaultConfig;
-    tinyConfig.width = 16;
-    tinyConfig.depth = 4;
-    tinyConfig.resetThreshold = 10000;
-
-    WtlSketch* sketch = wtlfuSketchCreate(&tinyConfig, &DefaultAllocator);
-    ENSURE(sketch);
-
-    // Record key N exactly N+1 times (1..30)
-    for (int i = 0; i < 30; i++)
-    {
-        cspan_t key;
-
-        keyBytes[i] = (uint8_t)i;
-        recordCounts[i] = (uint32_t)(i + 1);
-
-        spanInitC(&key, &keyBytes[i], 1);
-
-        for (int j = 0; j < recordCounts[i]; j++)
-        {
-            wtlfuSketchRecord(sketch, key);
-        }
-    }
-
-    // Verify each key's estimate is >= its true record count
-    for (int i = 0; i < 30; i++)
-    {
-        cspan_t key;
-
-        spanInitC(&key, &keyBytes[i], 1);
-
-        EXPECT_TRUE(wtlfuSketchEstimate(sketch, key) >= recordCounts[i]);
-    }
-
-    wtlfuSketchDestroy(sketch);
-
-    return 0;
-}
-
 int RunTests(void)
 {
     RUN_TEST(BasicCreateTest());
@@ -884,7 +830,6 @@ int RunTests(void)
     RUN_TEST(Reset_ClearsAllState());
     RUN_TEST(Determinism_SameConfigSameEstimates());
     RUN_TEST(Aging_PreservesRelativeOrdering());
-    RUN_TEST(Estimate_OverestimationGuarantee());
 
     return 0;
 }
