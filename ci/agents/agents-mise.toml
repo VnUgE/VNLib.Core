@@ -1,0 +1,17 @@
+min_version = "2024.9.5"
+
+[settings]
+experimental = true
+
+# review requires git
+[bootstrap.packages]
+"apt:git" = "latest"
+"dnf:git" = "latest"
+
+[tools]
+task = "3.51"
+"aqua:alibaba/open-code-review" = "latest"
+
+[tasks.go-task]
+dir = '../../'
+run = 'task -t "{{ config_root }}/Taskfile.yaml"'
