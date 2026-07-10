@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -55,10 +55,8 @@ Starting...
         private static readonly DirectoryInfo EXE_DIR = new(Environment.CurrentDirectory);
 
         private const string DEFAULT_CONFIG_PATH = "config.json";
-        internal const string TCP_CONF_PROP_NAME = "tcp";
-        internal const string LOAD_DEFAULT_HOSTNAME_VALUE = "[system]";
-        internal const string PLUGINS_CONFIG_PROP_NAME = "plugins";
-
+        private const int EXIT_SUCCESS = 0;
+        private const int EXIT_ERROR = 1;
 
         static int Main(string[] args)
         {
@@ -68,7 +66,7 @@ Starting...
             if (args.Length == 0 || procArgs.HasArgument("-h") || procArgs.HasArgument("--help"))
             {
                 PrintHelpMenu();
-                return 0;
+                return EXIT_SUCCESS;
             }
 
             Console.WriteLine(STARTUP_MESSAGE);
@@ -84,7 +82,8 @@ Starting...
                 logBuilder.AppLogConfig
                     .CreateLogger()
                     .Fatal("Failed to load configuration data. Cannot continue");
-                return -1;
+
+                return EXIT_ERROR;
             }
 
             //Build logs from config
@@ -114,127 +113,168 @@ Starting...
                 logger.AppLog.Debug("Zero allocation flag was set, but the shared heap was not created with the GlobalZero flag, consider enabling zero allocations globally");
             }
 
+            using ManualResetEvent shutdownEvent = new(false);
             using WebserverBase server = GetWebserver(logger, config, procArgs);
 
+            logger.AppLog.Information("Configuring service stack, populating service domain...");
+            if (!ConfigureServer(server, logger.AppLog))
+            {
+                return EXIT_ERROR;
+            }
+
+            logger.AppLog.Verbose("Service configuration stage complete. Starting services...");
+            if (!StartServer(server, logger.AppLog))
+            {
+                return EXIT_ERROR;
+            }
+
+            logger.AppLog.Information("Service stack started successfully, servers are listening.");
+
+            // Register console cancel to cause cleanup
+            Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
+            {
+                logger.AppLog.Debug("Interrupt signal received, shutting down...");
+
+                e.Cancel = true;
+                shutdownEvent.Set();
+            };
+
+            /*
+             * Optional background thread to listen for commands on stdin which 
+             * can also request a server shutdown. 
+             * 
+             * The loop runs in a background thread and will not block the main thread
+             * The loop can request a server shutdown by setting the shutdown event
+             */
+
+            if (!procArgs.HasArgument("--input-off"))
+            {
+                CommandListener cmdLoop = new(shutdownEvent, server, logger.AppLog);
+                StartConsoleListener(cmdLoop, logger.AppLog);
+            }
+
+            logger.AppLog.Information("Main thread waiting for exit signal, press ctrl + c to exit");
+
+#if DEBUG
+            /*
+             * In debug mode, the caller can specify the --dev-test flag to prevent the main thread from blocking
+             * and allow the process to exit immediately after starting the server. 
+             * 
+             * The exit code can be used to determine if the server started successfully or not
+             * 
+             * The delay gives some time for listener threads to start and bind before exiting
+             */
+            if (procArgs.HasArgument("--dev-test"))
+            {
+                logger.AppLog.Information("Dev-test mode enabled, exiting immediately");
+                shutdownEvent.WaitOne(200);
+            }
+            else
+            {
+                shutdownEvent.WaitOne();
+            }
+#else
+            //Wait for user signal to exit
+            shutdownEvent.WaitOne();
+#endif
+
+            logger.AppLog.Information("Stopping service stack");
+
+            return StopServer(server, logger.AppLog) 
+                ? EXIT_SUCCESS
+                : EXIT_ERROR;
+        }
+
+        private static bool ConfigureServer(WebserverBase server, ILogProvider logger)
+        {
             try
             {
-                logger.AppLog.Information("Building service stack, populating service domain...");
-
                 server.Configure();
+                return true;
             }
             catch (ServerConfigurationException sce) when (sce.InnerException is not null)
             {
-                logger.AppLog.Fatal("Failed to configure server. Reason: {sce}", sce.InnerException.Message);
-                return -1;
+                logger.Fatal("Failed to configure server. Reason: {sce}", sce.InnerException.Message);
             }
             catch (ServerConfigurationException sce)
             {
-                logger.AppLog.Fatal("Failed to configure server. Reason: {sce}", sce.Message);
-                return -1;
+                logger.Fatal("Failed to configure server. Reason: {sce}", sce.Message);
             }
             catch (Exception ex) when (ex.InnerException is ServerConfigurationException sce)
             {
-                logger.AppLog.Fatal("Failed to configure server. Reason: {sce}", sce.Message);
-                return -1;
+                logger.Fatal("Failed to configure server. Reason: {sce}", sce.Message);
             }
             catch (Exception ex)
             {
-                logger.AppLog.Fatal(ex, "Failed to configure server");
-                return -1;
+                logger.Fatal(ex, "Failed to configure server");
             }
 
-            logger.AppLog.Verbose("Server configuration stage complete");
+            return false;
+        }
 
-            using ManualResetEvent ShutdownEvent = new(false);
-
+        private static bool StartServer(WebserverBase server, ILogProvider logger)
+        {
             try
             {
-                logger.AppLog.Information("Starting services...");
-
                 server.Start();
+                return true;
+            }
+            catch (SocketException se) when (se.SocketErrorCode == SocketError.AddressAlreadyInUse)
+            {
+                logger.Fatal("Failed to start servers, address already in use");
+            }
+            catch (SocketException se)
+            {
+                logger.Fatal(se, "Failed to start servers due to a socket exception");
+            }
+            catch (Exception ex)
+            {
+                logger.Fatal(ex, "Failed to start web servers");
+            }
 
-                logger.AppLog.Information("Service stack started, servers are listening.");
+            return false;
+        }
 
-                //Register console cancel to cause cleanup
-                Console.CancelKeyPress += (object? sender, ConsoleCancelEventArgs e) =>
-                {
-                    e.Cancel = true;
-                    ShutdownEvent.Set();
-                };
-
-                /*
-                 * Optional background thread to listen for commands on stdin which 
-                 * can also request a server shutdown. 
-                 * 
-                 * The loop runs in a background thread and will not block the main thread
-                 * The loop can request a server shutdown by setting the shutdown event
-                 */
-
-                if (!procArgs.HasArgument("--input-off"))
-                {
-                    CommandListener cmdLoop = new(ShutdownEvent, server, logger.AppLog);
-
-                    Thread consoleListener = new(() => cmdLoop.ListenForCommands(Console.In, Console.Out, name: "stdin"))
-                    {
-                        IsBackground = true
-                    };
-
-                    consoleListener.Start();
-                }
-
-                logger.AppLog.Information("Main thread waiting for exit signal, press ctrl + c to exit");
-
-#if DEBUG
-                /*
-                 * In debug mode, the caller can specify the --dev-test flag to prevent the main thread from blocking
-                 * and allow the process to exit immediately after starting the server. 
-                 * 
-                 * The exit code can be used to determine if the server started successfully or not
-                 * 
-                 * The delay gives some time for listener threads to start and bind before exiting
-                 */
-                if (procArgs.HasArgument("--dev-test"))
-                {
-                    logger.AppLog.Information("Dev-test mode enabled, exiting immediately");
-                    ShutdownEvent.WaitOne(200);
-                }
-                else
-                {
-                    ShutdownEvent.WaitOne();
-                }
-#else
-                //Wait for user signal to exit
-                ShutdownEvent.WaitOne();
-#endif
-
-                logger.AppLog.Information("Stopping service stack");
-
+        private static bool StopServer(WebserverBase server, ILogProvider logger)
+        {
+            try
+            {
                 server.Stop();
 
                 //Wait for all plugins to unload and cleanup (temporary)
                 Thread.Sleep(500);
 
-                return 0;
-            }
-            catch (SocketException se) when (se.SocketErrorCode == SocketError.AddressAlreadyInUse)
-            {
-                logger.AppLog.Fatal("Failed to start servers, address already in use");
-                return (int)se.SocketErrorCode;
-            }
-            catch (SocketException se)
-            {
-                logger.AppLog.Fatal(se, "Failed to start servers due to a socket exception");
-                return (int)se.SocketErrorCode;
+                return true;
             }
             catch (Exception ex)
             {
-                logger.AppLog.Fatal(ex, "Failed to start web servers");
+                logger.Fatal(ex, "Exception occurred while stopping the service stack");
             }
 
-            return -1;
+            return false;
         }
 
-        static void PrintHelpMenu()
+        private static void StartConsoleListener(CommandListener listener, ILogProvider logger)
+        {
+            Thread consoleListener = new(OnConsoleThreadStart) { IsBackground = true };
+
+            consoleListener.Start();
+
+            void OnConsoleThreadStart()
+            {
+                try
+                {
+                    listener.ListenForCommands(Console.In, Console.Out, name: "stdin");
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Background console listener thread has terminated unexpectedly: {ex.Message}");
+                    logger.Fatal(ex, "Background console listener thread has terminated unexpectedly.");
+                }
+            }
+        }
+
+        private static void PrintHelpMenu()
         {
             const string TEMPLATE =
 @$"
