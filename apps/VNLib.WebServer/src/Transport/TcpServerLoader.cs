@@ -49,7 +49,7 @@ namespace VNLib.WebServer.Transport
 
         private readonly LazyInitializer<TcpConfigJson> _conf = new(() =>
         {
-            TcpConfigJson conf = hostConfig.GetConfigProperty<TcpConfigJson>(Entry.TCP_CONF_PROP_NAME) ?? new TcpConfigJson();
+            TcpConfigJson conf = hostConfig.GetConfigProperty<TcpConfigJson>() ?? new TcpConfigJson();
 
             conf.ReuseAddress |= args.HasArgument("--reuse-address");
             conf.ReusePort    |= args.HasArgument("--reuse-port");          //TODO: port reuse currently not supported

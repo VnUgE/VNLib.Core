@@ -43,8 +43,6 @@ using VNLib.WebServer.Plugins;
 using VNLib.WebServer.RuntimeLoading;
 using VNLib.WebServer.VirtualHosts;
 
-using static VNLib.WebServer.Entry;
-
 namespace VNLib.WebServer.Bootstrap
 {
 
@@ -87,7 +85,7 @@ namespace VNLib.WebServer.Bootstrap
                 return null;
             }
 
-            ServerPluginConfig? conf = config.GetConfigProperty<ServerPluginConfig>(PLUGINS_CONFIG_PROP_NAME);
+            ServerPluginConfig? conf = config.GetConfigProperty<ServerPluginConfig>();
             if (conf is null)
             {
                 logger.AppLog.Debug("No plugin configuration found");
@@ -154,7 +152,7 @@ namespace VNLib.WebServer.Bootstrap
         {
             try
             {
-                HttpGlobalConfig? gConf = config.GetConfigProperty<HttpGlobalConfig>("http");
+                HttpGlobalConfig? gConf = config.GetConfigProperty<HttpGlobalConfig>();
                 Validate.EnsureNotNull(gConf, "Missing required HTTP configuration variables");
 
                 //Attempt to load the compressor manager, if null, compression is disabled
