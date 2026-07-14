@@ -7,6 +7,31 @@ vars:
 
 tasks:
 
+  pr-new:
+    desc: Lightweight PR review focusing on formatting, spelling, and style issues
+    dir: '{{ .USER_WORKING_DIR }}'
+    vars:
+      CURRENT_BRANCH:
+        sh: git rev-parse --abbrev-ref HEAD
+      COMMIT_SHA:
+        sh: git rev-parse HEAD
+      PROMPT: |
+        You are a quality control agent responsible for guarding common low level issues among the repository. You are focused on 
+        common mistakes that lower quality and are easy to fix. Flag typos, copyright header issues, excess whitespace improper formats,
+        incorrect copyright dates etc. We also have high standards for our idomatic consistancy, be sure to also flag consistency issues. 
+    env:
+      # Direct env vars — OCR reads these natively (highest priority)
+      OCR_USE_ANTHROPIC: "false"
+    preconditions: 
+      - command -v ocr
+    cmds:
+      - cmd: ocr review 
+          --from "origin/{{ .BASE_BRANCH }}" 
+          --to "{{ .COMMIT_SHA }}" 
+          --format text 
+          --audience agent 
+          --background "{{ .PROMPT }}"
+
   pr-basic-review:
     desc: Lightweight PR review focusing on formatting, spelling, and style issues
     dir: '{{ .USER_WORKING_DIR }}'

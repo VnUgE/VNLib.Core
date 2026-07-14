@@ -27,8 +27,13 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
+    [ConfigurationKey(ConfigKey)]
     internal class HttpGlobalConfig : IJsonOnDeserialized
     {
+        /// <summary>
+        /// The name of the configuration element 
+        /// </summary>
+        internal const string ConfigKey = "http";
 
         [JsonPropertyName("default_version")]
         public string DefaultHttpVersion { get; set; } = "HTTP/1.1";

@@ -1,4 +1,4 @@
-version: 43
+version: 46
 jobs:
 - name: Repo Sync Push
   steps:
@@ -33,14 +33,15 @@ jobs:
   - type: CommandStep
     name: Clone init and test
     runInContainer: false
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
-         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
-         cd @project_name@/ci
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+        cd @project_name@/ci
 
-         mise trust mise.toml
-         mise install
-         mise test
+        mise trust mise.toml
+        mise install
+        mise test
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -104,7 +105,7 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd @project_name@/ci
-        
+
         apt update; apt install curl -y
         chmod +x ./mise
         ./mise settings experimental=true
@@ -217,37 +218,31 @@ jobs:
   timeout: 14400
 
 - name: Code Reviews
+  jobExecutor: windows
   steps:
   - type: CommandStep
-    name: clone
+    name: basic-pr-review
     runInContainer: false
     interpreter:
       type: DefaultInterpreter
       commands: |
         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
-    useTTY: true
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: run basic review
-    runInContainer: false
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd @project_name@
-        task -t ./ci/Agents.Taskfile.yaml pr-basic-review
+        cd @project_name@/ci/agents
+
+        mise trust agents-mise.toml
+        mise go-task pr-new
     envVars:
-    - name: REVIEW_OUTPUT
-      value: basic-review.md
+    - name: OCR_LLM_URL
+      value: '@secret:review-llm-url@'
+    - name: OCR_LLM_TOKEN
+      value: '@secret:review-llm-token@'
+    - name: OCR_LLM_MODEL
+      value: vn-ci-review-agent
+    - name: MISE_OVERRIDE_CONFIG_FILENAMES
+      value: agents-mise.toml
     useTTY: true
     condition: SUCCESSFUL
     optional: false
-  - type: PublishArtifactStep
-    name: publish review artifact
-    artifacts: '@project_name@/basic-review.md'
-    condition: SUCCESSFUL
-    optional: false
-  jobExecutor: windows
   triggers:
   - type: BranchUpdateTrigger
     branches: -develop -master
@@ -256,3 +251,4 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 14400
+
