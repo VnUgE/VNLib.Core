@@ -25,21 +25,6 @@
 #include "test.h"
 #include "hex.h"
 
-static void* _alloc(void* ctx, size_t size, size_t alignment);
-static void _free(void* ctx, void* ptr, size_t size);
-
-struct memstats_t {
-    int allocatedBytes;
-    int allocCount;
-    int freeCount;
-};
-
-static const WtlAllocator DefaultAllocator = {
-    .Alloc  = &_alloc,
-    .Free   = &_free,
-    .ctx    = NULL
-};
-
 /* default sketch config values from internal.h */
 static const WtlSketchConfig DefaultConfig = {
     .depth          = WTL_SKETCH_DEFAULT_DEPTH,
@@ -48,16 +33,33 @@ static const WtlSketchConfig DefaultConfig = {
     .resetThreshold = WTL_SKETCH_DEFAULT_RESET_MULT * WTL_SKETCH_DEFAULT_WIDTH
 };
 
-static int BasicCreateTest(void)
+static WtlSketch* sketchAlloc(const WtlSketchConfig* config)
+{
+    uint32_t size;
+    WtlSketch* buf;
+    
+    size = wtlfuSketchGetMemorySize(config);
+    if (size == 0) 
+    { 
+        return NULL; 
+    }
+    
+    buf = (WtlSketch*)malloc(size);    
+    if (!buf)
+    { 
+        return NULL; 
+    }
+    
+    wtlfuSketchInit(config, buf);
+    
+    return buf;
+}
+
+static int BasicSizeTest(void)
 {
     // Assert that test config just works
-    {
-        WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
-        EXPECT_TRUE(sketch);
-        
-        // Cleanup so no leaks happen 
-        wtlfuSketchDestroy(sketch);
-    }
+
+    EXPECT_TRUE(wtlfuSketchGetMemorySize(&DefaultConfig) > 0);
 
     // bad config variable validation
     {
@@ -65,68 +67,84 @@ static int BasicCreateTest(void)
 
         // Depth == 0
         badConfig.depth = 0;
-        EXPECT_FALSE(wtlfuSketchCreate(&badConfig, &DefaultAllocator));
+        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
 
         // Width == 0
         badConfig = DefaultConfig;
         badConfig.width = 0;
 
-        EXPECT_FALSE(wtlfuSketchCreate(&badConfig, &DefaultAllocator));
+        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
 
         // Depth > max depth
         badConfig = DefaultConfig;
         badConfig.depth = WTL_SKETCH_MAX_DEPTH + 1;
 
-        EXPECT_FALSE(wtlfuSketchCreate(&badConfig, &DefaultAllocator));
+        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
 
         // max depth * width > uint32_max
         badConfig = DefaultConfig;
         badConfig.depth = WTL_SKETCH_MAX_DEPTH;
         badConfig.width = UINT32_MAX;
 
-        EXPECT_FALSE(wtlfuSketchCreate(&badConfig, &DefaultAllocator));
+        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
 
         // reset threshold == 0
         badConfig = DefaultConfig;
         badConfig.resetThreshold = 0;
 
-        EXPECT_FALSE(wtlfuSketchCreate(&badConfig, &DefaultAllocator));
+        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
     }
 
     return 0;
 }
 
 /*
-* Does a basic test to track memory allocations and frees made directly
-* by the cmsketch unit. Two allocations should be made, one for the sketch
-* state and one for the internal counter table.
-* 
-* Adds a local stats counter to the local test allocator to track allocations
+* Verifies that wtlfuSketchGetMemorySize returns a size consistent
+* with the inline-table layout: struct header followed by a flat
+* width*depth byte table. Two configs differing only in width must
+* differ in size by exactly deltaWidth * depth, and similarly for
+* depth. The total must always exceed width*depth (struct overhead).
 */
-static int BasicMemoryAllocFreeTest(void)
-{    
-    struct memstats_t memCounter = { 0 };
+static int GetMemorySize_InlineTableLayout(void)
+{
+    /* Size must include struct overhead, not just the table */
+    EXPECT_TRUE(wtlfuSketchGetMemorySize(&DefaultConfig) >
+        (DefaultConfig.width * DefaultConfig.depth));
 
-    WtlAllocator allocator = DefaultAllocator;
+    /* Vary width by a known delta; size delta must equal deltaW * depth */
+    {
+        WtlSketchConfig a = DefaultConfig;
+        WtlSketchConfig b = DefaultConfig;
+        uint32_t sizeA, sizeB;
 
-    // Store test memcounter for stats counting
-    allocator.ctx = &memCounter;
+        a.width = 256;
+        b.width = 512;
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &allocator);
-    EXPECT_TRUE(sketch);
+        sizeA = wtlfuSketchGetMemorySize(&a);
+        sizeB = wtlfuSketchGetMemorySize(&b);
 
-    // Expect the table to be allocated + some memory for the internal sketch structure
-    EXPECT_TRUE(memCounter.allocatedBytes > (DefaultConfig.width * DefaultConfig.depth));
-    EXPECT_EQ(memCounter.allocCount, 2);
-    EXPECT_EQ(memCounter.freeCount, 0);
+        EXPECT_TRUE(sizeA > 0);
+        EXPECT_TRUE(sizeB > 0)
+        EXPECT_EQ(sizeB - sizeA, (512 - 256) * DefaultConfig.depth);
+    }
 
-    // Ensure all is freed correctly
-    wtlfuSketchDestroy(sketch);
+    /* Vary depth by a known delta; size delta must equal deltaD * width */
+    {
+        WtlSketchConfig a = DefaultConfig;
+        WtlSketchConfig b = DefaultConfig;
 
-    // allocated bytes should be 0, alloc count should remain, free should increment
-    EXPECT_EQ(memCounter.allocatedBytes, 0);
-    EXPECT_EQ(memCounter.allocCount, 2);
-    EXPECT_EQ(memCounter.freeCount, 2);
+        uint32_t sizeA, sizeB;
+
+        a.depth = 2;
+        b.depth = 4;
+
+        sizeA = wtlfuSketchGetMemorySize(&a);
+        sizeB = wtlfuSketchGetMemorySize(&b);
+
+        EXPECT_TRUE(sizeA > 0);
+        EXPECT_TRUE(sizeB > 0)
+        EXPECT_EQ(sizeB - sizeA, (4 - 2) * DefaultConfig.width);
+    }
 
     return 0;
 }
@@ -147,7 +165,7 @@ static int RecordAndEstimate_SingleKey(void)
     span_t testKey1 = FromHexString("68656c6c6f20776f726c64", 11);
     span_t testKey2 = FromHexString("68656c6c6f20776f726c6432", 12);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);  
 
     //Expect 0 when no keys have been recorded
@@ -170,7 +188,7 @@ static int RecordAndEstimate_SingleKey(void)
         EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(testKey2)), 0);
     }
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
     return 0;
 }
 
@@ -185,7 +203,7 @@ static int Record_MultipleTimes(void)
 
     span_t testKey = FromHexString("68656c6c6f20776f726c64", 11);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // For each record count, reset the sketch so each iteration
@@ -203,7 +221,7 @@ static int Record_MultipleTimes(void)
         wtlfuSketchReset(sketch);
     }
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -217,7 +235,7 @@ static int Estimate_EqualsRecordCount_SingleKey(void)
 {
     span_t testKey = FromHexString("68656c6c6f20776f726c64", 11);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record the key an increasing number of times and verify the
@@ -229,7 +247,7 @@ static int Estimate_EqualsRecordCount_SingleKey(void)
         EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(testKey)), n);
     }
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -247,7 +265,7 @@ static int EmptyKey(void)
 
     spanInitC(&emptyKey, NULL, 0);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Estimate of an unrecorded empty key should be 0
@@ -266,7 +284,7 @@ static int EmptyKey(void)
     // A different (non-empty) key should still be 0
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(otherKey)), 0);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -281,7 +299,7 @@ static int Record_DoesNotEstimateBeforeRecord(void)
     span_t key1 = FromHexString("68656c6c6f", 5);
     span_t key2 = FromHexString("776f726c64", 5);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // No records have been made; every key must estimate 0
@@ -293,7 +311,7 @@ static int Record_DoesNotEstimateBeforeRecord(void)
     spanInitC(&emptyKey, NULL, 0);
     EXPECT_EQ(wtlfuSketchEstimate(sketch, emptyKey), 0);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -310,7 +328,7 @@ static int RecordAndEstimate_MultipleKeys(void)
     span_t keyB = FromHexString("776f726c64", 5);
     span_t keyC = FromHexString("666f6f626172", 6);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A five times and key B three times
@@ -331,7 +349,7 @@ static int RecordAndEstimate_MultipleKeys(void)
     // Unrecorded key should be zero
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyC)), 0);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -350,7 +368,7 @@ static int MultiKey_Separation(void)
         "05", "06", "07", "08", "09"
     };
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record each key once
@@ -373,7 +391,7 @@ static int MultiKey_Separation(void)
         EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(unknown)), 0);
     }
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -390,7 +408,7 @@ static int Record_Saturation(void)
 {
     span_t key = FromHexString("68656c6c6f", 5);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // fill but ensure saturation does not occur until exactly UINT8_MAX
@@ -413,7 +431,7 @@ static int Record_Saturation(void)
         EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), UINT8_MAX);
     }
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -428,7 +446,7 @@ static int Saturation_DoesNotAffectOtherKeys(void)
     span_t keyA = FromHexString("68656c6c6f", 5);
     span_t keyB = FromHexString("776f726c64", 5);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Saturate key A
@@ -449,7 +467,7 @@ static int Saturation_DoesNotAffectOtherKeys(void)
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), UINT8_MAX);
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 3);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -476,7 +494,7 @@ static int Estimate_ManyKeys_OverestimationGuarantee(void)
     WtlSketchConfig config = DefaultConfig;
     config.width = 16;
 
-    WtlSketch* sketch = wtlfuSketchCreate(&config, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&config);
     ENSURE(sketch);
 
     // Record key N exactly N times (1..num_keys)
@@ -505,7 +523,7 @@ static int Estimate_ManyKeys_OverestimationGuarantee(void)
         EXPECT_TRUE(estimate >= (uint32_t)recordCounts[i]);
     }
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -522,7 +540,7 @@ static int Age_HalvesCounters(void)
     span_t keyA = FromHexString("68656c6c6f", 5);
     span_t keyB = FromHexString("776f726c64", 5);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A exactly 8 times
@@ -561,7 +579,7 @@ static int Age_HalvesCounters(void)
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 0);
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 15);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -586,7 +604,7 @@ static int Age_ResetsAccessCounter(void)
     WtlSketchConfig config = DefaultConfig;
     config.resetThreshold = 10;
 
-    WtlSketch* sketch = wtlfuSketchCreate(&config, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&config);
     ENSURE(sketch);
 
     // Record 9 times: below threshold, no aging
@@ -613,7 +631,7 @@ static int Age_ResetsAccessCounter(void)
     wtlfuSketchRecord(sketch, spanToC(key));
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), 7);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -630,7 +648,7 @@ static int Age_AffectsMultipleKeys(void)
     span_t keyB = FromHexString("776f726c64", 5);
     span_t keyC = FromHexString("666f6f626172", 6);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A 8 times and key B 4 times
@@ -660,7 +678,7 @@ static int Age_AffectsMultipleKeys(void)
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 1);
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyC)), 0);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -676,7 +694,7 @@ static int Reset_ClearsAllState(void)
     span_t keyA = FromHexString("68656c6c6f", 5);
     span_t keyB = FromHexString("776f726c64", 5);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record both keys so counters are non-zero
@@ -709,7 +727,7 @@ static int Reset_ClearsAllState(void)
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 4);
     EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 0);
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
@@ -726,8 +744,8 @@ static int Determinism_SameConfigSameEstimates(void)
     span_t keyB = FromHexString("776f726c64", 5);
     span_t keyC = FromHexString("666f6f626172", 6);
 
-    WtlSketch* s1 = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
-    WtlSketch* s2 = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* s1 = sketchAlloc(&DefaultConfig);
+    WtlSketch* s2 = sketchAlloc(&DefaultConfig);
     ENSURE(s1);
     ENSURE(s2);
 
@@ -760,8 +778,8 @@ static int Determinism_SameConfigSameEstimates(void)
     EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyB)), wtlfuSketchEstimate(s2, spanToC(keyB)));
     EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyC)), wtlfuSketchEstimate(s2, spanToC(keyC)));
 
-    wtlfuSketchDestroy(s1);
-    wtlfuSketchDestroy(s2);
+    free(s1);
+    free(s2);
 
     return 0;
 }
@@ -780,7 +798,7 @@ static int Aging_PreservesRelativeOrdering(void)
     span_t keyA = FromHexString("68656c6c6f", 5);
     span_t keyB = FromHexString("776f726c64", 5);
 
-    WtlSketch* sketch = wtlfuSketchCreate(&DefaultConfig, &DefaultAllocator);
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A 20 times, key B 5 times
@@ -805,15 +823,15 @@ static int Aging_PreservesRelativeOrdering(void)
     wtlfuSketchAge(sketch);
     EXPECT_TRUE(wtlfuSketchEstimate(sketch, spanToC(keyA)) > wtlfuSketchEstimate(sketch, spanToC(keyB)));
 
-    wtlfuSketchDestroy(sketch);
+    free(sketch);
 
     return 0;
 }
 
 int RunTests(void)
 {
-    RUN_TEST(BasicCreateTest());
-    RUN_TEST(BasicMemoryAllocFreeTest());
+    RUN_TEST(BasicSizeTest());
+    RUN_TEST(GetMemorySize_InlineTableLayout());
     RUN_TEST(RecordAndEstimate_SingleKey());
     RUN_TEST(Record_MultipleTimes());
     RUN_TEST(Estimate_EqualsRecordCount_SingleKey());
@@ -832,32 +850,4 @@ int RunTests(void)
     RUN_TEST(Aging_PreservesRelativeOrdering());
 
     return 0;
-}
-
-static void* _alloc(void* ctx, size_t size, size_t alignment)
-{
-    void* ptr = malloc(size);
-
-    if (ptr && ctx)
-    {
-        struct memstats_t* stats = (struct memstats_t*)ctx;
-
-        stats->allocatedBytes += size;
-        stats->allocCount++;
-    }
-
-    return ptr;
-}
-
-static void _free(void* ctx, void* ptr, size_t size)
-{
-    free(ptr);
-
-    if (ctx) 
-    {
-        struct memstats_t* stats = (struct memstats_t*)ctx;
-
-        stats->allocatedBytes -= size;
-        stats->freeCount++;
-    }
 }

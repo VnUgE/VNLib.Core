@@ -20,21 +20,21 @@
 */
 
 /*
-* cmsketch.h - Count-Min Sketch with periodic aging for vnlib_wtlfu.
-*
-* A Count-Min Sketch (CMS) is a probabilistic data structure that
-* estimates the frequency of items using multiple independent hash
-* functions and a 2D array of counters. The estimate for any key
-* is the minimum across all rows.
-*
-* Aging: when the total number of recorded accesses reaches
-* resetThreshold, all counters are halved (right-shifted by 1) and
-* the access counter is reset. This keeps frequency estimates fresh
-* and prevents long-lived items from permanently dominating.
-*
-* Counters are uint8_t (0-255). The aging strategy keeps values
-* well within range for typical workloads.
-*/
+ * cmsketch.h - Count-Min Sketch with periodic aging for vnlib_wtlfu.
+ *
+ * A Count-Min Sketch (CMS) is a probabilistic data structure that
+ * estimates the frequency of items using multiple independent hash
+ * functions and a 2D array of counters. The estimate for any key
+ * is the minimum across all rows.
+ *
+ * Aging: when the total number of recorded accesses reaches
+ * resetThreshold, all counters are halved (right-shifted by 1) and
+ * the access counter is reset. This keeps frequency estimates fresh
+ * and prevents long-lived items from permanently dominating.
+ *
+ * Counters are uint8_t (0-255). The aging strategy keeps values
+ * well within range for typical workloads.
+ */
 
 #pragma once
 
@@ -45,15 +45,14 @@
 #include <stddef.h>
 #include "platform.h"
 #include "span.h"
-#include "wtlfu.h"
 
 #define WTL_SKETCH_DEFAULT_WIDTH        1024u
 #define WTL_SKETCH_DEFAULT_DEPTH        4u
 #define WTL_SKETCH_DEFAULT_RESET_MULT   10u
 
 /*
-* The configured maximum depth of the sketch table. sketchCreate() validation
-* prevents table depth larger > this value
+* The configured maximum depth of the sketch table. wtlfuSketchGetMemorySize()
+* rejects configs whose depth exceeds this value.
 */
 #define WTL_SKETCH_MAX_DEPTH 8u
 
@@ -89,24 +88,25 @@ typedef struct wtl_sketch_config_struct
 } WtlSketchConfig;
 
 /*
-* Creates a new sketch. All memory is allocated through the supplied
-* allocator. Returns NULL on failure.
+* Returns the total size, in bytes, required for a caller-owned buffer
+* that holds the WtlSketch header followed by its inline counter table.
+* A return value of 0 indicates an invalid configuration.
 *
-* @param config    Sketch configuration (width, depth, resetThreshold, seed)
-* @param allocator  Allocator handle (retained, caller keeps it alive)
-* @return New sketch handle, or NULL on failure
+* @param config A pointer to the sketch configuration used to calculate the buffer size
+* @return The number of bytes to allocate, or 0 if the configuration is invalid
 */
-_VN_WTLFU_INTERNAL WtlSketch* wtlfuSketchCreate(
-    const WtlSketchConfig* config,
-    const WtlAllocator* allocator
-);
+_VN_WTLFU_INTERNAL uint32_t wtlfuSketchGetMemorySize(const WtlSketchConfig* config);
 
 /*
- * Destroys the sketch and frees all memory through the allocator.
- *
- * @param sketch  Sketch to destroy (may be NULL, no-op)
- */
-_VN_WTLFU_INTERNAL void wtlfuSketchDestroy(WtlSketch* sketch);
+* Initializes a sketch at the caller-supplied memory location. The buffer
+* must be at least wtlfuSketchGetMemorySize(config) bytes and must be aligned
+* for the WtlSketch type. After init, the counter table immediately follows
+* the header inside the same buffer.
+*
+* @param config    A pointer to a valid sketch configuration
+* @param sketchPtr Pointer to the caller-allocated buffer to initialize
+*/
+_VN_WTLFU_INTERNAL void wtlfuSketchInit(const WtlSketchConfig* config, WtlSketch* sketchPtr);
 
 /*
 * Records an access for the given key by incrementing the counter

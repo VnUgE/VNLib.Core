@@ -22,10 +22,12 @@
 /*
  * cmsketch.c - Count-Min Sketch implementation for vnlib_wtlfu.
  *
- * Stores a 2D array of uint8_t counters in a single allocation. Each
- * row is indexed by a 32-bit hash derived from the key and a row-specific
- * seed. Frequency estimates return the minimum counter across all rows.
- * Counters saturate at 255 and are periodically halved to age old data.
+ * Stores a 2D array of uint8_t counters in a single caller-owned
+ * buffer: the WtlSketch header immediately followed by the flat
+ * row-major counter table. Each row is indexed by a 32-bit hash derived
+ * from the key and a row-specific seed. Frequency estimates return the
+ * minimum counter across all rows. Counters saturate at 255 and are
+ * periodically halved to age old data.
  */
 
 #include <stdint.h>
@@ -36,34 +38,15 @@
 #include "debug.h"
 #include "span.h"
 #include "hash.h"
-#include "wtlfu.h"
 #include "cmsketch.h"
 
 #if SIZE_MAX < UINT32_MAX
     #error "This library does not support sizeof(size_t) smaller than 32bits"
 #endif // SIZE_MAX < UINT32_MAX
 
-static _vn_inline void* wtlfuAlloc(const WtlAllocator* al, size_t size, size_t alignment)
-{
-    DEBUG_ASSERT(al);
-    return al->Alloc(al->ctx, size, alignment);
-}
-
-static _vn_inline void wtlfuFree(const WtlAllocator* al, void* ptr, size_t size)
-{
-    DEBUG_ASSERT(al);
-    al->Free(al->ctx, ptr, size);
-}
-
- /* Opaque sketch handle */
-struct WtlSketch {
-    
-    /*
-    * Cached allocated pointer used to allocate this structure and the counter
-    * table.
-    */
-    const WtlAllocator* allocator;
-
+/* Opaque sketch handle */
+struct WtlSketch { 
+   
     /* configuration copy: width, depth, resetThreshold, seed. */
     WtlSketchConfig config;
 
@@ -75,12 +58,30 @@ struct WtlSketch {
     uint32_t accessCount;
 
     /*
-     * Flat row-major counter table. Row r, column c is stored at
-     * index r * config.width + c. table.size stores the total
-     * number of counters (config.width * config.depth).
-     */
-    span_t table;
+    * Caches the entire size of the table
+    */
+    uint32_t tableSize;
+
+    /*
+    * Flat row-major counter table. Row r, column c is stored at
+    * index r * config.width + c. tableSize stores the total
+    * number of counters (config.width * config.depth). The table
+    * bytes immediately follow this struct in the caller-owned buffer.
+    */
 };
+
+static _vn_inline void sketchGetTable(WtlSketch* sketch, span_t* table)
+{
+    DEBUG_ASSERT(sketch);    
+    spanInit(table, (uint8_t*)(sketch + 1), sketch->tableSize);
+}
+
+static _vn_inline void sketchGetTableC(const WtlSketch* sketch, cspan_t* table)
+{
+    DEBUG_ASSERT(sketch);
+    spanInitC(table, (uint8_t*)(sketch + 1), sketch->tableSize);
+}
+
 
 static _vn_inline uint32_t sketchGetKeyIndex(const WtlSketch* sketch, cspan_t key, uint32_t row)
 {
@@ -93,92 +94,65 @@ static _vn_inline uint32_t sketchGetKeyIndex(const WtlSketch* sketch, cspan_t ke
     return row * sketch->config.width + column;
 }
 
-_VN_WTLFU_INTERNAL WtlSketch* wtlfuSketchCreate(const WtlSketchConfig* config, const WtlAllocator* allocator)
+_VN_WTLFU_INTERNAL uint32_t wtlfuSketchGetMemorySize(const WtlSketchConfig* config)
 {
-    WtlSketch* sketch;
-    uint64_t counterTableSize;
-
+    uint64_t counterTableSize = 0;
     DEBUG_ASSERT(config);
-    DEBUG_ASSERT(allocator);
-
-    // Validate arguments before touching the allocator.
-    if (!config || !allocator)
-    {
-        return NULL;
-    }
 
     // Width and depth must both be non-zero. Depth is also capped at a
     // small value because each additional row requires another hash pass.
     if (
-        config->width == 0 || 
-        config->depth == 0 || 
+        config->width == 0 ||
+        config->depth == 0 ||
         config->depth > WTL_SKETCH_MAX_DEPTH ||
         config->resetThreshold == 0
     )
     {
-        return NULL;
+        return 0;
     }
 
     // Guard against overflow when computing the total table size.
     counterTableSize = (uint64_t)config->width * (uint64_t)config->depth;
     if (counterTableSize > UINT32_MAX)
     {
-        return NULL;
-    }   
-
-    // Allocate the sketch state structure.
-    sketch = (WtlSketch*)wtlfuAlloc(allocator, sizeof(WtlSketch), 0);
-    if (!sketch)
-    {
-        DEBUG_ASSERT2(0, "Failed to allocate memory for the sketch structure");
-        return NULL;
+        return 0;
     }
 
-    memset(sketch, 0, sizeof(WtlSketch));
-
-    // Copy configuration and allocator pointer
-    sketch->config = *config; 
-    sketch->allocator = allocator;
-
-    // Allocate the flattened counter table as a separate block.
-    {
-        uint8_t* counterTable = (uint8_t*)wtlfuAlloc(sketch->allocator, counterTableSize, sizeof(uint8_t));
-        if (!counterTable)
-        {
-            DEBUG_ASSERT2(0, "Failed to allocate memory for the counter table");
-            // Free sketch table
-            wtlfuFree(allocator, sketch, sizeof(WtlSketch));
-            return NULL;
-        }
-
-        memset(counterTable, 0, counterTableSize);
-
-        spanInit(&sketch->table, counterTable, (uint32_t)counterTableSize);
-    }
-
-    return sketch;
+    return (uint32_t)sizeof(WtlSketch) + (uint32_t)counterTableSize;
 }
 
-_VN_WTLFU_INTERNAL void wtlfuSketchDestroy(WtlSketch* sketch)
+_VN_WTLFU_INTERNAL void wtlfuSketchInit(const WtlSketchConfig* config, WtlSketch* sketch)
 {
-    const WtlAllocator* allocator;
+    uint32_t bufferSize;
 
-    // Passing null internal sketch structure is a bug, should alert developers
-    DEBUG_ASSERT(sketch); 
-    if (!sketch || !sketch->allocator)
+    DEBUG_ASSERT(config);
+    DEBUG_ASSERT(sketch);
+
+    // Validate arguments before touching the allocator.
+    if (!config || !sketch)
     {
         return;
     }
 
-    allocator = sketch->allocator;
+    // Get the structure size, also validates the configuration
+    bufferSize = wtlfuSketchGetMemorySize(config);
+    if (bufferSize == 0)
+    {
+        return;
+    }
 
-    // free structures
-    wtlfuFree(allocator, sketch->table.data, spanGetSize(sketch->table));
-    wtlfuFree(allocator, sketch, sizeof(WtlSketch));
+    // Zero's out the entire structure and table
+    memset(sketch, 0, bufferSize);
+
+    // Copy the config 
+    sketch->config = *config;
+    sketch->tableSize = (uint32_t)(bufferSize - sizeof(WtlSketch));
 }
 
 _VN_WTLFU_INTERNAL void wtlfuSketchRecord(WtlSketch* sketch, cspan_t key)
 { 
+    span_t table;
+
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
     if (!sketch)
@@ -186,7 +160,7 @@ _VN_WTLFU_INTERNAL void wtlfuSketchRecord(WtlSketch* sketch, cspan_t key)
         return;
     }
 
-    DEBUG_ASSERT(!spanIsNull(sketch->table));
+    sketchGetTable(sketch, &table);
 
     // An empty key is valid; it simply hashes the empty byte sequence.
 
@@ -195,7 +169,7 @@ _VN_WTLFU_INTERNAL void wtlfuSketchRecord(WtlSketch* sketch, cspan_t key)
     for (uint32_t row = 0; row < sketch->config.depth; row++)
     {
         uint32_t     index = sketchGetKeyIndex(sketch, key, row);
-        uint8_t*  valuePtr = spanGetOffset(sketch->table, index);
+        uint8_t*  valuePtr = spanGetOffset(table, index);
 
         // Saturate at 255 rather than wrapping back to zero.
         if (*valuePtr < UINT8_MAX)
@@ -220,6 +194,7 @@ _VN_WTLFU_INTERNAL uint32_t wtlfuSketchEstimate(const WtlSketch* sketch, cspan_t
     // Seed the minimum with the first row's counter. The table is
     // non-empty because create() rejects zero width/depth.
     uint32_t min = UINT8_MAX;
+    cspan_t table;
 
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
@@ -228,13 +203,15 @@ _VN_WTLFU_INTERNAL uint32_t wtlfuSketchEstimate(const WtlSketch* sketch, cspan_t
         return 0;
     }
 
+    sketchGetTableC(sketch, &table);
+
     // Read one counter per row and keep the smallest value. Collisions
     // can only inflate counters, so the minimum is the conservative
     // (least overestimated) frequency estimate.
     for (uint32_t row = 0; row < sketch->config.depth; row++)
     {        
         uint32_t index = sketchGetKeyIndex(sketch, key, row);
-        uint8_t  value = *spanGetOffset(sketch->table, index);       
+        uint8_t  value = *spanGetOffsetC(table, index);
 
         if (value < min)
         {
@@ -254,6 +231,8 @@ _VN_WTLFU_INTERNAL uint32_t wtlfuSketchEstimate(const WtlSketch* sketch, cspan_t
 
 _VN_WTLFU_INTERNAL void wtlfuSketchAge(WtlSketch* sketch)
 {
+    span_t table;
+
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
     if (!sketch)
@@ -261,11 +240,13 @@ _VN_WTLFU_INTERNAL void wtlfuSketchAge(WtlSketch* sketch)
         return;
     }
 
+    sketchGetTable(sketch, &table);
+
     // Halve every counter. Integer division naturally rounds down,
     // which is the desired exponential decay behavior.
-    for (uint32_t i = 0; i < spanGetSize(sketch->table); i++)
+    for (uint32_t i = 0; i < spanGetSize(table); i++)
     {
-        (*spanGetOffset(sketch->table, i)) >>= 1;
+        (*spanGetOffset(table, i)) >>= 1;
     }
 
     // Reset the access counter so the next aging cycle starts fresh.
@@ -274,6 +255,8 @@ _VN_WTLFU_INTERNAL void wtlfuSketchAge(WtlSketch* sketch)
 
 _VN_WTLFU_INTERNAL void wtlfuSketchReset(WtlSketch* sketch)
 {
+    span_t table;
+
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
     if (!sketch)
@@ -281,7 +264,9 @@ _VN_WTLFU_INTERNAL void wtlfuSketchReset(WtlSketch* sketch)
         return;
     }
 
+    sketchGetTable(sketch, &table);
+
     // Clear the table and access count
-    memset(sketch->table.data, 0, spanGetSize(sketch->table));
+    memset(spanGetOffset(table, 0), 0, spanGetSize(table));
     sketch->accessCount = 0;
 }
