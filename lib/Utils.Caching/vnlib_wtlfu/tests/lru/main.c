@@ -31,27 +31,6 @@ static void lruUnlinkAll(WtlLruList* lru)
 }
 
 /*
- * lruInit must zero all fields so the list is in a valid empty state.
- * A list with garbage on the stack would break every subsequent operation.
- */
-static int InitZeroesFields(void)
-{
-    WtlLruList lru;
-
-    // Poison the struct so we don't pass by luck of zero-init
-    memset(&lru, 0xAA, sizeof(lru));
-
-    EXPECT_TRUE(lruInit(&lru));
-
-    EXPECT_TRUE(lru.head == NULL);
-    EXPECT_TRUE(lru.tail == NULL);
-    EXPECT_EQ(lru.count, 0);
-    EXPECT_TRUE(lruIsEmpty(&lru));
-
-    return 0;
-}
-
-/*
  * lruIsEmpty must correctly report the list state across its lifecycle:
  * empty on init, non-empty after push, empty again after pop.
  */
@@ -60,8 +39,8 @@ static int IsEmptyLifecycle(void)
     WtlLruList lru;
     WtlEntry entry, *popped;
 
-    memset(&entry, 0, sizeof(entry));
-    ENSURE(lruInit(&lru));
+    memset(&lru, 0, sizeof(lru));
+    memset(&entry, 0, sizeof(entry));   
 
     // Freshly init'd list is empty
     EXPECT_TRUE(lruIsEmpty(&lru));
@@ -91,11 +70,10 @@ static int PushMaintainsRing(void)
     WtlLruList lru;
     WtlEntry a, b, c;
 
+    memset(&lru, 0, sizeof(lru));
     memset(&a, 0, sizeof(a));
     memset(&b, 0, sizeof(b));
     memset(&c, 0, sizeof(c));
-   
-    ENSURE(lruInit(&lru));
 
     // Single entry: both head and tail, self-linked
     {
@@ -144,19 +122,75 @@ static int PushMaintainsRing(void)
 }
 
 /*
- * lruPop must return the LRU (tail) entry, maintain the ring after
- * removal, clear the victim's links, and return NULL on an empty list.
+ * lruPushTail must maintain the circular doubly-linked list invariant
+ * across single, two, and three entry insertions, with correct head/tail/count.
+ * Entries enter at the tail (coldest position), opposite of lruPush.
  */
+static int PushTailMaintainsRing(void)
+{
+    WtlLruList lru;
+    WtlEntry a, b, c;
+
+    memset(&lru, 0, sizeof(lru));
+    memset(&a, 0, sizeof(a));
+    memset(&b, 0, sizeof(b));
+    memset(&c, 0, sizeof(c));
+
+    // Single entry: both head and tail, self-linked
+    {
+        EXPECT_TRUE(lruPushTail(&lru, &a));
+
+        EXPECT_TRUE(lru.head == &a);
+        EXPECT_TRUE(lru.tail == &a);
+        EXPECT_TRUE(a.prev == &a);
+        EXPECT_TRUE(a.next == &a);
+        EXPECT_EQ(lru.count, 1);
+    }
+
+    // Two entries: second is new tail, first is head, ring closes
+    {
+        EXPECT_TRUE(lruPushTail(&lru, &b));
+
+        EXPECT_TRUE(lru.head == &a);
+        EXPECT_TRUE(lru.tail == &b);
+        EXPECT_TRUE(b.prev == &a);
+        EXPECT_TRUE(b.next == &a);
+        EXPECT_TRUE(a.prev == &b);
+        EXPECT_TRUE(a.next == &b);
+        EXPECT_EQ(lru.count, 2);
+    }
+
+    // Three entries: full ring traversal wraps in both directions
+    {
+        EXPECT_TRUE(lruPushTail(&lru, &c));
+
+        EXPECT_TRUE(lru.head == &a);
+        EXPECT_TRUE(lru.tail == &c);
+        EXPECT_EQ(lru.count, 3);
+
+        // Forward: a -> b -> c -> a
+        EXPECT_TRUE(lru.head->next == &b);
+        EXPECT_TRUE(lru.head->next->next == &c);
+        EXPECT_TRUE(lru.head->next->next->next == &a);
+
+        // Backward: c -> b -> a -> c
+        EXPECT_TRUE(lru.tail->prev == &b);
+        EXPECT_TRUE(lru.tail->prev->prev == &a);
+        EXPECT_TRUE(lru.tail->prev->prev->prev == &c);
+    }
+
+    return 0;
+}
+
 static int PopReturnsLruOrder(void)
 {
     WtlLruList lru;
     WtlEntry a, b, c, *popped;
 
+    memset(&lru, 0, sizeof(lru));
     memset(&a, 0, sizeof(a));
     memset(&b, 0, sizeof(b));
     memset(&c, 0, sizeof(c));
-   
-    ENSURE(lruInit(&lru));
 
     // Pop on empty list returns NULL
     {
@@ -218,11 +252,10 @@ static int PeekReturnsTailWithoutRemoval(void)
     WtlLruList lru;
     WtlEntry a, b, c, *peeked;
 
+    memset(&lru, 0, sizeof(lru));
     memset(&a, 0, sizeof(a));
     memset(&b, 0, sizeof(b));
     memset(&c, 0, sizeof(c));
-    
-    ENSURE(lruInit(&lru));
 
     // Peek on empty list returns NULL
     {
@@ -258,11 +291,10 @@ static int HeadAndTailAccessors(void)
     WtlLruList lru;
     WtlEntry a, b, c;
 
+    memset(&lru, 0, sizeof(lru));
     memset(&a, 0, sizeof(a));
     memset(&b, 0, sizeof(b));
     memset(&c, 0, sizeof(c));
-   
-    ENSURE(lruInit(&lru));
 
     // Empty list: both return NULL
     {
@@ -303,7 +335,7 @@ static int UnlinkFromAllPositions(void)
 
     // Unlink the only entry: list becomes empty
     {
-        ENSURE(lruInit(&lru));
+        memset(&lru, 0, sizeof(lru));
        
         ENSURE(lruPush(&lru, &a));
 
@@ -320,7 +352,7 @@ static int UnlinkFromAllPositions(void)
 
     // Unlink head (C): B becomes new head, A stays tail, ring intact
     {
-        ENSURE(lruInit(&lru));
+        memset(&lru, 0, sizeof(lru));
 
         ENSURE(lruPush(&lru, &a));
         ENSURE(lruPush(&lru, &b));
@@ -342,7 +374,7 @@ static int UnlinkFromAllPositions(void)
 
     // Unlink tail (A): B becomes new tail, C stays head, ring intact
     {
-        ENSURE(lruInit(&lru));
+        memset(&lru, 0, sizeof(lru));
         ENSURE(lruPush(&lru, &a));
         ENSURE(lruPush(&lru, &b));
         ENSURE(lruPush(&lru, &c));
@@ -363,7 +395,7 @@ static int UnlinkFromAllPositions(void)
 
     // Unlink interior (B): head and tail unchanged, ring closes C -> A -> C
     {
-        ENSURE(lruInit(&lru));
+        memset(&lru, 0, sizeof(lru));
         ENSURE(lruPush(&lru, &a));
         ENSURE(lruPush(&lru, &b));
         ENSURE(lruPush(&lru, &c));
@@ -398,7 +430,7 @@ static int MoveToHeadFromAllPositions(void)
 
     // Move the only entry to head: no-op, still head
     {
-        ENSURE(lruInit(&lru));
+        memset(&lru, 0, sizeof(lru));
         ENSURE(lruPush(&lru, &a));
 
         ENSURE(lruMoveToHead(&lru, &a));
@@ -412,7 +444,7 @@ static int MoveToHeadFromAllPositions(void)
    
     // Move tail (A) to head: A becomes MRU, B becomes new tail
     {
-        ENSURE(lruInit(&lru));
+        memset(&lru, 0, sizeof(lru));
         ENSURE(lruPush(&lru, &a));
         ENSURE(lruPush(&lru, &b));
         ENSURE(lruPush(&lru, &c));
@@ -436,7 +468,7 @@ static int MoveToHeadFromAllPositions(void)
 
     // Move interior (B) to head: B becomes MRU, ring intact
     {
-        ENSURE(lruInit(&lru));
+        memset(&lru, 0, sizeof(lru));
         ENSURE(lruPush(&lru, &a));
         ENSURE(lruPush(&lru, &b));
         ENSURE(lruPush(&lru, &c));
@@ -474,7 +506,7 @@ static int CountTracksMutations(void)
     memset(&b, 0, sizeof(b));
     memset(&c, 0, sizeof(c));
 
-    ENSURE(lruInit(&lru));
+    memset(&lru, 0, sizeof(lru));
 
     // Empty list reports zero
     EXPECT_EQ(lruCount(&lru), 0);
@@ -518,9 +550,9 @@ static int CountTracksMutations(void)
 
 int RunTests(void)
 {
-    RUN_TEST(InitZeroesFields());
     RUN_TEST(IsEmptyLifecycle());
     RUN_TEST(PushMaintainsRing());
+    RUN_TEST(PushTailMaintainsRing());
     RUN_TEST(PopReturnsLruOrder());
     RUN_TEST(PeekReturnsTailWithoutRemoval());
     RUN_TEST(HeadAndTailAccessors());

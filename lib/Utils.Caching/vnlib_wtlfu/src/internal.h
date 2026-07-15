@@ -83,7 +83,6 @@ typedef struct WtlLruList
 } WtlLruList;
 
 
-_VN_WTLFU_INTERNAL int lruInit(WtlLruList* lru);
 _VN_WTLFU_INTERNAL int lruPush(WtlLruList* lru, WtlEntry* entry);
 _VN_WTLFU_INTERNAL int lruPushTail(WtlLruList* lru, WtlEntry* entry);
 _VN_WTLFU_INTERNAL int lruUnlink(WtlLruList* lru, WtlEntry* entry);

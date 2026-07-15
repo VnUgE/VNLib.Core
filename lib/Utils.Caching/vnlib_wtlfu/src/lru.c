@@ -62,23 +62,6 @@ static _vn_inline void _lruNodeClearLinks(WtlEntry* entry)
 }
 
 /*
-* Zero-initialize an LRU list to a valid empty state.
-* Must be called once before any other lru operation on a new list.
-*/
-_VN_WTLFU_INTERNAL int lruInit(WtlLruList* lru)
-{
-	DEBUG_ASSERT(lru);
-	if (!lru)
-	{
-		return LRU_FALSE;
-	}
-	
-	memset(lru, 0, sizeof(WtlLruList));
-
-	return LRU_TRUE;
-}
-
-/*
 * Push an entry to the MRU position (front/head) of the LRU list.
 * The entry must not already be in any list (caller must unlink first).
 *
@@ -91,8 +74,8 @@ _VN_WTLFU_INTERNAL int lruPush(WtlLruList* lru, WtlEntry* entry)
 	DEBUG_ASSERT(entry);
 
 	// Entry must have null pointers, otherwise error
-	DEBUG_ASSERT(entry->prev == NULL);
-	DEBUG_ASSERT(entry->next == NULL);	
+	DEBUG_ASSERT(!entry->prev);
+	DEBUG_ASSERT(!entry->next);	
 
 	if (!lru || !entry || entry->prev || entry->next)
 	{
@@ -100,7 +83,7 @@ _VN_WTLFU_INTERNAL int lruPush(WtlLruList* lru, WtlEntry* entry)
 	}
 
 	// No elements in the list
-	if (lru->head == NULL)
+	if (!lru->head)
 	{
 		// Self-link to satisfy the circular invariant
 		entry->prev = entry;
@@ -137,8 +120,8 @@ _VN_WTLFU_INTERNAL int lruPushTail(WtlLruList* lru, WtlEntry* entry)
 	DEBUG_ASSERT(entry);
 
 	//Expects entries not in the list
-	DEBUG_ASSERT(entry->prev == NULL);
-	DEBUG_ASSERT(entry->next == NULL);
+	DEBUG_ASSERT(!entry->prev);
+	DEBUG_ASSERT(!entry->next);
 
 	if (!lru || !entry || entry->prev || entry->next)
 	{
@@ -146,7 +129,7 @@ _VN_WTLFU_INTERNAL int lruPushTail(WtlLruList* lru, WtlEntry* entry)
 	}
 
 	// No elements in the list
-	if (lru->head == NULL)
+	if (!lru->head)
 	{
 		// Self-link to satisfy the circular invariant
 		entry->prev = entry;
@@ -286,14 +269,8 @@ _VN_WTLFU_INTERNAL int lruUnlink(WtlLruList* lru, WtlEntry* entry)
 */
 _VN_WTLFU_INTERNAL int lruMoveToHead(WtlLruList* lru, WtlEntry* entry)
 {
-	if (!lruUnlink(lru, entry))
-	{
-		return LRU_FALSE;
-	}
-
-	// Push cannot fail if unlink succeeds as it properly clears it's fields
-	DEBUG_ASSERT(lruPush(lru, entry));
-	return LRU_TRUE;
+	// Push cannot fail if unlink succeeds as it properly clears its fields
+	return lruUnlink(lru, entry) && lruPush(lru, entry);
 }
 
 /*
@@ -312,13 +289,9 @@ _VN_WTLFU_INTERNAL WtlEntry* lruPeek(const WtlLruList* lru)
 */
 _VN_WTLFU_INTERNAL WtlEntry* lruHeadGet(const WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);
-	if (!lru)
-	{
-		return NULL;
-	}
+	DEBUG_ASSERT(lru);	
 
-	return lru->head;
+	return lru ? lru->head : NULL;
 }
 
 /*
@@ -327,13 +300,9 @@ _VN_WTLFU_INTERNAL WtlEntry* lruHeadGet(const WtlLruList* lru)
 */
 _VN_WTLFU_INTERNAL WtlEntry* lruTailGet(const WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);
-	if (!lru)
-	{
-		return NULL;
-	}
+	DEBUG_ASSERT(lru);	
 
-	return lru->tail;
+	return lru ? lru->tail : NULL;
 }
 
 /*
@@ -342,13 +311,9 @@ _VN_WTLFU_INTERNAL WtlEntry* lruTailGet(const WtlLruList* lru)
 */
 _VN_WTLFU_INTERNAL int lruIsEmpty(const WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);
-	if (!lru)
-	{
-		return 1;
-	}
+	DEBUG_ASSERT(lru);	
 
-	return lru->count == 0;
+	return lru ? lru->count == 0 : 1;
 }
 
 /*
@@ -358,10 +323,6 @@ _VN_WTLFU_INTERNAL int lruIsEmpty(const WtlLruList* lru)
 _VN_WTLFU_INTERNAL uint32_t lruCount(const WtlLruList* lru)
 {
 	DEBUG_ASSERT(lru);
-	if (!lru)
-	{
-		return 0;
-	}
 
-	return lru->count;
+	return lru ? lru->count : 0;
 }
