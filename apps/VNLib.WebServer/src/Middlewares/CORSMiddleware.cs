@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -30,7 +30,6 @@ using System.Collections.Frozen;
 using VNLib.Net.Http;
 using VNLib.Utils.Logging;
 using VNLib.Plugins.Essentials;
-using VNLib.Plugins.Essentials.Sessions;
 using VNLib.Plugins.Essentials.Extensions;
 using VNLib.Plugins.Essentials.Middleware;
 
@@ -123,60 +122,7 @@ namespace VNLib.WebServer.Middlewares
                 }
             }
 
-            if(!IsSessionSecured(entity))
-            {
-                return ValueTask.FromResult(FileProcessArgs.Deny);
-            }
-
             return ValueTask.FromResult(FileProcessArgs.Continue);
-        }
-
-        private bool IsSessionSecured(HttpEntity entity)
-        {
-            ref readonly SessionInfo session = ref entity.Session;
-
-            /*
-             * When sessions are created for connections that come from a different 
-             * origin, their origin is stored for later. 
-             * 
-             * If the session was created from a different origin or the current connection
-             * is cross origin, then the origin must be allowed by the configuration
-             */
-
-            //No session loaded, nothing to check
-            if (!session.IsSet)
-            {
-                return true;
-            }
-
-            if (entity.Server.Origin is null)
-            {
-                return true;
-            }          
-
-            if (session.IsNew || session.SessionType != SessionType.Web)
-            {
-                return true;
-            }
-
-            bool sameOrigin = string.Equals(
-                entity.Server.Origin.Authority,
-                session.SpecifiedOrigin?.Authority,
-                StringComparison.OrdinalIgnoreCase
-            );
-
-            if (sameOrigin || _corsAuthority.Contains(entity.Server.Origin.Authority))
-            {
-                return true;
-            }
-
-            Log.Debug("Denied connection from {0} because the user's origin {org} changed to {other} and is not whitelisted.",
-                entity.TrustedRemoteIp,
-                session.SpecifiedOrigin?.Authority,
-                entity.Server.Origin.Authority
-            );
-
-            return false;
-        }
+        }      
     }
 }
