@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -32,10 +32,20 @@ namespace VNLib.Plugins.Essentials.Extensions
     /// <summary>
     /// Implements a single cookie controller
     /// </summary>
-    /// <param name="Name">The name of the cookie to manage</param>
-    /// <param name="ValidFor">The max-age cookie value</param>
-    public class SingleCookieController(string Name, TimeSpan ValidFor) : ICookieController
+    /// <param name="name">The name of the cookie to manage</param>
+    /// <param name="validFor">The max-age cookie value</param>
+    public class SingleCookieController(string name, TimeSpan validFor) : ICookieController
     {
+        /// <summary>
+        /// Cookie name.
+        /// </summary>
+        public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
+
+        /// <summary>
+        /// The max-age value for the cookie
+        /// </summary>
+        public TimeSpan ValidFor { get; } = validFor;
+
         /// <summary>
         /// The domain of the cookie
         /// </summary>
