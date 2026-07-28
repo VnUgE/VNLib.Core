@@ -73,6 +73,10 @@
     </None>
   </ItemGroup>
 
+  <Target Name="CreateTestPluginsDir" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <MakeDir Directories="$(OutDir)plugins" Condition="!Exists('$(OutDir)plugins')" />
+  </Target>
+
   <!-- Allow access to unit test executables -->
   <ItemGroup>
     <InternalsVisibleTo Include="VNLib.WebServerTests" />

@@ -63,7 +63,6 @@ tasks:
          dotnet VNLib.WebServer.dll 
          --verbose 
          --input-off 
-         --no-plugins 
          --config {{ .CONFIG_FILE }}
          --dev-test
 
