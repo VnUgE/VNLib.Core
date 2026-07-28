@@ -11,8 +11,8 @@ min_version = "2024.9.5"
 
 [tools]
 dotnet = "8.0"
-cmake = "4.3"
-task = "3.51"
+cmake = "4.3.1"
+task = "3.52"
 "dotnet:GitVersion.Tool" = "6.4.0"
 
 [tools."http:vnbuild"]
