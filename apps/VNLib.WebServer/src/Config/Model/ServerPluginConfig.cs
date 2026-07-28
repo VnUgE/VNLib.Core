@@ -50,6 +50,9 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("reload_delay_sec")]
         public int ReloadDelaySec { get; init; } = 2;
 
+        [JsonPropertyName("ipc_shared_memory")]
+        public PluginSharedMemoryJson? IpcSharedMem { get; init; }
+
         public void OnDeserialized()
         {
             if (!Enabled)
