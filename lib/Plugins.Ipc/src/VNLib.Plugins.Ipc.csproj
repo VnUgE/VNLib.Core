@@ -3,36 +3,24 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <RootNamespace>VNLib.Net.Transport.Tcp</RootNamespace>
-    <AssemblyName>VNLib.Net.Transport.Tcp</AssemblyName>
+    <RootNamespace>VNLib.Plugins.Ipc</RootNamespace>
+    <AssemblyName>VNLib.Plugins.Ipc</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-
-    <!-- Enable configureAwait as an error for now for TCP. In time this will elevate module wide --> 
-    <WarningsAsErrors>CA2007;</WarningsAsErrors>    
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
   </PropertyGroup>
-  
+
   <PropertyGroup>
-    <PackageId>VNLib.Net.Transport.Tcp</PackageId>
-    <Product>VNLib Simple Transport Library</Product>
-    <PackageTags>vnlib, tcp, transport, networking</PackageTags>
-    <Description>Provides a library for single process asynchronous, event driven, TCP socket listening and supporting structures to implement simple high performance TCP servers with or without TLS security.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
+    <PackageId>VNLib.Plugins.Ipc</PackageId>
     <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
+    <Description>Provides IPC (inter-plugin communication) primitives, attributes, and runtime injection infrastructure for VNLib plugin assemblies.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Transport.Tcp</RepositoryUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins.Ipc</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.IO.Pipelines" Version="10.0.10" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
-  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\README.md">
