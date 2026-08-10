@@ -30,6 +30,7 @@ set(WTLFU_SRCS
 	"src/hash.c"
 	"src/cmsketch.c"
 	"src/lru.c"
+	"src/hashtable.c"
 )
 
 set(WTLFU_HEADERS
@@ -40,6 +41,7 @@ set(WTLFU_HEADERS
 	"src/hash.h"
 	"src/cmsketch.h"
 	"src/internal.h"
+	"src/hashtable.h"
 )
 
 # Build both shared and static variants from the same sources.
@@ -200,6 +202,9 @@ if(VNLIB_BUILD_TESTS)
 
 	# the lru unit tests
 	add_wtl_test(WtlLruTests SOURCES tests/test-base.c tests/lru/main.c)
+
+	# hashtable tests
+	add_wtl_test(WtlHastableTests SOURCES tests/test-base.c tests/hashtable/main.c)
 
 endif()
 
