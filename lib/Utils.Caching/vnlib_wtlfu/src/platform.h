@@ -94,4 +94,12 @@
     #define _VN_WTLFU_INTERNAL
 #endif
 
+#ifndef _Out_
+    #define _Out_
+#endif // !_Out_
+
+#ifndef _In_
+    #define _In_
+#endif // !_In_
+
 #endif /* !_VN_WTLFU_PLATFORM_H */
