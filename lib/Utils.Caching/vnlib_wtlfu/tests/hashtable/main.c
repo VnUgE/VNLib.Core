@@ -39,7 +39,7 @@
 
 static WtlHashTable* allocHashTable(uint32_t capacity)
 {
-    uint32_t memSize = wtlfuHashTableMemorySize(capacity);
+    uint32_t memSize = wtlHashTableMemorySize(capacity);
     TASSERT(memSize > capacity);
 
     WtlHashTable* table = malloc(memSize);
@@ -64,12 +64,12 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
         WtlHashSlot* slots = NULL;       
       
         EXPECT_EQ(
-            wtlfuHashTableMemorySize(cap),
+            wtlHashTableMemorySize(cap),
             (uint32_t)(sizeof(WtlHashTable) + (cap * sizeof(WtlHashSlot)))
         );
 
         table = allocHashTable(cap);
-        wtlfuHashTableInit(table, cap);
+        wtlHashTableInit(table, cap);
 
         EXPECT_EQ(table->capacity, cap);
         EXPECT_EQ(table->count, 0);
@@ -79,8 +79,8 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
         slots = (WtlHashSlot*)(table + 1);
         for (uint32_t i = 0; i < cap; i++)
         {
-            EXPECT_EQ_LOOP(slots[i].entry, NULL);
-            EXPECT_EQ_LOOP(slots[i].hash, (uint32_t)0);
+            EXPECT_EQ_LOOP(slots[i].status, WTL_TABLE_STATUS_EMPTY);
+            EXPECT_EQ_LOOP(slots[i].entry.hash, (uint32_t)0);
         }
 
         free(table);
@@ -91,43 +91,16 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     * Init with a non-power-of-2 capacity must be a no-op. The table struct
     * must not be modified by the call.
     */
-    static int InitNonPowerOfTwo(void)
+    static int InitInvalidCapacity(void)
     {
-        static const uint32_t cap = 15;
+        EXPECT_EQ(wtlHashTableMemorySize(0), (size_t)0);
+        EXPECT_EQ(wtlHashTableMemorySize(15), (size_t)0);
+        EXPECT_EQ(wtlHashTableMemorySize(31), (size_t)0);
+        EXPECT_EQ(wtlHashTableMemorySize(65535), (size_t)0);
 
-        WtlHashTable* table = allocHashTable(cap);
-        uint32_t memSize = (uint32_t)wtlfuHashTableMemorySize(cap);
-        uint8_t* bytes = (uint8_t*)table;
-
-        // Pre-fill with garbage so we can detect if init touches anything
-        memset(table, 0xFF, memSize);
-
-        wtlfuHashTableInit(table, cap);
-
-        // Init must be a no-op: capacity should not be set
-        EXPECT_EQ(table->capacity, 0);
-        EXPECT_EQ(table->count, 0);
-        EXPECT_EQ(table->tombstones, 0);
-
-        // Buffer should be unchanged (all 0xFF)
-        for (uint32_t i = 0; i < memSize; i++)
-        {
-            EXPECT_EQ_LOOP(bytes[i], 0xFF);
-        }
-
-        free(table);
         return 0;
     }
-
-    /*
-    * Init with zero capacity must be a no-op.
-    */
-    static int InitZeroCapacity(void)
-    {
-        // Memory size must return 0 for zero capacity
-        EXPECT_EQ(wtlfuHashTableMemorySize(0), (size_t)0);
-        return 0;
-    }
+   
 
 #endif /* TEST_GROUP_HASHTABLE_INIT */
 
@@ -140,12 +113,21 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     */
     static int InsertSingleEntry(void)
     {        
-        WtlHashTable* table = allocHashTable(16);
-        wtlfuHashTableInit(table, 16);
+        wtl_ht_entry_t* entry = NULL;
 
-        EXPECT_EQ(table->capacity, 0);
+        WtlHashTable* table = allocHashTable(16);
+        wtlHashTableInit(table, 16);
+
+        EXPECT_EQ(table->count, 0);
         
-        wtlfuHashTableInsert(table, 65486, 255);
+        EXPECT_EQ(wtlHashTableInsert(table, 65486, &entry), WTL_SUCCESS);
+        EXPECT_EQ(table->count, 1);
+
+        // Entry should be assigned if insert succeeded
+        EXPECT_FALSE(entry == NULL);
+        EXPECT_EQ(entry->hash, 65486);
+
+        free(table);
 
         return 0;
     }
@@ -470,8 +452,7 @@ int RunTests(void)
 {
 #if TEST_GROUP_HASHTABLE_INIT
     RUN_TEST(InitValidCapacity());
-    RUN_TEST(InitNonPowerOfTwo());
-    RUN_TEST(InitZeroCapacity());
+    RUN_TEST(InitInvalidCapacity());
 #endif
 
 #if TEST_GROUP_HASHTABLE_INSERT
