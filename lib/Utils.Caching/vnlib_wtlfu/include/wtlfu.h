@@ -58,9 +58,9 @@
 #ifndef _VN_WTLFU_H
 #define _VN_WTLFU_H
 
-#include "platform.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "platform.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -78,27 +78,13 @@ extern "C"
 /* ---------- Opaque handles ---------- */
 
 typedef struct WtlCache WtlCache;
-typedef struct WtlValue WtlValue;
 
-/* ---------- Allocator interface ----------
-*
-* The caller provides all memory management. Every internal allocation
-* goes through this interface. The `ctx` is opaque to the library and
-* passed back on every call.
-*
-* Alloc returns a pointer aligned to `alignment` (0 for default). If the
-* allocator does not support alignment, it should return NULL.
-*
-* Free receives the original allocation size so size-class pool allocators
-* can do O(1) returns without storing metadata. If size is unknown, pass 0.
-*/
-
-typedef struct wtl_allocator_struct
-{
-    void* (*Alloc)(void* ctx, size_t size, size_t alignment);
-    void  (*Free)(void* ctx, void* ptr, size_t size);
-    void* ctx;
-} WtlAllocator;
+typedef struct WtlValue {
+    const uint8_t* key;
+    const uint8_t* value;
+    uint32_t keyLen;
+    uint32_t valueLen;
+} WtlValue;
 
 /* ---------- Configuration ---------- */
 
@@ -125,9 +111,6 @@ typedef struct wtl_config_struct
     uint32_t sketchDepth;
     uint32_t sketchResetThreshold;
 
-    /* Memory management — required. The allocator pointer is retained by
-     * the cache; the caller must keep it alive for the lifetime of the cache. */
-    const WtlAllocator* allocator;
 } WtlConfig;
 
 /* ---------- Public API ---------- */
