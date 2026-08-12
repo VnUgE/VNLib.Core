@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "internal.h"
+#include "lru.h"
 #include "test.h"
 
 static void lruUnlinkAll(WtlLruList* lru)

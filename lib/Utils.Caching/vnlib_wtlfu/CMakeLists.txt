@@ -39,9 +39,10 @@ set(WTLFU_HEADERS
 	"src/debug.h"
 	"src/span.h"
 	"src/hash.h"
+	"src/lru.h"
 	"src/cmsketch.h"
 	"src/internal.h"
-	"src/hashtable.h"
+	"src/hashtable.h"	
 )
 
 # Build both shared and static variants from the same sources.

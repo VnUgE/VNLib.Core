@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "wtlfu.h"
 #include "platform.h"
 #include "debug.h"
 
@@ -65,34 +66,11 @@ typedef struct WtlEntry
     struct WtlEntry* prev;
     struct WtlEntry* next;
 
+    uint32_t hash;
+
+    WtlValue value;   
+
 } WtlEntry;
-
-/*
-* Intrusive doubly-linked LRU list head.
-*
-* Uses sentinel-free circular doubly-linked list. head == NULL means
-* empty. On insert, entry becomes head; prev/next point to each other
-* for a single-element list.
-*/
-typedef struct WtlLruList
-{
-    WtlEntry* head;  /* Most recently used (front of list) */
-    WtlEntry* tail;  /* Least recently used (back of list) */
-    uint32_t  count; /* Number of entries in this list */
-
-} WtlLruList;
-
-
-_VN_WTLFU_INTERNAL int lruPush(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL int lruPushTail(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL int lruUnlink(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL int lruMoveToHead(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL WtlEntry* lruPop(WtlLruList* lru);
-_VN_WTLFU_INTERNAL WtlEntry* lruPeek(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL WtlEntry* lruHeadGet(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL WtlEntry* lruTailGet(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL int       lruIsEmpty(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL uint32_t  lruCount(const WtlLruList* lru);
 
 
 #endif /* !_VN_WTLFU_INTERNAL_H */

@@ -36,7 +36,8 @@
 */
 
 #include "span.h"
-#include "internal.h"
+#include "lru.h"
+#include "debug.h"
 
 #define LRU_FALSE 0
 #define LRU_TRUE 1
