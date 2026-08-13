@@ -68,8 +68,8 @@ jobs:
 
         mise trust mise.toml
         mise install
-        mise vnbuild-build
-        mise vnbuild-publish
+        mise vnbuild-build --verbose
+        mise vnbuild-publish --verbose
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -189,7 +189,12 @@ jobs:
     runInContainer: false
     interpreter:
       type: DefaultInterpreter
-      commands: "vnbuild build --no-delay"
+      commands: |
+        cd @project_name@/ci
+
+        mise trust mise.toml
+        mise install
+        mise vnbuild-build
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -199,7 +204,8 @@ jobs:
     interpreter:
       type: DefaultInterpreter
       commands: |
-        vnbuild publish --ftp "@secret:ftp_server_address@" --sign
+        cd @project_name@/ci
+        mise vnbuild-publish --ftp "@secret:ftp_server_address@" --sign
     envVars:
     - name: FTP_USERNAME
       value: '@secret:ftp_username@'
