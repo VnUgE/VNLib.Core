@@ -39,8 +39,8 @@ run = [
 
 [tasks.vnbuild-build]
 dir = '../'
-run = 'vnbuild build --no-delay --verbose'
+run = 'vnbuild build --no-delay'
 
 [tasks.vnbuild-publish]
 dir = '../'
-run = 'vnbuild publish --verbose'
+run = 'vnbuild publish'
