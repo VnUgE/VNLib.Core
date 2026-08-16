@@ -51,7 +51,7 @@
 #define WTL_SKETCH_DEFAULT_RESET_MULT   10u
 
 /*
-* The configured maximum depth of the sketch table. wtlfuSketchGetMemorySize()
+* The configured maximum depth of the sketch table. wtlSketchIsValid()
 * rejects configs whose depth exceeds this value.
 */
 #define WTL_SKETCH_MAX_DEPTH 8u
@@ -62,8 +62,6 @@
 */
 #define WTL_SKETCH_BASE_SEED 0x9e3779b97f4a7c15ULL
 
-/* Opaque sketch handle */
-typedef struct WtlSketch WtlSketch;
 
 /*
 * Configuration for creating a Count-Min Sketch.
@@ -87,26 +85,45 @@ typedef struct wtl_sketch_config_struct
     uint64_t seed;
 } WtlSketchConfig;
 
-/*
-* Returns the total size, in bytes, required for a caller-owned buffer
-* that holds the WtlSketch header followed by its inline counter table.
-* A return value of 0 indicates an invalid configuration.
-*
-* @param config A pointer to the sketch configuration used to calculate the buffer size
-* @return The number of bytes to allocate, or 0 if the configuration is invalid
-*/
-_VN_WTLFU_INTERNAL uint32_t wtlfuSketchGetMemorySize(const WtlSketchConfig* config);
+typedef struct WtlSketch {
+
+    /* configuration copy: width, depth, resetThreshold, seed. */
+    WtlSketchConfig config;
+
+    /*
+     * Number of calls to wtlSketchRecord since the last aging.
+     * When this reaches config.resetThreshold, all counters are
+     * halved and this field is reset to zero.
+     */
+    uint32_t accessCount;
+
+    /*
+    * Span pointing to the the memory containing the sketch table
+    */
+    span_t table;
+
+} WtlSketch;
 
 /*
-* Initializes a sketch at the caller-supplied memory location. The buffer
-* must be at least wtlfuSketchGetMemorySize(config) bytes and must be aligned
-* for the WtlSketch type. After init, the counter table immediately follows
-* the header inside the same buffer.
+* Validates a caller-initialized sketch before it is used. Because the
+* sketch is caller-allocated, the caller owns layout correctness: the
+* table span must point at exactly config.width * config.depth bytes of
+* writable memory. Checks, in order:
 *
-* @param config    A pointer to a valid sketch configuration
-* @param sketchPtr Pointer to the caller-allocated buffer to initialize
+*   0   Valid: config fields are in range and the table size matches
+*       config.width * config.depth exactly.
+*  -1   Invalid config: zero width, zero depth, depth greater than
+*       WTL_SKETCH_MAX_DEPTH, zero resetThreshold, or empty table span.
+*  -2   Overflow: config.width * config.depth exceeds UINT32_MAX.
+*  -3   Table size mismatch: table span size differs from the configured
+*       width * depth.
+*
+* Passing a NULL sketch is undefined behavior (asserts in debug builds).
+*
+* @param sketch  Pointer to the sketch structure to validate
+* @return 0 on success, or a negative error code as listed above
 */
-_VN_WTLFU_INTERNAL void wtlfuSketchInit(const WtlSketchConfig* config, WtlSketch* sketchPtr);
+_VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch);
 
 /*
 * Records an access for the given key by incrementing the counter
@@ -117,7 +134,7 @@ _VN_WTLFU_INTERNAL void wtlfuSketchInit(const WtlSketchConfig* config, WtlSketch
 * @param sketch  Sketch handle
 * @param key     Read-only span over the key bytes
 */
-_VN_WTLFU_INTERNAL void wtlfuSketchRecord(WtlSketch* sketch, cspan_t key);
+_VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, cspan_t key);
 
 /*
 * Estimates the frequency of the given key. Returns the minimum
@@ -128,7 +145,7 @@ _VN_WTLFU_INTERNAL void wtlfuSketchRecord(WtlSketch* sketch, cspan_t key);
 * @param key     Read-only span over the key bytes
 * @return Estimated frequency (0 if never recorded)
 */
-_VN_WTLFU_INTERNAL uint32_t wtlfuSketchEstimate(const WtlSketch* sketch, cspan_t key);
+_VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, cspan_t key);
 
 /*
 * Manually triggers aging: halves all counters and resets the
@@ -137,13 +154,13 @@ _VN_WTLFU_INTERNAL uint32_t wtlfuSketchEstimate(const WtlSketch* sketch, cspan_t
 *
 * @param sketch  Sketch handle
 */
-_VN_WTLFU_INTERNAL void wtlfuSketchAge(WtlSketch* sketch);
+_VN_WTLFU_INTERNAL void wtlSketchAge(WtlSketch* sketch);
 
 /*
 * Manually restores all internal counters for entire sketch to 0
 * 
 * @param sketch  Sketch handle
 */
-_VN_WTLFU_INTERNAL void wtlfuSketchReset(WtlSketch* sketch);
+_VN_WTLFU_INTERNAL void wtlSketchReset(WtlSketch* sketch);
 
 #endif /* !_VN_WTLFU_CMSKETCH_H */

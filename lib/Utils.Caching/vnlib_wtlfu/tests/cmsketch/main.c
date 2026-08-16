@@ -35,116 +35,328 @@ static const WtlSketchConfig DefaultConfig = {
 
 static WtlSketch* sketchAlloc(const WtlSketchConfig* config)
 {
-    uint32_t size;
-    WtlSketch* buf;
+    uint32_t size = config->depth * config->width;
+
+    // Alloc sketch plus table size and ensure zeroed before use
+    WtlSketch* buf = (WtlSketch*)malloc(sizeof(WtlSketch) + size);
     
-    size = wtlfuSketchGetMemorySize(config);
-    if (size == 0) 
-    { 
-        return NULL; 
-    }
-    
-    buf = (WtlSketch*)malloc(size);    
     if (!buf)
     { 
         return NULL; 
     }
+
+    memset(buf, 0, sizeof(WtlSketch) + size);
     
-    wtlfuSketchInit(config, buf);
+    // assign config structure
+    buf->config = *config;
     
+    // Init the table to point at the buffer right after the struct header
+    spanInit(&buf->table, (uint8_t*)(buf + 1), size);
+    
+    // Ensure valid initialization
+    TASSERT(wtlSketchIsValid(buf) == 0);
+
     return buf;
 }
 
-static int BasicSizeTest(void)
+/*
+* Verifies that a correctly initialized sketch (config assigned, zeroed
+* table sized exactly width * depth, accessCount at 0) passes
+* wtlSketchIsValid. This is the baseline contract for the caller-owned
+* allocation model: when the caller fulfills the layout requirements,
+* the sketch is considered valid and usable.
+*/
+static int IsValid_ValidConfig(void)
 {
-    // Assert that test config just works
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
+    ENSURE(sketch);
 
-    EXPECT_TRUE(wtlfuSketchGetMemorySize(&DefaultConfig) > 0);
-
-    // bad config variable validation
+    // Freshly allocated sketch is structurally valid
     {
-        WtlSketchConfig badConfig = DefaultConfig;
+        EXPECT_EQ(wtlSketchIsValid(sketch), 0);
+    }
 
-        // Depth == 0
-        badConfig.depth = 0;
-        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
+    // A sketch that has been in use is still structurally valid
+    {
+        span_t key = FromHexString("68656c6c6f", 5);
+        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, spanToC(key));
+        EXPECT_EQ(wtlSketchIsValid(sketch), 0);
+    }
 
-        // Width == 0
-        badConfig = DefaultConfig;
-        badConfig.width = 0;
+    // ...and remains valid after aging
+    {
+        wtlSketchAge(sketch);
+        EXPECT_EQ(wtlSketchIsValid(sketch), 0);
+    }
 
-        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
+    // ...and after reset
+    {
+        wtlSketchReset(sketch);
+        EXPECT_EQ(wtlSketchIsValid(sketch), 0);
+    }
 
-        // Depth > max depth
-        badConfig = DefaultConfig;
-        badConfig.depth = WTL_SKETCH_MAX_DEPTH + 1;
+    free(sketch);
 
-        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
+    return 0;
+}
 
-        // max depth * width > uint32_max
-        badConfig = DefaultConfig;
-        badConfig.depth = WTL_SKETCH_MAX_DEPTH;
-        badConfig.width = UINT32_MAX;
+/*
+* Manually constructs a WtlSketch on the caller's stack for tests that
+* need to inspect invalid states. Unlike sketchAlloc (which asserts the
+* result is valid) this performs no validation, so any config and table
+* combination can be produced, including deliberately broken ones.
+*/
+static void sketchOnStack(WtlSketch* sketch, WtlSketchConfig config, uint8_t* table, uint32_t tableSize)
+{
+    sketch->config = config;
+    sketch->accessCount = 0;
+    sketch->table.data = table;
+    sketch->table.size = tableSize;
+}
 
-        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
+/*
+* Verifies that wtlSketchIsValid rejects every invalid configuration and
+* table-layout condition the caller can produce. Since the sketch is now
+* caller-allocated and self-initialized, validation is the caller's
+* responsibility; this pins the exact error codes each bad state must
+* yield so the contract stays stable.
+*/
+static int IsValid_RejectsInvalidTable(void)
+{
+    // small config keeps the stack table tiny; validity logic is size-agnostic
+    WtlSketchConfig baseConfig = DefaultConfig;
+    baseConfig.width = 8;
+    baseConfig.depth = 4;
 
-        // reset threshold == 0
-        badConfig = DefaultConfig;
-        badConfig.resetThreshold = 0;
+    uint8_t table[8 * 4];
 
-        EXPECT_FALSE(wtlfuSketchGetMemorySize(&badConfig));
+    // table span too small for config (width*depth)
+    {
+        WtlSketch sketch;
+        WtlSketchConfig config = baseConfig;
+        config.width += 1;
+        sketchOnStack(&sketch, config, table, sizeof(table));
+        EXPECT_EQ(wtlSketchIsValid(&sketch), -3);
+    }
+
+    // table span too large for config (required width*depth smaller than table)
+    {
+        WtlSketch sketch;
+        WtlSketchConfig config = baseConfig;
+        config.width -= 1;
+        sketchOnStack(&sketch, config, table, sizeof(table));
+        EXPECT_EQ(wtlSketchIsValid(&sketch), -3);
+    }
+
+    // zero width
+    {
+        WtlSketch sketch;
+        WtlSketchConfig config = baseConfig;
+        config.width = 0;
+        sketchOnStack(&sketch, config, table, sizeof(table));
+        EXPECT_EQ(wtlSketchIsValid(&sketch), -1);
+    }
+
+    // zero depth
+    {
+        WtlSketch sketch;
+        WtlSketchConfig config = baseConfig;
+        config.depth = 0;
+        sketchOnStack(&sketch, config, table, sizeof(table));
+        EXPECT_EQ(wtlSketchIsValid(&sketch), -1);
+    }
+
+    // depth exceeds the maximum allowed
+    {
+        WtlSketch sketch;
+        WtlSketchConfig config = baseConfig;
+        config.depth = WTL_SKETCH_MAX_DEPTH + 1;
+        sketchOnStack(&sketch, config, table, sizeof(table));
+        EXPECT_EQ(wtlSketchIsValid(&sketch), -1);
+    }
+
+    // zero reset threshold
+    {
+        WtlSketch sketch;
+        WtlSketchConfig config = baseConfig;
+        config.resetThreshold = 0;
+        sketchOnStack(&sketch, config, table, sizeof(table));
+        EXPECT_EQ(wtlSketchIsValid(&sketch), -1);
+    }
+
+    // empty table span
+    {
+        WtlSketch sketch;
+        sketchOnStack(&sketch, baseConfig, NULL, 0);
+        EXPECT_EQ(wtlSketchIsValid(&sketch), -1);
     }
 
     return 0;
 }
 
 /*
-* Verifies that wtlfuSketchGetMemorySize returns a size consistent
-* with the inline-table layout: struct header followed by a flat
-* width*depth byte table. Two configs differing only in width must
-* differ in size by exactly deltaWidth * depth, and similarly for
-* depth. The total must always exceed width*depth (struct overhead).
+* Verifies that the exposed accessCount field tracks every
+* wtlSketchRecord call and resets to zero exactly at the auto-aging
+* boundary (resetThreshold). Uses a small threshold (10) so the
+* boundary is reachable in a handful of records.
 */
-static int GetMemorySize_InlineTableLayout(void)
+static int Record_IncrementsAccessCount(void)
 {
-    /* Size must include struct overhead, not just the table */
-    EXPECT_TRUE(wtlfuSketchGetMemorySize(&DefaultConfig) >
-        (DefaultConfig.width * DefaultConfig.depth));
+    span_t key = FromHexString("68656c6c6f", 5);
 
-    /* Vary width by a known delta; size delta must equal deltaW * depth */
+    WtlSketchConfig config = DefaultConfig;
+    config.resetThreshold = 10;
+
+    WtlSketch* sketch = sketchAlloc(&config);
+    ENSURE(sketch);
+
+    // a fresh sketch has not recorded any accesses
     {
-        WtlSketchConfig a = DefaultConfig;
-        WtlSketchConfig b = DefaultConfig;
-        uint32_t sizeA, sizeB;
-
-        a.width = 256;
-        b.width = 512;
-
-        sizeA = wtlfuSketchGetMemorySize(&a);
-        sizeB = wtlfuSketchGetMemorySize(&b);
-
-        EXPECT_TRUE(sizeA > 0);
-        EXPECT_TRUE(sizeB > 0)
-        EXPECT_EQ(sizeB - sizeA, (512 - 256) * DefaultConfig.depth);
+        EXPECT_EQ(sketch->accessCount, 0);
     }
 
-    /* Vary depth by a known delta; size delta must equal deltaD * width */
+    // each record increments the access count by exactly one
     {
-        WtlSketchConfig a = DefaultConfig;
-        WtlSketchConfig b = DefaultConfig;
-
-        uint32_t sizeA, sizeB;
-
-        a.depth = 2;
-        b.depth = 4;
-
-        sizeA = wtlfuSketchGetMemorySize(&a);
-        sizeB = wtlfuSketchGetMemorySize(&b);
-
-        EXPECT_TRUE(sizeA > 0);
-        EXPECT_TRUE(sizeB > 0)
-        EXPECT_EQ(sizeB - sizeA, (4 - 2) * DefaultConfig.width);
+        for (uint32_t i = 1; i <= 9; i++)
+        {
+            wtlSketchRecord(sketch, spanToC(key));
+            EXPECT_EQ(sketch->accessCount, i);
+        }
     }
+
+    // 10th record hits the threshold: aging fires and the counter resets
+    {
+        wtlSketchRecord(sketch, spanToC(key));
+        EXPECT_EQ(sketch->accessCount, 0);
+    }
+
+    // aging really happened: 10 records halved to 5
+    {
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 5);
+    }
+
+    // counting resumes from zero after the reset
+    {
+        wtlSketchRecord(sketch, spanToC(key));
+        EXPECT_EQ(sketch->accessCount, 1);
+    }
+
+    free(sketch);
+
+    return 0;
+}
+
+/*
+* Verifies that both wtlSketchAge and wtlSketchReset clear the exposed
+* accessCount back to zero, so a subsequent record starts a fresh aging
+* cycle. Also confirms the counter is untouched by Estimate, which is a
+* read-only operation.
+*/
+static int Age_AndReset_ClearAccessCount(void)
+{
+    span_t key = FromHexString("68656c6c6f", 5);
+
+    WtlSketchConfig config = DefaultConfig;
+    config.resetThreshold = 100;
+
+    WtlSketch* sketch = sketchAlloc(&config);
+    ENSURE(sketch);
+
+    // build up a known non-zero access count
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            wtlSketchRecord(sketch, spanToC(key));
+        }
+        EXPECT_EQ(sketch->accessCount, 7);
+    }
+
+    // estimate must not disturb the access count
+    {
+        wtlSketchEstimate(sketch, spanToC(key));
+        EXPECT_EQ(sketch->accessCount, 7);
+    }
+
+    // manual aging clears the access count (counters are halved)
+    {
+        wtlSketchAge(sketch);
+        EXPECT_EQ(sketch->accessCount, 0);
+    }
+
+    // a fresh cycle counts from zero
+    {
+        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, spanToC(key));
+        EXPECT_EQ(sketch->accessCount, 2);
+    }
+
+    // reset also clears the access count (and all counters)
+    {
+        wtlSketchReset(sketch);
+        EXPECT_EQ(sketch->accessCount, 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 0);
+    }
+
+    free(sketch);
+
+    return 0;
+}
+
+/*
+* Verifies the physical table layout behind the exposed table span:
+* recording a single key must increment exactly one counter per row
+* (depth non-zero bytes in total), and the sum of all counters must
+* equal the record count. With the default config a single key cannot
+* collide with itself, so any extra non-zero byte would mean writes
+* landed outside the span the span claims to own.
+*/
+static int Record_WritesExactlyOneCounterPerRow(void)
+{
+    span_t key = FromHexString("68656c6c6f", 5);
+
+    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
+    ENSURE(sketch);
+
+    // scan a fresh table: every counter must be zero
+    {
+        uint32_t nonZero = 0;
+        uint32_t sum = 0;
+        for (uint32_t i = 0; i < spanGetSize(sketch->table); i++)
+        {
+            uint8_t v = *spanGetOffset(sketch->table, i);
+            sum += v;
+            if (v != 0) { nonZero++; }
+        }
+        EXPECT_EQ(nonZero, 0);
+        EXPECT_EQ(sum, 0);
+    }
+
+    // record the key a few times
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            wtlSketchRecord(sketch, spanToC(key));
+        }
+    }
+
+    // scan again: exactly one counter per row is hot, each holding the record count
+    {
+        uint32_t nonZero = 0;
+        uint32_t sum = 0;
+        for (uint32_t i = 0; i < spanGetSize(sketch->table); i++)
+        {
+            uint8_t v = *spanGetOffset(sketch->table, i);
+            sum += v;
+            if (v != 0) { nonZero++; }
+        }
+        // exactly one counter per row is hot
+        EXPECT_EQ(nonZero, DefaultConfig.depth);
+        // each record increments every row, so total = records * depth
+        EXPECT_EQ(sum, 6 * DefaultConfig.depth);
+    }
+
+    free(sketch);
 
     return 0;
 }
@@ -170,22 +382,22 @@ static int RecordAndEstimate_SingleKey(void)
 
     //Expect 0 when no keys have been recorded
     {
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(testKey1)), 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey1)), 0);
     }
 
     // Ensure a key recorded X times is estimated correctly
     {
         for (int i = 0; i < _SINGLE_RECORD_COUNT; i++)
         {
-            wtlfuSketchRecord(sketch, spanToC(testKey1));
+            wtlSketchRecord(sketch, spanToC(testKey1));
         }
 
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(testKey1)), _SINGLE_RECORD_COUNT);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey1)), _SINGLE_RECORD_COUNT);
     }
 
     // Ensure isolated key is not modified
     {
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(testKey2)), 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey2)), 0);
     }
 
     free(sketch);
@@ -212,13 +424,13 @@ static int Record_MultipleTimes(void)
     {
         for (int j = 0; j < counts[i]; j++)
         {
-            wtlfuSketchRecord(sketch, spanToC(testKey));
+            wtlSketchRecord(sketch, spanToC(testKey));
         }
 
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(testKey)), counts[i]);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey)), counts[i]);
 
         // Reset all counters for next iteration
-        wtlfuSketchReset(sketch);
+        wtlSketchReset(sketch);
     }
 
     free(sketch);
@@ -242,9 +454,9 @@ static int Estimate_EqualsRecordCount_SingleKey(void)
     // estimate equals the actual record count at every stage.
     for (uint32_t n = 1; n <= 200; n++)
     {
-        wtlfuSketchRecord(sketch, spanToC(testKey));
+        wtlSketchRecord(sketch, spanToC(testKey));
 
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(testKey)), n);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey)), n);
     }
 
     free(sketch);
@@ -269,20 +481,20 @@ static int EmptyKey(void)
     ENSURE(sketch);
 
     // Estimate of an unrecorded empty key should be 0
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, emptyKey), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, emptyKey), 0);
 
     // Record the empty key 3 times
     for (int i = 0; i < 3; i++)
     {
-        wtlfuSketchRecord(sketch, emptyKey);
+        wtlSketchRecord(sketch, emptyKey);
     }
 
     // Estimate should reflect the 3 records. With the default config
     // collisions are effectively impossible, so exact equality holds.
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, emptyKey), 3);
+    EXPECT_EQ(wtlSketchEstimate(sketch, emptyKey), 3);
 
     // A different (non-empty) key should still be 0
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(otherKey)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(otherKey)), 0);
 
     free(sketch);
 
@@ -303,13 +515,13 @@ static int Record_DoesNotEstimateBeforeRecord(void)
     ENSURE(sketch);
 
     // No records have been made; every key must estimate 0
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key1)), 0);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key2)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key1)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key2)), 0);
 
     // Also verify the empty key
     cspan_t emptyKey;
     spanInitC(&emptyKey, NULL, 0);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, emptyKey), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, emptyKey), 0);
 
     free(sketch);
 
@@ -334,20 +546,20 @@ static int RecordAndEstimate_MultipleKeys(void)
     // Record key A five times and key B three times
     for (int i = 0; i < 5; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, spanToC(keyA));
     }
 
     for (int i = 0; i < 3; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, spanToC(keyB));
     }
 
     // Estimates should match exact record counts
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 5);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 3);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 5);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 3);
 
     // Unrecorded key should be zero
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyC)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
 
     free(sketch);
 
@@ -375,20 +587,20 @@ static int MultiKey_Separation(void)
     for (int i = 0; i < 10; i++)
     {
         span_t key = _fromHexString(hexKeys[i], 2);
-        wtlfuSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, spanToC(key));
     }
 
     // Each recorded key should estimate exactly 1
     for (int i = 0; i < 10; i++)
     {
         span_t key = _fromHexString(hexKeys[i], 2);
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), 1);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 1);
     }
 
     // An unrecorded key should estimate 0
     {
         span_t unknown = FromHexString("ff", 1);
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(unknown)), 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(unknown)), 0);
     }
 
     free(sketch);
@@ -399,7 +611,7 @@ static int MultiKey_Separation(void)
 /*
 * Records a single key well beyond the uint8_t counter maximum (255)
 * and verifies the estimate saturates at 255 rather than wrapping to
-* zero. This exercises the saturation guard in wtlfuSketchRecord.
+* zero. This exercises the saturation guard in wtlSketchRecord.
 *
 * Note: the default resetThreshold (10 * 1024 = 10240) is well above
 * 300 records, so aging will not fire during this test.
@@ -414,21 +626,21 @@ static int Record_Saturation(void)
     // fill but ensure saturation does not occur until exactly UINT8_MAX
     for (int i = 0; i < UINT8_MAX - 1; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, spanToC(key));
 
         // ensure count remains below the max size
-        ENSURE(wtlfuSketchEstimate(sketch, spanToC(key)) < UINT8_MAX);
+        ENSURE(wtlSketchEstimate(sketch, spanToC(key)) < UINT8_MAX);
     }
 
     // Final record saturates the counter
-    wtlfuSketchRecord(sketch, spanToC(key));   
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), UINT8_MAX);
+    wtlSketchRecord(sketch, spanToC(key));   
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), UINT8_MAX);
 
     // Ensure any number of records after max remains at UINT8_MAX
     for (int i = 0; i < 10; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(key));
-        EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), UINT8_MAX);
+        wtlSketchRecord(sketch, spanToC(key));
+        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), UINT8_MAX);
     }
 
     free(sketch);
@@ -452,20 +664,20 @@ static int Saturation_DoesNotAffectOtherKeys(void)
     // Saturate key A
     for (int i = 0; i < 300; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, spanToC(keyA));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), UINT8_MAX);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), UINT8_MAX);
 
     // Record key B a small number of times
     for (int i = 0; i < 3; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, spanToC(keyB));
     }
 
     // Key A remains saturated, key B estimates exactly 3
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), UINT8_MAX);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 3);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), UINT8_MAX);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 3);
 
     free(sketch);
 
@@ -507,7 +719,7 @@ static int Estimate_ManyKeys_OverestimationGuarantee(void)
         {
             cspan_t key;
             spanInitC(&key, &keyBytes[i], 1);
-            wtlfuSketchRecord(sketch, key);
+            wtlSketchRecord(sketch, key);
         }
     }
 
@@ -518,7 +730,7 @@ static int Estimate_ManyKeys_OverestimationGuarantee(void)
         uint32_t estimate;
 
         spanInitC(&key, &keyBytes[i], 1);
-        estimate = wtlfuSketchEstimate(sketch, key);
+        estimate = wtlSketchEstimate(sketch, key);
 
         EXPECT_TRUE(estimate >= (uint32_t)recordCounts[i]);
     }
@@ -529,7 +741,7 @@ static int Estimate_ManyKeys_OverestimationGuarantee(void)
 }
 
 /*
-* Verifies that wtlfuSketchAge halves every counter in the table.
+* Verifies that wtlSketchAge halves every counter in the table.
 * Records two keys: one to a known small value (8) and one saturated
 * to 255. After each aging call, estimates are checked against the
 * expected halved values. Integer division rounds down, so 8 -> 4 ->
@@ -546,38 +758,38 @@ static int Age_HalvesCounters(void)
     // Record key A exactly 8 times
     for (int i = 0; i < 8; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, spanToC(keyA));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 8);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 8);
 
     // Saturate key B to 255
     for (int i = 0; i < 300; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, spanToC(keyB));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), UINT8_MAX);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), UINT8_MAX);
 
     // First aging: 8 -> 4, 255 -> 127
-    wtlfuSketchAge(sketch);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 4);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 127);
+    wtlSketchAge(sketch);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 127);
 
     // Second aging: 4 -> 2, 127 -> 63
-    wtlfuSketchAge(sketch);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 2);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 63);
+    wtlSketchAge(sketch);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 2);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 63);
 
     // Third aging: 2 -> 1, 63 -> 31
-    wtlfuSketchAge(sketch);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 1);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 31);
+    wtlSketchAge(sketch);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 1);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 31);
 
     // Fourth aging: 1 -> 0, 31 -> 15
-    wtlfuSketchAge(sketch);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 0);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 15);
+    wtlSketchAge(sketch);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 15);
 
     free(sketch);
 
@@ -592,7 +804,7 @@ static int Age_HalvesCounters(void)
 *
 * Sequence:
 *   - Record 9 times: no aging, estimate == 9
- *   - 10th record: aging fires, estimate == 5 (9+1=10, halved = 5)
+*   - 10th record: aging fires, estimate == 5 (9+1=10, halved = 5)
 *   - Record 9 more: no aging, estimate == 14 (5+9)
 *   - 10th again: aging fires, estimate == 7 (14 halved = 7)
 */
@@ -610,26 +822,26 @@ static int Age_ResetsAccessCounter(void)
     // Record 9 times: below threshold, no aging
     for (int i = 0; i < 9; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, spanToC(key));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), 9);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 9);
 
     // 10th record triggers aging: 10 halved = 5
-    wtlfuSketchRecord(sketch, spanToC(key));
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), 5);
+    wtlSketchRecord(sketch, spanToC(key));
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 5);
 
     // Record 9 more: access counter was reset, no aging
     for (int i = 0; i < 9; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, spanToC(key));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), 14);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 14);
 
     // 10th record since last age triggers aging again: 14 halved = 7
-    wtlfuSketchRecord(sketch, spanToC(key));
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(key)), 7);
+    wtlSketchRecord(sketch, spanToC(key));
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 7);
 
     free(sketch);
 
@@ -654,29 +866,29 @@ static int Age_AffectsMultipleKeys(void)
     // Record key A 8 times and key B 4 times
     for (int i = 0; i < 8; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, spanToC(keyA));
     }
 
     for (int i = 0; i < 4; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, spanToC(keyB));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 8);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 4);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyC)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 8);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
 
     // Age: A -> 4, B -> 2, C stays 0
-    wtlfuSketchAge(sketch);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 4);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 2);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyC)), 0);
+    wtlSketchAge(sketch);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 2);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
 
     // Age again: A -> 2, B -> 1, C still 0
-    wtlfuSketchAge(sketch);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 2);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 1);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyC)), 0);
+    wtlSketchAge(sketch);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 2);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 1);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
 
     free(sketch);
 
@@ -684,7 +896,7 @@ static int Age_AffectsMultipleKeys(void)
 }
 
 /*
-* Verifies that wtlfuSketchReset clears all counters and the access
+* Verifies that wtlSketchReset clears all counters and the access
 * counter, returning the sketch to a fresh state. Records two keys,
 * resets, then confirms all estimates are zero and the sketch is
 * usable again by recording and estimating a new key.
@@ -700,32 +912,32 @@ static int Reset_ClearsAllState(void)
     // Record both keys so counters are non-zero
     for (int i = 0; i < 5; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, spanToC(keyA));
     }
 
     for (int i = 0; i < 3; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, spanToC(keyB));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 5);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 3);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 5);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 3);
 
     // Reset all state
-    wtlfuSketchReset(sketch);
+    wtlSketchReset(sketch);
 
     // All estimates should be zero after reset
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 0);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 0);
 
     // Sketch should be usable again: record keyB and verify
     for (int i = 0; i < 4; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, spanToC(keyB));
     }
 
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyB)), 4);
-    EXPECT_EQ(wtlfuSketchEstimate(sketch, spanToC(keyA)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 0);
 
     free(sketch);
 
@@ -752,31 +964,31 @@ static int Determinism_SameConfigSameEstimates(void)
     // Feed both sketches the same mixed sequence
     for (int i = 0; i < 7; i++)
     {
-        wtlfuSketchRecord(s1, spanToC(keyA));
-        wtlfuSketchRecord(s2, spanToC(keyA));
+        wtlSketchRecord(s1, spanToC(keyA));
+        wtlSketchRecord(s2, spanToC(keyA));
     }
 
     for (int i = 0; i < 3; i++)
     {
-        wtlfuSketchRecord(s1, spanToC(keyB));
-        wtlfuSketchRecord(s2, spanToC(keyB));
+        wtlSketchRecord(s1, spanToC(keyB));
+        wtlSketchRecord(s2, spanToC(keyB));
     }
 
-    wtlfuSketchRecord(s1, spanToC(keyC));
-    wtlfuSketchRecord(s2, spanToC(keyC));
+    wtlSketchRecord(s1, spanToC(keyC));
+    wtlSketchRecord(s2, spanToC(keyC));
 
     // Estimates must match across both sketches
-    EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyA)), wtlfuSketchEstimate(s2, spanToC(keyA)));
-    EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyB)), wtlfuSketchEstimate(s2, spanToC(keyB)));
-    EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyC)), wtlfuSketchEstimate(s2, spanToC(keyC)));
+    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyA)), wtlSketchEstimate(s2, spanToC(keyA)));
+    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyB)), wtlSketchEstimate(s2, spanToC(keyB)));
+    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyC)), wtlSketchEstimate(s2, spanToC(keyC)));
 
     // Age both and verify they still match
-    wtlfuSketchAge(s1);
-    wtlfuSketchAge(s2);
+    wtlSketchAge(s1);
+    wtlSketchAge(s2);
 
-    EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyA)), wtlfuSketchEstimate(s2, spanToC(keyA)));
-    EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyB)), wtlfuSketchEstimate(s2, spanToC(keyB)));
-    EXPECT_EQ(wtlfuSketchEstimate(s1, spanToC(keyC)), wtlfuSketchEstimate(s2, spanToC(keyC)));
+    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyA)), wtlSketchEstimate(s2, spanToC(keyA)));
+    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyB)), wtlSketchEstimate(s2, spanToC(keyB)));
+    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyC)), wtlSketchEstimate(s2, spanToC(keyC)));
 
     free(s1);
     free(s2);
@@ -804,24 +1016,24 @@ static int Aging_PreservesRelativeOrdering(void)
     // Record key A 20 times, key B 5 times
     for (int i = 0; i < 20; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, spanToC(keyA));
     }
 
     for (int i = 0; i < 5; i++)
     {
-        wtlfuSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, spanToC(keyB));
     }
 
     // A should be more popular than B before aging
-    EXPECT_TRUE(wtlfuSketchEstimate(sketch, spanToC(keyA)) > wtlfuSketchEstimate(sketch, spanToC(keyB)));
+    EXPECT_TRUE(wtlSketchEstimate(sketch, spanToC(keyA)) > wtlSketchEstimate(sketch, spanToC(keyB)));
 
     // First aging: A=10, B=2, ordering preserved
-    wtlfuSketchAge(sketch);
-    EXPECT_TRUE(wtlfuSketchEstimate(sketch, spanToC(keyA)) > wtlfuSketchEstimate(sketch, spanToC(keyB)));
+    wtlSketchAge(sketch);
+    EXPECT_TRUE(wtlSketchEstimate(sketch, spanToC(keyA)) > wtlSketchEstimate(sketch, spanToC(keyB)));
 
     // Second aging: A=5, B=1, ordering still preserved
-    wtlfuSketchAge(sketch);
-    EXPECT_TRUE(wtlfuSketchEstimate(sketch, spanToC(keyA)) > wtlfuSketchEstimate(sketch, spanToC(keyB)));
+    wtlSketchAge(sketch);
+    EXPECT_TRUE(wtlSketchEstimate(sketch, spanToC(keyA)) > wtlSketchEstimate(sketch, spanToC(keyB)));
 
     free(sketch);
 
@@ -830,8 +1042,11 @@ static int Aging_PreservesRelativeOrdering(void)
 
 int RunTests(void)
 {
-    RUN_TEST(BasicSizeTest());
-    RUN_TEST(GetMemorySize_InlineTableLayout());
+    RUN_TEST(IsValid_ValidConfig());
+    RUN_TEST(IsValid_RejectsInvalidTable());
+    RUN_TEST(Record_IncrementsAccessCount());
+    RUN_TEST(Age_AndReset_ClearAccessCount());
+    RUN_TEST(Record_WritesExactlyOneCounterPerRow());
     RUN_TEST(RecordAndEstimate_SingleKey());
     RUN_TEST(Record_MultipleTimes());
     RUN_TEST(Estimate_EqualsRecordCount_SingleKey());
