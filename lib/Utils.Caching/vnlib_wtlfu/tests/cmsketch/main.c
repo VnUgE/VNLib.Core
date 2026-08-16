@@ -362,6 +362,84 @@ static int Record_WritesExactlyOneCounterPerRow(void)
 }
 
 /*
+* Verifies the config seed actually influences counter placement. Two
+* sketches configured identically except for the seed must not map the
+* same key sequence to the same counter distribution. Both sketches are
+* recorded the identical sequence of keys, then their raw tables are
+* compared: a working seed scatters the keys to different columns, so
+* the tables must differ. The tables can only be byte-identical if every
+* key landed in the same column in both sketches, which has negligible
+* probability (roughly (1/width)^keys) when the seed is honored, while
+* an ignored seed would produce identical tables with certainty.
+*/
+static int Seed_ChangesBucketPlacement(void)
+{
+    static const WtlSketchConfig smallConfig = {
+        .depth          = 4,
+        .width          = 32,
+        .seed           = WTL_SKETCH_BASE_SEED,
+        .resetThreshold = WTL_SKETCH_DEFAULT_RESET_MULT * 32
+    };
+
+    WtlSketchConfig altConfig = smallConfig;
+    altConfig.seed = WTL_SKETCH_BASE_SEED + 1;
+
+    span_t keys[8];
+    static const uint32_t recordCounts[8] = { 3, 4, 5, 2, 3, 4, 5, 2 };
+
+    // The FromHexString macro expands into a statement, so the keys
+    // are assigned individually rather than in an initializer
+    {
+        keys[0] = FromHexString("68656c6c6f", 5);
+        keys[1] = FromHexString("776f726c64", 5);
+        keys[2] = FromHexString("666f6f626172", 6);
+        keys[3] = FromHexString("62617a", 3);
+        keys[4] = FromHexString("717578", 3);
+        keys[5] = FromHexString("666f7a", 3);
+        keys[6] = FromHexString("616263", 3);
+        keys[7] = FromHexString("646566", 3);
+    }
+
+    WtlSketch* sa = sketchAlloc(&smallConfig);
+    WtlSketch* sb = sketchAlloc(&altConfig);
+    ENSURE(sa);
+    ENSURE(sb);
+
+    // record the same key sequence into both sketches
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            for (uint32_t j = 0; j < recordCounts[i]; j++)
+            {
+                wtlSketchRecord(sa, spanToC(keys[i]));
+                wtlSketchRecord(sb, spanToC(keys[i]));
+            }
+        }
+    }
+
+    // differing seeds must scatter keys to different columns, so the
+    // raw tables cannot be byte-identical
+    {
+        const uint8_t* ta = (const uint8_t*)sa->table.data;
+        const uint8_t* tb = (const uint8_t*)sb->table.data;
+        const uint32_t size = spanGetSize(sa->table);
+        uint32_t diff = 0;
+
+        for (uint32_t i = 0; i < size; i++)
+        {
+            if (ta[i] != tb[i]) { diff++; }
+        }
+        
+        EXPECT_TRUE(diff > 0);
+    }
+
+    free(sa);
+    free(sb);
+
+    return 0;
+}
+
+/*
 * Tests are compared to this count exactly. This only holds if the sketch
 * table is large enough that hashes don't collide. With the default config
 * (width=1024, depth=4) and a single key, collisions are effectively
@@ -1047,6 +1125,7 @@ int RunTests(void)
     RUN_TEST(Record_IncrementsAccessCount());
     RUN_TEST(Age_AndReset_ClearAccessCount());
     RUN_TEST(Record_WritesExactlyOneCounterPerRow());
+    RUN_TEST(Seed_ChangesBucketPlacement());
     RUN_TEST(RecordAndEstimate_SingleKey());
     RUN_TEST(Record_MultipleTimes());
     RUN_TEST(Estimate_EqualsRecordCount_SingleKey());
