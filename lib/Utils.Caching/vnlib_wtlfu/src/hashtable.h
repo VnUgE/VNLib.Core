@@ -53,44 +53,63 @@
 #include "platform.h"
 
 #define WTL_TABLE_STATUS_EMPTY   0
-#define WTL_TABLE_STATUS_IN_USE  1
-#define WTL_TABLE_STATUS_TOMB    2
+#define WTL_TABLE_STATUS_TOMB    1
+
+#define WTL_TABLE_ERR_FULL       -1
+#define WTL_TABLE_ERR_DUPLICATE  -10
 
 #define wtl_ht_entry_t WtlEntry
 
 typedef struct WtlHashSlot
-{
-    uint8_t status;             // Status flag. Empty, InUse or Tombstone
-    wtl_ht_entry_t entry;       // Canonical memory for wtlEntries
-} WtlHashSlot ;
+{    
+    uint32_t        hash;           // hashTable hash value AND tombstone/empty flag
+    wtl_ht_entry_t entry;           // Canonical memory for wtlEntries
+} WtlHashSlot;
 
 typedef struct WtlHashTable
 {
-    uint32_t capacity;      /* power of 2, set at init */
-    uint32_t count;         /* live entries */
-    uint32_t tombstones;    /* deleted slots */
+    WtlHashSlot*    slots;
+    uint32_t        capacity;      /* power of 2, set at init */
+    uint32_t        count;         /* live entries */
+    uint32_t        tombstones;    /* deleted slots */   
 } WtlHashTable;
 
-/*
-* Returns the total byte size for a single allocation holding
-* the WtlHashTable header followed by `capacity` inline slots.
-* Returns 0 if capacity is 0 or not a power of 2.
-*/
-_VN_WTLFU_INTERNAL uint32_t wtlHashTableMemorySize(uint32_t capacity);
 
-_VN_WTLFU_INTERNAL void wtlHashTableInit(WtlHashTable* table, uint32_t capacity);
+_VN_WTLFU_INTERNAL int wtlHashTableIsValid(const WtlHashTable* table);
 
 _VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint32_t hash);
 
+/*
+* Inserts a new entry for the given hash, reserving a slot and returning
+* a pointer to the reserved wtl_ht_entry_t via entry. The caller owns
+* populating the returned entry (hash, key, value, LRU links).
+*
+* @param table   Pointer to the table to insert into
+* @param hash    32-bit hash of the key; must be non-zero
+* @param entry   Receives a pointer to the reserved entry; must not be NULL
+* @return WTL_SUCCESS on success, WTL_TABLE_ERR_FULL if the table has no
+*         free slots, WTL_TABLE_ERR_DUPLICATE if the hash is already
+*         present, or WTL_ERR_INVALID_ARG if table or entry is NULL
+*/
 _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry);
 
 _VN_WTLFU_INTERNAL int wtlHashTableRemove(WtlHashTable* table, uint32_t hash);
 
 _VN_WTLFU_INTERNAL int wtuHashTableRemoveEntry(WtlHashTable* table, wtl_ht_entry_t* entry);
 
-_VN_WTLFU_INTERNAL void wtlHashTableRehash(WtlHashTable* table);
-
+/*
+* Removes all entries from the table, leaving it in the same state as
+* a freshly allocated one: every slot empty, count and tombstones zero.
+* Capacity is unchanged and the slot array is wiped with a single memset.
+*
+* NOTE: All entry pointers previously returned by wtlHashTableInsert become
+* invalid after this call.
+*
+* @param table  Pointer to the table to clear
+*/
 _VN_WTLFU_INTERNAL void wtlHashTableClear(WtlHashTable* table);
+
+_VN_WTLFU_INTERNAL void wtlHashTableRehash(WtlHashTable* table);
 
 _VN_WTLFU_INTERNAL uint32_t wtlHashTableCount(const WtlHashTable* table);
 

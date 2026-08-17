@@ -39,70 +39,21 @@
 
 static WtlHashTable* allocHashTable(uint32_t capacity)
 {
-    uint32_t memSize = wtlHashTableMemorySize(capacity);
-    TASSERT(memSize > capacity);
+    uint32_t memSize = sizeof(WtlHashTable) + (sizeof(WtlHashSlot) * capacity);
 
     WtlHashTable* table = malloc(memSize);
     TASSERT(table);
 
+    memset(table, 0, memSize);
+
+    // Assign capacity
+    table->capacity = capacity;
+    table->slots = ((WtlHashSlot*)table + 1);
+
+    TASSERT(wtlHashTableIsValid(table) == WTL_SUCCESS);
+
     return table;
 }
-
-#ifndef TEST_GROUP_HASHTABLE_INIT
-#define TEST_GROUP_HASHTABLE_INIT 1
-
-    /*
-    * Init with a valid power-of-2 capacity must zero all fields and slots.
-    * Count and tombstones must be zero, and every slot must be empty.
-    * wtlfuHashTableMemorySize must return sizeof(header) + capacity * sizeof(slot).
-    */
-    static int InitValidCapacity(void)
-    {
-        static const uint32_t cap = 16;
-
-        WtlHashTable* table = NULL;
-        WtlHashSlot* slots = NULL;       
-      
-        EXPECT_EQ(
-            wtlHashTableMemorySize(cap),
-            (uint32_t)(sizeof(WtlHashTable) + (cap * sizeof(WtlHashSlot)))
-        );
-
-        table = allocHashTable(cap);
-        wtlHashTableInit(table, cap);
-
-        EXPECT_EQ(table->capacity, cap);
-        EXPECT_EQ(table->count, 0);
-        EXPECT_EQ(table->tombstones, 0);
-
-        // Verify all slots are empty
-        slots = (WtlHashSlot*)(table + 1);
-        for (uint32_t i = 0; i < cap; i++)
-        {
-            EXPECT_EQ_LOOP(slots[i].status, WTL_TABLE_STATUS_EMPTY);
-            EXPECT_EQ_LOOP(slots[i].entry.hash, (uint32_t)0);
-        }
-
-        free(table);
-        return 0;
-    }
-
-    /*
-    * Init with a non-power-of-2 capacity must be a no-op. The table struct
-    * must not be modified by the call.
-    */
-    static int InitInvalidCapacity(void)
-    {
-        EXPECT_EQ(wtlHashTableMemorySize(0), (size_t)0);
-        EXPECT_EQ(wtlHashTableMemorySize(15), (size_t)0);
-        EXPECT_EQ(wtlHashTableMemorySize(31), (size_t)0);
-        EXPECT_EQ(wtlHashTableMemorySize(65535), (size_t)0);
-
-        return 0;
-    }
-   
-
-#endif /* TEST_GROUP_HASHTABLE_INIT */
 
 #ifndef TEST_GROUP_HASHTABLE_INSERT
 #define TEST_GROUP_HASHTABLE_INSERT 1
@@ -115,8 +66,7 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     {        
         wtl_ht_entry_t* entry = NULL;
 
-        WtlHashTable* table = allocHashTable(16);
-        wtlHashTableInit(table, 16);
+        WtlHashTable* table = allocHashTable(16);       
 
         EXPECT_EQ(table->count, 0);
         
@@ -124,8 +74,7 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
         EXPECT_EQ(table->count, 1);
 
         // Entry should be assigned if insert succeeded
-        EXPECT_FALSE(entry == NULL);
-        EXPECT_EQ(entry->hash, 65486);
+        EXPECT_FALSE(entry == NULL); 
 
         free(table);
 
@@ -133,27 +82,33 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     }
 
     /*
-    * Inserting a NULL entry must return -1 and leave the table unchanged.
-    */
-    static int InsertNullEntry(void)
-    {
-        return 0;
-    }
-
-    /*
-    * Inserting into a NULL table or a table with zero capacity must return -1.
-    */
-    static int InsertNullTable(void)
-    {
-        return 0;
-    }
-
-    /*
-    * Inserting the same hash twice must return 1 (duplicate) on the second
-    * insert, and count must remain 1.
+    * Inserting the same hash twice must return WTL_TABLE_ERR_DUPLICATE on
+    * the second insert, and count must remain 1.
     */
     static int InsertDuplicateHash(void)
     {
+        wtl_ht_entry_t* entry = NULL;
+        wtl_ht_entry_t* dup = NULL;
+
+        WtlHashTable* table = allocHashTable(16);
+        const uint32_t hash = 65486;
+
+        // first insert must succeed and reserve an entry
+        {
+            EXPECT_EQ(wtlHashTableInsert(table, hash, &entry), WTL_SUCCESS);
+            EXPECT_EQ(table->count, 1);
+            EXPECT_FALSE(entry == NULL);
+        }
+
+        // second insert of the same hash must fail as duplicate and
+        // leave the table unchanged
+        {
+            EXPECT_EQ(wtlHashTableInsert(table, hash, &dup), WTL_TABLE_ERR_DUPLICATE);
+            EXPECT_EQ(table->count, 1);
+        }
+
+        free(table);
+
         return 0;
     }
 
@@ -163,6 +118,35 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     */
     static int InsertCollisionProbing(void)
     {
+        wtl_ht_entry_t* entries[3] = { NULL, NULL, NULL };
+
+        WtlHashTable* table = allocHashTable(16);
+
+        // hashes 5, 21, and 37 all share home slot 5 (hash & 15)
+        static const uint32_t hashes[3] = { 5, 21, 37 };
+
+        // all three must succeed, landing in consecutive slots 5, 6, 7
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                EXPECT_EQ_LOOP(wtlHashTableInsert(table, hashes[i], &entries[i]), WTL_SUCCESS);
+            }
+
+            EXPECT_EQ(table->count, 3);
+        }
+
+        // each entry must be retrievable by its own hash, and the entries
+        // must occupy consecutive slots starting at home
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                EXPECT_FALSE(wtlHashTableLookup(table, hashes[i]) == NULL);
+                EXPECT_TRUE(wtlHashTableLookup(table, hashes[i]) == &table->slots[5 + i].entry);
+            }
+        }
+
+        free(table);
+
         return 0;
     }
 
@@ -172,6 +156,31 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     */
     static int InsertUntilFull(void)
     {
+        WtlHashTable* table = allocHashTable(16);
+
+        // fill the table: 16 distinct non-zero hashes all land in
+        // distinct slots (mask 15), probing handles any collisions
+        {
+            for (uint32_t hash = 1; hash <= 16; hash++)
+            {
+                wtl_ht_entry_t* entry = NULL;
+
+                EXPECT_EQ_LOOP(wtlHashTableInsert(table, hash, &entry), WTL_SUCCESS);
+            }
+
+            EXPECT_EQ(table->count, 16);
+        }
+
+        // the next insert must fail as the table has no free slots
+        {
+            wtl_ht_entry_t* entry = NULL;
+
+            EXPECT_EQ(wtlHashTableInsert(table, 17, &entry), WTL_TABLE_ERR_FULL);
+            EXPECT_EQ(table->count, 16);
+        }
+
+        free(table);
+
         return 0;
     }
 
@@ -182,6 +191,34 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     */
     static int InsertReusesTombstone(void)
     {
+        wtl_ht_entry_t* entry = NULL;
+        wtl_ht_entry_t* reuse = NULL;
+
+        WtlHashTable* table = allocHashTable(16);
+        const uint32_t hash = 65486;
+
+        // insert, note the slot, then remove to create a tombstone
+        {
+            EXPECT_EQ(wtlHashTableInsert(table, hash, &entry), WTL_SUCCESS);
+            EXPECT_TRUE(entry == &table->slots[hash & 15].entry);
+
+            EXPECT_EQ(wtlHashTableRemove(table, hash), WTL_SUCCESS);
+            EXPECT_EQ(table->count, 0);
+            EXPECT_EQ(table->tombstones, 1);
+        }
+
+        // re-inserting the same hash must reclaim the tombstone slot, not
+        // probe past it
+        {
+            EXPECT_EQ(wtlHashTableInsert(table, hash, &reuse), WTL_SUCCESS);
+            EXPECT_TRUE(reuse == &table->slots[hash & 15].entry);
+
+            EXPECT_EQ(table->count, 1);
+            EXPECT_EQ(table->tombstones, 0);
+        }
+
+        free(table);
+
         return 0;
     }
 
@@ -192,6 +229,44 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     */
     static int InsertPrefersTombstoneOverEmpty(void)
     {
+        wtl_ht_entry_t* a = NULL;
+        wtl_ht_entry_t* b = NULL;
+        wtl_ht_entry_t* probe = NULL;
+
+        WtlHashTable* table = allocHashTable(16);
+
+        // hash 16 has home slot 0; hashes 32 and 48 both probe past it
+        {
+            EXPECT_EQ(wtlHashTableInsert(table, 16, &a), WTL_SUCCESS);
+            EXPECT_EQ(wtlHashTableInsert(table, 32, &b), WTL_SUCCESS);
+        }
+
+        // removing hash 16 leaves a tombstone at slot 0, first in the
+        // probe chain of every hash whose home is slot 0
+        {
+            EXPECT_EQ(wtlHashTableRemove(table, 16), WTL_SUCCESS);
+            EXPECT_EQ(table->tombstones, 1);
+        }
+
+        // inserting another slot-0-home hash must reclaim the tombstone
+        // at slot 0 rather than probing past it to the empty slots
+        {
+            EXPECT_EQ(wtlHashTableInsert(table, 48, &probe), WTL_SUCCESS);
+            EXPECT_TRUE(probe == &table->slots[0].entry);
+
+            EXPECT_EQ(table->count, 2);
+            EXPECT_EQ(table->tombstones, 0);
+        }
+
+        // chain terminators must still work: a hash whose chain starts at
+        // the now-vacated slot 0 must resolve without skipping live entries
+        {
+            EXPECT_TRUE(wtlHashTableLookup(table, 32) == &table->slots[1].entry);
+            EXPECT_TRUE(wtlHashTableLookup(table, 48) == &table->slots[0].entry);
+        }
+
+        free(table);
+
         return 0;
     }
 
@@ -226,21 +301,6 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
         return 0;
     }
 
-    /*
-    * Lookup on an empty table must return NULL.
-    */
-    static int LookupEmptyTable(void)
-    {
-        return 0;
-    }
-
-    /*
-    * Lookup on a NULL table must return NULL.
-    */
-    static int LookupNullTable(void)
-    {
-        return 0;
-    }
 
     /*
     * Lookup for a missing hash when the table is completely full (no empty
@@ -376,8 +436,9 @@ static WtlHashTable* allocHashTable(uint32_t capacity)
     }
 
     /*
-    * Rehash with tombstones must move all live entries to their home
-    * positions, set tombstones to zero, and preserve count exactly.
+    * Rehash with tombstones must move all live entries to the first empty
+    * slot at or after their home position, set tombstones to zero, and
+    * preserve count exactly.
     */
     static int RehashCompactsTombstones(void)
     {
@@ -457,8 +518,6 @@ int RunTests(void)
 
 #if TEST_GROUP_HASHTABLE_INSERT
     RUN_TEST(InsertSingleEntry());
-    RUN_TEST(InsertNullEntry());
-    RUN_TEST(InsertNullTable());
     RUN_TEST(InsertDuplicateHash());
     RUN_TEST(InsertCollisionProbing());
     RUN_TEST(InsertUntilFull());
@@ -470,8 +529,6 @@ int RunTests(void)
     RUN_TEST(LookupExisting());
     RUN_TEST(LookupMissingEmptyChain());
     RUN_TEST(LookupMissingTombstoneChain());
-    RUN_TEST(LookupEmptyTable());
-    RUN_TEST(LookupNullTable());
     RUN_TEST(LookupFullTableNoInfiniteLoop());
 #endif
 

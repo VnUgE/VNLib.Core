@@ -28,22 +28,18 @@
 #include "debug.h"
 #include "span.h"
 
-static _vn_inline WtlHashSlot* _tableSlots(WtlHashTable* table, uint32_t offset)
+static _vn_inline WtlHashSlot* _tableSlot(WtlHashTable* table, uint32_t index)
 {
     DEBUG_ASSERT(table);
-    DEBUG_ASSERT(offset < table->capacity);
-    return (WtlHashSlot*)(table + 1) + offset;
-}
+    DEBUG_ASSERT(index < table->capacity);
 
-static _vn_inline const WtlHashSlot* _tableSlotsC(const WtlHashTable* table, uint32_t offset)
-{
-    DEBUG_ASSERT(table);
-    DEBUG_ASSERT(offset < table->capacity);
-    return (const WtlHashSlot*)(table + 1) + offset;
+    return &table->slots[index];
 }
 
 static _vn_inline uint32_t _tableMask(const WtlHashTable* table)
 {
+    DEBUG_ASSERT(table);
+    DEBUG_ASSERT(table->capacity > 0);
     return table->capacity - 1;
 }
 
@@ -53,27 +49,56 @@ static _vn_inline void _tableSetAsTombstone(WtlHashTable* table, WtlHashSlot* sl
     DEBUG_ASSERT(slot);
 
     // Slot already tombstone
-    if (slot->status == WTL_TABLE_STATUS_TOMB)
+    if (slot->hash == WTL_TABLE_STATUS_TOMB)
     {
         return;
     }
 
-    DEBUG_ASSERT(slot->status == WTL_TABLE_STATUS_IN_USE);
+    DEBUG_ASSERT(slot->hash > WTL_TABLE_STATUS_TOMB);
 
     // Wipe slot date, then reset the tombstone status
     memset(slot, 0, sizeof(WtlHashSlot));
 
-    slot->status = WTL_TABLE_STATUS_TOMB;
+    slot->hash = WTL_TABLE_STATUS_TOMB;
     table->tombstones++;
     table->count--;
 }
 
+static _vn_inline void _tableUseTombstone(WtlHashTable* table, WtlHashSlot* slot, uint32_t hash)
+{
+    DEBUG_ASSERT(table);
+    DEBUG_ASSERT(slot);
+
+    DEBUG_ASSERT(slot->hash == WTL_TABLE_STATUS_TOMB);
+
+    // Set to in use by assigning the hash
+    slot->hash = hash;
+    
+    // inc count and decrement tombstones since we are not using it
+    table->count++;
+    table->tombstones--;
+}
+
+static _vn_inline void _tableUseEmpty(WtlHashTable* table, WtlHashSlot* slot, uint32_t hash)
+{
+    DEBUG_ASSERT(table);
+    DEBUG_ASSERT(slot);
+
+    DEBUG_ASSERT(slot->hash == WTL_TABLE_STATUS_EMPTY);
+
+    // Set to in use by assigning the hash
+    slot->hash = hash;
+
+    // inc count only and continue
+    table->count++;
+}
+
 static WtlHashSlot* tableFindSlot(WtlHashTable* table, uint32_t hash)
 {   
-    uint32_t mask = 0;  
+    uint32_t mask;  
 
     DEBUG_ASSERT(table);   
-    if (!table || table->capacity == 0)
+    if (!table || table->capacity == 0 || !table->slots)
     {
         return NULL;
     }
@@ -85,9 +110,9 @@ static WtlHashSlot* tableFindSlot(WtlHashTable* table, uint32_t hash)
 
     for (uint32_t i = 0; i < table->capacity; i++)
     {
-        WtlHashSlot* slot = _tableSlots(table, (hash + i) & mask);
+        WtlHashSlot* slot = _tableSlot(table, (hash + i) & mask);
 
-        switch (slot->status)
+        switch (slot->hash)
         {
         // Empty slot — end of probe chain, not found
         case WTL_TABLE_STATUS_EMPTY:
@@ -98,15 +123,15 @@ static WtlHashSlot* tableFindSlot(WtlHashTable* table, uint32_t hash)
             break;
         
         // slot is in use, check hash matches
-        case WTL_TABLE_STATUS_IN_USE:
+        default:
+        {
+            if (slot->hash == hash)
             {
-                if (slot->entry.hash == hash)
-                {
-                    return slot;
-                }
+                return slot;
             }
-            // Hash does not match prob next
+            // Hash does not match probe next
             break;
+        }                
         }
     }
 
@@ -114,11 +139,21 @@ static WtlHashSlot* tableFindSlot(WtlHashTable* table, uint32_t hash)
     return NULL;
 }
 
-_VN_WTLFU_INTERNAL uint32_t wtlHashTableMemorySize(uint32_t capacity)
+_VN_WTLFU_INTERNAL int wtlHashTableIsValid(const WtlHashTable* table)
 {
-    return capacity && (!(capacity & (capacity - 1)))
-        ? sizeof(WtlHashTable) + ((size_t)capacity * sizeof(WtlHashSlot))
-        : 0;
+    DEBUG_ASSERT(table);
+    if (!table || !table->slots)
+    {
+        return -1;
+    }
+
+    // Ensure capacity is greater than 0 and a power of two
+    if (table->capacity == 0 || (table->capacity & (table->capacity - 1)))
+    {
+        return -2;
+    }
+
+    return WTL_SUCCESS;
 }
 
 _VN_WTLFU_INTERNAL uint32_t wtlHashTableCount(const WtlHashTable* table)
@@ -133,21 +168,6 @@ _VN_WTLFU_INTERNAL uint32_t wtlHashTableCapacity(const WtlHashTable* table)
     return table ? table->capacity : 0;
 }
 
-_VN_WTLFU_INTERNAL void wtlHashTableInit(WtlHashTable* table, uint32_t capacity)
-{
-    DEBUG_ASSERT(table);
-    DEBUG_ASSERT(capacity > 0 && (capacity & (capacity - 1)) == 0);
-
-    if (!table || capacity == 0 || (capacity & (capacity - 1)) != 0)
-    {
-        return;
-    }
-
-    memset(table, 0, wtlHashTableMemorySize(capacity));
-
-    table->capacity = capacity;
-}
-
 _VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint32_t hash)
 {
     WtlHashSlot* slot = tableFindSlot(table, hash);
@@ -157,14 +177,20 @@ _VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint3
 
 _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry)
 {    
-    uint32_t mask = 0;
+    uint32_t mask;
     WtlHashSlot* tombSlot = NULL;
 
     DEBUG_ASSERT(table);
 
     if (!table || table->capacity == 0)
     {
-        return -1;
+        return WTL_ERR_INVALID_ARG;
+    }
+
+    // A NULL entry pointer cannot receive the assigned slot
+    if (!entry)
+    {
+        return WTL_ERR_INVALID_ARG;
     }
 
     // Table is full (no empty or tombstone slots available)
@@ -177,39 +203,33 @@ _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _O
 
     for (uint32_t i = 0; i < table->capacity; i++)
     {
-        WtlHashSlot* slot = _tableSlots(table, (hash + i) & mask);
+        WtlHashSlot* slot = _tableSlot(table, (hash + i) & mask);
 
         // Empty slot — end of probe chain
-        switch (slot->status)
+        switch (slot->hash)
         {
         case WTL_TABLE_STATUS_EMPTY:
             {
-                // Prefer the tombstone if one was found earlier, leaving
-                // the empty slot as a proper chain terminator
-                WtlHashSlot* target = tombSlot ? tombSlot : slot;               
-
-                target->entry.hash = hash;
-                (*entry) = &target->entry;
+                // Found empty slot. If a tombstone was set, use it and leave
+                // empty slot to terminate the probe chain.
                 
-                table->count++;
-
                 if (tombSlot)
                 {
-                    table->tombstones--;
+                    _tableUseTombstone(table, tombSlot, hash);
+
+                    (*entry) = &tombSlot->entry;
                 }
+                else
+                {
+                    _tableUseEmpty(table, slot, hash);
+
+                    (*entry) = &slot->entry;
+                }               
 
                 return WTL_SUCCESS;
             }
-        case WTL_TABLE_STATUS_IN_USE:
-            {
-                // Occupied with same hash — duplicate
-                if (slot->entry.hash == hash) 
-                {
-                    return 1;
-                }
-                break;
-            }
-            // Tombstone — remember first one, keep probing for duplicate
+       
+            // Tombstone — remember first one, keep probing for possible duplicates
         case WTL_TABLE_STATUS_TOMB:
             {
                 if (!tombSlot)
@@ -218,6 +238,18 @@ _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _O
                 }
 
                 continue;
+            }
+            // In use if not tombstone or empty (0)
+        default:
+            {
+                // Occupied with same hash — duplicate
+                if (slot->hash == hash) 
+                {
+                    return WTL_TABLE_ERR_DUPLICATE;
+                }
+
+                // Continue probing
+                break;
             }
         }       
     }
@@ -253,37 +285,40 @@ _VN_WTLFU_INTERNAL int wtuHashTableRemoveEntry(WtlHashTable* table, wtl_ht_entry
 _VN_WTLFU_INTERNAL void wtlHashTableClear(WtlHashTable* table)
 {
     DEBUG_ASSERT(table);
-   
-    if (!table)
+
+    if (!table || !table->slots)
     {
         return;
     }
 
-    wtlHashTableInit(table, table->capacity);
+    // Wipe the entire slot array, then reset the counters
+    memset(table->slots, 0, sizeof(WtlHashSlot) * table->capacity);
+
+    table->count = 0;
+    table->tombstones = 0;
 }
 
 _VN_WTLFU_INTERNAL void wtlHashTableRehash(WtlHashTable* table)
-{   
-    WtlHashSlot* slots = NULL;
+{    
     uint32_t mask = 0;
 
     DEBUG_ASSERT(table);
+    DEBUG_ASSERT(table->slots);
 
     if (!table || table->capacity == 0 || table->tombstones == 0)
     {
         return;
     }
    
-    mask = _tableMask(table);
-    slots = _tableSlots(table, 0);
+    mask = _tableMask(table);    
 
     // Convert all tombstones to empty slots so live entries can be
     // freely moved without interference from stale markers
     for (uint32_t i = 0; i < table->capacity; i++)
     {
-        WtlHashSlot* slot = &slots[i];
+        WtlHashSlot* slot = _tableSlot(table, i);
 
-        if (slot->status == WTL_TABLE_STATUS_TOMB)
+        if (slot->hash == WTL_TABLE_STATUS_TOMB)
         {
             // Clear slot back to defaults (sets to free)
             memset(slot, 0, sizeof(WtlHashSlot));
@@ -298,18 +333,17 @@ _VN_WTLFU_INTERNAL void wtlHashTableRehash(WtlHashTable* table)
     // which terminates probe chains for lookups correctly.
     for (uint32_t i = 0; i < table->capacity; i++)
     {
-        WtlHashSlot* curr = &slots[i];
-        wtl_ht_entry_t entry;
-        uint32_t hash = 0;
+        WtlHashSlot* curr = _tableSlot(table, i);
+        wtl_ht_entry_t entry;      
 
         // Skip empty slots
-        if (curr->status == WTL_TABLE_STATUS_EMPTY)
+        if (curr->hash == WTL_TABLE_STATUS_EMPTY)
         {
             continue;
         }
 
         // Already at home — no move needed
-        if ((curr->entry.hash & mask) == i)
+        if ((curr->hash & mask) == i)
         {
             continue;
         }
@@ -322,14 +356,17 @@ _VN_WTLFU_INTERNAL void wtlHashTableRehash(WtlHashTable* table)
 
         // Probe from home for the first empty slot
         {
-            uint32_t j = hash & mask;
+            uint32_t j = (curr->hash & mask);
             uint32_t probed = 0;
 
             for (; probed < table->capacity; probed++)
             {
-                if (!slots[j].status == WTL_TABLE_STATUS_EMPTY)
+                WtlHashSlot* slot = _tableSlot(table, j);
+            
+                if (slot->hash == WTL_TABLE_STATUS_EMPTY)
                 {
-                    slots[j].entry = entry;                  
+                    slot->hash = curr->hash;
+                    slot->entry = entry;
                     break;
                 }
 
