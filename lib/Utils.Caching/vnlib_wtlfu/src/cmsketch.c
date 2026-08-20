@@ -24,10 +24,14 @@
  *
  * Stores a 2D array of uint8_t counters in a single caller-owned
  * buffer: the WtlSketch header immediately followed by the flat
- * row-major counter table. Each row is indexed by a 32-bit hash derived
- * from the key and a row-specific seed. Frequency estimates return the
- * minimum counter across all rows. Counters saturate at 255 and are
- * periodically halved to age old data.
+ * row-major counter table. Each row is indexed by a sub-hash derived
+ * from a caller-supplied 32-bit hash and a row-specific seed. The
+ * sub-hash expands the 32-bit hash and row seed to 64 bits and runs a
+ * splitmix64-style avalanche (derived from the public-domain splitmix64
+ * function by Sebastiano Vigna, 2015) so each output bit depends on
+ * every input bit. Frequency estimates return the minimum counter
+ * across all rows. Counters saturate at 255 and are periodically
+ * halved to age old data.
  */
 
 #include <stdint.h>
@@ -37,12 +41,53 @@
 #include "platform.h"
 #include "debug.h"
 #include "span.h"
-#include "hash.h"
 #include "cmsketch.h"
 
 #if SIZE_MAX < UINT32_MAX
     #error "This library does not support sizeof(size_t) smaller than 32bits"
 #endif // SIZE_MAX < UINT32_MAX
+
+/*
+* Mixing constants from splitmix64 (Sebastiano Vigna, 2015, CC0).
+* Reference: http://vigna.di.unimi.it/ftp/papers/SplitMix12.pdf
+*/
+#define SPLIT_MIX_CONST_1 0x9E3779B97F4A7C15ULL
+#define SPLIT_MIX_CONST_2 0xBF58476D1CE4E5B9ULL
+#define SPLIT_MIX_CONST_3 0x94D049BB133111EBULL
+
+/*
+* _splitMix32 - expand an item hash plus a row seed into one
+* avalanche-mixed 32-bit value.
+*
+* Packs both 32-bit inputs into a 64-bit word, runs one splitmix64
+* step, and xor-folds back to 32 bits. The 64-bit pipeline is a
+* bijection before the fold, so every output bit depends on every
+* input bit, which decorrelates the per-row sub-hashes from each
+* other and from the base hash.
+*/
+static _vn_inline uint32_t _splitMix32(uint32_t in1, uint32_t in2)
+{
+    uint64_t x = ((uint64_t)in1 << 32 | (uint64_t)in2);
+
+    x += SPLIT_MIX_CONST_1;
+    x = (x ^ (x >> 30)) * SPLIT_MIX_CONST_2;
+    x = (x ^ (x >> 27)) * SPLIT_MIX_CONST_3;
+    x = x ^ (x >> 31);
+
+    // Fold the 64-bit mixed value down to 32 bits for row/column use.
+    return (uint32_t)(x ^ (x >> 32));
+}
+
+static _vn_inline uint32_t _sketchGetHashIndex(const WtlSketch* sketch, uint32_t hash, uint32_t row)
+{
+    uint32_t colMix, column;
+
+    // Derive this row's column from the item hash and a per-row seed.
+    colMix = _splitMix32(hash, (uint32_t)(sketch->config.seed + row));
+    column = colMix % sketch->config.width;
+
+    return row * sketch->config.width + column;
+}
 
 _VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch)
 {  
@@ -80,33 +125,20 @@ _VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch)
     return 0;
 }
 
-static _vn_inline uint32_t sketchGetKeyIndex(const WtlSketch* sketch, cspan_t key, uint32_t row)
-{
-    DEBUG_ASSERT(sketch);
-
-    // a unique row seed adds entropy to the row hash
-    uint64_t rowSeed = sketch->config.seed + row;
-    uint32_t column = wtlfuHash32(key, rowSeed) % sketch->config.width;
-    
-    return row * sketch->config.width + column;
-}
-
-_VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, cspan_t key)
+_VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, uint32_t hash)
 { 
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
     if (!sketch)
     {
         return;
-    }   
-
-    // An empty key is valid; it simply hashes the empty byte sequence.
+    }
 
     // Increment one counter per row. Each row uses a different seed so
     // that collisions in one row are unlikely to repeat in another.
     for (uint32_t row = 0; row < sketch->config.depth; row++)
     {
-        uint32_t     index = sketchGetKeyIndex(sketch, key, row);
+        uint32_t     index = _sketchGetHashIndex(sketch, hash, row);
         uint8_t*  valuePtr = spanGetOffset(sketch->table, index);
 
         // Saturate at 255 rather than wrapping back to zero.
@@ -127,7 +159,7 @@ _VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, cspan_t key)
     }
 }
 
-_VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, cspan_t key)
+_VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t hash)
 {
     // Seed the minimum with the first row's counter. The table is
     // non-empty because create() rejects zero width/depth.
@@ -145,7 +177,7 @@ _VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, cspan_t k
     // (least overestimated) frequency estimate.
     for (uint32_t row = 0; row < sketch->config.depth; row++)
     {        
-        uint32_t index = sketchGetKeyIndex(sketch, key, row);
+        uint32_t index = _sketchGetHashIndex(sketch, hash, row);
         uint8_t  value = *spanGetOffset(sketch->table, index);
 
         if (value < min)
@@ -153,7 +185,7 @@ _VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, cspan_t k
             min = value;
 
             // Early exit if we hit zero: no row can produce a lower
-            // estimate, so the key has effectively never been seen.
+            // estimate, so the hash has effectively never been seen.
             if (min == 0)
             {
                 break;
@@ -165,8 +197,7 @@ _VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, cspan_t k
 }
 
 _VN_WTLFU_INTERNAL void wtlSketchAge(WtlSketch* sketch)
-{  
-
+{
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
     if (!sketch)

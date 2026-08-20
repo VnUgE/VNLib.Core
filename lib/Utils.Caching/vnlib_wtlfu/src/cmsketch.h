@@ -24,7 +24,7 @@
  *
  * A Count-Min Sketch (CMS) is a probabilistic data structure that
  * estimates the frequency of items using multiple independent hash
- * functions and a 2D array of counters. The estimate for any key
+ * functions and a 2D array of counters. The estimate for any hash
  * is the minimum across all rows.
  *
  * Aging: when the total number of recorded accesses reaches
@@ -71,13 +71,13 @@ typedef struct wtl_sketch_config_struct
     /* Number of columns (buckets per row). More = higher resolution. */
     uint32_t width;
 
-    /* Number of rows (independent hash functions). More = fewer collisions. */
+    /* Number of rows. More = fewer collisions. */
     uint32_t depth;
 
     /*
     * Total access count at which aging is triggered (all counters
-    * halved, access counter reset). Must be greater than 0 generally desired
-    * to be around 10x width.
+    * halved, access counter reset). Must be greater than 0; generally
+    * desired to be around 10x width.
     */
     uint32_t resetThreshold;
 
@@ -126,26 +126,26 @@ typedef struct WtlSketch {
 _VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch);
 
 /*
-* Records an access for the given key by incrementing the counter
-* in each row at position hash(key, seed+row) % width. If the total
+* Records an access for the given unique hash by incrementing the counter
+* in each row at position identified by the hash. If the total
 * access count reaches resetThreshold, aging is triggered (all
 * counters halved, counter reset).
 *
 * @param sketch  Sketch handle
-* @param key     Read-only span over the key bytes
+* @param hash    32-bit, non-zero hash of the item
 */
-_VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, cspan_t key);
+_VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, uint32_t hash);
 
 /*
-* Estimates the frequency of the given key. Returns the minimum
+* Estimates the frequency of the given hash. Returns the minimum
 * counter value across all rows. This is an upper bound on the
 * true frequency (Count-Min Sketch never underestimates).
 *
 * @param sketch  Sketch handle
-* @param key     Read-only span over the key bytes
+* @param hash    32-bit, non-zero hash of the item
 * @return Estimated frequency (0 if never recorded)
 */
-_VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, cspan_t key);
+_VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t hash);
 
 /*
 * Manually triggers aging: halves all counters and resets the
