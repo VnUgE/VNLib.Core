@@ -23,7 +23,21 @@
 #include <cmsketch.h>
 
 #include "test.h"
-#include "hex.h"
+
+/*
+* Test hash values. The sketch is a black box over 32-bit hashes, so
+* tests supply arbitrary distinct non-zero values and assert on the
+* resulting counts. The actual hashing of key material is covered by
+* the hashtable and hash tests.
+*
+* Values are the first 4 ASCII bytes of the legacy test keys
+* (e.g. HASH_HELLO is the bytes for "hell").
+*/
+#define HASH_HELLO  0x68656c6c
+#define HASH_WORLD  0x776f726c
+#define HASH_FOOBAR 0x666f6f62
+#define HASH_BAZ    0x62617a62
+#define HASH_QUX    0x71757871
 
 /* default sketch config values from internal.h */
 static const WtlSketchConfig DefaultConfig = {
@@ -78,9 +92,8 @@ static int IsValid_ValidConfig(void)
 
     // A sketch that has been in use is still structurally valid
     {
-        span_t key = FromHexString("68656c6c6f", 5);
-        wtlSketchRecord(sketch, spanToC(key));
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, HASH_HELLO);
+        wtlSketchRecord(sketch, HASH_HELLO);
         EXPECT_EQ(wtlSketchIsValid(sketch), 0);
     }
 
@@ -203,8 +216,6 @@ static int IsValid_RejectsInvalidTable(void)
 */
 static int Record_IncrementsAccessCount(void)
 {
-    span_t key = FromHexString("68656c6c6f", 5);
-
     WtlSketchConfig config = DefaultConfig;
     config.resetThreshold = 10;
 
@@ -220,25 +231,25 @@ static int Record_IncrementsAccessCount(void)
     {
         for (uint32_t i = 1; i <= 9; i++)
         {
-            wtlSketchRecord(sketch, spanToC(key));
+            wtlSketchRecord(sketch, HASH_HELLO);
             EXPECT_EQ(sketch->accessCount, i);
         }
     }
 
     // 10th record hits the threshold: aging fires and the counter resets
     {
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, HASH_HELLO);
         EXPECT_EQ(sketch->accessCount, 0);
     }
 
     // aging really happened: 10 records halved to 5
     {
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 5);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 5);
     }
 
     // counting resumes from zero after the reset
     {
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, HASH_HELLO);
         EXPECT_EQ(sketch->accessCount, 1);
     }
 
@@ -255,8 +266,6 @@ static int Record_IncrementsAccessCount(void)
 */
 static int Age_AndReset_ClearAccessCount(void)
 {
-    span_t key = FromHexString("68656c6c6f", 5);
-
     WtlSketchConfig config = DefaultConfig;
     config.resetThreshold = 100;
 
@@ -267,14 +276,14 @@ static int Age_AndReset_ClearAccessCount(void)
     {
         for (int i = 0; i < 7; i++)
         {
-            wtlSketchRecord(sketch, spanToC(key));
+            wtlSketchRecord(sketch, HASH_HELLO);
         }
         EXPECT_EQ(sketch->accessCount, 7);
     }
 
     // estimate must not disturb the access count
     {
-        wtlSketchEstimate(sketch, spanToC(key));
+        wtlSketchEstimate(sketch, HASH_HELLO);
         EXPECT_EQ(sketch->accessCount, 7);
     }
 
@@ -286,8 +295,8 @@ static int Age_AndReset_ClearAccessCount(void)
 
     // a fresh cycle counts from zero
     {
-        wtlSketchRecord(sketch, spanToC(key));
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, HASH_HELLO);
+        wtlSketchRecord(sketch, HASH_HELLO);
         EXPECT_EQ(sketch->accessCount, 2);
     }
 
@@ -295,7 +304,7 @@ static int Age_AndReset_ClearAccessCount(void)
     {
         wtlSketchReset(sketch);
         EXPECT_EQ(sketch->accessCount, 0);
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 0);
     }
 
     free(sketch);
@@ -313,8 +322,6 @@ static int Age_AndReset_ClearAccessCount(void)
 */
 static int Record_WritesExactlyOneCounterPerRow(void)
 {
-    span_t key = FromHexString("68656c6c6f", 5);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
@@ -332,11 +339,11 @@ static int Record_WritesExactlyOneCounterPerRow(void)
         EXPECT_EQ(sum, 0);
     }
 
-    // record the key a few times
+    // record the hash a few times
     {
         for (int i = 0; i < 6; i++)
         {
-            wtlSketchRecord(sketch, spanToC(key));
+            wtlSketchRecord(sketch, HASH_HELLO);
         }
     }
 
@@ -350,8 +357,10 @@ static int Record_WritesExactlyOneCounterPerRow(void)
             sum += v;
             if (v != 0) { nonZero++; }
         }
+
         // exactly one counter per row is hot
         EXPECT_EQ(nonZero, DefaultConfig.depth);
+        
         // each record increments every row, so total = records * depth
         EXPECT_EQ(sum, 6 * DefaultConfig.depth);
     }
@@ -381,25 +390,16 @@ static int Seed_ChangesBucketPlacement(void)
         .resetThreshold = WTL_SKETCH_DEFAULT_RESET_MULT * 32
     };
 
-    WtlSketchConfig altConfig = smallConfig;
-    altConfig.seed = WTL_SKETCH_BASE_SEED + 1;
+    static const uint32_t keys[8] = {
+        HASH_HELLO, HASH_WORLD, HASH_FOOBAR, HASH_BAZ,
+        HASH_QUX, 0x666f7a01, 0x61626302, 0x64656603
+    };
 
-    span_t keys[8];
     static const uint32_t recordCounts[8] = { 3, 4, 5, 2, 3, 4, 5, 2 };
 
-    // The FromHexString macro expands into a statement, so the keys
-    // are assigned individually rather than in an initializer
-    {
-        keys[0] = FromHexString("68656c6c6f", 5);
-        keys[1] = FromHexString("776f726c64", 5);
-        keys[2] = FromHexString("666f6f626172", 6);
-        keys[3] = FromHexString("62617a", 3);
-        keys[4] = FromHexString("717578", 3);
-        keys[5] = FromHexString("666f7a", 3);
-        keys[6] = FromHexString("616263", 3);
-        keys[7] = FromHexString("646566", 3);
-    }
-
+    WtlSketchConfig altConfig = smallConfig;
+    altConfig.seed = WTL_SKETCH_BASE_SEED + 1;
+    
     WtlSketch* sa = sketchAlloc(&smallConfig);
     WtlSketch* sb = sketchAlloc(&altConfig);
     ENSURE(sa);
@@ -411,8 +411,8 @@ static int Seed_ChangesBucketPlacement(void)
         {
             for (uint32_t j = 0; j < recordCounts[i]; j++)
             {
-                wtlSketchRecord(sa, spanToC(keys[i]));
-                wtlSketchRecord(sb, spanToC(keys[i]));
+                wtlSketchRecord(sa, keys[i]);
+                wtlSketchRecord(sb, keys[i]);
             }
         }
     }
@@ -452,30 +452,27 @@ static int Seed_ChangesBucketPlacement(void)
 
 static int RecordAndEstimate_SingleKey(void)
 {
-    span_t testKey1 = FromHexString("68656c6c6f20776f726c64", 11);
-    span_t testKey2 = FromHexString("68656c6c6f20776f726c6432", 12);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);  
 
     //Expect 0 when no keys have been recorded
     {
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey1)), 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 0);
     }
 
     // Ensure a key recorded X times is estimated correctly
     {
         for (int i = 0; i < _SINGLE_RECORD_COUNT; i++)
         {
-            wtlSketchRecord(sketch, spanToC(testKey1));
+            wtlSketchRecord(sketch, HASH_HELLO);
         }
 
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey1)), _SINGLE_RECORD_COUNT);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), _SINGLE_RECORD_COUNT);
     }
 
     // Ensure isolated key is not modified
     {
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey2)), 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 0);
     }
 
     free(sketch);
@@ -491,8 +488,6 @@ static int Record_MultipleTimes(void)
 {
     int counts[] = { 1, 5, 50, 100 };
 
-    span_t testKey = FromHexString("68656c6c6f20776f726c64", 11);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
@@ -502,10 +497,10 @@ static int Record_MultipleTimes(void)
     {
         for (int j = 0; j < counts[i]; j++)
         {
-            wtlSketchRecord(sketch, spanToC(testKey));
+            wtlSketchRecord(sketch, HASH_HELLO);
         }
 
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey)), counts[i]);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), counts[i]);
 
         // Reset all counters for next iteration
         wtlSketchReset(sketch);
@@ -523,8 +518,6 @@ static int Record_MultipleTimes(void)
 */
 static int Estimate_EqualsRecordCount_SingleKey(void)
 {
-    span_t testKey = FromHexString("68656c6c6f20776f726c64", 11);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
@@ -532,47 +525,10 @@ static int Estimate_EqualsRecordCount_SingleKey(void)
     // estimate equals the actual record count at every stage.
     for (uint32_t n = 1; n <= 200; n++)
     {
-        wtlSketchRecord(sketch, spanToC(testKey));
+        wtlSketchRecord(sketch, HASH_HELLO);
 
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(testKey)), n);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), n);
     }
-
-    free(sketch);
-
-    return 0;
-}
-
-/*
-* Verifies that a zero-length key (NULL data, size 0) is handled
-* correctly by both Record and Estimate. The hash function must
-* produce a deterministic value for the empty input, and the sketch
-* must treat it like any other key.
-*/
-static int EmptyKey(void)
-{
-    cspan_t emptyKey;
-    span_t otherKey = FromHexString("68656c6c6f", 5);
-
-    spanInitC(&emptyKey, NULL, 0);
-
-    WtlSketch* sketch = sketchAlloc(&DefaultConfig);
-    ENSURE(sketch);
-
-    // Estimate of an unrecorded empty key should be 0
-    EXPECT_EQ(wtlSketchEstimate(sketch, emptyKey), 0);
-
-    // Record the empty key 3 times
-    for (int i = 0; i < 3; i++)
-    {
-        wtlSketchRecord(sketch, emptyKey);
-    }
-
-    // Estimate should reflect the 3 records. With the default config
-    // collisions are effectively impossible, so exact equality holds.
-    EXPECT_EQ(wtlSketchEstimate(sketch, emptyKey), 3);
-
-    // A different (non-empty) key should still be 0
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(otherKey)), 0);
 
     free(sketch);
 
@@ -586,20 +542,12 @@ static int EmptyKey(void)
 */
 static int Record_DoesNotEstimateBeforeRecord(void)
 {
-    span_t key1 = FromHexString("68656c6c6f", 5);
-    span_t key2 = FromHexString("776f726c64", 5);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // No records have been made; every key must estimate 0
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key1)), 0);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key2)), 0);
-
-    // Also verify the empty key
-    cspan_t emptyKey;
-    spanInitC(&emptyKey, NULL, 0);
-    EXPECT_EQ(wtlSketchEstimate(sketch, emptyKey), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 0);
 
     free(sketch);
 
@@ -614,30 +562,26 @@ static int Record_DoesNotEstimateBeforeRecord(void)
 */
 static int RecordAndEstimate_MultipleKeys(void)
 {
-    span_t keyA = FromHexString("68656c6c6f", 5);
-    span_t keyB = FromHexString("776f726c64", 5);
-    span_t keyC = FromHexString("666f6f626172", 6);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A five times and key B three times
     for (int i = 0; i < 5; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
     for (int i = 0; i < 3; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, HASH_WORLD);
     }
 
     // Estimates should match exact record counts
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 5);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 3);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 5);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 3);
 
     // Unrecorded key should be zero
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_FOOBAR), 0);
 
     free(sketch);
 
@@ -652,10 +596,10 @@ static int RecordAndEstimate_MultipleKeys(void)
 */
 static int MultiKey_Separation(void)
 {
-    /* 10 distinct 1-byte keys: 0x00 through 0x09 */
-    static const char* hexKeys[10] = {
-        "00", "01", "02", "03", "04",
-        "05", "06", "07", "08", "09"
+    /* 10 distinct hash values */
+    static const uint32_t keys[10] = {
+        0x00000001, 0x00000002, 0x00000003, 0x00000004, 0x00000005,
+        0x00000006, 0x00000007, 0x00000008, 0x00000009, 0x0000000a
     };
 
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
@@ -664,21 +608,18 @@ static int MultiKey_Separation(void)
     // Record each key once
     for (int i = 0; i < 10; i++)
     {
-        span_t key = _fromHexString(hexKeys[i], 2);
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, keys[i]);
     }
 
     // Each recorded key should estimate exactly 1
     for (int i = 0; i < 10; i++)
     {
-        span_t key = _fromHexString(hexKeys[i], 2);
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 1);
+        EXPECT_EQ(wtlSketchEstimate(sketch, keys[i]), 1);
     }
 
     // An unrecorded key should estimate 0
     {
-        span_t unknown = FromHexString("ff", 1);
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(unknown)), 0);
+        EXPECT_EQ(wtlSketchEstimate(sketch, 0x000000ff), 0);
     }
 
     free(sketch);
@@ -696,29 +637,27 @@ static int MultiKey_Separation(void)
 */
 static int Record_Saturation(void)
 {
-    span_t key = FromHexString("68656c6c6f", 5);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // fill but ensure saturation does not occur until exactly UINT8_MAX
     for (int i = 0; i < UINT8_MAX - 1; i++)
     {
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, HASH_HELLO);
 
         // ensure count remains below the max size
-        ENSURE(wtlSketchEstimate(sketch, spanToC(key)) < UINT8_MAX);
+        ENSURE(wtlSketchEstimate(sketch, HASH_HELLO) < UINT8_MAX);
     }
 
     // Final record saturates the counter
-    wtlSketchRecord(sketch, spanToC(key));   
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), UINT8_MAX);
+    wtlSketchRecord(sketch, HASH_HELLO);   
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), UINT8_MAX);
 
     // Ensure any number of records after max remains at UINT8_MAX
     for (int i = 0; i < 10; i++)
     {
-        wtlSketchRecord(sketch, spanToC(key));
-        EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), UINT8_MAX);
+        wtlSketchRecord(sketch, HASH_HELLO);
+        EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), UINT8_MAX);
     }
 
     free(sketch);
@@ -733,29 +672,26 @@ static int Record_Saturation(void)
 */
 static int Saturation_DoesNotAffectOtherKeys(void)
 {
-    span_t keyA = FromHexString("68656c6c6f", 5);
-    span_t keyB = FromHexString("776f726c64", 5);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Saturate key A
     for (int i = 0; i < 300; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), UINT8_MAX);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), UINT8_MAX);
 
     // Record key B a small number of times
     for (int i = 0; i < 3; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, HASH_WORLD);
     }
 
     // Key A remains saturated, key B estimates exactly 3
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), UINT8_MAX);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 3);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), UINT8_MAX);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 3);
 
     free(sketch);
 
@@ -763,6 +699,10 @@ static int Saturation_DoesNotAffectOtherKeys(void)
 }
 
 #define _ESTIMATE_MANY_NUM_KEYS 50
+
+// Hash for key i. Multiplication by an odd constant keeps all
+// 50 values distinct and non-zero.
+#define _MANY_KEY_HASH(i) (0x9E3779B9u * (uint32_t)((i) + 1))
 
 /*
 * Verifies the Count-Min Sketch overestimation guarantee across many
@@ -777,8 +717,6 @@ static int Saturation_DoesNotAffectOtherKeys(void)
 */
 static int Estimate_ManyKeys_OverestimationGuarantee(void)
 {
-    /* distinct single-byte keys: 0x00 through 0x31 */
-    uint8_t keyBytes[_ESTIMATE_MANY_NUM_KEYS];
     int recordCounts[_ESTIMATE_MANY_NUM_KEYS];
 
     WtlSketchConfig config = DefaultConfig;
@@ -790,25 +728,18 @@ static int Estimate_ManyKeys_OverestimationGuarantee(void)
     // Record key N exactly N times (1..num_keys)
     for (int i = 0; i < _ESTIMATE_MANY_NUM_KEYS; i++)
     {
-        keyBytes[i] = (uint8_t)i;
         recordCounts[i] = i + 1;
 
         for (int j = 0; j < recordCounts[i]; j++)
         {
-            cspan_t key;
-            spanInitC(&key, &keyBytes[i], 1);
-            wtlSketchRecord(sketch, key);
+            wtlSketchRecord(sketch, _MANY_KEY_HASH(i));
         }
     }
 
     // Verify each key's estimate is at least its record count
     for (int i = 0; i < _ESTIMATE_MANY_NUM_KEYS; i++)
     {
-        cspan_t key;
-        uint32_t estimate;
-
-        spanInitC(&key, &keyBytes[i], 1);
-        estimate = wtlSketchEstimate(sketch, key);
+        uint32_t estimate = wtlSketchEstimate(sketch, _MANY_KEY_HASH(i));
 
         EXPECT_TRUE(estimate >= (uint32_t)recordCounts[i]);
     }
@@ -827,47 +758,44 @@ static int Estimate_ManyKeys_OverestimationGuarantee(void)
 */
 static int Age_HalvesCounters(void)
 {
-    span_t keyA = FromHexString("68656c6c6f", 5);
-    span_t keyB = FromHexString("776f726c64", 5);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A exactly 8 times
     for (int i = 0; i < 8; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 8);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 8);
 
     // Saturate key B to 255
     for (int i = 0; i < 300; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, HASH_WORLD);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), UINT8_MAX);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), UINT8_MAX);
 
     // First aging: 8 -> 4, 255 -> 127
     wtlSketchAge(sketch);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 4);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 127);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 127);
 
     // Second aging: 4 -> 2, 127 -> 63
     wtlSketchAge(sketch);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 2);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 63);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 2);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 63);
 
     // Third aging: 2 -> 1, 63 -> 31
     wtlSketchAge(sketch);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 1);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 31);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 1);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 31);
 
     // Fourth aging: 1 -> 0, 31 -> 15
     wtlSketchAge(sketch);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 0);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 15);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 15);
 
     free(sketch);
 
@@ -888,8 +816,6 @@ static int Age_HalvesCounters(void)
 */
 static int Age_ResetsAccessCounter(void)
 {
-    span_t key = FromHexString("68656c6c6f", 5);
-
     // Override default config reset threshold
     WtlSketchConfig config = DefaultConfig;
     config.resetThreshold = 10;
@@ -900,26 +826,26 @@ static int Age_ResetsAccessCounter(void)
     // Record 9 times: below threshold, no aging
     for (int i = 0; i < 9; i++)
     {
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 9);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 9);
 
     // 10th record triggers aging: 10 halved = 5
-    wtlSketchRecord(sketch, spanToC(key));
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 5);
+    wtlSketchRecord(sketch, HASH_HELLO);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 5);
 
     // Record 9 more: access counter was reset, no aging
     for (int i = 0; i < 9; i++)
     {
-        wtlSketchRecord(sketch, spanToC(key));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 14);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 14);
 
     // 10th record since last age triggers aging again: 14 halved = 7
-    wtlSketchRecord(sketch, spanToC(key));
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(key)), 7);
+    wtlSketchRecord(sketch, HASH_HELLO);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 7);
 
     free(sketch);
 
@@ -934,39 +860,35 @@ static int Age_ResetsAccessCounter(void)
 */
 static int Age_AffectsMultipleKeys(void)
 {
-    span_t keyA = FromHexString("68656c6c6f", 5);
-    span_t keyB = FromHexString("776f726c64", 5);
-    span_t keyC = FromHexString("666f6f626172", 6);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A 8 times and key B 4 times
     for (int i = 0; i < 8; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
     for (int i = 0; i < 4; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, HASH_WORLD);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 8);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 4);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO),  8);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD),  4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_FOOBAR), 0);
 
     // Age: A -> 4, B -> 2, C stays 0
     wtlSketchAge(sketch);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 4);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 2);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO),  4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD),  2);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_FOOBAR), 0);
 
     // Age again: A -> 2, B -> 1, C still 0
     wtlSketchAge(sketch);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 2);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 1);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyC)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO),  2);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD),  1);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_FOOBAR), 0);
 
     free(sketch);
 
@@ -981,41 +903,38 @@ static int Age_AffectsMultipleKeys(void)
 */
 static int Reset_ClearsAllState(void)
 {
-    span_t keyA = FromHexString("68656c6c6f", 5);
-    span_t keyB = FromHexString("776f726c64", 5);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record both keys so counters are non-zero
     for (int i = 0; i < 5; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
     for (int i = 0; i < 3; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, HASH_WORLD);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 5);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 3);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 5);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 3);
 
     // Reset all state
     wtlSketchReset(sketch);
 
     // All estimates should be zero after reset
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 0);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 0);
 
     // Sketch should be usable again: record keyB and verify
     for (int i = 0; i < 4; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, HASH_WORLD);
     }
 
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyB)), 4);
-    EXPECT_EQ(wtlSketchEstimate(sketch, spanToC(keyA)), 0);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_WORLD), 4);
+    EXPECT_EQ(wtlSketchEstimate(sketch, HASH_HELLO), 0);
 
     free(sketch);
 
@@ -1030,10 +949,6 @@ static int Reset_ClearsAllState(void)
 */
 static int Determinism_SameConfigSameEstimates(void)
 {
-    span_t keyA = FromHexString("68656c6c6f", 5);
-    span_t keyB = FromHexString("776f726c64", 5);
-    span_t keyC = FromHexString("666f6f626172", 6);
-
     WtlSketch* s1 = sketchAlloc(&DefaultConfig);
     WtlSketch* s2 = sketchAlloc(&DefaultConfig);
     ENSURE(s1);
@@ -1042,31 +957,36 @@ static int Determinism_SameConfigSameEstimates(void)
     // Feed both sketches the same mixed sequence
     for (int i = 0; i < 7; i++)
     {
-        wtlSketchRecord(s1, spanToC(keyA));
-        wtlSketchRecord(s2, spanToC(keyA));
+        wtlSketchRecord(s1, HASH_HELLO);
+        wtlSketchRecord(s2, HASH_HELLO);
     }
 
     for (int i = 0; i < 3; i++)
     {
-        wtlSketchRecord(s1, spanToC(keyB));
-        wtlSketchRecord(s2, spanToC(keyB));
+        wtlSketchRecord(s1, HASH_WORLD);
+        wtlSketchRecord(s2, HASH_WORLD);
     }
 
-    wtlSketchRecord(s1, spanToC(keyC));
-    wtlSketchRecord(s2, spanToC(keyC));
+    {
+        wtlSketchRecord(s1, HASH_FOOBAR);
+        wtlSketchRecord(s2, HASH_FOOBAR);
 
-    // Estimates must match across both sketches
-    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyA)), wtlSketchEstimate(s2, spanToC(keyA)));
-    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyB)), wtlSketchEstimate(s2, spanToC(keyB)));
-    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyC)), wtlSketchEstimate(s2, spanToC(keyC)));
+        // Estimates must match across both sketches
+        EXPECT_EQ(wtlSketchEstimate(s1, HASH_HELLO),  wtlSketchEstimate(s2, HASH_HELLO));
+        EXPECT_EQ(wtlSketchEstimate(s1, HASH_WORLD),  wtlSketchEstimate(s2, HASH_WORLD));
+        EXPECT_EQ(wtlSketchEstimate(s1, HASH_FOOBAR), wtlSketchEstimate(s2, HASH_FOOBAR));
+
+    }
 
     // Age both and verify they still match
-    wtlSketchAge(s1);
-    wtlSketchAge(s2);
+    {
+        wtlSketchAge(s1);
+        wtlSketchAge(s2);
 
-    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyA)), wtlSketchEstimate(s2, spanToC(keyA)));
-    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyB)), wtlSketchEstimate(s2, spanToC(keyB)));
-    EXPECT_EQ(wtlSketchEstimate(s1, spanToC(keyC)), wtlSketchEstimate(s2, spanToC(keyC)));
+        EXPECT_EQ(wtlSketchEstimate(s1, HASH_HELLO),  wtlSketchEstimate(s2, HASH_HELLO));
+        EXPECT_EQ(wtlSketchEstimate(s1, HASH_WORLD),  wtlSketchEstimate(s2, HASH_WORLD));
+        EXPECT_EQ(wtlSketchEstimate(s1, HASH_FOOBAR), wtlSketchEstimate(s2, HASH_FOOBAR));
+    }
 
     free(s1);
     free(s2);
@@ -1085,33 +1005,30 @@ static int Determinism_SameConfigSameEstimates(void)
 */
 static int Aging_PreservesRelativeOrdering(void)
 {
-    span_t keyA = FromHexString("68656c6c6f", 5);
-    span_t keyB = FromHexString("776f726c64", 5);
-
     WtlSketch* sketch = sketchAlloc(&DefaultConfig);
     ENSURE(sketch);
 
     // Record key A 20 times, key B 5 times
     for (int i = 0; i < 20; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyA));
+        wtlSketchRecord(sketch, HASH_HELLO);
     }
 
     for (int i = 0; i < 5; i++)
     {
-        wtlSketchRecord(sketch, spanToC(keyB));
+        wtlSketchRecord(sketch, HASH_WORLD);
     }
 
     // A should be more popular than B before aging
-    EXPECT_TRUE(wtlSketchEstimate(sketch, spanToC(keyA)) > wtlSketchEstimate(sketch, spanToC(keyB)));
+    EXPECT_TRUE(wtlSketchEstimate(sketch, HASH_HELLO) > wtlSketchEstimate(sketch, HASH_WORLD));
 
     // First aging: A=10, B=2, ordering preserved
     wtlSketchAge(sketch);
-    EXPECT_TRUE(wtlSketchEstimate(sketch, spanToC(keyA)) > wtlSketchEstimate(sketch, spanToC(keyB)));
+    EXPECT_TRUE(wtlSketchEstimate(sketch, HASH_HELLO) > wtlSketchEstimate(sketch, HASH_WORLD));
 
     // Second aging: A=5, B=1, ordering still preserved
     wtlSketchAge(sketch);
-    EXPECT_TRUE(wtlSketchEstimate(sketch, spanToC(keyA)) > wtlSketchEstimate(sketch, spanToC(keyB)));
+    EXPECT_TRUE(wtlSketchEstimate(sketch, HASH_HELLO) > wtlSketchEstimate(sketch, HASH_WORLD));
 
     free(sketch);
 
@@ -1129,7 +1046,6 @@ int RunTests(void)
     RUN_TEST(RecordAndEstimate_SingleKey());
     RUN_TEST(Record_MultipleTimes());
     RUN_TEST(Estimate_EqualsRecordCount_SingleKey());
-    RUN_TEST(EmptyKey());
     RUN_TEST(Record_DoesNotEstimateBeforeRecord());
     RUN_TEST(RecordAndEstimate_MultipleKeys());
     RUN_TEST(MultiKey_Separation());
