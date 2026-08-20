@@ -53,10 +53,10 @@
 #include "platform.h"
 
 #define WTL_TABLE_STATUS_EMPTY   0
-#define WTL_TABLE_STATUS_TOMB    1
+#define WTL_TABLE_STATUS_TOMB    UINT32_MAX
 
-#define WTL_TABLE_ERR_FULL       -1
-#define WTL_TABLE_ERR_DUPLICATE  -10
+#define WTL_TABLE_ERR_FULL       -20
+#define WTL_TABLE_ERR_DUPLICATE  -21
 
 #define wtl_ht_entry_t WtlEntry
 
@@ -93,9 +93,21 @@ _VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint3
 */
 _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry);
 
-_VN_WTLFU_INTERNAL int wtlHashTableRemove(WtlHashTable* table, uint32_t hash);
-
-_VN_WTLFU_INTERNAL int wtuHashTableRemoveEntry(WtlHashTable* table, wtl_ht_entry_t* entry);
+/*
+* Removes an entry previously returned by wtlHashTableInsert. The slot
+* occupied by the entry is tombstoned, the table counters are updated
+* and the entry is completely zeroed.
+*
+* You must not use the entry pointer after remove. It's considered a 
+* use-after-free bug. You muse call insert() again to obtain a new entry.
+* 
+* @param table  Pointer to the table the entry belongs to
+* @param entry  Pointer to the entry to remove, as returned by insert
+* @return WTL_SUCCESS on success, or WTL_ERR_INVALID_ARG if table or
+*         entry is NULL, the address is not within the table's slot
+*         memory, or the slot is no longer a live entry
+*/
+_VN_WTLFU_INTERNAL int wtlHashTableRemove(WtlHashTable* table, wtl_ht_entry_t* entry);
 
 /*
 * Removes all entries from the table, leaving it in the same state as
