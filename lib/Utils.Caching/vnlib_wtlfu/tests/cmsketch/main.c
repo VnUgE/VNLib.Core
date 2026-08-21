@@ -142,25 +142,17 @@ static int Reset_ClearsAllState(void)
 int RunTests(void)
 {
 
-#if TEST_GROUP_CMSKETCH_CONFIG
     /* Validation */
     TEST_GROUP(RunConfigTests());
-#endif
 
     /* Recording */
-#if TEST_GROUP_CMSKETCH_RECORD
     TEST_GROUP(RunRecordTests());
-#endif
 
     /* Estimation */
-#if TEST_GROUP_CMSKETCH_ESTIMATE
     TEST_GROUP(RunEstimateTests());
-#endif
 
     /* Aging */
-#if TEST_GROUP_CMSKETCH_AGE    
     TEST_GROUP(RunAgeTests());
-#endif
 
     /* Reset */
     RUN_TEST(Reset_ClearsAllState());
