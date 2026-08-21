@@ -219,8 +219,7 @@ _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _O
         return WTL_ERR_INVALID_ARG;
     } 
 
-    // Table is full only when every slot is occupied. Tombstones are
-    // reusable, so they do not count against capacity.
+    // Table is full only when every slot is occupied.
     if (table->count >= table->capacity)
     {        
         return WTL_TABLE_ERR_FULL;
@@ -232,66 +231,50 @@ _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _O
     {
         WtlHashSlot* slot = _tableSlot(table, (hash + i) & mask);
 
-        // Empty slot — end of probe chain
-        switch (slot->hash)
+        // Occupied with the same hash — duplicate
+        if (slot->hash == hash)
         {
-        case WTL_TABLE_STATUS_EMPTY:
+            return WTL_TABLE_ERR_DUPLICATE;
+        }
+
+        // Empty slot — end of probe chain. Use the first tombstone seen
+        // in probe order if one exists, otherwise the empty slot itself.
+        if (slot->hash == WTL_TABLE_STATUS_EMPTY)
+        {
+            if (tombSlot)
             {
-                // Found empty slot. If a tombstone was set, use it and leave
-                // empty slot to terminate the probe chain.
-                
-                if (tombSlot)
-                {
-                    _tableUseTombstone(table, tombSlot, hash);
-
-                    (*entry) = &tombSlot->entry;
-                }
-                else
-                {
-                    _tableUseEmpty(table, slot, hash);
-
-                    (*entry) = &slot->entry;
-                }               
-
-                return WTL_SUCCESS;
+                _tableUseTombstone(table, tombSlot, hash);
+                *entry = &tombSlot->entry;
             }
-       
-            // Tombstone — remember first one, keep probing for possible duplicates
-        case WTL_TABLE_STATUS_TOMB:
+            else
             {
-                if (!tombSlot)
-                {
-                    tombSlot = slot;
-                }
-
-                continue;
+                _tableUseEmpty(table, slot, hash);
+                *entry = &slot->entry;
             }
-            // In use if not tombstone or empty (0)
-        default:
-            {
-                // Occupied with same hash — duplicate
-                if (slot->hash == hash) 
-                {
-                    return WTL_TABLE_ERR_DUPLICATE;
-                }
 
-                // Continue probing
-                break;
-            }
-        }       
+            return WTL_SUCCESS;
+        }
+
+        // Tombstone — remember the first one, keep probing for possible
+        // duplicates behind it
+        if (slot->hash == WTL_TABLE_STATUS_TOMB && !tombSlot)
+        {
+            tombSlot = slot;
+        }
     }
-
-    // TODO: Check and short circuit before loop
 
     // A full wrap with no empty slot means the table holds only live and
     // tombstone slots. The wrap checked every slot, so the duplicate scan
-    // is complete, and the fullness guard guarantees at least one
-    // tombstone exists. Reuse the first tombstone seen.
-    DEBUG_ASSERT(tombSlot);
+    // is complete. The fullness guard above guarantees count < capacity,
+    // so at least one tombstone must exist.
+    if (!tombSlot)
+    {
+        return WTL_TABLE_ERR_FULL;
+    }
 
     _tableUseTombstone(table, tombSlot, hash);
 
-    (*entry) = &tombSlot->entry;
+    *entry = &tombSlot->entry;
 
     return WTL_SUCCESS;
 }
