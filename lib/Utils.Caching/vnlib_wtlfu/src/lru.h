@@ -21,8 +21,8 @@
 
 #pragma once
 
-#ifndef _VN_WTLFU_LRU_LIST_H
-#define _VN_WTLFU_LRU_LIST_H
+#ifndef VN_WTLFU_LRU_LIST_H
+#define VN_WTLFU_LRU_LIST_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -55,4 +55,4 @@ _VN_WTLFU_INTERNAL WtlEntry* lruTailGet(const WtlLruList* lru);
 _VN_WTLFU_INTERNAL int       lruIsEmpty(const WtlLruList* lru);
 _VN_WTLFU_INTERNAL uint32_t  lruCount(const WtlLruList* lru);
 
-#endif 
+#endif /* !VN_WTLFU_LRU_LIST_H */

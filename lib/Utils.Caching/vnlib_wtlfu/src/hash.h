@@ -31,8 +31,8 @@
 
 #pragma once
 
-#ifndef _VN_WTLFU_HASH_H
-#define _VN_WTLFU_HASH_H
+#ifndef VN_WTLFU_HASH_H
+#define VN_WTLFU_HASH_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -59,4 +59,4 @@ _VN_WTLFU_INTERNAL uint64_t wtlfuHash(cspan_t data, uint64_t seed);
 */
 _VN_WTLFU_INTERNAL uint32_t wtlfuHash32(cspan_t data, uint64_t seed);
 
-#endif /* !_VN_WTLFU_HASH_H */
+#endif /* !VN_WTLFU_HASH_H */

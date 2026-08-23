@@ -55,8 +55,8 @@
 *   Get that triggers eviction).
 */
 
-#ifndef _VN_WTLFU_H
-#define _VN_WTLFU_H
+#ifndef VN_WTLFU_H
+#define VN_WTLFU_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -271,4 +271,4 @@ VNLIB_EXPORT uint32_t VNLIB_CC WtlValueGetData(const WtlValue* val,  const void*
 }
 #endif
 
-#endif /* !_VN_WTLFU_H */
+#endif /* !VN_WTLFU_H */

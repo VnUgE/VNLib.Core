@@ -25,8 +25,8 @@
 
 #pragma once
 
-#ifndef _VN_WTLFU_PLATFORM_H
-#define _VN_WTLFU_PLATFORM_H
+#ifndef VN_WTLFU_PLATFORM_H
+#define VN_WTLFU_PLATFORM_H
 
 #if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
     #define _VN_IS_WINDOWS
@@ -102,4 +102,4 @@
     #define _In_
 #endif // !_In_
 
-#endif /* !_VN_WTLFU_PLATFORM_H */
+#endif /* !VN_WTLFU_PLATFORM_H */

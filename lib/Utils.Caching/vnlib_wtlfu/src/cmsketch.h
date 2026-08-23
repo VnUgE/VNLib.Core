@@ -38,8 +38,8 @@
 
 #pragma once
 
-#ifndef _VN_WTLFU_CMSKETCH_H
-#define _VN_WTLFU_CMSKETCH_H
+#ifndef VN_WTLFU_CMSKETCH_H
+#define VN_WTLFU_CMSKETCH_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -163,4 +163,4 @@ _VN_WTLFU_INTERNAL void wtlSketchAge(WtlSketch* sketch);
 */
 _VN_WTLFU_INTERNAL void wtlSketchReset(WtlSketch* sketch);
 
-#endif /* !_VN_WTLFU_CMSKETCH_H */
+#endif /* !VN_WTLFU_CMSKETCH_H */

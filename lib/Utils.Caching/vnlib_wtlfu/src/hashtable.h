@@ -44,7 +44,7 @@
 
 #pragma once
 
-#ifndef _VN_WTLFU_TABLE_H
+#ifndef VN_WTLFU_TABLE_H
 #define _VN_WTLFU_TABLE_H
 
 #include <stdint.h>
@@ -127,4 +127,4 @@ _VN_WTLFU_INTERNAL uint32_t wtlHashTableCount(const WtlHashTable* table);
 
 _VN_WTLFU_INTERNAL uint32_t wtlHashTableCapacity(const WtlHashTable* table);
 
-#endif /* !_VN_WTLFU_TABLE_H */
+#endif /* !VN_WTLFU_TABLE_H */

@@ -20,6 +20,11 @@
 * along with vnlib_wtlfu. If not, see http://www.gnu.org/licenses/.
 */
 
+#pragma once
+
+#ifndef VN_VECTORS_H
+#define VN_VECTORS_H
+
 #include <stdint.h>
 
 /*
@@ -192,3 +197,5 @@ static const wtlfu_vector_t VECTORS[] =
 };
 
 #define VECTOR_COUNT (sizeof(VECTORS) / sizeof(VECTORS[0]))
+
+#endif // !VN_VECTORS_H
