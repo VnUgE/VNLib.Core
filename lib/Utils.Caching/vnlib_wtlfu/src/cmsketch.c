@@ -89,7 +89,7 @@ static _vn_inline uint32_t _sketchGetHashIndex(const WtlSketch* sketch, uint32_t
     return row * sketch->config.width + column;
 }
 
-_VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch)
+vnlib_fn_internal int wtlSketchIsValid(const WtlSketch* sketch)
 {  
     uint64_t counterTableSize = 0;
     DEBUG_ASSERT(sketch);
@@ -125,7 +125,7 @@ _VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch)
     return 0;
 }
 
-_VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, uint32_t hash)
+vnlib_fn_internal void wtlSketchRecord(WtlSketch* sketch, uint32_t hash)
 { 
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
@@ -159,7 +159,7 @@ _VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, uint32_t hash)
     }
 }
 
-_VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t hash)
+vnlib_fn_internal uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t hash)
 {
     // Seed the minimum with the first row's counter. The table is
     // non-empty because create() rejects zero width/depth.
@@ -196,7 +196,7 @@ _VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t 
     return min;
 }
 
-_VN_WTLFU_INTERNAL void wtlSketchAge(WtlSketch* sketch)
+vnlib_fn_internal void wtlSketchAge(WtlSketch* sketch)
 {
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);
@@ -216,7 +216,7 @@ _VN_WTLFU_INTERNAL void wtlSketchAge(WtlSketch* sketch)
     sketch->accessCount = 0;
 }
 
-_VN_WTLFU_INTERNAL void wtlSketchReset(WtlSketch* sketch)
+vnlib_fn_internal void wtlSketchReset(WtlSketch* sketch)
 {
     // Passing null internal sketch structure is a bug, should alert developers
     DEBUG_ASSERT(sketch);

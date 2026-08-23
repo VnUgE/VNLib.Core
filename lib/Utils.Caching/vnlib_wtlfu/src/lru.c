@@ -69,7 +69,7 @@ static _vn_inline void _lruNodeClearLinks(WtlEntry* entry)
 * The list is a sentinel-free circular doubly-linked list. On insert,
 * the entry becomes the new head; the old tail links back to it.
 */
-_VN_WTLFU_INTERNAL int lruPush(WtlLruList* lru, WtlEntry* entry)
+vnlib_fn_internal int lruPush(WtlLruList* lru, WtlEntry* entry)
 {
 	DEBUG_ASSERT(lru);
 	DEBUG_ASSERT(entry);
@@ -115,7 +115,7 @@ _VN_WTLFU_INTERNAL int lruPush(WtlLruList* lru, WtlEntry* entry)
 * Used by the admission path to insert new entries as the coldest
 * item in the probationary segment.
 */
-_VN_WTLFU_INTERNAL int lruPushTail(WtlLruList* lru, WtlEntry* entry)
+vnlib_fn_internal int lruPushTail(WtlLruList* lru, WtlEntry* entry)
 {
 	DEBUG_ASSERT(lru);
 	DEBUG_ASSERT(entry);
@@ -159,7 +159,7 @@ _VN_WTLFU_INTERNAL int lruPushTail(WtlLruList* lru, WtlEntry* entry)
 * Remove and return the LRU entry (tail/back of list).
 * Returns NULL if the list is empty or NULL.
 */
-_VN_WTLFU_INTERNAL WtlEntry* lruPop(WtlLruList* lru)
+vnlib_fn_internal WtlEntry* lruPop(WtlLruList* lru)
 {
 	WtlEntry* victim = NULL;
 	WtlEntry* newTail = NULL;
@@ -205,7 +205,7 @@ _VN_WTLFU_INTERNAL WtlEntry* lruPop(WtlLruList* lru)
 * The entry's prev/next are cleared to NULL. The caller is responsible
 * for freeing or re-linking the entry after unlink.
 */
-_VN_WTLFU_INTERNAL int lruUnlink(WtlLruList* lru, WtlEntry* entry)
+vnlib_fn_internal int lruUnlink(WtlLruList* lru, WtlEntry* entry)
 {
 	WtlEntry* newHead = NULL;
 	WtlEntry* newTail = NULL;
@@ -268,7 +268,7 @@ _VN_WTLFU_INTERNAL int lruUnlink(WtlLruList* lru, WtlEntry* entry)
 * Move an entry that is already in the list to the MRU (head) position.
 * This is the recency update on a cache hit.
 */
-_VN_WTLFU_INTERNAL int lruMoveToHead(WtlLruList* lru, WtlEntry* entry)
+vnlib_fn_internal int lruMoveToHead(WtlLruList* lru, WtlEntry* entry)
 {
 	// Push cannot fail if unlink succeeds as it properly clears its fields
 	return lruUnlink(lru, entry) && lruPush(lru, entry);
@@ -278,7 +278,7 @@ _VN_WTLFU_INTERNAL int lruMoveToHead(WtlLruList* lru, WtlEntry* entry)
 * Return the LRU entry (tail) without removing it.
 * Returns NULL if the list is empty or NULL.
 */
-_VN_WTLFU_INTERNAL WtlEntry* lruPeek(const WtlLruList* lru)
+vnlib_fn_internal WtlEntry* lruPeek(const WtlLruList* lru)
 {
 	// tail contains least recently used, same as peek
 	return lruTailGet(lru);
@@ -288,7 +288,7 @@ _VN_WTLFU_INTERNAL WtlEntry* lruPeek(const WtlLruList* lru)
 * Return the MRU entry (head).
 * Returns NULL if the list is empty or NULL.
 */
-_VN_WTLFU_INTERNAL WtlEntry* lruHeadGet(const WtlLruList* lru)
+vnlib_fn_internal WtlEntry* lruHeadGet(const WtlLruList* lru)
 {
 	DEBUG_ASSERT(lru);	
 
@@ -299,7 +299,7 @@ _VN_WTLFU_INTERNAL WtlEntry* lruHeadGet(const WtlLruList* lru)
 * Return the LRU entry (tail).
 * Returns NULL if the list is empty or NULL.
 */
-_VN_WTLFU_INTERNAL WtlEntry* lruTailGet(const WtlLruList* lru)
+vnlib_fn_internal WtlEntry* lruTailGet(const WtlLruList* lru)
 {
 	DEBUG_ASSERT(lru);	
 
@@ -310,7 +310,7 @@ _VN_WTLFU_INTERNAL WtlEntry* lruTailGet(const WtlLruList* lru)
 * Return non-zero if the list has no entries, zero otherwise.
 * Returns non-zero (empty) if the list is NULL.
 */
-_VN_WTLFU_INTERNAL int lruIsEmpty(const WtlLruList* lru)
+vnlib_fn_internal int lruIsEmpty(const WtlLruList* lru)
 {
 	DEBUG_ASSERT(lru);	
 
@@ -321,7 +321,7 @@ _VN_WTLFU_INTERNAL int lruIsEmpty(const WtlLruList* lru)
 * Return the number of entries in the list.
 * Returns 0 if the list is NULL.
 */
-_VN_WTLFU_INTERNAL uint32_t lruCount(const WtlLruList* lru)
+vnlib_fn_internal uint32_t lruCount(const WtlLruList* lru)
 {
 	DEBUG_ASSERT(lru);
 

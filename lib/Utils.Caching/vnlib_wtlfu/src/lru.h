@@ -44,15 +44,15 @@ typedef struct WtlLruList
 } WtlLruList;
 
 
-_VN_WTLFU_INTERNAL int lruPush(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL int lruPushTail(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL int lruUnlink(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL int lruMoveToHead(WtlLruList* lru, WtlEntry* entry);
-_VN_WTLFU_INTERNAL WtlEntry* lruPop(WtlLruList* lru);
-_VN_WTLFU_INTERNAL WtlEntry* lruPeek(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL WtlEntry* lruHeadGet(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL WtlEntry* lruTailGet(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL int       lruIsEmpty(const WtlLruList* lru);
-_VN_WTLFU_INTERNAL uint32_t  lruCount(const WtlLruList* lru);
+vnlib_fn_internal int lruPush(WtlLruList* lru, WtlEntry* entry);
+vnlib_fn_internal int lruPushTail(WtlLruList* lru, WtlEntry* entry);
+vnlib_fn_internal int lruUnlink(WtlLruList* lru, WtlEntry* entry);
+vnlib_fn_internal int lruMoveToHead(WtlLruList* lru, WtlEntry* entry);
+vnlib_fn_internal WtlEntry* lruPop(WtlLruList* lru);
+vnlib_fn_internal WtlEntry* lruPeek(const WtlLruList* lru);
+vnlib_fn_internal WtlEntry* lruHeadGet(const WtlLruList* lru);
+vnlib_fn_internal WtlEntry* lruTailGet(const WtlLruList* lru);
+vnlib_fn_internal int       lruIsEmpty(const WtlLruList* lru);
+vnlib_fn_internal uint32_t  lruCount(const WtlLruList* lru);
 
 #endif /* !VN_WTLFU_LRU_LIST_H */

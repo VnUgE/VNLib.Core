@@ -123,7 +123,7 @@ typedef struct WtlSketch {
 * @param sketch  Pointer to the sketch structure to validate
 * @return 0 on success, or a negative error code as listed above
 */
-_VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch);
+vnlib_fn_internal int wtlSketchIsValid(const WtlSketch* sketch);
 
 /*
 * Records an access for the given unique hash by incrementing the counter
@@ -134,7 +134,7 @@ _VN_WTLFU_INTERNAL int wtlSketchIsValid(const WtlSketch* sketch);
 * @param sketch  Sketch handle
 * @param hash    32-bit, non-zero hash of the item
 */
-_VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, uint32_t hash);
+vnlib_fn_internal void wtlSketchRecord(WtlSketch* sketch, uint32_t hash);
 
 /*
 * Estimates the frequency of the given hash. Returns the minimum
@@ -145,7 +145,7 @@ _VN_WTLFU_INTERNAL void wtlSketchRecord(WtlSketch* sketch, uint32_t hash);
 * @param hash    32-bit, non-zero hash of the item
 * @return Estimated frequency (0 if never recorded)
 */
-_VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t hash);
+vnlib_fn_internal uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t hash);
 
 /*
 * Manually triggers aging: halves all counters and resets the
@@ -154,13 +154,13 @@ _VN_WTLFU_INTERNAL uint32_t wtlSketchEstimate(const WtlSketch* sketch, uint32_t 
 *
 * @param sketch  Sketch handle
 */
-_VN_WTLFU_INTERNAL void wtlSketchAge(WtlSketch* sketch);
+vnlib_fn_internal void wtlSketchAge(WtlSketch* sketch);
 
 /*
 * Manually restores all internal counters for entire sketch to 0
 * 
 * @param sketch  Sketch handle
 */
-_VN_WTLFU_INTERNAL void wtlSketchReset(WtlSketch* sketch);
+vnlib_fn_internal void wtlSketchReset(WtlSketch* sketch);
 
 #endif /* !VN_WTLFU_CMSKETCH_H */

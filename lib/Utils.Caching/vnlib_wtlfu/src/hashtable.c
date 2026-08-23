@@ -123,7 +123,7 @@ static void tableRehomeEntry(WtlHashTable* table, WtlHashSlot* curr, uint32_t ma
 }
 
 
-_VN_WTLFU_INTERNAL int wtlHashTableIsValid(const WtlHashTable* table)
+vnlib_fn_internal int wtlHashTableIsValid(const WtlHashTable* table)
 {
     DEBUG_ASSERT(table);
     if (!table || !table->slots)
@@ -140,19 +140,19 @@ _VN_WTLFU_INTERNAL int wtlHashTableIsValid(const WtlHashTable* table)
     return WTL_SUCCESS;
 }
 
-_VN_WTLFU_INTERNAL uint32_t wtlHashTableCount(const WtlHashTable* table)
+vnlib_fn_internal uint32_t wtlHashTableCount(const WtlHashTable* table)
 {
     DEBUG_ASSERT(table);
     return table ? table->count : 0;
 }
 
-_VN_WTLFU_INTERNAL uint32_t wtlHashTableCapacity(const WtlHashTable* table)
+vnlib_fn_internal uint32_t wtlHashTableCapacity(const WtlHashTable* table)
 {
     DEBUG_ASSERT(table);
     return table ? table->capacity : 0;
 }
 
-_VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint32_t hash)
+vnlib_fn_internal wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint32_t hash)
 {
     uint32_t mask;
 
@@ -198,7 +198,7 @@ _VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint3
     return NULL;
 }
 
-_VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry)
+vnlib_fn_internal int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry)
 {    
     uint32_t mask;
     WtlHashSlot* tombSlot = NULL;
@@ -279,7 +279,7 @@ _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _O
     return WTL_SUCCESS;
 }
 
-_VN_WTLFU_INTERNAL int wtlHashTableRemove(WtlHashTable* table, wtl_ht_entry_t* entry)
+vnlib_fn_internal int wtlHashTableRemove(WtlHashTable* table, wtl_ht_entry_t* entry)
 {
     WtlHashSlot* slot;
 
@@ -315,7 +315,7 @@ _VN_WTLFU_INTERNAL int wtlHashTableRemove(WtlHashTable* table, wtl_ht_entry_t* e
     return WTL_SUCCESS;
 }
 
-_VN_WTLFU_INTERNAL void wtlHashTableClear(WtlHashTable* table)
+vnlib_fn_internal void wtlHashTableClear(WtlHashTable* table)
 {
     DEBUG_ASSERT(table);
 
@@ -331,7 +331,7 @@ _VN_WTLFU_INTERNAL void wtlHashTableClear(WtlHashTable* table)
     table->tombstones = 0;
 }
 
-_VN_WTLFU_INTERNAL void wtlHashTableRehash(WtlHashTable* table)
+vnlib_fn_internal void wtlHashTableRehash(WtlHashTable* table)
 {    
     uint32_t mask = 0;
 

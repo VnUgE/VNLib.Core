@@ -21,13 +21,14 @@
 
 #pragma once
 
-#ifndef _VN_WTLFU_INTERNAL_H
-#define _VN_WTLFU_INTERNAL_H
+#ifndef VN_WTLFU_INTERNAL_H
+#define VN_WTLFU_INTERNAL_H
 
 #include <stdint.h>
 #include <stddef.h>
 #include "wtlfu.h"
 #include "platform.h"
+#include "span.h"
 #include "debug.h"
 
 /*
@@ -72,5 +73,4 @@ typedef struct WtlEntry
 
 } WtlEntry;
 
-
-#endif /* !_VN_WTLFU_INTERNAL_H */
+#endif /* !VN_WTLFU_INTERNAL_H */

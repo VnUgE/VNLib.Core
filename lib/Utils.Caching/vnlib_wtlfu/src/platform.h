@@ -89,9 +89,9 @@
 * DLL. In release builds, internal symbols are hidden.
 */
 #ifdef DEBUG
-    #define _VN_WTLFU_INTERNAL VNLIB_EXPORT
+    #define vnlib_fn_internal VNLIB_EXPORT
 #else
-    #define _VN_WTLFU_INTERNAL
+    #define vnlib_fn_internal
 #endif
 
 #ifndef _Out_
