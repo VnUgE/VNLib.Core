@@ -44,7 +44,7 @@ static void FillAscending(span_t buffer)
 /*
  * Validates the hash implementation against known-answer test vectors.
  * Each vector supplies a hex-encoded key, a seed, and the expected 64-bit
- * and 32-bit hash outputs. Both wtlfuHash and wtlfuHash32 are checked
+ * and 32-bit hash outputs. Both wtlHash and wtlHash32 are checked
  * against every vector.
  */
 static int VectorTests(void)
@@ -66,8 +66,8 @@ static int VectorTests(void)
         }
 
         // Compute both hashes from the same key and seed
-        uint64_t actual_64 = wtlfuHash(key, vector->seed);
-        uint32_t actual_32 = wtlfuHash32(key, vector->seed);
+        uint64_t actual_64 = wtlHash(key, vector->seed);
+        uint32_t actual_32 = wtlHash32(key, vector->seed);
 
         EXPECT_EQ(actual_64, vector->expect_64);
         EXPECT_EQ(actual_32, vector->expect_32);
@@ -90,29 +90,29 @@ static int DeterminismTests(void)
 
     span_t keyB = FromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 32);
 
-    // Step 1: wtlfuHash called twice with same input must match
+    // Step 1: wtlHash called twice with same input must match
     {
-        uint64_t h1 = wtlfuHash(spanToC(keyA), 0);
-        uint64_t h2 = wtlfuHash(spanToC(keyA), 0);
+        uint64_t h1 = wtlHash(spanToC(keyA), 0);
+        uint64_t h2 = wtlHash(spanToC(keyA), 0);
 
         EXPECT_EQ(h1, h2);
     }
 
-    // Step 2: wtlfuHash32 called twice with same input must match
+    // Step 2: wtlHash32 called twice with same input must match
     {
-        uint32_t h32_a = wtlfuHash32(spanToC(keyA), 0);
-        uint32_t h32_b = wtlfuHash32(spanToC(keyA), 0);
+        uint32_t h32_a = wtlHash32(spanToC(keyA), 0);
+        uint32_t h32_b = wtlHash32(spanToC(keyA), 0);
 
         EXPECT_EQ(h32_a, h32_b);
     }
 
     // Step 3: Hash A, then B, then A again — no state leakage
     {
-        uint64_t hA_first = wtlfuHash(spanToC(keyA), 0);
+        uint64_t hA_first = wtlHash(spanToC(keyA), 0);
         
-        wtlfuHash(spanToC(keyB), 0);
+        wtlHash(spanToC(keyB), 0);
         
-        uint64_t hA_second = wtlfuHash(spanToC(keyA), 0);
+        uint64_t hA_second = wtlHash(spanToC(keyA), 0);
         
         EXPECT_EQ(hA_first, hA_second);
     }
@@ -136,10 +136,10 @@ static int SeedIsolationTests(void)
 
     // Step 1: seeds {0,1,2,3} must produce pairwise-distinct 64-bit hashes
     {
-        uint64_t h0 = wtlfuHash(ckey, 0);
-        uint64_t h1 = wtlfuHash(ckey, 1);
-        uint64_t h2 = wtlfuHash(ckey, 2);
-        uint64_t h3 = wtlfuHash(ckey, 3);
+        uint64_t h0 = wtlHash(ckey, 0);
+        uint64_t h1 = wtlHash(ckey, 1);
+        uint64_t h2 = wtlHash(ckey, 2);
+        uint64_t h3 = wtlHash(ckey, 3);
 
         EXPECT_NE(h0, h1);
         EXPECT_NE(h0, h2);
@@ -151,18 +151,18 @@ static int SeedIsolationTests(void)
 
     // Step 2: seed 0 vs UINT64_MAX must differ
     {
-        uint64_t hZero = wtlfuHash(ckey, 0);
-        uint64_t hMax  = wtlfuHash(ckey, UINT64_MAX);
+        uint64_t hZero = wtlHash(ckey, 0);
+        uint64_t hMax  = wtlHash(ckey, UINT64_MAX);
 
         EXPECT_NE(hZero, hMax);
     }
 
     // Step 3: seeds {0,1,2,3} must produce pairwise-distinct 32-bit hashes
     {
-        uint32_t h0 = wtlfuHash32(ckey, 0);
-        uint32_t h1 = wtlfuHash32(ckey, 1);
-        uint32_t h2 = wtlfuHash32(ckey, 2);
-        uint32_t h3 = wtlfuHash32(ckey, 3);
+        uint32_t h0 = wtlHash32(ckey, 0);
+        uint32_t h1 = wtlHash32(ckey, 1);
+        uint32_t h2 = wtlHash32(ckey, 2);
+        uint32_t h3 = wtlHash32(ckey, 3);
 
         EXPECT_NE(h0, h1);
         EXPECT_NE(h0, h2);
@@ -176,7 +176,7 @@ static int SeedIsolationTests(void)
 }
 
 /*
- * Verifies that the 32-bit hash fold (wtlfuHash32) is a correct
+ * Verifies that the 32-bit hash fold (wtlHash32) is a correct
  * derivation of the full 64-bit hash, by checking the upper and
  * lower 32 bits against the expected vector values independently.
  */
@@ -198,10 +198,10 @@ static int Hash32FoldTests(void)
             key = spanToC(mutableKey);
         }
 
-        uint64_t h64 = wtlfuHash(key, vector->seed);
-        uint32_t h32 = wtlfuHash32(key, vector->seed);
+        uint64_t h64 = wtlHash(key, vector->seed);
+        uint32_t h32 = wtlHash32(key, vector->seed);
 
-        /* wtlfuHash32 must equal the XOR-fold of the 64-bit hash:
+        /* wtlHash32 must equal the XOR-fold of the 64-bit hash:
          * upper 32 bits XOR'd into the lower 32 bits. */
         uint32_t folded = (uint32_t)(h64 ^ (h64 >> 32));
 
@@ -247,7 +247,7 @@ static int AlignmentTests(void)
 
             FillAscending(key);
 
-            current = wtlfuHash(spanToC(key), 0);
+            current = wtlHash(spanToC(key), 0);
 
             if (j == 0)
             {
