@@ -46,7 +46,7 @@ static int InsertSingleEntry(void)
 }
 
 /*
-* Inserting the same hash twice must return WTL_TABLE_ERR_DUPLICATE on
+* Inserting the same hash twice must return WTL_ERR_DUPLICATE on
 * the second insert, and count must remain 1.
 */
 static int InsertDuplicateHash(void)
@@ -66,7 +66,7 @@ static int InsertDuplicateHash(void)
     // second insert of the same hash must fail as duplicate and
     // leave the table unchanged
     {
-        EXPECT_EQ(wtlHashTableInsert(table, hash, &dup), WTL_TABLE_ERR_DUPLICATE);
+        EXPECT_EQ(wtlHashTableInsert(table, hash, &dup), WTL_ERR_DUPLICATE);
         EXPECT_EQ(table->count, 1);
     }
 

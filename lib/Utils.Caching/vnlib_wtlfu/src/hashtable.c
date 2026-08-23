@@ -234,7 +234,7 @@ _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _O
         // Occupied with the same hash — duplicate
         if (slot->hash == hash)
         {
-            return WTL_TABLE_ERR_DUPLICATE;
+            return WTL_ERR_DUPLICATE;
         }
 
         // Empty slot — end of probe chain. Use the first tombstone seen

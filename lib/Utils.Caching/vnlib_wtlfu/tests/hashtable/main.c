@@ -87,7 +87,7 @@ static int CountReflectsOperations(void)
     EXPECT_EQ(wtlHashTableCount(table), 2);
 
     // duplicate insert leaves the count unchanged
-    EXPECT_EQ(wtlHashTableInsert(table, 65486, &tmp), WTL_TABLE_ERR_DUPLICATE);
+    EXPECT_EQ(wtlHashTableInsert(table, 65486, &tmp), WTL_ERR_DUPLICATE);
     EXPECT_EQ(wtlHashTableCount(table), 2);
 
     // removing one entry decrements the count

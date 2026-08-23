@@ -45,7 +45,7 @@
 #pragma once
 
 #ifndef VN_WTLFU_TABLE_H
-#define _VN_WTLFU_TABLE_H
+#define VN_WTLFU_TABLE_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -56,7 +56,6 @@
 #define WTL_TABLE_STATUS_TOMB    UINT32_MAX
 
 #define WTL_TABLE_ERR_FULL       -20
-#define WTL_TABLE_ERR_DUPLICATE  -21
 
 #define wtl_ht_entry_t WtlEntry
 
@@ -88,7 +87,7 @@ _VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint3
 * @param hash    32-bit hash of the key; must be non-zero
 * @param entry   Receives a pointer to the reserved entry; must not be NULL
 * @return WTL_SUCCESS on success, WTL_TABLE_ERR_FULL if the table has no
-*         free slots, WTL_TABLE_ERR_DUPLICATE if the hash is already
+*         free slots, WTL_ERR_DUPLICATE if the hash is already
 *         present, or WTL_ERR_INVALID_ARG if table or entry is NULL
 */
 _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry);

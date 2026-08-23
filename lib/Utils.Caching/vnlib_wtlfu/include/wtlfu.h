@@ -74,6 +74,7 @@ extern "C"
 #define WTL_ERR_NO_MEMORY     (-2)
 #define WTL_ERR_INVALID_ARG   (-3)
 #define WTL_ERR_NOT_FOUND     (-4)
+#define WTL_ERR_DUPLICATE     (-5)
 
 /* ---------- Opaque handles ---------- */
 

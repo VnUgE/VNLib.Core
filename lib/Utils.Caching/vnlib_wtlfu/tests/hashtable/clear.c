@@ -114,7 +114,7 @@ static int ClearThenInsertWorks(void)
 
     // and a duplicate check must still fire against the new occupants
     {
-        EXPECT_EQ(wtlHashTableInsert(table, 16, &b), WTL_TABLE_ERR_DUPLICATE);
+        EXPECT_EQ(wtlHashTableInsert(table, 16, &b), WTL_ERR_DUPLICATE);
         EXPECT_EQ(table->count, 1);
     }
 
