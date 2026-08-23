@@ -74,9 +74,9 @@ typedef struct WtlHashTable
 } WtlHashTable;
 
 
-_VN_WTLFU_INTERNAL int wtlHashTableIsValid(const WtlHashTable* table);
+vnlib_fn_internal int wtlHashTableIsValid(const WtlHashTable* table);
 
-_VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint32_t hash);
+vnlib_fn_internal wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint32_t hash);
 
 /*
 * Inserts a new entry for the given hash, reserving a slot and returning
@@ -90,7 +90,7 @@ _VN_WTLFU_INTERNAL wtl_ht_entry_t* wtlHashTableLookup(WtlHashTable* table, uint3
 *         free slots, WTL_ERR_DUPLICATE if the hash is already
 *         present, or WTL_ERR_INVALID_ARG if table or entry is NULL
 */
-_VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry);
+vnlib_fn_internal int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _Out_ wtl_ht_entry_t** entry);
 
 /*
 * Removes an entry previously returned by wtlHashTableInsert. The slot
@@ -106,7 +106,7 @@ _VN_WTLFU_INTERNAL int wtlHashTableInsert(WtlHashTable* table, uint32_t hash, _O
 *         entry is NULL, the address is not within the table's slot
 *         memory, or the slot is no longer a live entry
 */
-_VN_WTLFU_INTERNAL int wtlHashTableRemove(WtlHashTable* table, wtl_ht_entry_t* entry);
+vnlib_fn_internal int wtlHashTableRemove(WtlHashTable* table, wtl_ht_entry_t* entry);
 
 /*
 * Removes all entries from the table, leaving it in the same state as
@@ -118,12 +118,12 @@ _VN_WTLFU_INTERNAL int wtlHashTableRemove(WtlHashTable* table, wtl_ht_entry_t* e
 *
 * @param table  Pointer to the table to clear
 */
-_VN_WTLFU_INTERNAL void wtlHashTableClear(WtlHashTable* table);
+vnlib_fn_internal void wtlHashTableClear(WtlHashTable* table);
 
-_VN_WTLFU_INTERNAL void wtlHashTableRehash(WtlHashTable* table);
+vnlib_fn_internal void wtlHashTableRehash(WtlHashTable* table);
 
-_VN_WTLFU_INTERNAL uint32_t wtlHashTableCount(const WtlHashTable* table);
+vnlib_fn_internal uint32_t wtlHashTableCount(const WtlHashTable* table);
 
-_VN_WTLFU_INTERNAL uint32_t wtlHashTableCapacity(const WtlHashTable* table);
+vnlib_fn_internal uint32_t wtlHashTableCapacity(const WtlHashTable* table);
 
 #endif /* !VN_WTLFU_TABLE_H */
