@@ -22,10 +22,10 @@
 /*
 * hash.h - Internal hash function interface for vnlib_wtlfu.
 *
-* Provides a fast non-cryptographic hash function based on xxhash3
-* principles. Used for both the main hash table and the Count-Min
-* Sketch sub-hashes (with different seeds per row).
-*
+ * Provides a fast non-cryptographic hash function based on xxhash3
+ * principles. Used for hashing key material into the 32-bit hash
+ * that identifies a cache item key.
+ *
 * The implementation is in hash.c. Only the interface is exposed here.
 */
 
@@ -47,16 +47,16 @@
 * @param seed 64-bit seed for hash domain separation
 * @return 64-bit hash value
 */
-_VN_WTLFU_INTERNAL uint64_t wtlfuHash(cspan_t data, uint64_t seed);
+vnlib_fn_internal uint64_t wtlHash(cspan_t data, uint64_t seed);
 
 /*
-* Computes a 32-bit hash derived from wtlfuHash, convenient for
-* hash table bucketing and sketch indexing.
+* Computes a 32-bit hash derived from wtlHash, convenient for
+* hash table bucketing and item identification.
 *
 * @param data Read-only span over the key bytes
 * @param seed 64-bit seed for hash domain separation
 * @return 32-bit hash value
 */
-_VN_WTLFU_INTERNAL uint32_t wtlfuHash32(cspan_t data, uint64_t seed);
+vnlib_fn_internal uint32_t wtlHash32(cspan_t data, uint64_t seed);
 
 #endif /* !VN_WTLFU_HASH_H */

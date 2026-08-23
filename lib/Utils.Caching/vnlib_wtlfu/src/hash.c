@@ -60,11 +60,11 @@
 *   PRIME_4:          additive seed offset for long-path accumulators
 *   PRIME_5:          multiplier for single-byte tail folding
 */
-#define _VN_WTLFU_PRIME_1  0x9E3779B185EBCA87ULL
-#define _VN_WTLFU_PRIME_2  0xC2B2AE3D27D4EB4FULL
-#define _VN_WTLFU_PRIME_3  0x165667B19E3779F9ULL
-#define _VN_WTLFU_PRIME_4  0x85EBCA77C2B2AE63ULL
-#define _VN_WTLFU_PRIME_5  0x27D4EB2F165667C5ULL
+#define VN_SKETCH_PRIME_1  0x9E3779B185EBCA87ULL
+#define VN_SKETCH_PRIME_2  0xC2B2AE3D27D4EB4FULL
+#define VN_SKETCH_PRIME_3  0x165667B19E3779F9ULL
+#define VN_SKETCH_PRIME_4  0x85EBCA77C2B2AE63ULL
+#define VN_SKETCH_PRIME_5  0x27D4EB2F165667C5ULL
 
 /*
 * Circular bit rotation (shift-wrap). Moves bits from the high end
@@ -74,7 +74,7 @@
 * perf: All rotation amounts are compile-time constants, so compilers will
 * fold this into a single ROL instruction on x86-64.
 */
-#define _VN_WTLFU_ROTL(x, r) (((x) << (r)) | ((x) >> (64 - (r))))
+#define VN_SKETCH_ROTL(x, r) (((x) << (r)) | ((x) >> (64 - (r))))
 
 /*
 * ROUND: the core mixing step. Folds one 64-bit input word (val) into
@@ -82,11 +82,11 @@
 * irreversible — after enough rounds, each accumulator bit depends on
 * every bit of every input word processed so far.
 */
-#define _VN_WTLFU_ROUND(acc, val) \
+#define VN_SKETCH_ROUND(acc, val) \
     { \
-        (acc) += (val) * _VN_WTLFU_PRIME_2; \
-        (acc)  = _VN_WTLFU_ROTL((acc), 31); \
-        (acc) *= _VN_WTLFU_PRIME_1; \
+        (acc) += (val) * VN_SKETCH_PRIME_2; \
+        (acc)  = VN_SKETCH_ROTL((acc), 31); \
+        (acc) *= VN_SKETCH_PRIME_1; \
     }
 
 /*
@@ -96,13 +96,13 @@
 * distributions — if both lanes have bit b set, the result clears it
 * rather than carrying into the next bit.
 */
-#define _VN_WTLFU_MERGE(acc, val) \
+#define VN_SKETCH_MERGE(acc, val) \
     { \
-        (val) *= _VN_WTLFU_PRIME_2; \
-        (val)  = _VN_WTLFU_ROTL((val), 31); \
-        (val) *= _VN_WTLFU_PRIME_1; \
+        (val) *= VN_SKETCH_PRIME_2; \
+        (val)  = VN_SKETCH_ROTL((val), 31); \
+        (val) *= VN_SKETCH_PRIME_1; \
         (acc) ^= (val); \
-        (acc)  = ((acc) * _VN_WTLFU_PRIME_1) + _VN_WTLFU_PRIME_4; \
+        (acc)  = ((acc) * VN_SKETCH_PRIME_1) + VN_SKETCH_PRIME_4; \
     }
 
 /*
@@ -111,7 +111,7 @@
 * memmove_s on Windows) so the compiler can emit a single unaligned
 * load on targets that support it.
 */
-static _vn_inline uint64_t _wtlfuRead64(cspan_t key, uint32_t offset)
+static _vn_inline uint64_t _wtlRead64(cspan_t key, uint32_t offset)
 {
     uint64_t val = 0;
 
@@ -126,9 +126,9 @@ static _vn_inline uint64_t _wtlfuRead64(cspan_t key, uint32_t offset)
 
 /*
 * Read 4 bytes as a little-endian uint32_t from a sub-span at the
-* given offset. Same span-based strategy as _wtlfuRead64.
+* given offset. Same span-based strategy as _wtlRead64.
 */
-static _vn_inline uint32_t _wtlfuRead32(cspan_t key, uint32_t offset)
+static _vn_inline uint32_t _wtlRead32(cspan_t key, uint32_t offset)
 {
     uint32_t val = 0;
 
@@ -148,12 +148,12 @@ static _vn_inline uint32_t _wtlfuRead32(cspan_t key, uint32_t offset)
 * criterion. Without this, bits in the high word of the accumulator
 * have disproportionate influence on the hash output.
 */
-static _vn_inline uint64_t _wtlfuAvalanche(uint64_t hash)
+static _vn_inline uint64_t _wtlAvalanche(uint64_t hash)
 {
     hash ^= hash >> 33;
-    hash *= _VN_WTLFU_PRIME_2;
+    hash *= VN_SKETCH_PRIME_2;
     hash ^= hash >> 29;
-    hash *= _VN_WTLFU_PRIME_3;
+    hash *= VN_SKETCH_PRIME_3;
     hash ^= hash >> 32;
     return hash;
 }
@@ -167,27 +167,27 @@ static _vn_inline uint64_t _wtlfuAvalanche(uint64_t hash)
 *   4- 8: first 4 + last 4  (overlap for 5-8 is harmless)
 *   1- 3: individual bytes via fall-through switch
 */
-static uint64_t _wtlfuHashShort(cspan_t key, uint64_t seed)
+static uint64_t _wtlHashShort(cspan_t key, uint64_t seed)
 {
     uint64_t hash;
 
-    hash = seed + _VN_WTLFU_PRIME_5 + spanGetSizeC(key);
+    hash = seed + VN_SKETCH_PRIME_5 + spanGetSizeC(key);
 
     if (spanGetSizeC(key) > 8)
     {
         /* First 8 + last 8: overlap for 9-15 bytes is harmless.
          * Both endpoints are folded into the accumulator so all
          * bytes are captured without branching on exact length. */
-        hash += _wtlfuRead64(key, 0);
-        _VN_WTLFU_ROUND(hash, _wtlfuRead64(key, spanGetSizeC(key) - 8));
+        hash += _wtlRead64(key, 0);
+        VN_SKETCH_ROUND(hash, _wtlRead64(key, spanGetSizeC(key) - 8));
     }
     else if (spanGetSizeC(key) >= 4)
     {
         /* First 4 + last 4: overlap for 5-8 bytes is harmless.
          * The first 4 are multiplied into the accumulator, the
          * last 4 go through a full ROUND. */
-        hash += (uint64_t)_wtlfuRead32(key, 0) * _VN_WTLFU_PRIME_1;
-        _VN_WTLFU_ROUND(hash, (uint64_t)_wtlfuRead32(key, spanGetSizeC(key) - 4));
+        hash += (uint64_t)_wtlRead32(key, 0) * VN_SKETCH_PRIME_1;
+        VN_SKETCH_ROUND(hash, (uint64_t)_wtlRead32(key, spanGetSizeC(key) - 4));
     }
     else if (spanGetSizeC(key) > 0)
     {
@@ -197,22 +197,22 @@ static uint64_t _wtlfuHashShort(cspan_t key, uint64_t seed)
             case 3: hash += (uint64_t)spanGetOffsetC(key, 2)[0] << 16;  /* fall-through */
             case 2: hash += (uint64_t)spanGetOffsetC(key, 1)[0] << 8;   /* fall-through */
             case 1: hash += (uint64_t)spanGetOffsetC(key, 0)[0];         /* fall-through */
-                    hash  = _VN_WTLFU_ROTL(hash, 11) * _VN_WTLFU_PRIME_1; break;
+                    hash  = VN_SKETCH_ROTL(hash, 11) * VN_SKETCH_PRIME_1; break;
             default: break;
         }
     }
 
-    return _wtlfuAvalanche(hash);
+    return _wtlAvalanche(hash);
 }
 
 /*
 * Hash inputs of 17-128 bytes. Processes 32-byte blocks through one
 * accumulator, then uses last-stretch overlap to cover the remainder.
 */
-static uint64_t _wtlfuHashMedium(cspan_t key, uint64_t seed)
+static uint64_t _wtlHashMedium(cspan_t key, uint64_t seed)
 {
     uint32_t offset     = 0;
-    uint64_t acc        =  seed + _VN_WTLFU_PRIME_1;
+    uint64_t acc        =  seed + VN_SKETCH_PRIME_1;
 
     /* Process 32-byte blocks: 4 words of 8 bytes each per round.
      * Offset-based iteration preserves the original span for the
@@ -220,28 +220,28 @@ static uint64_t _wtlfuHashMedium(cspan_t key, uint64_t seed)
 
     while (offset + 32 <= spanGetSizeC(key))
     {
-        _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, offset));
-        _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, offset + 8));
-        _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, offset + 16));
-        _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, offset + 24));
+        VN_SKETCH_ROUND(acc, _wtlRead64(key, offset));
+        VN_SKETCH_ROUND(acc, _wtlRead64(key, offset + 8));
+        VN_SKETCH_ROUND(acc, _wtlRead64(key, offset + 16));
+        VN_SKETCH_ROUND(acc, _wtlRead64(key, offset + 24));
         offset += 32;
     }
 
     /* Last stretch: always process the final 16 bytes. Input is
      * >= 17 bytes so the last 16 is always valid. Overlap with
      * already-processed blocks is harmless (ROUND is a bijection). */
-    _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, spanGetSizeC(key) - 16));
-    _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, spanGetSizeC(key) - 8));
+    VN_SKETCH_ROUND(acc, _wtlRead64(key, spanGetSizeC(key) - 16));
+    VN_SKETCH_ROUND(acc, _wtlRead64(key, spanGetSizeC(key) - 8));
 
     /* If more than 16 bytes remain after the block loop, cover the
      * gap between offset and the last stretch. */
     if (offset + 16 < spanGetSizeC(key))
     {
-        _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, offset));
+        VN_SKETCH_ROUND(acc, _wtlRead64(key, offset));
 
         if (offset + 24 < spanGetSizeC(key))
         {
-            _VN_WTLFU_ROUND(acc, _wtlfuRead64(key, offset + 8));
+            VN_SKETCH_ROUND(acc, _wtlRead64(key, offset + 8));
         }
     }
 
@@ -249,7 +249,7 @@ static uint64_t _wtlfuHashMedium(cspan_t key, uint64_t seed)
      * different sizes produce different hashes. */
     acc += spanGetSizeC(key);
 
-    return _wtlfuAvalanche(acc);
+    return _wtlAvalanche(acc);
 }
 
 /*
@@ -259,17 +259,17 @@ static uint64_t _wtlfuHashMedium(cspan_t key, uint64_t seed)
 * appearing in different lanes produce different states. After all
 * blocks are consumed, the lanes are merged into a single result.
 */
-static uint64_t _wtlfuHashLong(cspan_t key, uint64_t seed)
+static uint64_t _wtlHashLong(cspan_t key, uint64_t seed)
 {
     uint32_t offset = 0;
     uint64_t lane0, lane1, lane2, lane3, result;
 
     /* Four lanes seeded with different offsets so they diverge immediately. */
 
-    lane0 = seed + _VN_WTLFU_PRIME_1 + _VN_WTLFU_PRIME_2;
-    lane1 = seed + _VN_WTLFU_PRIME_2;
+    lane0 = seed + VN_SKETCH_PRIME_1 + VN_SKETCH_PRIME_2;
+    lane1 = seed + VN_SKETCH_PRIME_2;
     lane2 = seed;
-    lane3 = seed - _VN_WTLFU_PRIME_1;
+    lane3 = seed - VN_SKETCH_PRIME_1;
 
     /* Consume 64-byte blocks: each lane gets a different 8-byte word.
      * Offset-based iteration preserves the original span for the
@@ -277,14 +277,14 @@ static uint64_t _wtlfuHashLong(cspan_t key, uint64_t seed)
 
     while (offset + 64 <= spanGetSizeC(key))
     {
-        _VN_WTLFU_ROUND(lane0, _wtlfuRead64(key, offset));
-        _VN_WTLFU_ROUND(lane1, _wtlfuRead64(key, offset + 8));
-        _VN_WTLFU_ROUND(lane2, _wtlfuRead64(key, offset + 16));
-        _VN_WTLFU_ROUND(lane3, _wtlfuRead64(key, offset + 24));
-        _VN_WTLFU_ROUND(lane0, _wtlfuRead64(key, offset + 32));
-        _VN_WTLFU_ROUND(lane1, _wtlfuRead64(key, offset + 40));
-        _VN_WTLFU_ROUND(lane2, _wtlfuRead64(key, offset + 48));
-        _VN_WTLFU_ROUND(lane3, _wtlfuRead64(key, offset + 56));
+        VN_SKETCH_ROUND(lane0, _wtlRead64(key, offset));
+        VN_SKETCH_ROUND(lane1, _wtlRead64(key, offset + 8));
+        VN_SKETCH_ROUND(lane2, _wtlRead64(key, offset + 16));
+        VN_SKETCH_ROUND(lane3, _wtlRead64(key, offset + 24));
+        VN_SKETCH_ROUND(lane0, _wtlRead64(key, offset + 32));
+        VN_SKETCH_ROUND(lane1, _wtlRead64(key, offset + 40));
+        VN_SKETCH_ROUND(lane2, _wtlRead64(key, offset + 48));
+        VN_SKETCH_ROUND(lane3, _wtlRead64(key, offset + 56));
         offset += 64;
     }
 
@@ -292,55 +292,55 @@ static uint64_t _wtlfuHashLong(cspan_t key, uint64_t seed)
      * scrambled and XOR'd into the result. Different rotation amounts
      * per lane prevent bit alignment between the merged states. */
 
-    result = _VN_WTLFU_ROTL(lane0, 1) + _VN_WTLFU_ROTL(lane1, 7)
-            + _VN_WTLFU_ROTL(lane2, 12) + _VN_WTLFU_ROTL(lane3, 18);
+    result = VN_SKETCH_ROTL(lane0, 1) + VN_SKETCH_ROTL(lane1, 7)
+            + VN_SKETCH_ROTL(lane2, 12) + VN_SKETCH_ROTL(lane3, 18);
 
     /* always process the final 32 bytes. Covers remaining 0-63 bytes — overlap 
      * with already-processed blocks is harmless because ROUND is a bijection. 
      * Fixed offsets from the end of the original span, no cascading tail loops.
      */
 
-    _VN_WTLFU_ROUND(result, _wtlfuRead64(key, spanGetSizeC(key) - 32));
-    _VN_WTLFU_ROUND(result, _wtlfuRead64(key, spanGetSizeC(key) - 24));
-    _VN_WTLFU_ROUND(result, _wtlfuRead64(key, spanGetSizeC(key) - 16));
-    _VN_WTLFU_ROUND(result, _wtlfuRead64(key, spanGetSizeC(key) - 8));
+    VN_SKETCH_ROUND(result, _wtlRead64(key, spanGetSizeC(key) - 32));
+    VN_SKETCH_ROUND(result, _wtlRead64(key, spanGetSizeC(key) - 24));
+    VN_SKETCH_ROUND(result, _wtlRead64(key, spanGetSizeC(key) - 16));
+    VN_SKETCH_ROUND(result, _wtlRead64(key, spanGetSizeC(key) - 8));
 
     /* If more than 32 bytes remain after the block loop, cover the
      * gap between offset and the last stretch with another 32 bytes. */
 
     if (offset + 32 < spanGetSizeC(key))
     {
-        _VN_WTLFU_ROUND(result, _wtlfuRead64(key, offset));
-        _VN_WTLFU_ROUND(result, _wtlfuRead64(key, offset + 8));
-        _VN_WTLFU_ROUND(result, _wtlfuRead64(key, offset + 16));
-        _VN_WTLFU_ROUND(result, _wtlfuRead64(key, offset + 24));
+        VN_SKETCH_ROUND(result, _wtlRead64(key, offset));
+        VN_SKETCH_ROUND(result, _wtlRead64(key, offset + 8));
+        VN_SKETCH_ROUND(result, _wtlRead64(key, offset + 16));
+        VN_SKETCH_ROUND(result, _wtlRead64(key, offset + 24));
     }
 
     //Fold the total length
     result += spanGetSizeC(key);
 
-    return _wtlfuAvalanche(result);
+    return _wtlAvalanche(result);
 }
 
 /*
 * Public entry point. Dispatches to short, medium, or long path based
 * on input size.
 */
-_VN_WTLFU_INTERNAL uint64_t wtlfuHash(cspan_t key, uint64_t seed)
+vnlib_fn_internal uint64_t wtlHash(cspan_t key, uint64_t seed)
 {
     uint32_t len = spanGetSizeC(key);
 
     if (len <= 16)
     {
-        return _wtlfuHashShort(key, seed);
+        return _wtlHashShort(key, seed);
     }
     else if (len <= 128)
     {
-        return _wtlfuHashMedium(key, seed);
+        return _wtlHashMedium(key, seed);
     }
     else
     {
-        return _wtlfuHashLong(key, seed);
+        return _wtlHashLong(key, seed);
     }
 }
 
@@ -349,8 +349,8 @@ _VN_WTLFU_INTERNAL uint64_t wtlfuHash(cspan_t key, uint64_t seed)
 * by XOR of the high and low halves. XOR-fold preserves the entropy
 * of both halves reducing collision.
 */
-_VN_WTLFU_INTERNAL uint32_t wtlfuHash32(cspan_t key, uint64_t seed)
+vnlib_fn_internal uint32_t wtlHash32(cspan_t key, uint64_t seed)
 {
-    uint64_t hash = wtlfuHash(key, seed);
+    uint64_t hash = wtlHash(key, seed);
     return (uint32_t)(hash ^ (hash >> 32));
 }
