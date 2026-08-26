@@ -43,6 +43,8 @@ tasks:
     summary: |
       Runs the CMake configure and compile steps to build the library 
       and test executable in debug mode.
+    aliases:
+     - dev-init 
     cmds:
      - task: default
        vars: 
@@ -184,13 +186,6 @@ tasks:
         - VERSION
     cmds:
       - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
-
-  dev-init:
-    desc: 'Configures the project for local development'
-    cmds:
-      - task: build-debug
-      - cmd: echo "dev init complete"
-        silent: true
 
   clean:
     desc: 'Cleans any build artifacts and output directories'

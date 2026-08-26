@@ -54,6 +54,7 @@ set_target_properties(${_WTL_PROJ_NAME}_static PROPERTIES OUTPUT_NAME ${_WTL_PRO
 
 # Set C99 standard across both targets. C_EXTENSIONS is OFF to keep
 # the code portable and avoid GNU/MS extensions leaking in for now.
+# also enables fpic for both builds for consumer sanity sake
 set_target_properties(
 	${_WTL_PROJ_NAME}
 	${_WTL_PROJ_NAME}_static
@@ -76,9 +77,7 @@ target_include_directories(${_WTL_PROJ_NAME}_static PRIVATE include PRIVATE src)
 target_compile_definitions(${_WTL_PROJ_NAME} PRIVATE VNLIB_EXPORTING)
 target_compile_definitions(${_WTL_PROJ_NAME}_static PRIVATE VNLIB_EXPORTING)
 
-# In debug builds, internal symbols are exported from the shared library
-# so tests can link against the DLL. _VN_WTLFU_INTERNAL expands to
-# VNLIB_EXPORT when DEBUG is defined, nothing otherwise.
+# Adds the DEBUG symbol to allow conditional debugging features and compilation
 target_compile_definitions(${_WTL_PROJ_NAME} PRIVATE
 	$<$<CONFIG:Debug>:DEBUG>
 )
@@ -143,6 +142,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 			-Wcast-align			# warn about pointer casts that increase alignment
 			-Wmissing-prototypes	# warn if global function defined without prototype
 			-Wmissing-declarations	# warn if global function defined without declaration
+			-Wno-unused-function	# warn of unused function
 		)
 	endif()
 
@@ -181,7 +181,12 @@ if(VNLIB_BUILD_TESTS)
 		endif()
 
 		# include all internal headers and test headers automatically
-		target_include_directories(${TEST_NAME} PRIVATE include PRIVATE src ${ARG_INCLUDES} PRIVATE tests/include)
+		target_include_directories(
+			${TEST_NAME} 
+			PRIVATE include 
+			PRIVATE src ${ARG_INCLUDES} 
+			PRIVATE tests/include
+		)
 
 		target_compile_features(${TEST_NAME} PRIVATE c_std_99)
 		target_compile_definitions(${TEST_NAME} PRIVATE VNLIB_EXPORTING)
@@ -202,10 +207,10 @@ if(VNLIB_BUILD_TESTS)
 	add_wtl_test(WtlSketchTest SOURCES tests/test-base.c tests/cmsketch/main.c)
 
 	# the lru unit tests
-	add_wtl_test(WtlLruTests SOURCES tests/test-base.c tests/lru/main.c)
+	add_wtl_test(WtlLruTest SOURCES tests/test-base.c tests/lru/main.c)
 
 	# hashtable tests
-	add_wtl_test(WtlHastableTests SOURCES tests/test-base.c tests/hashtable/main.c)
+	add_wtl_test(WtlHashTableTest SOURCES tests/test-base.c tests/hashtable/main.c)
 
 endif()
 
