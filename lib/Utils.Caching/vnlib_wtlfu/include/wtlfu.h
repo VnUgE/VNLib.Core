@@ -36,23 +36,19 @@
 *   access if used from multiple threads.
 *
 * MEMORY MANAGEMENT:
-*   All memory is allocated through a caller-supplied allocator. The
-*   cache owns all key and value bytes (copied inline with each entry
-*   in a single allocation). The caller's key/value buffers may be
-*   freed or reused immediately after WtlCacheInsert returns.
+*   Internal data structures are allocated once and stored inline with 
+*   the main cache data-structure. It is a fixed size block for the duration
+*   of the cache lifecycle. It's size is dependent on the configuration.
+* 
+*   Users allocate the cache structure after calling WtlCacheGetMemorySize
+*   and pass it to WtlCacheInit for startup initialization. 
+* 
+*   During insert, a WtlValue is passed and stored internally, callers must keep 
+*   key and value memory alive for the lifecycle of the value. 
+* 
+*   Otherwise WtlKey operations are general read-while-in-use and otherwise not 
+*   stored.
 *
-* BORROWED REFERENCES:
-*   WtlCacheGet returns a borrowed reference (const WtlValue*) into the
-*   cache's internal memory. The caller MUST call WtlCacheReleaseValue when
-*   done with the value. If an entry is evicted or removed while borrowed,
-*   its memory is kept alive until the last reference is released.
-*   A new WtlCacheGet or WtlCacheInsert for the same key will return the
-*   new entry; holders of the old reference still see the old value bytes
-*   until they release.
-*
-*   WtlCachePeek does NOT borrow (no Release needed) but the returned
-*   pointer is only valid until the next cache mutation (Insert/Remove/
-*   Get that triggers eviction).
 */
 
 #ifndef VN_WTLFU_H
@@ -69,204 +65,204 @@ extern "C"
 
 /* ---------- Error codes ---------- */
 
-#define WTL_SUCCESS           0
-#define WTL_ERROR             (-1)
-#define WTL_ERR_NO_MEMORY     (-2)
-#define WTL_ERR_INVALID_ARG   (-3)
-#define WTL_ERR_NOT_FOUND     (-4)
-#define WTL_ERR_DUPLICATE     (-5)
+#define WTL_SUCCESS             0
+#define WTL_ERROR               (-1)
+#define WTL_ERR_NO_MEMORY       (-2)
+#define WTL_ERR_INVALID_ARG     (-3)
+#define WTL_ERR_NOT_FOUND       (-4)
+#define WTL_ERR_DUPLICATE       (-5)
 
-/* ---------- Opaque handles ---------- */
+#define WTL_ITEM_EVICTED        (1)
 
+/*
+* The minimum size capacity allowed by library. Capacity below 
+* this value will be rejected.
+*/
+#define WTL_MIN_CAPACITY        16
+
+/*
+* Opaque cache data structure. The primary handle/context for a cache
+* store. Use WtlCacheGetMemorySize() to get the size of this structure
+* at runtime for the desired configuration, then initialize the store 
+* with WtlCacheInit().
+* 
+* This handle holds memory for the entire store for the entire lifetime 
+* of the store. 
+*/
 typedef struct WtlCache WtlCache;
 
 typedef struct WtlValue {
+    /* A pointer to the key memory to store */
     const uint8_t* key;
-    const uint8_t* value;
+    /* An opaque pointer to the arbitrary data to store for this key*/
+    const void* value;
+    /* The length of the key memory */
     uint32_t keyLen;
-    uint32_t valueLen;
 } WtlValue;
+
+/*
+* Represents a key to a cache item, can be used to reference
+* existing stored values. 
+*/
+typedef struct WtlKey {
+    /* A pointer to the key memory to use */
+    const uint8_t* key;
+    /* The length of the key memory to read */
+    uint32_t len;
+} WtlKey;
 
 /* ---------- Configuration ---------- */
 
 typedef struct wtl_config_struct
 {
-    /* Total byte budget for cached values (not counting per-entry overhead).
-     * The cache will evict to stay under this budget. */
-    uint32_t maxCapacityBytes;
-
-    /* Window LRU as percentage of total capacity (1 = 1%).
-     * Set to 0 for default (1%). Max 99. */
+    /* 
+     * Maximum number of elements allowed in the table
+     */
+    uint32_t capacity;
+ 
+    /*
+    * Percentage of capacity that will be used for the window
+    * lru
+    */
     uint32_t windowPct;
 
-    /* Protected segment as percentage of main cache (80 = 80%).
-     * Probationary gets the remainder (20%).
-     * Set to 0 for default (80%). Max 99. */
+    /*
+    * Percentage of main cache used for (capacity - window) used for 
+    * protected or long-running cache items. Max 99%. 80% is generally
+    * a good value.
+    */
     uint32_t protectedPct;
 
-    /* Count-Min Sketch dimensions.
-     * Width:  columns (buckets per row). More = higher resolution. 0 = 1024.
-     * Depth:  rows (independent hash functions). More = fewer collisions. 0 = 4.
-     * ResetThreshold: total accesses before aging (halve all counters). 0 = 10 * width. */
+    /* 
+     * Count-Min Sketch dimensions.
+     * Width:  columns (buckets per row). More = higher resolution.
+     * Depth:  rows (independent hash functions). More = fewer collisions.
+     * ResetThreshold: total accesses before aging (halve all counters).
+     */
     uint32_t sketchWidth;
     uint32_t sketchDepth;
     uint32_t sketchResetThreshold;
+
+    /*
+    * Unique seed for the sketch row-hash mixing function to reduce
+    * hash based collisions 
+    */
+    uint64_t sketchSeed;
+
+    /*
+    * Unique seed used for the hash function used to derive hash codes from 
+    * input keys
+    */
+    uint64_t seed;
 
 } WtlConfig;
 
 /* ---------- Public API ---------- */
 
 /*
-* Creates a new cache instance. The config struct is copied internally.
-* The allocator pointer is retained (caller must keep it alive for the
-* lifetime of the cache).
-*
-* @param config  Cache configuration (must not be NULL)
-* @return New cache handle, or NULL on failure
+* Computes and returns the number of bytes required to store the entire cache
+* internal data structures as a single block of contiguous memory. This allocation
+* is static for the lifetime of the cache service. 
+* 
+* @param config  A valid cache configuration used to compute internal buffer sizes
+* @returns  32bit signed integer with the number of bytes to hold the cache structure if
+* positive. 0 is undefined, and a negative integer if the configuration is invalid. 
 */
-VNLIB_EXPORT WtlCache* VNLIB_CC WtlCacheCreate(const WtlConfig* config);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheGetMemorySize(const WtlConfig* config);
 
 /*
-* Destroys the cache and frees all internal memory through the allocator.
-* Any outstanding borrowed references become dangling — the caller must
-* call WtlCacheReleaseValue on all borrowed values before destroying.
-*
-* @param cache  Cache to destroy (may be NULL, no-op)
+* Configures internal data structures based on the configuration and inside the block 
+* of memory supplied by the cache parameter. You must use WtlCacheGetMemorySize to 
+* get the required structure size to allocate the block when starting your application.
+* 
+* @param config  A valid configuration used to create the cache system
+* @param cache   A pointer to a valid memory block used for the cache library
 */
-VNLIB_EXPORT void VNLIB_CC WtlCacheDestroy(WtlCache* cache);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheInit(const WtlConfig* config, WtlCache* cache);
 
 /*
-* Inserts a key-value pair. The key and value bytes are copied into the
-* cache's own memory via the allocator. If the key already exists, the
-* old value is replaced (old entry is evicted, potentially deferred if
-* currently borrowed).
-*
-* The insertion goes through the W-TinyLFU admission policy:
-*   - New keys always enter the window LRU.
-*   - When the window overflows, the evicted item is compared against
-*     the main cache's probationary victim via the frequency sketch.
-*   - If the new item has higher estimated frequency, it is admitted
-*     (victim is evicted). Otherwise it is rejected entirely.
-*
-* @param cache     Cache handle
-* @param key       Pointer to key bytes
-* @param keyLen    Number of key bytes
-* @param value     Pointer to value bytes
-* @param valueSize Number of value bytes
-* @return WTL_SUCCESS on success, WTL_ERROR on failure
+* Inserts a new value into the cache store by the key identified in the value parameter. The
+* table maintains a reference to the value for the lifetime of the item. Insert can also 
+* cause a forced lfu eviction which writes the evicted value to the evicted parameter if 
+* an eviction occurs. 
+* 
+* @param cache    A pointer to an initialized cache store
+* @param value    A pointer to the new value to store 
+* @param evicted  A valid pointer to a WtlValue that may be written to with the evicted item
+* caused by the insertion
+* @returns  WTL_SUCCESS if the item was inserted WTL_ITEM_EVICTED if an item was evicted,
+* a negative error code otherwise. 
 */
-VNLIB_EXPORT int32_t VNLIB_CC WtlCacheInsert(
-    WtlCache* cache,
-    const uint8_t* key,
-    uint32_t keyLen,
-    const void* value,
-    uint32_t valueSize
-);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheInsert(WtlCache* cache, const WtlValue* value, WtlValue* evicted);
 
 /*
-* Attempts to get a value by key. On hit:
-*   - The entry's frequency is incremented in the sketch.
-*   - If in probationary and accessed again, promoted to protected.
-*   - If in window, frequency is recorded; entry stays in window until
-*     it overflows (then faces admission).
-*   - The entry's refcount is incremented (borrowed reference).
-*   - *outValue points directly into the cache's memory (zero-copy).
-*   - Caller MUST call WtlCacheReleaseValue when done with the pointer.
-*
-* @param cache     Cache handle
-* @param key       Pointer to key bytes
-* @param keyLen    Number of key bytes
-* @param outValue  Receives a borrowed value reference on hit
-* @return WTL_SUCCESS if the cache value is found, WTL_ERROR on failure
+* Searches the cache store for a value at the given key. If found, writes the fields
+* of the outValue pointer supplied. Updates internal frequency counters for the value.
+* The key memory is not referenced outside of this call. Both hits and misses update
+* internal frequency counters. 
+* 
+* @param cache     A pointer to an initialized cache store
+* @param key       A WtlKey structure that points to the key memory used for lookup
+* @param outValue  A pointer to the WtlValue memory used to assign the found value
+* @returns  WTL_SUCCESS if the value was found and written to the outValue. Error code 
+* otherwise.
 */
-VNLIB_EXPORT int32_t VNLIB_CC WtlCacheGet(
-    WtlCache* cache, 
-    const uint8_t* key, 
-    uint32_t keyLen, 
-    WtlValue** outValue
-);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheGet(WtlCache* cache, WtlKey key, WtlValue* outValue);
 
 /*
-* Releases a borrowed reference obtained from WtlCacheGet.
-* Decrements the entry's refcount. If refcount reaches 0 and the entry
-* was marked for eviction while borrowed, it is freed now.
-*
-* @param cache  Cache handle
-* @param value  The borrowed value reference obtained from WtlCacheGet
-* @return WTL_SUCCESS on successful release, WTL_ERROR otherwise
+* Searches the store for a value at the given key, but does not update any frequency 
+* counters for the key. The key memory is not referenced outside of this call.
+* 
+* @param cache     A pointer to an initialized cache store
+* @param key       A WtlKey structure that points to the key memory used for lookup
+* @param outValue  A pointer to the WtlValue memory used to assign the found value
+* @returns  WTL_SUCCESS if the value was found and written to the outValue. Error code
+* otherwise.
 */
-VNLIB_EXPORT int32_t VNLIB_CC WtlCacheReleaseValue(WtlCache* cache, const WtlValue* value);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCachePeek(WtlCache* cache, WtlKey key, WtlValue* outValue);
 
 /*
-* Checks for a key's existence without affecting frequency or recency.
-* Returns a value pointer valid only until the next cache mutation
-* (Insert, Remove, or Get that triggers eviction). Does NOT borrow —
-* no WtlCacheReleaseValue call needed.
-*
-* @param cache     Cache handle
-* @param key       Pointer to key bytes
-* @param keyLen    Number of key bytes
-* @param outValue  Receives a value pointer valid until next mutation
-* @return WTL_SUCCESS on hit, WTL_ERR_NOT_FOUND on miss
+* Removes an item from the cache store by the given key, if it's found. This is 
+* unconditional and the internal value is cleared, which can leak memory if you
+* do not maintain a reference to the original value's memory. This operation 
+* completely removes all references to the previously stored value.
+* 
+* @param cache     A pointer to an initialized cache store
+* @param key       A WtlKey structure that points to the key memory used for lookup
+* @returns  WTL_SUCCESS if the value was found and removed from the store. Error code
+* otherwise.
 */
-VNLIB_EXPORT int32_t VNLIB_CC WtlCachePeek(
-    WtlCache* cache, 
-    const uint8_t* key, 
-    uint32_t keyLen, 
-    WtlValue** outValue
-);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheRemove(WtlCache* cache, WtlKey key);
 
 /*
-* Explicitly removes an entry by key. If the entry is currently borrowed
-* (refcount > 0), it is marked for eviction and freed when the last
-* reference is released.
+* Removes an item from the cache store identified by the supplied value. The value should
+* be a previously Get or Peek value. The key is used to identify the item in the store.
+* This operation completely removes all references to the previously stored value. 
 *
-* @param cache   Cache handle
-* @param key     Pointer to key bytes
-* @param keyLen  Number of key bytes
-* @return WTL_SUCCESS on success, WTL_ERR_NOT_FOUND if key not present
+* @param cache     A pointer to an initialized cache store
+* @param key       A pointer to a WtlValue structure obtained from Get() or Peek()
+* @returns  WTL_SUCCESS if the value was found and removed from the store. Error code
+* otherwise.
 */
-VNLIB_EXPORT int32_t VNLIB_CC WtlCacheRemove(
-    WtlCache* cache,
-    const uint8_t* key,
-    uint32_t keyLen
-);
+VNLIB_EXPORT int32_t VNLIB_CC WtlCacheRemoveValue(WtlCache* cache, const WtlValue* value);
 
 /*
-* Evicts all entries. Entries currently borrowed (refcount > 0) are
-* marked for eviction and freed when their last reference is released.
-*
-* @param cache  Cache handle
-* @return WTL_SUCCESS on successful call, error code otherwise
+* Returns the total number of items currently occupying the cache store.
+* 
+* @param cache  A pointer to a previously configured cache structure
+* @returns  The number of items in cache, or 0 if cache is null
 */
-VNLIB_EXPORT int32_t VNLIB_CC WtlCacheClear(WtlCache* cache);
+VNLIB_EXPORT uint32_t VNLIB_CC WtlCacheCount(const WtlCache* cache);
 
 /*
-* Returns the current total bytes of cached values (not including
-* per-entry overhead).
+* Forces a manual sketch frequency table age, helpful on an interval to evict stale 
+* items over longer periods of time.
 *
-* @param cache  Cache handle
-* @return Current value byte usage
-*/
-VNLIB_EXPORT uint32_t VNLIB_CC WtlCacheGetSize(WtlCache* cache);
-
-/*
-* Manually triggers sketch aging (halve all counters). Normally
-* automatic, but exposed for testing and observability.
-*
-* @param cache  Cache handle
-* @return WTL_SUCCESS on successful call, error code otherwise
+* @param cache     A pointer to an initialized cache store
+* @returns  WTL_SUCCESS if update succeeded, error code otherwise.
 */
 VNLIB_EXPORT int32_t VNLIB_CC WtlCacheAgeSketch(WtlCache* cache);
 
-/* ---------- Value accessors ----------
-*
-* These provide read-only access to a borrowed value's bytes.
-* The pointers are valid for the lifetime of the borrow (until
-* WtlCacheReleaseValue is called) or until the cache is destroyed.
-*/
-
-VNLIB_EXPORT uint32_t VNLIB_CC WtlValueGetData(const WtlValue* val,  const void** dataOut);
 
 #ifdef __cplusplus
 }

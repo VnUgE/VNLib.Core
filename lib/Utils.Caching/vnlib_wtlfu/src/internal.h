@@ -42,34 +42,41 @@
 */
 #define WTL_HASH_INIT_CAPACITY 64
 
-/*
-* Default configuration values (used when config fields are 0).
-*/
-#define WTL_DEFAULT_WINDOW_PCT      1
-#define WTL_DEFAULT_PROTECTED_PCT   80
+typedef enum 
+{
+    WTL_LRU_MEMBER_NONE,
+    WTL_LRU_MEMBER_WINDOW,
+    WTL_LRU_MEMBER_PROBATION,
+    WTL_LRU_MEMBER_PROTECTED
 
-/*
-* Cache entry structure.
-*
-* Memory layout (single allocation):
-*   [ WtlEntry header | key bytes (keyLen) | value bytes (valueSize) ]
-*
-* The key and value bytes immediately follow the struct. Accessor
-* macros below compute the correct offsets. The WtlValue* exposed to
-* callers points to the value-bytes region.
-*
-* The entry is linked into one LRU segment list (prev/next) and
-* tracked in the hash table via its hash slot.
-*/
+} WtlEntryLruMemberType;
+
 typedef struct WtlEntry
 {
     /* Intrusive doubly-linked list pointers for LRU segment membership */
     struct WtlEntry* prev;
     struct WtlEntry* next;
 
+    /*
+    * The cache LRU list membership.
+    */
+    WtlEntryLruMemberType lruMember;
+
+    /*
+    * Cached hashcode value for the entry in the table. Computed once
+    * on insert (reservation) and used for sketch and hashtable lookups
+    */
     uint32_t hash;
 
-    WtlValue value;   
+    /*
+    * span pointing to the key data 
+    */
+    cspan_t key;
+    
+    /*
+    * User's data value to be stored in the entry
+    */
+    const void* value;      
 
 } WtlEntry;
 
