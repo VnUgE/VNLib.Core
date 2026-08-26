@@ -73,13 +73,15 @@ target_compile_features(${_WTL_PROJ_NAME}_static PRIVATE c_std_99)
 target_include_directories(${_WTL_PROJ_NAME} PRIVATE include PRIVATE src)
 target_include_directories(${_WTL_PROJ_NAME}_static PRIVATE include PRIVATE src)
 
-# VNLIB_EXPORTING controls whether VNLIB_EXPORT forces the source to export the api 
-target_compile_definitions(${_WTL_PROJ_NAME} PRIVATE VNLIB_EXPORTING)
-target_compile_definitions(${_WTL_PROJ_NAME}_static PRIVATE VNLIB_EXPORTING)
-
-# Adds the DEBUG symbol to allow conditional debugging features and compilation
 target_compile_definitions(${_WTL_PROJ_NAME} PRIVATE
 	$<$<CONFIG:Debug>:DEBUG>
+	VNLIB_EXPORTING=1
+	WTL_VERSION_STRING="${CMAKE_PROJECT_VERSION}"
+)
+target_compile_definitions(${_WTL_PROJ_NAME}_static PRIVATE 
+	$<$<CONFIG:Debug>:DEBUG>
+	VNLIB_EXPORTING=1
+	WTL_VERSION_STRING="${CMAKE_PROJECT_VERSION}"
 )
 
 # Treat all warnings as errors so regressions are caught early.
