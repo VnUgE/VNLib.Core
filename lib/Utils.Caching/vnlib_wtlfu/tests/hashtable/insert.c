@@ -155,7 +155,6 @@ static int InsertUntilFull(void)
 */
 static int InsertReusesTombstone(void)
 {
-
     WtlHashTable* table = allocHashTable(16);
     const uint32_t hash = 65486;
 

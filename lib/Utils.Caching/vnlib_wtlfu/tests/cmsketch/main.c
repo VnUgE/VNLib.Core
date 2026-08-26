@@ -58,8 +58,8 @@ static WtlSketch* sketchAlloc(const WtlSketchConfig* config)
 
     memset(buf, 0, sizeof(WtlSketch) + size);
 
-    // assign config structure
-    buf->config = *config;
+    // assign config structure (downcast const for initial assignment)
+    *((WtlSketchConfig*)(&buf->config)) = *config;
 
     // Init the table to point at the buffer right after the struct header
     spanInit(&buf->table, (uint8_t*)(buf + 1), size);
@@ -78,7 +78,7 @@ static WtlSketch* sketchAlloc(const WtlSketchConfig* config)
 */
 static void sketchOnStack(WtlSketch* sketch, WtlSketchConfig config, uint8_t* table, uint32_t tableSize)
 {
-    sketch->config = config;
+    *((WtlSketchConfig*)(&sketch->config)) = config;
     sketch->accessCount = 0;
     sketch->table.data = table;
     sketch->table.size = tableSize;

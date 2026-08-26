@@ -45,6 +45,7 @@
 #include <stddef.h>
 #include "platform.h"
 #include "span.h"
+#include "wtlfu.h"
 
 #define WTL_SKETCH_DEFAULT_WIDTH        1024u
 #define WTL_SKETCH_DEFAULT_DEPTH        4u
@@ -61,7 +62,6 @@
 * This is a compile-time constant for the default configuration.
 */
 #define WTL_SKETCH_BASE_SEED 0x9e3779b97f4a7c15ULL
-
 
 /*
 * Configuration for creating a Count-Min Sketch.
@@ -88,7 +88,7 @@ typedef struct wtl_sketch_config_struct
 typedef struct WtlSketch {
 
     /* configuration copy: width, depth, resetThreshold, seed. */
-    WtlSketchConfig config;
+    const WtlSketchConfig config;
 
     /*
      * Number of calls to wtlSketchRecord since the last aging.
@@ -110,7 +110,8 @@ typedef struct WtlSketch {
 * table span must point at exactly config.width * config.depth bytes of
 * writable memory. Checks, in order:
 *
-*   0   Valid: config fields are in range and the table size matches
+*  WTL_SUCCESS
+        Valid: config fields are in range and the table size matches
 *       config.width * config.depth exactly.
 *  -1   Invalid config: zero width, zero depth, depth greater than
 *       WTL_SKETCH_MAX_DEPTH, zero resetThreshold, or empty table span.
