@@ -87,7 +87,7 @@ typedef struct wtl_sketch_config_struct
 
 typedef struct WtlSketch {
 
-    /* configuration copy: width, depth, resetThreshold, seed. */
+    /* in table copy of of configuration */
     const WtlSketchConfig config;
 
     /*
@@ -103,6 +103,8 @@ typedef struct WtlSketch {
     span_t table;
 
 } WtlSketch;
+
+vnlib_fn_internal int wtlSketchConfigIsValid(const WtlSketchConfig* config);
 
 /*
 * Validates a caller-initialized sketch before it is used. Because the

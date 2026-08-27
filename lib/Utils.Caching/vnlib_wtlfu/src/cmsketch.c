@@ -80,49 +80,65 @@ static _vn_inline uint32_t _splitMix32(uint32_t in1, uint32_t in2)
 
 static _vn_inline uint32_t _sketchGetHashIndex(const WtlSketch* sketch, uint32_t hash, uint32_t row)
 {
-    uint32_t colMix, column;
+    uint32_t colMix, column, seed32;
+
+    seed32 = (uint32_t)(sketch->config.seed ^ (sketch->config.seed >> 32));
 
     // Derive this row's column from the item hash and a per-row seed.
-    colMix = _splitMix32(hash, (uint32_t)(sketch->config.seed + row));
+    colMix = _splitMix32(hash, seed32 + row);
     column = colMix % sketch->config.width;
 
     return row * sketch->config.width + column;
 }
 
-vnlib_fn_internal int wtlSketchIsValid(const WtlSketch* sketch)
-{  
+vnlib_fn_internal int wtlSketchConfigIsValid(const WtlSketchConfig* config)
+{
     uint64_t counterTableSize = 0;
-    DEBUG_ASSERT(sketch);
+    DEBUG_ASSERT(config);
 
     // Check for zero sizes
     if (
-        sketch->config.width == 0 ||
-        sketch->config.depth == 0 ||
-        sketch->config.depth > WTL_SKETCH_MAX_DEPTH ||
-        sketch->config.resetThreshold == 0 ||
-        spanGetSize(sketch->table) == 0
-    )
+        config->width == 0 ||
+        config->depth == 0 ||
+        config->depth > WTL_SKETCH_MAX_DEPTH ||
+        config->resetThreshold == 0 
+        )
     {
         return -1;
     }
 
     // Width and depth must both be non-zero. Depth is also capped at a
     // small value because each additional row requires another hash pass.
-    counterTableSize = (uint64_t)sketch->config.width * (uint64_t)sketch->config.depth;
+    counterTableSize = (uint64_t)config->width * (uint64_t)config->depth;
 
-    // Guard against overflow when computing the total table size.
-    if (counterTableSize > UINT32_MAX)
+    // Guard against overflow when computing the total table size.   
+    return counterTableSize <= UINT32_MAX ? WTL_SUCCESS : -2;
+}
+
+vnlib_fn_internal int wtlSketchIsValid(const WtlSketch* sketch)
+{  
+    int configVal;
+    DEBUG_ASSERT(sketch);
+
+    configVal = wtlSketchConfigIsValid(&sketch->config);
+    if (configVal != 0)
     {
-        return -2;
+        return configVal;
     }
 
+    // Check for empty or null table
+    if (spanIsNull(sketch->table) || spanIsEmpty(sketch->table))
+    {
+        return -1;
+    }
+  
     // Config table parameters do not match table size
-    if (counterTableSize != spanGetSize(sketch->table))
+    if (spanGetSize(sketch->table) != (sketch->config.width * sketch->config.depth))
     {
         return -3;
     }   
 
-    return 0;
+    return WTL_SUCCESS;
 }
 
 vnlib_fn_internal void wtlSketchRecord(WtlSketch* sketch, uint32_t hash)

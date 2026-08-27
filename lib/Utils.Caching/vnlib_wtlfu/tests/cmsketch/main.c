@@ -24,6 +24,8 @@
 
 #include "test.h"
 
+//TODO! test new config validation 
+
 /*
 * Arbitrary distinct non-zero 32-bit constants used as sketch inputs.
 * The sketch is a black box over hashes; these stand in for whatever
