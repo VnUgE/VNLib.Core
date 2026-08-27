@@ -31,6 +31,7 @@ set(WTLFU_SRCS
 	"src/cmsketch.c"
 	"src/lru.c"
 	"src/hashtable.c"
+	"src/cache.c"
 )
 
 set(WTLFU_HEADERS
@@ -43,6 +44,7 @@ set(WTLFU_HEADERS
 	"src/cmsketch.h"
 	"src/internal.h"
 	"src/hashtable.h"	
+	"src/cache.h"
 )
 
 # Build both shared and static variants from the same sources.
