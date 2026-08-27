@@ -233,11 +233,13 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlGet(WtlCtx* cache, WtlKey key, WtlValue* outVal
 
 /*
 * Searches the store for a value at the given key, but does not update any frequency 
-* counters for the key. The key memory is not referenced outside of this call.
+* counters for the key. The key memory is not referenced outside of this call. outValue
+* parameter may be a null pointer if checking for key existence.
 * 
 * @param cache     A pointer to an initialized cache store
 * @param key       A WtlKey structure that points to the key memory used for lookup
-* @param outValue  A pointer to the WtlValue memory used to assign the found value
+* @param outValue  A pointer to the WtlValue memory used to assign the found value,
+* or a null pointer if checking for key existence
 * @returns  WTL_SUCCESS if the value was found and written to the outValue. Error code
 * otherwise.
 */
