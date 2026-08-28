@@ -73,7 +73,7 @@ static int InsertAlwaysInsertsIntoWindowHead(void)
 		* is pushed to the head of the window list
 		*/
 		int32_t ret = WtlInsert(cache, val, &evicted);
-		if (ret < 0) printf("	ERROR %ld returned from insert with key %s\n\n", ret, (const char*)val->key);
+		if (ret < 0) printf("	ERROR %d returned from insert with key %s\n\n", ret, (const char*)val->key);
 	
 		ENSURE(ret >= 0);
 
