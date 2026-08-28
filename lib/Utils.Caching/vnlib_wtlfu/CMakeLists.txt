@@ -75,7 +75,7 @@ target_compile_features(${_WTL_PROJ_NAME}_static PRIVATE c_std_99)
 target_include_directories(${_WTL_PROJ_NAME} PRIVATE include PRIVATE src)
 target_include_directories(${_WTL_PROJ_NAME}_static PRIVATE include PRIVATE src)
 
-target_compile_definitions(${_WTL_PROJ_NAME} PRIVATE
+target_compile_definitions(${_WTL_PROJ_NAME} PRIVATE 
 	$<$<CONFIG:Debug>:DEBUG>
 	VNLIB_EXPORTING=1
 	WTL_VERSION_STRING="${CMAKE_PROJECT_VERSION}"
@@ -137,6 +137,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 			-Wall					# enable all warnings
 			-pedantic				# enable pedantic warnings
 			-Winit-self				#warn about self initialization
+			-Wcast-qual
 			-Wpointer-arith
 			-Wstrict-prototypes
 			-Wswitch-default
@@ -215,6 +216,8 @@ if(VNLIB_BUILD_TESTS)
 
 	# hashtable tests
 	add_wtl_test(WtlHashTableTest SOURCES tests/test-base.c tests/hashtable/main.c)
+
+	add_wtl_test(WtlCacheTests SOURCES tests/test-base.c tests/cache/main.c)
 
 endif()
 
