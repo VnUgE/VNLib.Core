@@ -608,7 +608,6 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlRemoveValue(WtlCtx* cache, const WtlValue* valu
 {
 	WtlKey key;
 
-	WTL_CHECK_NULL(cache);
 	WTL_CHECK_NULL(value);
 
 	// Assign key data only, we don't care about the value pointer
@@ -754,4 +753,12 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlInsert(WtlCtx* cache, const WtlValue* value, Wt
 	{
 		return WTL_SUCCESS;
 	}	
+}
+
+VNLIB_EXPORT int32_t VNLIB_CC WtlTouch(WtlCtx* cache, WtlKey key)
+{
+	WtlValue outVal;
+
+	// Pass a pointer to the out val, but discard it
+	return WtlGet(cache, key, &outVal);
 }

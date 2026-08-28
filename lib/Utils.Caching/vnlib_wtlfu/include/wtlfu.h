@@ -22,8 +22,9 @@
 /*
 * wtlfu.h - W-TinyLFU cache library.
 *
-* A high-performance cache using the W-TinyLFU admission policy:
-*   - A small window LRU (default 1% of capacity) accepts all new entries.
+* A minimal, high-performance cache/store using the W-TinyLFU admission 
+*  policy:
+*   - A small window LRU accepts all new entries.
 *   - When the window overflows, the evicted item is compared against the
 *     main cache's probationary victim via a Count-Min Sketch frequency
 *     estimate. The higher-frequency item wins admission.
@@ -63,6 +64,11 @@ extern "C"
 {
 #endif
 
+/*
+* Experimental internal compatibility level. Incremented when the library
+* has been modified in a non-compatible way. Hiding compatible features
+* for a given library compat version.
+*/
 #define WTL_COMPAT_VERSION 1
 
 /* ---------- Error codes ---------- */
@@ -277,6 +283,17 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlRemoveValue(WtlCtx* cache, const WtlValue* valu
 * @returns  The number of items in cache, or 0 if cache is null
 */
 VNLIB_EXPORT uint32_t VNLIB_CC WtlCount(const WtlCtx* cache);
+
+/*
+* Records a key "hit" if the key exists in the store. Increasing the item's 
+* frequency, keeping the item warmer or promoting it if necessary. Effectively 
+* identical to WtlGet() but discarding the value.
+* 
+* @param cache     A pointer to an initialized cache store
+* @param key       A WtlKey structure that points to the key memory used for lookup
+* @returns  WTL_SUCCESS if the value was found and update. Error code otherwise.
+*/
+VNLIB_EXPORT int32_t VNLIB_CC WtlTouch(WtlCtx* cache, WtlKey key);
 
 /*
 * Forces a manual sketch frequency table age, helpful on an interval to evict stale 
