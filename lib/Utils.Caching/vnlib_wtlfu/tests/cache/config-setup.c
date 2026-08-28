@@ -42,7 +42,11 @@ static int ConfigHappyPath(void)
 
 	// Check hashtable
 	{
-		EXPECT_EQ(cache->table.capacity, _defaultConfig.capacity);
+		// Ensure the capacity is at least as big as capacity. Should inclue ht overhead
+		uint64_t htWithOverhead = _htCapacityWithOverhead(_defaultConfig.capacity);
+		EXPECT_TRUE(htWithOverhead >= _defaultConfig.capacity);
+
+		EXPECT_EQ(cache->table.capacity, htWithOverhead);
 		EXPECT_EQ(cache->table.count, 0);
 		
 		// Expects good ht coverage. Also ensures that slot memory is not null
@@ -120,12 +124,15 @@ static int Config_MemoryLayout(void)
 	WtlConfig config = _defaultConfig;
 	struct wtl_cache_layout layout;
 
+	// Get hashtable load factor overhead 
+	uint64_t htWithOverhead = _htCapacityWithOverhead(config.capacity);
+
 	// Init layout from default config
 	wtlConfigGetMemoryLayout(&config, &layout);
 
 	// Region sizes match the per-region math
 	EXPECT_EQ(layout.sketchBytes, (uint64_t)config.sketchWidth * config.sketchDepth);
-	EXPECT_EQ(layout.slotsBytes, ((uint64_t)config.capacity * sizeof(WtlHashSlot)));
+	EXPECT_EQ(layout.slotsBytes, ((uint64_t)htWithOverhead * sizeof(WtlHashSlot)));
 
 	// Every region starts on a cache line boundary, after the header
 	EXPECT_TRUE(layout.slotsOffset % WTL_CACHE_LINE == 0);

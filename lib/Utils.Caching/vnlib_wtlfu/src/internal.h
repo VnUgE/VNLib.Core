@@ -29,13 +29,6 @@
 #include "wtlfu.h"
 #include "platform.h"
 #include "span.h"
-#include "debug.h"
-
-/*
-* Load factor threshold for hash table resize (as numerator over 100).
-* 75 means resize when count > capacity * 75 / 100.
-*/
-#define WTL_HASH_LOAD_FACTOR 75
 
 /*
 * Initial hash table capacity (must be power of 2 for fast modulo).
@@ -45,8 +38,11 @@
 typedef enum 
 {
     WTL_LRU_MEMBER_NONE,
+    
     WTL_LRU_MEMBER_WINDOW,
+    
     WTL_LRU_MEMBER_PROBATION,
+
     WTL_LRU_MEMBER_PROTECTED
 
 } WtlEntryLruMemberType;
@@ -76,7 +72,7 @@ typedef struct WtlEntry
     /*
     * User's data value to be stored in the entry
     */
-    const void* value;      
+    const void* value;
 
 } WtlEntry;
 

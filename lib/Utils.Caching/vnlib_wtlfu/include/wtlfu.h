@@ -187,7 +187,8 @@ VNLIB_EXPORT const char* VNLIB_CC WtlGetVersionString(void);
 /*
 * Computes and returns the number of bytes required to store the entire cache
 * internal data structures as a single block of contiguous memory. This allocation
-* is static for the lifetime of the cache service. 
+* is static for the lifetime of the cache service. Overhead is added for alignment 
+* and hashtable load factor.
 * 
 * @param config  A valid cache configuration used to compute internal buffer sizes
 * @returns  32bit signed integer with the number of bytes to hold the cache structure if

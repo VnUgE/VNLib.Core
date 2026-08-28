@@ -43,6 +43,16 @@
 	#define WTL_CACHE_LINE 64		
 #endif /* !WTL_CACHE_LINE */
 
+/*
+* Load factor threshold for hash table resize (as numerator over 100).
+* 75 means resize when count > capacity * 75 / 100.
+*/
+#ifndef WTL_HASHTABLE_LOAD_FACTOR
+	#define WTL_HASHTABLE_LOAD_FACTOR 75ul
+#elif WTL_HASHTABLE_LOAD_FACTOR <= 0 || WTL_HASHTABLE_LOAD_FACTOR > 100
+	#error Invalid hashtable load factor
+#endif // !WTL_HASHTABLE_LOAD_FACTOR
+
 struct wtl_internal_cache_config
 {
 	/* primary hash function's seed */
@@ -89,6 +99,7 @@ struct wtl_cache_layout
 	uint64_t slotsBytes;
 	uint64_t sketchOffset;
 	uint64_t sketchBytes;
+	uint64_t htRealCapacity;
 	uint64_t total;
 };
 
@@ -98,6 +109,24 @@ struct wtl_cache_layout
 static _vn_inline uint64_t _alignUp(uint64_t value, uint64_t align)
 {
 	return (value + (align - 1)) & ~(align - 1);
+}
+
+static _vn_inline uint64_t _pow2RoundUp(uint64_t x)
+{
+	while ((x & (x - 1))) x++;
+	return x;
+}
+
+/*
+* Computes the size of the hashtable buffer (in bytes) and adds extra capacity for 
+* the target load factor.
+*/
+static _vn_inline uint64_t _htCapacityWithOverhead(uint64_t capacity)
+{
+	// Add overhead capacity for extra load factor compensation
+	capacity += (capacity * (100ull - WTL_HASHTABLE_LOAD_FACTOR)) / 100ull;
+
+	return _pow2RoundUp(capacity);
 }
 
 // Internal helpers exposed for testing

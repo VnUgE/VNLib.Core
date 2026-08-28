@@ -81,12 +81,15 @@ vnlib_fn_internal void wtlConfigGetMemoryLayout(
 )
 {
 	DEBUG_ASSERT(config);
-	DEBUG_ASSERT(out);
+	DEBUG_ASSERT(out);	
 
 	uint64_t offset = _alignUp(sizeof(WtlCtx), WTL_CACHE_LINE);
 
+	// Must round up to pow2
+	out->htRealCapacity = _htCapacityWithOverhead((uint64_t)config->capacity);
+
 	out->slotsOffset = offset;
-	out->slotsBytes = (uint64_t)config->capacity * sizeof(WtlHashSlot);
+	out->slotsBytes = out->htRealCapacity * sizeof(WtlHashSlot);
 
 	offset = _alignUp(offset + out->slotsBytes, WTL_CACHE_LINE);
 
@@ -486,7 +489,8 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlInit(const WtlConfig* config, WtlCtx* cache)
 
 	// Setup hashtable
 	{
-		cache->table.capacity = config->capacity;
+		// Use computed overhead table capacity, safe to cast to u32 if total size < u32
+		cache->table.capacity = (uint32_t)memLayout.htRealCapacity;
 		cache->table.slots = (WtlHashSlot*)(absBaseOffset + memLayout.slotsOffset);
 
 		// Ensure hashtable is valid
