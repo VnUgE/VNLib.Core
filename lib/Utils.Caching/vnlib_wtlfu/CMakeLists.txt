@@ -36,7 +36,7 @@ set(WTLFU_SRCS
 
 set(WTLFU_HEADERS
 	"include/wtlfu.h"
-	"src/platform.h"
+	"include/platform.h"
 	"src/debug.h"
 	"src/span.h"
 	"src/hash.h"

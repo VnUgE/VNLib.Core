@@ -172,8 +172,9 @@ tasks:
       - cmd: cp -f LICENSE '{{ .TARGET_DIR }}/license.txt'
       - cmd: cp -f VERSION '{{ .TARGET_DIR }}/'
       - cmd: cp -f licenses/* '{{ .TARGET_DIR }}'
+      - cmd: cp -fr include/ '{{ .TARGET_DIR }}/'
 
-      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
+      - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' -C '{{ .TARGET_DIR }}' .
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution'
