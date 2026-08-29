@@ -40,10 +40,11 @@
 * Define supported inline definitions for various compilers
 * and C standards
 */
-
-#if defined(_VN_IS_WINDOWS) || defined(__clang__)
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L /* C99 allows usage of inline keyword */
     #define _vn_inline inline
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L /* C99 allows usage of inline keyword */
+#elif defined(_VN_IS_WINDOWS)
+    #define _vn_inline inline
+#elif defined(__clang__)
     #define _vn_inline inline
 #elif defined(__GNUC__) || defined(__GNUG__)
     #define _vn_inline __inline__
