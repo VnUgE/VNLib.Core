@@ -85,8 +85,7 @@ static int GetPromotesProbeeWhenProtectedFreeSpace(void)
 
 	// Ensure dummy 0 is on probation list
 
-	EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);
-	
+	EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);	
 
 	free(cache);
 	return 0;

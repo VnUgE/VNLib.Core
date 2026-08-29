@@ -87,7 +87,7 @@ typedef struct wtl_sketch_config_struct
 
 typedef struct WtlSketch {
 
-    /* in table copy of of configuration */
+    /* in table copy of configuration */
     const WtlSketchConfig config;
 
     /*
@@ -98,7 +98,7 @@ typedef struct WtlSketch {
     uint32_t accessCount;
 
     /*
-    * Span pointing to the the memory containing the sketch table
+    * Span pointing to the memory containing the sketch table
     */
     span_t table;
 

@@ -180,7 +180,7 @@ typedef struct wtl_config_struct
 * numeric, semantic version string. In the format 
 *   Major.Minor.Patch.Build 
 * 
-* Where ever value is a base 10 integer. 
+* Where every value is a base 10 integer. 
 */
 VNLIB_EXPORT const char* VNLIB_CC WtlGetVersionString(void);
 
