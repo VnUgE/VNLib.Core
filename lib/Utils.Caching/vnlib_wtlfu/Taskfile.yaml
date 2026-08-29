@@ -123,13 +123,21 @@ tasks:
   # called by ci pipeline to build the winx64 project
   build:
     desc: 'DO NOT USE. This is an internal task'
+    vars:
+        CMAKE_ARGS_OVERRIDE: '
+          {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
+          {{ if eq OS "windows" }}-A x64{{ end }}'
     cmds:
+      - cmd: mkdir -p '{{ .CMAKE_BUILD_DIR }}'
       - task: default
         vars:
-          CMAKE_ARGS: '
-            {{ .CLI_ARGS }}
-            {{ if eq OS "windows" }}-G "Visual Studio 17 2022"{{ end }}
-            {{ if eq OS "windows" }}-A x64{{ end }}'
+          CMAKE_BUILD_TYPE: 'Debug'
+          CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS_OVERRIDE }}'
+
+      - task: default
+        vars:
+          CMAKE_BUILD_TYPE: 'Release'
+          CMAKE_ARGS: '{{ .CLI_ARGS }} {{ .CMAKE_ARGS_OVERRIDE }}'
 
   postbuild_success:
     desc: 'DO NOT USE. This is an internal task'
@@ -160,11 +168,10 @@ tasks:
     vars:
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
       ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}.tgz'
-    cmds:
-      - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
-        ignore_error: true
-
-      - cmd: cp VERSION '{{ .TARGET_DIR }}/'
+    cmds:     
+      - cmd: cp -f LICENSE '{{ .TARGET_DIR }}/license.txt'
+      - cmd: cp -f VERSION '{{ .TARGET_DIR }}/'
+      - cmd: cp -f licenses/* '{{ .TARGET_DIR }}'
 
       - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
 
@@ -184,6 +191,7 @@ tasks:
         - LICENSE
         - README.md
         - VERSION
+        - licenses 
     cmds:
       - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .TARGET_SOURCE }}' {{ .SOURCE_FILES | join " " }}
 
