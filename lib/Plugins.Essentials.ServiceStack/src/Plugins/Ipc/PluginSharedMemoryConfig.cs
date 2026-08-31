@@ -22,6 +22,8 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System.Collections.Generic;
+
 namespace VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc
 {
     /// <summary>
@@ -45,5 +47,11 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc
         /// than zero and less than or equal to <see cref="MaxRegionSize"/>.
         /// </summary>
         public required int MinRegionSize { get; init; }
+
+        /// <summary>
+        /// Defines a list of host reservations for shared regions. Pre-allocates 
+        /// these blocks at startup, and frees them when the system exits.
+        /// </summary>
+        public IEnumerable<PluginSharedMemoryHostReservation>? HostReservations { get; init; }
     }
 }
