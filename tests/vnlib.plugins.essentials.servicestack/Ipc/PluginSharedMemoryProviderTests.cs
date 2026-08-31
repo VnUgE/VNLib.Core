@@ -35,6 +35,7 @@ using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Runtime.Events;
 using VNLib.Plugins.Ipc.SharedMemory;
 using VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc;
+using System.Linq;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Tests.Ipc
 {
@@ -397,6 +398,49 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Tests.Ipc
             Assert.AreEqual((byte)0xAD, accessorView[1]);
             Assert.AreEqual((byte)0xBE, accessorView[2]);
             Assert.AreEqual((byte)0xEF, accessorView[3]);
+        }
+
+        #endregion
+
+        #region Reserved Regions
+
+        [TestMethod]
+        public void ReservedRegionIsAllocated()
+        {
+            const int testRegionSize = 64;
+
+            using TrackedHeapWrapper heap = new(MemoryUtil.Shared, false);
+            PluginSharedMemoryConfig config = new()
+            {
+                Allocator       = new PluginSharedMemoryAllocator(heap, false),
+                MinRegionSize   = 64,
+                MaxRegionSize   = 4096,
+                HostReservations = [ 
+                    new PluginSharedMemoryHostReservation("test_region", testRegionSize) 
+                ]
+            };
+
+            Assert.AreEqual(0ul, heap.GetCurrentStats().AllocatedBlocks);
+
+            // Construction should validate and pre-allocate reserved regions
+            using (PluginSharedMemoryProvider provider = new(config))
+            {
+                // ensure reserved regions get allocated
+                HeapStatistics stats = heap.GetCurrentStats();
+                uint reservations = (uint)config.HostReservations.Count();
+
+                Assert.AreEqual(
+                    reservations,
+                    stats.AllocatedBlocks,
+                    "Expected the number of allocated blocks to equal the number of reservations"
+                );
+
+                Assert.AreEqual(testRegionSize * reservations, stats.AllocatedBytes);
+            }
+
+            // Ensure all regions are unmapped again
+            Assert.AreEqual(0ul, heap.GetCurrentStats().AllocatedBlocks);
+
         }
 
         #endregion
