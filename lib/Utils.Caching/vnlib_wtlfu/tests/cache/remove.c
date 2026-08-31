@@ -6,25 +6,25 @@
 */
 static int RemoveInputValidation(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlKey dummyKey = dummy_key("hello world");
+    WtlKey dummyKey = dummy_key("hello world");
 
-	// Null cache structure
-	EXPECT_EQ(WtlRemove(NULL, dummyKey), WTL_ERR_INVALID_ARG);
+    // Null cache structure
+    EXPECT_EQ(WtlRemove(NULL, dummyKey), WTL_ERR_INVALID_ARG);
 
-	// Null key but len should fail
-	dummyKey.key = NULL;
-	dummyKey.len = 5;
-	EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_ERR_INVALID_ARG);
+    // Null key but len should fail
+    dummyKey.key = NULL;
+    dummyKey.len = 5;
+    EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_ERR_INVALID_ARG);
 
-	// Key but zero len should also fail
-	dummyKey.key = "hello";
-	dummyKey.len = 0;
-	EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_ERR_INVALID_ARG);
+    // Key but zero len should also fail
+    dummyKey.key = "hello";
+    dummyKey.len = 0;
+    EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_ERR_INVALID_ARG);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -33,22 +33,22 @@ static int RemoveInputValidation(void)
 */
 static int RemoveBasic(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlValue dummy = dummy_value("hello world");
-	WtlKey dummyKey = dummy_key("hello world");
+    WtlValue dummy = dummy_value("hello world");
+    WtlKey dummyKey = dummy_key("hello world");
 
-	EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
-	EXPECT_EQ(WtlCount(cache), 1);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlCount(cache), 1);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
 
-	// Remove and check 
-	EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_SUCCESS);
-	EXPECT_EQ(WtlCount(cache), 0);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
+    // Remove and check 
+    EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_SUCCESS);
+    EXPECT_EQ(WtlCount(cache), 0);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -56,29 +56,29 @@ static int RemoveBasic(void)
 */
 static int RemoveDoubleRemoveFails(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlValue dummy = dummy_value("hello world");
-	WtlKey dummyKey = dummy_key("hello world");
+    WtlValue dummy = dummy_value("hello world");
+    WtlKey dummyKey = dummy_key("hello world");
 
-	EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
-	EXPECT_EQ(WtlCount(cache), 1);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlCount(cache), 1);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
 
-	// Remove and check 
-	EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_SUCCESS);
-	EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_ERR_NOT_FOUND);
+    // Remove and check 
+    EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_SUCCESS);
+    EXPECT_EQ(WtlRemove(cache, dummyKey), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 
 static int RunRemoveTests(void)
 {
-	RUN_TEST(RemoveInputValidation());
-	RUN_TEST(RemoveBasic());
-	RUN_TEST(RemoveDoubleRemoveFails());
+    RUN_TEST(RemoveInputValidation());
+    RUN_TEST(RemoveBasic());
+    RUN_TEST(RemoveDoubleRemoveFails());
 
-	return 0;
+    return 0;
 }

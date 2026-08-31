@@ -44,22 +44,22 @@
 
 static _vn_inline void _lruIncrementCount(WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);
-	lru->count++;
+    DEBUG_ASSERT(lru);
+    lru->count++;
 }
 
 static _vn_inline void _lruDecrementCount(WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);
-	lru->count--;
+    DEBUG_ASSERT(lru);
+    lru->count--;
 }
 
 static _vn_inline void _lruNodeClearLinks(WtlEntry* entry)
 {
-	DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(entry);
 
-	entry->next = NULL;
-	entry->prev = NULL;
+    entry->next = NULL;
+    entry->prev = NULL;
 }
 
 /*
@@ -71,42 +71,42 @@ static _vn_inline void _lruNodeClearLinks(WtlEntry* entry)
 */
 vnlib_fn_internal int lruPush(WtlLruList* lru, WtlEntry* entry)
 {
-	DEBUG_ASSERT(lru);
-	DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(lru);
+    DEBUG_ASSERT(entry);
 
-	// Entry must have null pointers, otherwise error
-	DEBUG_ASSERT(!entry->prev);
-	DEBUG_ASSERT(!entry->next);	
+    // Entry must have null pointers, otherwise error
+    DEBUG_ASSERT(!entry->prev);
+    DEBUG_ASSERT(!entry->next);	
 
-	if (!lru || !entry || entry->prev || entry->next)
-	{
-		return LRU_FALSE;
-	}
+    if (!lru || !entry || entry->prev || entry->next)
+    {
+        return LRU_FALSE;
+    }
 
-	// No elements in the list
-	if (!lru->head)
-	{
-		// Self-link to satisfy the circular invariant
-		entry->prev = entry;
-		entry->next = entry;
+    // No elements in the list
+    if (!lru->head)
+    {
+        // Self-link to satisfy the circular invariant
+        entry->prev = entry;
+        entry->next = entry;
 
-		lru->head = entry;
-		lru->tail = entry;
-	}
-	else
-	{
-		// Splice into the front of the circular ring
-		entry->prev = lru->tail;
-		entry->next = lru->head;
+        lru->head = entry;
+        lru->tail = entry;
+    }
+    else
+    {
+        // Splice into the front of the circular ring
+        entry->prev = lru->tail;
+        entry->next = lru->head;
 
-		lru->head->prev = entry;
-		lru->tail->next = entry;
-		lru->head = entry;
-	}
+        lru->head->prev = entry;
+        lru->tail->next = entry;
+        lru->head = entry;
+    }
 
-	_lruIncrementCount(lru);
+    _lruIncrementCount(lru);
 
-	return LRU_TRUE;
+    return LRU_TRUE;
 }
 
 /*
@@ -117,42 +117,42 @@ vnlib_fn_internal int lruPush(WtlLruList* lru, WtlEntry* entry)
 */
 vnlib_fn_internal int lruPushTail(WtlLruList* lru, WtlEntry* entry)
 {
-	DEBUG_ASSERT(lru);
-	DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(lru);
+    DEBUG_ASSERT(entry);
 
-	//Expects entries not in the list
-	DEBUG_ASSERT(!entry->prev);
-	DEBUG_ASSERT(!entry->next);
+    //Expects entries not in the list
+    DEBUG_ASSERT(!entry->prev);
+    DEBUG_ASSERT(!entry->next);
 
-	if (!lru || !entry || entry->prev || entry->next)
-	{
-		return LRU_FALSE;
-	}
+    if (!lru || !entry || entry->prev || entry->next)
+    {
+        return LRU_FALSE;
+    }
 
-	// No elements in the list
-	if (!lru->head)
-	{
-		// Self-link to satisfy the circular invariant
-		entry->prev = entry;
-		entry->next = entry;
+    // No elements in the list
+    if (!lru->head)
+    {
+        // Self-link to satisfy the circular invariant
+        entry->prev = entry;
+        entry->next = entry;
 
-		lru->head = entry;
-		lru->tail = entry;
-	}
-	else
-	{
-		// Splice into the back of the circular ring
-		entry->next = lru->head;
-		entry->prev = lru->tail;
+        lru->head = entry;
+        lru->tail = entry;
+    }
+    else
+    {
+        // Splice into the back of the circular ring
+        entry->next = lru->head;
+        entry->prev = lru->tail;
 
-		lru->tail->next = entry;
-		lru->head->prev = entry;
-		lru->tail = entry;
-	}
+        lru->tail->next = entry;
+        lru->head->prev = entry;
+        lru->tail = entry;
+    }
 
-	_lruIncrementCount(lru);
+    _lruIncrementCount(lru);
 
-	return LRU_TRUE;
+    return LRU_TRUE;
 }
 
 /*
@@ -161,43 +161,43 @@ vnlib_fn_internal int lruPushTail(WtlLruList* lru, WtlEntry* entry)
 */
 vnlib_fn_internal WtlEntry* lruPop(WtlLruList* lru)
 {
-	WtlEntry* victim = NULL;
-	WtlEntry* newTail = NULL;
+    WtlEntry* victim = NULL;
+    WtlEntry* newTail = NULL;
 
-	DEBUG_ASSERT(lru);
-	if (!lru)
-	{
-		return NULL;
-	}	
+    DEBUG_ASSERT(lru);
+    if (!lru)
+    {
+        return NULL;
+    }	
 
-	// There is no tail, nothing to return
-	if (!lru->tail)
-	{
-		return NULL;
-	}
+    // There is no tail, nothing to return
+    if (!lru->tail)
+    {
+        return NULL;
+    }
 
-	victim = lru->tail;
+    victim = lru->tail;
 
-	// Single element tail == head, clear pointers
-	if (lru->head == lru->tail)
-	{
-		lru->head = NULL;
-		lru->tail = NULL;
-	}
-	else
-	{
-		// Repair the ring after tail removal
-		newTail = victim->prev;
-		newTail->next = lru->head;
+    // Single element tail == head, clear pointers
+    if (lru->head == lru->tail)
+    {
+        lru->head = NULL;
+        lru->tail = NULL;
+    }
+    else
+    {
+        // Repair the ring after tail removal
+        newTail = victim->prev;
+        newTail->next = lru->head;
 
-		lru->head->prev = newTail;
-		lru->tail = newTail;
-	}
+        lru->head->prev = newTail;
+        lru->tail = newTail;
+    }
 
-	_lruNodeClearLinks(victim);
-	_lruDecrementCount(lru);
+    _lruNodeClearLinks(victim);
+    _lruDecrementCount(lru);
 
-	return victim;
+    return victim;
 }
 
 /*
@@ -207,61 +207,61 @@ vnlib_fn_internal WtlEntry* lruPop(WtlLruList* lru)
 */
 vnlib_fn_internal int lruUnlink(WtlLruList* lru, WtlEntry* entry)
 {
-	WtlEntry* newHead = NULL;
-	WtlEntry* newTail = NULL;
+    WtlEntry* newHead = NULL;
+    WtlEntry* newTail = NULL;
 
-	DEBUG_ASSERT(lru);
-	DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(lru);
+    DEBUG_ASSERT(entry);
 
-	// Entry must be linked in a list, list is circular, must never 
-	// have a null pointer if in the list
-	DEBUG_ASSERT(entry->prev);
-	DEBUG_ASSERT(entry->next);
+    // Entry must be linked in a list, list is circular, must never 
+    // have a null pointer if in the list
+    DEBUG_ASSERT(entry->prev);
+    DEBUG_ASSERT(entry->next);
 
-	if (!lru || !entry || !entry->prev || !entry->next)
-	{
-		return LRU_FALSE;
-	}
+    if (!lru || !entry || !entry->prev || !entry->next)
+    {
+        return LRU_FALSE;
+    }
 
-	// Entry is the only element in the list
-	if (lru->head == entry && lru->tail == entry)
-	{
-		// Only element: no ring to repair, just clear the list
-		lru->head = NULL;
-		lru->tail = NULL;
-	}
-	// Entry is the head of the list
-	else if (lru->head == entry)
-	{
-		// Advance head to the next entry and re-close the ring from tail to new head
-		newHead = entry->next;
-		newHead->prev = lru->tail;
+    // Entry is the only element in the list
+    if (lru->head == entry && lru->tail == entry)
+    {
+        // Only element: no ring to repair, just clear the list
+        lru->head = NULL;
+        lru->tail = NULL;
+    }
+    // Entry is the head of the list
+    else if (lru->head == entry)
+    {
+        // Advance head to the next entry and re-close the ring from tail to new head
+        newHead = entry->next;
+        newHead->prev = lru->tail;
 
-		lru->tail->next = newHead;
-		lru->head = newHead;
-	}
-	// Entry is the tail of the list
-	else if (lru->tail == entry)
-	{
-		// Retreat tail to the previous entry and re-close the ring from head to new tail
-		newTail = entry->prev;
-		newTail->next = lru->head;
+        lru->tail->next = newHead;
+        lru->head = newHead;
+    }
+    // Entry is the tail of the list
+    else if (lru->tail == entry)
+    {
+        // Retreat tail to the previous entry and re-close the ring from head to new tail
+        newTail = entry->prev;
+        newTail->next = lru->head;
 
-		lru->head->prev = newTail;
-		lru->tail = newTail;
-	}
-	// Interior node
-	else
-	{
-		// Head and tail are unaffected, update node pointers
-		entry->prev->next = entry->next;
-		entry->next->prev = entry->prev;
-	}
+        lru->head->prev = newTail;
+        lru->tail = newTail;
+    }
+    // Interior node
+    else
+    {
+        // Head and tail are unaffected, update node pointers
+        entry->prev->next = entry->next;
+        entry->next->prev = entry->prev;
+    }
 
-	_lruNodeClearLinks(entry);
-	_lruDecrementCount(lru);
+    _lruNodeClearLinks(entry);
+    _lruDecrementCount(lru);
 
-	return LRU_TRUE;
+    return LRU_TRUE;
 }
 
 /*
@@ -270,8 +270,8 @@ vnlib_fn_internal int lruUnlink(WtlLruList* lru, WtlEntry* entry)
 */
 vnlib_fn_internal int lruMoveToHead(WtlLruList* lru, WtlEntry* entry)
 {
-	// Push cannot fail if unlink succeeds as it properly clears its fields
-	return lruUnlink(lru, entry) && lruPush(lru, entry);
+    // Push cannot fail if unlink succeeds as it properly clears its fields
+    return lruUnlink(lru, entry) && lruPush(lru, entry);
 }
 
 /*
@@ -280,8 +280,8 @@ vnlib_fn_internal int lruMoveToHead(WtlLruList* lru, WtlEntry* entry)
 */
 vnlib_fn_internal WtlEntry* lruPeek(const WtlLruList* lru)
 {
-	// tail contains least recently used, same as peek
-	return lruTailGet(lru);
+    // tail contains least recently used, same as peek
+    return lruTailGet(lru);
 }
 
 /*
@@ -290,9 +290,9 @@ vnlib_fn_internal WtlEntry* lruPeek(const WtlLruList* lru)
 */
 vnlib_fn_internal WtlEntry* lruHeadGet(const WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);	
+    DEBUG_ASSERT(lru);	
 
-	return lru ? lru->head : NULL;
+    return lru ? lru->head : NULL;
 }
 
 /*
@@ -301,9 +301,9 @@ vnlib_fn_internal WtlEntry* lruHeadGet(const WtlLruList* lru)
 */
 vnlib_fn_internal WtlEntry* lruTailGet(const WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);	
+    DEBUG_ASSERT(lru);	
 
-	return lru ? lru->tail : NULL;
+    return lru ? lru->tail : NULL;
 }
 
 /*
@@ -312,9 +312,9 @@ vnlib_fn_internal WtlEntry* lruTailGet(const WtlLruList* lru)
 */
 vnlib_fn_internal int lruIsEmpty(const WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);	
+    DEBUG_ASSERT(lru);	
 
-	return lru ? lru->count == 0 : 1;
+    return lru ? lru->count == 0 : 1;
 }
 
 /*
@@ -323,7 +323,7 @@ vnlib_fn_internal int lruIsEmpty(const WtlLruList* lru)
 */
 vnlib_fn_internal uint32_t lruCount(const WtlLruList* lru)
 {
-	DEBUG_ASSERT(lru);
+    DEBUG_ASSERT(lru);
 
-	return lru ? lru->count : 0;
+    return lru ? lru->count : 0;
 }

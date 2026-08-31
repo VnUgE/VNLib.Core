@@ -39,8 +39,8 @@
 #define WTL_NUM_MAX_PERCENT 99
 
 #ifndef WTL_CACHE_LINE
-	/* Size in bytes of the target processor cache line size for alignment */
-	#define WTL_CACHE_LINE 64		
+    /* Size in bytes of the target processor cache line size for alignment */
+    #define WTL_CACHE_LINE 64		
 #endif /* !WTL_CACHE_LINE */
 
 /*
@@ -48,44 +48,44 @@
 * 75 means resize when count > capacity * 75 / 100.
 */
 #ifndef WTL_HASHTABLE_LOAD_FACTOR
-	#define WTL_HASHTABLE_LOAD_FACTOR 75ul
+    #define WTL_HASHTABLE_LOAD_FACTOR 75ul
 #elif WTL_HASHTABLE_LOAD_FACTOR <= 0 || WTL_HASHTABLE_LOAD_FACTOR > 100
-	#error Invalid hashtable load factor
+    #error Invalid hashtable load factor
 #endif // !WTL_HASHTABLE_LOAD_FACTOR
 
 struct wtl_internal_cache_config
 {
-	/* primary hash function's seed */
-	uint64_t	keySeed;
+    /* primary hash function's seed */
+    uint64_t	keySeed;
 
-	/* Maximum capacity of the entire cache (also max hash table slots allocated) */
-	uint32_t	capacity;
-	
-	/* The max entry count allowed in the window cache lru */
-	uint32_t	windowSize;	
+    /* Maximum capacity of the entire cache (also max hash table slots allocated) */
+    uint32_t	capacity;
+    
+    /* The max entry count allowed in the window cache lru */
+    uint32_t	windowSize;	
 
-	/* The max entry count allowed in the main cache protected lru */
-	uint32_t	protectedSize;
+    /* The max entry count allowed in the main cache protected lru */
+    uint32_t	protectedSize;
 
-	/* That max entry count allowed in the main cache probationary lru */
-	uint32_t	probationSize;
+    /* That max entry count allowed in the main cache probationary lru */
+    uint32_t	probationSize;
 };
 
 struct WtlCtx {
 
-	const struct wtl_internal_cache_config config;
+    const struct wtl_internal_cache_config config;
 
-	WtlSketch		sketch;
-	WtlHashTable	table;
-	WtlLruList		windowCache;
+    WtlSketch		sketch;
+    WtlHashTable	table;
+    WtlLruList		windowCache;
 
-	struct {
-		WtlLruList		protected;
-		WtlLruList		probation;
-	} mainCache;
+    struct {
+        WtlLruList		protected;
+        WtlLruList		probation;
+    } mainCache;
 
-	// .hash table slot memory
-	// .sketch table memory	
+    // .hash table slot memory
+    // .sketch table memory	
 };
 
 /*
@@ -95,12 +95,12 @@ struct WtlCtx {
 */
 struct wtl_cache_layout
 {
-	uint64_t slotsOffset;
-	uint64_t slotsBytes;
-	uint64_t sketchOffset;
-	uint64_t sketchBytes;
-	uint64_t htRealCapacity;
-	uint64_t total;
+    uint64_t slotsOffset;
+    uint64_t slotsBytes;
+    uint64_t sketchOffset;
+    uint64_t sketchBytes;
+    uint64_t htRealCapacity;
+    uint64_t total;
 };
 
 /*
@@ -108,13 +108,13 @@ struct wtl_cache_layout
 */
 static _vn_inline uint64_t _alignUp(uint64_t value, uint64_t align)
 {
-	return (value + (align - 1)) & ~(align - 1);
+    return (value + (align - 1)) & ~(align - 1);
 }
 
 static _vn_inline uint64_t _pow2RoundUp(uint64_t x)
 {
-	while ((x & (x - 1))) x++;
-	return x;
+    while ((x & (x - 1))) x++;
+    return x;
 }
 
 /*
@@ -123,10 +123,10 @@ static _vn_inline uint64_t _pow2RoundUp(uint64_t x)
 */
 static _vn_inline uint64_t _htCapacityWithOverhead(uint64_t capacity)
 {
-	// Add overhead capacity for extra load factor compensation
-	capacity += (capacity * (100ull - WTL_HASHTABLE_LOAD_FACTOR)) / 100ull;
+    // Add overhead capacity for extra load factor compensation
+    capacity += (capacity * (100ull - WTL_HASHTABLE_LOAD_FACTOR)) / 100ull;
 
-	return _pow2RoundUp(capacity);
+    return _pow2RoundUp(capacity);
 }
 
 // Internal helpers exposed for testing

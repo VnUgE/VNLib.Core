@@ -47,7 +47,7 @@
 #define _nc_fn_inline _vn_inline
 
 #ifdef  _VN_IS_WINDOWS
-	#define _NC_IS_WINDOWS
+    #define _NC_IS_WINDOWS
 #endif //  _VN_IS_WINDOWS
 
 /*
@@ -56,11 +56,11 @@
 * removing the dependency on <string.h>.
 */
 #ifndef SPAN_NO_MEMMOVE
-	#include <string.h>
+    #include <string.h>
 #endif
 
 #ifndef NULL
-	#define NULL ((void*)0)
+    #define NULL ((void*)0)
 #endif
 
 
@@ -70,8 +70,8 @@
 */
 typedef struct memory_span_struct
 {
-	uint8_t* data;
-	uint32_t size;
+    uint8_t* data;
+    uint32_t size;
 } span_t;
 
 /*
@@ -80,8 +80,8 @@ typedef struct memory_span_struct
 */
 typedef struct read_only_memory_span_struct
 {
-	const uint8_t* data;
-	uint32_t size;
+    const uint8_t* data;
+    uint32_t size;
 } cspan_t;
 
 /*
@@ -92,10 +92,10 @@ typedef struct read_only_memory_span_struct
 */
 static _nc_fn_inline void spanInit(span_t* span, uint8_t* data, uint32_t size)
 {
-	span->data = data;
-	span->size = size;
+    span->data = data;
+    span->size = size;
 
-	DEBUG_ASSERT2(data != NULL || size == 0, "Invalid span init: non-empty spans must have a non-null data pointer");
+    DEBUG_ASSERT2(data != NULL || size == 0, "Invalid span init: non-empty spans must have a non-null data pointer");
 }
 
 /*
@@ -106,10 +106,10 @@ static _nc_fn_inline void spanInit(span_t* span, uint8_t* data, uint32_t size)
 */
 static _nc_fn_inline void spanInitC(cspan_t* span, const uint8_t* data, uint32_t size)
 {
-	span->data = data;
-	span->size = size;
+    span->data = data;
+    span->size = size;
 
-	DEBUG_ASSERT2(data != NULL || size == 0, "Invalid span init: non-empty spans must have a non-null data pointer");
+    DEBUG_ASSERT2(data != NULL || size == 0, "Invalid span init: non-empty spans must have a non-null data pointer");
 }
 
 /*
@@ -119,9 +119,9 @@ static _nc_fn_inline void spanInitC(cspan_t* span, const uint8_t* data, uint32_t
 */
 static _nc_fn_inline cspan_t spanToC(span_t span)
 {
-	cspan_t cs;
-	spanInitC(&cs, span.data, span.size);
-	return cs;
+    cspan_t cs;
+    spanInitC(&cs, span.data, span.size);
+    return cs;
 }
 
 /*
@@ -131,7 +131,7 @@ static _nc_fn_inline cspan_t spanToC(span_t span)
 */
 static _nc_fn_inline int spanIsNull(span_t span)
 {
-	return span.data == NULL;
+    return span.data == NULL;
 }
 
 /*
@@ -141,7 +141,7 @@ static _nc_fn_inline int spanIsNull(span_t span)
 */
 static _nc_fn_inline int spanIsNullC(cspan_t span)
 {
-	return span.data == NULL;
+    return span.data == NULL;
 }
 
 /*
@@ -152,7 +152,7 @@ whether a backing pointer is present.
 */
 static _nc_fn_inline int spanIsEmpty(span_t span)
 {
-	return span.size == 0;
+    return span.size == 0;
 }
 
 /*
@@ -162,7 +162,7 @@ static _nc_fn_inline int spanIsEmpty(span_t span)
 */
 static _nc_fn_inline int spanIsEmptyC(cspan_t span)
 {
-	return span.size == 0;
+    return span.size == 0;
 }
 
 /*
@@ -178,7 +178,7 @@ static _nc_fn_inline int spanIsEmptyC(cspan_t span)
 */
 static _nc_fn_inline int spanIsValidRange(span_t span, uint32_t offset, uint32_t size)
 {
-	return offset <= span.size && size <= span.size - offset;
+    return offset <= span.size && size <= span.size - offset;
 }
 
 /*
@@ -190,7 +190,7 @@ static _nc_fn_inline int spanIsValidRange(span_t span, uint32_t offset, uint32_t
 */
 static _nc_fn_inline int spanIsValidRangeC(cspan_t span, uint32_t offset, uint32_t size)
 {
-	return offset <= span.size && size <= span.size - offset;
+    return offset <= span.size && size <= span.size - offset;
 }
 
 /*
@@ -200,7 +200,7 @@ static _nc_fn_inline int spanIsValidRangeC(cspan_t span, uint32_t offset, uint32
 */
 static _nc_fn_inline uint32_t spanGetSize(span_t span)
 {
-	return span.size;
+    return span.size;
 }
 
 /*
@@ -210,7 +210,7 @@ static _nc_fn_inline uint32_t spanGetSize(span_t span)
 */
 static _nc_fn_inline uint32_t spanGetSizeC(cspan_t span)
 {
-	return span.size;
+    return span.size;
 }
 
 /*
@@ -225,16 +225,16 @@ static _nc_fn_inline uint32_t spanGetSizeC(cspan_t span)
 */
 static _nc_fn_inline const uint8_t* spanGetOffsetC(cspan_t span, uint32_t offset)
 {
-	/* Safe null pass-through for empty spans at offset 0 */
-	if (span.size == 0 && offset == 0)
-	{
-		return NULL;
-	}
+    /* Safe null pass-through for empty spans at offset 0 */
+    if (span.size == 0 && offset == 0)
+    {
+        return NULL;
+    }
 
-	DEBUG_ASSERT2(span.data != NULL, "spanGetOffsetC: data pointer is NULL on a non-empty span");
-	DEBUG_ASSERT2(offset < span.size, "spanGetOffsetC: offset is out of range");
+    DEBUG_ASSERT2(span.data != NULL, "spanGetOffsetC: data pointer is NULL on a non-empty span");
+    DEBUG_ASSERT2(offset < span.size, "spanGetOffsetC: offset is out of range");
 
-	return span.data + offset;
+    return span.data + offset;
 }
 
 /*
@@ -245,7 +245,7 @@ static _nc_fn_inline const uint8_t* spanGetOffsetC(cspan_t span, uint32_t offset
 */
 static _nc_fn_inline uint8_t* spanGetOffset(span_t span, uint32_t offset)
 {
-	return (uint8_t*)spanGetOffsetC(spanToC(span), offset);
+    return (uint8_t*)spanGetOffsetC(spanToC(span), offset);
 }
 
 
@@ -260,18 +260,18 @@ caller is responsible for ensuring the range is within bounds.
 */
 static _nc_fn_inline span_t spanSlice(span_t span, uint32_t offset, uint32_t size)
 {
-	span_t slice;
+    span_t slice;
 
-	if (size == 0)
-	{
-		spanInit(&slice, NULL, 0);
-	}
-	else
-	{
-		spanInit(&slice, spanGetOffset(span, offset), size);
-	}
+    if (size == 0)
+    {
+        spanInit(&slice, NULL, 0);
+    }
+    else
+    {
+        spanInit(&slice, spanGetOffset(span, offset), size);
+    }
 
-	return slice;
+    return slice;
 }
 
 /*
@@ -283,18 +283,18 @@ static _nc_fn_inline span_t spanSlice(span_t span, uint32_t offset, uint32_t siz
 */
 static _nc_fn_inline cspan_t spanSliceC(cspan_t span, uint32_t offset, uint32_t size)
 {
-	cspan_t slice;
+    cspan_t slice;
 
-	if (size == 0)
-	{
-		spanInitC(&slice, NULL, 0);
-	}
-	else
-	{
-		spanInitC(&slice, spanGetOffsetC(span, offset), size);
-	}
+    if (size == 0)
+    {
+        spanInitC(&slice, NULL, 0);
+    }
+    else
+    {
+        spanInitC(&slice, spanGetOffsetC(span, offset), size);
+    }
 
-	return slice;
+    return slice;
 }
 
 /*
@@ -305,34 +305,34 @@ src.size must be <= dest.size. A zero-size copy is a no-op.
 */
 static _nc_fn_inline void spanCopyC(cspan_t src, span_t dest)
 {
-	if (src.size == 0)
-	{
-		return;
-	}
+    if (src.size == 0)
+    {
+        return;
+    }
 
-	DEBUG_ASSERT2(src.data != NULL,		"spanCopyC: source data pointer is NULL")
-	DEBUG_ASSERT2(dest.data != NULL,	"spanCopyC: destination data pointer is NULL")
-	DEBUG_ASSERT2(dest.size >= src.size,"spanCopyC: destination buffer is smaller than source")
+    DEBUG_ASSERT2(src.data != NULL,		"spanCopyC: source data pointer is NULL")
+    DEBUG_ASSERT2(dest.data != NULL,	"spanCopyC: destination data pointer is NULL")
+    DEBUG_ASSERT2(dest.size >= src.size,"spanCopyC: destination buffer is smaller than source")
 
 #ifdef _NC_IS_WINDOWS
 
-	/*
-	* Use memmove_s on Windows, forwarding dest.size as the destination
-	* buffer capacity for extra runtime overrun detection.
-	*/
-	memmove_s(dest.data, dest.size, src.data, src.size);
+    /*
+    * Use memmove_s on Windows, forwarding dest.size as the destination
+    * buffer capacity for extra runtime overrun detection.
+    */
+    memmove_s(dest.data, dest.size, src.data, src.size);
 
 #elif defined(SPAN_NO_MEMMOVE)
-	/* Portable fallback */
-	{
-		uint32_t i;
-		for (i = 0; i < src.size; i++)
-		{
-			dest.data[i] = src.data[i];
-		}
-	}
+    /* Portable fallback */
+    {
+        uint32_t i;
+        for (i = 0; i < src.size; i++)
+        {
+            dest.data[i] = src.data[i];
+        }
+    }
 #else
-	memmove(dest.data, src.data, src.size);
+    memmove(dest.data, src.data, src.size);
 #endif
 }
 
@@ -343,7 +343,7 @@ static _nc_fn_inline void spanCopyC(cspan_t src, span_t dest)
 */
 static _nc_fn_inline void spanCopy(span_t src, span_t dest)
 {
-	spanCopyC(spanToC(src), dest);
+    spanCopyC(spanToC(src), dest);
 }
 
 /*
@@ -354,9 +354,9 @@ static _nc_fn_inline void spanCopy(span_t src, span_t dest)
 */
 static _nc_fn_inline void spanReadC(cspan_t src, uint8_t* dest, uint32_t size)
 {
-	span_t dsts;
-	spanInit(&dsts, dest, size);
-	spanCopyC(src, dsts);
+    span_t dsts;
+    spanInit(&dsts, dest, size);
+    spanCopyC(src, dsts);
 }
 
 /*
@@ -367,7 +367,7 @@ static _nc_fn_inline void spanReadC(cspan_t src, uint8_t* dest, uint32_t size)
 */
 static _nc_fn_inline void spanRead(span_t src, uint8_t* dest, uint32_t size)
 {
-	spanReadC(spanToC(src), dest, size);
+    spanReadC(spanToC(src), dest, size);
 }
 
 /*
@@ -381,19 +381,19 @@ span.size. A zero-size write is a no-op.
 */
 static _nc_fn_inline void spanWrite(span_t span, uint32_t offset, const uint8_t* data, uint32_t size)
 {
-	cspan_t src;
+    cspan_t src;
 
-	if (size == 0)
-	{
-		return;
-	}
+    if (size == 0)
+    {
+        return;
+    }
 
-	DEBUG_ASSERT2(data != NULL, "spanWrite: source data pointer is NULL");
-	DEBUG_ASSERT2(!spanIsNull(span), "spanWrite: destination span is null");
-	DEBUG_ASSERT2(spanIsValidRange(span, offset, size), "spanWrite: write range is out of bounds");	
+    DEBUG_ASSERT2(data != NULL, "spanWrite: source data pointer is NULL");
+    DEBUG_ASSERT2(!spanIsNull(span), "spanWrite: destination span is null");
+    DEBUG_ASSERT2(spanIsValidRange(span, offset, size), "spanWrite: write range is out of bounds");	
 
-	spanInitC(&src, data, size);
-	spanCopyC(src, spanSlice(span, offset, size));
+    spanInitC(&src, data, size);
+    spanCopyC(src, spanSlice(span, offset, size));
 }
 
 /*
@@ -406,10 +406,10 @@ by size, providing a simple cursor pattern for building payloads in-place.
 */
 static _nc_fn_inline void spanAppend(span_t span, uint32_t* offset, const uint8_t* data, uint32_t size)
 {
-	DEBUG_ASSERT2(offset != NULL, "spanAppend: offset pointer is NULL");
-	
-	spanWrite(span, *offset, data, size);
-	*offset += size;
+    DEBUG_ASSERT2(offset != NULL, "spanAppend: offset pointer is NULL");
+    
+    spanWrite(span, *offset, data, size);
+    *offset += size;
 }
 
 

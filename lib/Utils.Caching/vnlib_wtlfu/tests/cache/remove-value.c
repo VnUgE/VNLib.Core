@@ -7,22 +7,22 @@
 */
 static int RemoveValueIsolated(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlValue dummy = dummy_value("hello world");
-	WtlKey dummyKey = dummy_key("hello world");
+    WtlValue dummy = dummy_value("hello world");
+    WtlKey dummyKey = dummy_key("hello world");
 
-	EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
-	EXPECT_EQ(WtlCount(cache), 1);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlCount(cache), 1);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
 
-	// Remove and check 
-	EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_SUCCESS);
-	EXPECT_EQ(WtlCount(cache), 0);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
+    // Remove and check 
+    EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_SUCCESS);
+    EXPECT_EQ(WtlCount(cache), 0);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -31,19 +31,19 @@ static int RemoveValueIsolated(void)
 */
 static int RemoveValueDoubleRemoveFails(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlValue dummy = dummy_value("hello world");
-	WtlKey dummyKey = dummy_key("hello world");
+    WtlValue dummy = dummy_value("hello world");
+    WtlKey dummyKey = dummy_key("hello world");
 
-	EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
 
-	// Double remove should fail with not found
-	EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_SUCCESS);
-	EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_ERR_NOT_FOUND);
+    // Double remove should fail with not found
+    EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_SUCCESS);
+    EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -53,23 +53,23 @@ static int RemoveValueDoubleRemoveFails(void)
 */
 static int RemoveValueFromPeek(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlValue dummy = dummy_value("hello world");
-	WtlKey dummyKey = dummy_key("hello world");
+    WtlValue dummy = dummy_value("hello world");
+    WtlKey dummyKey = dummy_key("hello world");
 
-	WtlValue peekaboo; 
+    WtlValue peekaboo; 
 
-	EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, &peekaboo), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, &peekaboo), WTL_SUCCESS);
 
-	// Remove by peeked value
-	EXPECT_EQ(WtlRemoveValue(cache, &peekaboo), WTL_SUCCESS);
-	EXPECT_EQ(WtlCount(cache), 0);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
+    // Remove by peeked value
+    EXPECT_EQ(WtlRemoveValue(cache, &peekaboo), WTL_SUCCESS);
+    EXPECT_EQ(WtlCount(cache), 0);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -79,23 +79,23 @@ static int RemoveValueFromPeek(void)
 */
 static int RemoveValueFromGet(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlValue dummy = dummy_value("hello world");
-	WtlKey dummyKey = dummy_key("hello world");
+    WtlValue dummy = dummy_value("hello world");
+    WtlKey dummyKey = dummy_key("hello world");
 
-	WtlValue getVal;
+    WtlValue getVal;
 
-	EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
-	EXPECT_EQ(WtlGet(cache, dummyKey, &getVal), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &dummy, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlGet(cache, dummyKey, &getVal), WTL_SUCCESS);
 
-	// Remove by get value
-	EXPECT_EQ(WtlRemoveValue(cache, &getVal), WTL_SUCCESS);
-	EXPECT_EQ(WtlCount(cache), 0);
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
+    // Remove by get value
+    EXPECT_EQ(WtlRemoveValue(cache, &getVal), WTL_SUCCESS);
+    EXPECT_EQ(WtlCount(cache), 0);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -104,15 +104,15 @@ static int RemoveValueFromGet(void)
 */
 static int RemoveValueEmptyTableReturnsNotFound(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlValue dummy = dummy_value("hello world");
+    WtlValue dummy = dummy_value("hello world");
 
-	ENSURE(WtlCount(cache) == 0);
-	EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_ERR_NOT_FOUND);
+    ENSURE(WtlCount(cache) == 0);
+    EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -121,27 +121,27 @@ static int RemoveValueEmptyTableReturnsNotFound(void)
 */
 static int RemoveValueLoadedTableReturnsNotFound(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	// Add items to the table
-	_addDummyValues(cache);
+    // Add items to the table
+    _addDummyValues(cache);
 
-	WtlValue dummy = dummy_value("hello world");
+    WtlValue dummy = dummy_value("hello world");
 
-	EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_ERR_NOT_FOUND);
+    EXPECT_EQ(WtlRemoveValue(cache, &dummy), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 static int RunRemoveValueTests(void)
 {
-	RUN_TEST(RemoveValueIsolated());
-	RUN_TEST(RemoveValueDoubleRemoveFails());
-	RUN_TEST(RemoveValueFromPeek());
-	RUN_TEST(RemoveValueFromGet());
-	RUN_TEST(RemoveValueEmptyTableReturnsNotFound());
-	RUN_TEST(RemoveValueLoadedTableReturnsNotFound());
+    RUN_TEST(RemoveValueIsolated());
+    RUN_TEST(RemoveValueDoubleRemoveFails());
+    RUN_TEST(RemoveValueFromPeek());
+    RUN_TEST(RemoveValueFromGet());
+    RUN_TEST(RemoveValueEmptyTableReturnsNotFound());
+    RUN_TEST(RemoveValueLoadedTableReturnsNotFound());
 
-	return 0;
+    return 0;
 }
