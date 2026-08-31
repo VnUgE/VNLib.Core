@@ -1,6 +1,7 @@
 
 // get.c
 
+static int GetParameterValidation(void)
 static int GetBasic(void)
 {	
 	WtlCtx* cache = allocCache(&_defaultConfig);
@@ -93,6 +94,7 @@ static int GetPromotesProbeeWhenProtectedFreeSpace(void)
 
 static int RunGetTests(void)
 {
+    RUN_TEST(GetParameterValidation());
 	RUN_TEST(GetBasic());
 	RUN_TEST(GetNotFound());
 	RUN_TEST(GetIncrementsCounterForKey());

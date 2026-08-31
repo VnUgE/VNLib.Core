@@ -51,6 +51,10 @@ static int InsertFailsWithWillEvictWhenNull(void)
 		EXPECT_EQ(WtlInsert(cache, &_dummy32[i], NULL), WTL_SUCCESS);
 	}
 
+    // At the wall, both segments must be exactly full
+    EXPECT_EQ(lruCount(&cache->windowCache), cache->config.windowSize);
+    EXPECT_EQ(lruCount(&cache->mainCache.probation), cache->config.probationSize);
+
 	// Exect an eviction with one more insertion
 	EXPECT_EQ(WtlInsert(cache, &_dummyValues[0], NULL), WTL_ERR_WILL_EVICT);
 

@@ -27,6 +27,13 @@ static int PeekParameterValidation(void)
 	emptyKey.len = 5;
 	EXPECT_EQ(WtlPeek(cache, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
 
+    // Peek with null out pointer on a HIT must still succeed
+    {
+        _addDummyValues(cache);
+        EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], NULL), WTL_SUCCESS);
+        EXPECT_EQ(WtlCount(cache), DUMMY_VALUE_SIZE);
+    }
+
 	free(cache);
 	return 0;
 }
