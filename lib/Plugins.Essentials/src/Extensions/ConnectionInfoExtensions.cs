@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -37,7 +37,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 {
 
     /// <summary>
-    /// Provides <see cref="ConnectionInfo"/> extension methods
+    /// Provides <see cref="IConnectionInfo"/> extension methods
     /// for common use cases
     /// </summary>
     public static class IConnectionInfoExtensions
@@ -54,7 +54,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Cache-Control header value for disabling cache
         /// </summary>
         public static readonly string NO_CACHE_RESPONSE_HEADER_VALUE = HttpHelpers.GetCacheString(CacheType.NoCache | CacheType.NoStore | CacheType.Revalidate);
-    
+
 
         /// <summary>
         /// Determines if the client accepts the response content type
@@ -90,10 +90,10 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             //Search for the content-sub-type 
 
-            //Get prinary side of mime type
+            //Get primary side of mime type
             ReadOnlySpan<char> primary = contentType.AsSpan().SliceBeforeParam('/');
 
-            foreach(string accept in server.Accept)
+            foreach (string accept in server.Accept)
             {
                 //The the accept subtype
                 ReadOnlySpan<char> ctSubType = accept.AsSpan().SliceBeforeParam('/');
@@ -115,15 +115,15 @@ namespace VNLib.Plugins.Essentials.Extensions
         private static bool AcceptsAny(IConnectionInfo server)
         {
             // If no accept header is sent by clients, it is assumed it accepts all content types
-            if(server.Accept.Count == 0)
+            if (server.Accept.Count == 0)
             {
                 return true;
             }
 
             //Search list for accept any
-            foreach(string accept in server.Accept)
+            foreach (string accept in server.Accept)
             {
-                if(accept.StartsWith("*/*", StringComparison.OrdinalIgnoreCase))
+                if (accept.StartsWith("*/*", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -205,7 +205,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             rangeBuilder.Append(end);
             rangeBuilder.Append('/');
             rangeBuilder.Append(length);
-           
+
             entity.Server.Headers[HttpResponseHeader.ContentRange] = rangeBuilder.ToString();
         }
 
@@ -214,7 +214,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <returns>true if the user-agent specified the cors security header</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsCors(this IConnectionInfo server) 
+        public static bool IsCors(this IConnectionInfo server)
             => string.Equals("cors", server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
@@ -226,7 +226,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsCrossSite(this IConnectionInfo server)
         {
-            return string.Equals("cross-site", server.Headers[SEC_HEADER_SITE], StringComparison.OrdinalIgnoreCase) 
+            return string.Equals("cross-site", server.Headers[SEC_HEADER_SITE], StringComparison.OrdinalIgnoreCase)
                 || (server.Origin != null && !string.Equals(server.RequestUri.DnsSafeHost, server.Origin.DnsSafeHost, StringComparison.Ordinal));
         }
 
@@ -236,7 +236,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="server"></param>
         /// <returns>true if sec-user header was set to "?1"</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsUserInvoked(this IConnectionInfo server) 
+        public static bool IsUserInvoked(this IConnectionInfo server)
             => string.Equals("?1", server.Headers[SEC_HEADER_USER], StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
@@ -244,7 +244,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <returns>true if sec-mode set to "navigate"</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNavigation(this IConnectionInfo server) 
+        public static bool IsNavigation(this IConnectionInfo server)
             => string.Equals("navigate", server.Headers[SEC_HEADER_MODE], StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
@@ -266,11 +266,11 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static void SetCache(this IConnectionInfo server, CacheType type, TimeSpan maxAge)
         {
             //If no cache flag is set, set the pragma header to no-cache
-            if((type & CacheType.NoCache) > 0)
+            if ((type & CacheType.NoCache) > 0)
             {
                 server.Headers[HttpResponseHeader.Pragma] = "no-cache";
             }
-            //Set the cache hader string using the http helper class
+            //Set the cache header string using the http helper class
             server.Headers[HttpResponseHeader.CacheControl] = HttpHelpers.GetCacheString(type, maxAge);
         }
 
@@ -290,26 +290,27 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Gets a value indicating whether the port number in the request is equivalent to the port number 
         /// on the local server. 
         /// </summary>
-        /// <returns>True if the port number in the <see cref="ConnectionInfo.RequestUri"/> matches the 
-        /// <see cref="ConnectionInfo.LocalEndpoint"/> port false if they do not match
+        /// <returns>True if the port number in the <see cref="IConnectionInfo.RequestUri"/> matches the 
+        /// <see cref="IConnectionInfo.LocalEndpoint"/> port false if they do not match
         /// </returns>
         /// <remarks>
         /// Users should call this method to help prevent port based attacks if your
-        /// code relies on the port number of the <see cref="ConnectionInfo.RequestUri"/>
+        /// code relies on the port number of the <see cref="IConnectionInfo.RequestUri"/>
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool EnpointPortsMatch(this IConnectionInfo server) => server.RequestUri.Port == server.LocalEndpoint.Port;
+        public static bool EndpointPortsMatch(this IConnectionInfo server)
+            => server.RequestUri.Port == server.LocalEndpoint.Port;
 
         /// <summary>
         /// Determines if the host of the current request URI matches the referer header host
         /// </summary>
-        /// <returns>True if the request host and the referer host paremeters match, false otherwise</returns>
+        /// <returns>True if the request host and the referer host parameters match, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool RefererMatch(this IConnectionInfo server)
         {
             return string.Equals(
-                server.RequestUri.DnsSafeHost, 
-                server.Referer?.DnsSafeHost, 
+                server.RequestUri.DnsSafeHost,
+                server.Referer?.DnsSafeHost,
                 StringComparison.OrdinalIgnoreCase
             );
         }
@@ -325,11 +326,11 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="secure"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ExpireCookie(
-            this IConnectionInfo server, 
-            string name, 
-            string domain = "", 
-            string path = "/", 
-            CookieSameSite sameSite = CookieSameSite.None, 
+            this IConnectionInfo server,
+            string name,
+            string domain = "",
+            string path = "/",
+            CookieSameSite sameSite = CookieSameSite.None,
             bool secure = false
         )
         {
@@ -409,46 +410,18 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             HttpResponseCookie cookie = new(name)
             {
-                Value = value,
-                Domain = domain,
-                Path = path,
-                MaxAge = expires,
-                IsSession = expires == TimeSpan.MaxValue,
+                Value       = value,
+                Domain      = domain,
+                Path        = path,
+                MaxAge      = expires,
+                IsSession   = expires == TimeSpan.MaxValue,
                 //If the connection is cross origin, then we need to modify the secure and samsite values
-                SameSite = sameSite,
-                HttpOnly = httpOnly,
-                Secure = secure | server.CrossOrigin,
+                SameSite    = sameSite,
+                HttpOnly    = httpOnly,
+                Secure      = secure | server.CrossOrigin,
             };
 
             server.SetCookie(in cookie);
-        }
-
-
-        /// <summary>
-        /// Sets the desired http cookie for the current connection
-        /// </summary>
-        /// <param name="server"></param>
-        /// <param name="cookie">The cookie to set for the server</param>
-        /// <exception cref="ArgumentException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("HttpCookie type is obsolete in favor of HttpResponseCookie")]
-        public static void SetCookie(this IConnectionInfo server, in HttpCookie cookie)
-        {
-            //Set the cookie
-            HttpResponseCookie rCookie = new(cookie.Name)
-            {
-                Value = cookie.Value,
-                Domain = cookie.Domain,
-                Path = cookie.Path,
-                MaxAge = cookie.ValidFor,
-                IsSession = cookie.ValidFor == TimeSpan.MaxValue,
-                //If the connection is cross origin, then we need to modify the secure and samsite values
-                SameSite = cookie.SameSite,
-                HttpOnly = cookie.HttpOnly,
-                Secure = cookie.Secure | server.CrossOrigin,
-            };
-
-            server.SetCookie(in rCookie);
         }
 
         /// <summary>
@@ -457,7 +430,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="server"></param>
         /// <returns>True of the connection was made from the local machine</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsLoopBack(this IConnectionInfo server) 
+        public static bool IsLoopBack(this IConnectionInfo server)
             => IPAddress.Loopback.Equals(GetTrustedIp(server));
 
         /// <summary>
@@ -465,10 +438,11 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <returns>true if the connection specified the dnt header, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool DNT(this IConnectionInfo server) => !string.IsNullOrWhiteSpace(server.Headers[DNT_HEADER]);
+        public static bool DNT(this IConnectionInfo server)
+            => !string.IsNullOrWhiteSpace(server.Headers[DNT_HEADER]);
 
         /// <summary>
-        /// Determins if the current connection is behind a trusted downstream server
+        /// Determines if the current connection is behind a trusted downstream server
         /// </summary>
         /// <param name="server"></param>
         /// <returns>True if the connection came from a trusted downstream server, false otherwise</returns>
@@ -487,7 +461,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="server"></param>
         /// <returns>The real ip of the connection</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static IPAddress GetTrustedIp(this IConnectionInfo server) => GetTrustedIp(server, server.IsBehindDownStreamServer());
+        public static IPAddress GetTrustedIp(this IConnectionInfo server)
+            => GetTrustedIp(server, server.IsBehindDownStreamServer());
 
         /// <summary>
         /// Gets the real IP address of the request if behind a trusted downstream server, otherwise returns the transport remote ip address
@@ -503,7 +478,9 @@ namespace VNLib.Plugins.Essentials.Extensions
                 //Nginx sets a header identifying the remote ip address so parse it
                 string? real_ip = server.Headers[X_FORWARDED_FOR_HEADER];
                 //If the real-ip header is set, try to parse is and return the address found, otherwise return the remote ep 
-                return !string.IsNullOrWhiteSpace(real_ip) && IPAddress.TryParse(real_ip, out IPAddress? addr) ? addr : server.RemoteEndpoint.Address;
+                return string.IsNullOrWhiteSpace(real_ip) || !IPAddress.TryParse(real_ip, out IPAddress? addr)
+                    ? server.RemoteEndpoint.Address
+                    : addr;
             }
             else
             {
@@ -554,7 +531,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Was the connection made on a local network to the server? NOTE: Use with caution
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsLocalConnection(this IConnectionInfo server) => server.LocalEndpoint.Address.IsLocalSubnet(server.GetTrustedIp());
+        public static bool IsLocalConnection(this IConnectionInfo server)
+            => server.LocalEndpoint.Address.IsLocalSubnet(server.GetTrustedIp());
 
         /// <summary>
         /// Get a cookie from the current request
@@ -564,10 +542,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="cookieValue">Is set to cookie if found, or null if not</param>
         /// <returns>True if cookie exists and was retrieved</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool GetCookie(this IConnectionInfo server, string name, [NotNullWhen(true)] out string? cookieValue)
-        {
-            //Try to get a cookie from the request
-            return server.RequestCookies.TryGetValue(name, out cookieValue);
-        }
+        public static bool GetCookie(this IConnectionInfo server, string name, [NotNullWhen(true)] out string? cookieValue) 
+            => server.RequestCookies.TryGetValue(name, out cookieValue);
     }
 }

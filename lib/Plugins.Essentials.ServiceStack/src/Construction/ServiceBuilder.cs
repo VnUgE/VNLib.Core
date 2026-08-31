@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -10,7 +10,7 @@
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -39,7 +39,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
         /// <summary>
         /// Adds callback function that will add a collection of service hosts
-        /// and passes a state paramter to the callback
+        /// and passes a state parameter to the callback
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="state">The optional state parameter</param>

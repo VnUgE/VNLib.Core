@@ -1,4 +1,4 @@
-version: 43
+version: 53
 jobs:
 - name: Repo Sync Push
   steps:
@@ -25,6 +25,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 
 - name: Windows Tests
@@ -33,12 +35,17 @@ jobs:
   - type: CommandStep
     name: Clone init and test
     runInContainer: false
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: PowerShellInterpreter
+      powershell: powershell.exe
       commands: |
-         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
-         cd @project_name@  
-         task -t Module.Taskfile.yaml dev-init
-         task -t Module.Taskfile.yaml test
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+        cd @project_name@/ci
+
+        mise trust mise.toml
+        mise install
+        mise test
+    runAs: 0:0
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -49,6 +56,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 
 - name: Staging build
@@ -58,11 +67,17 @@ jobs:
     name: Clone and build
     runInContainer: false
     interpreter:
-      type: DefaultInterpreter
+      type: PowerShellInterpreter
+      powershell: powershell.exe
       commands: |
         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
-        vnbuild build --no-delay --verbose
-        vnbuild publish --verbose
+        cd @project_name@/ci
+
+        mise trust mise.toml
+        mise install
+        mise vnbuild-build --verbose
+        mise vnbuild-publish --verbose
+    runAs: 0:0
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -76,7 +91,10 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
+
 - name: Ubuntu Tests
   jobExecutor: docker
   steps:
@@ -92,19 +110,19 @@ jobs:
   - type: CommandStep
     name: ubuntu-x64 tests
     runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:8.0.415-noble-amd64@@sha256:a0f438b4cfbfd28cefa865facd9d1359732f8fb266a83a515a3634b0e8ac4f0b
+    image: docker.io/ubuntu:24.04@@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
-        cd @project_name@
+        cd @project_name@/ci
 
-        export DOTNET_ROOT=$(pwd)/.dotnet
-        export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
-        export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-        bash ci/scripts/linux-setup-amd64.sh install
-
-        task -t Module.Taskfile.yaml dev-init
-        task -t Module.Taskfile.yaml test
+        apt update; apt install curl -y
+        chmod +x ./mise
+        ./mise settings experimental=true
+        ./mise bootstrap --yes
+        ./mise test
+    runAs: 0:0
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -115,6 +133,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 
 - name: Fedora Tests
@@ -132,19 +152,18 @@ jobs:
   - type: CommandStep
     name: fedora-x64 tests
     runInContainer: true
-    image: docker.io/fedora:43@@sha256:2ad3073554aef41c15b2c52e968ec0540c931bc3dab8c599ca6eb6f32f3f2d14
+    image: docker.io/fedora:44@@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
-        cd @project_name@
+        cd @project_name@/ci
 
-        export DOTNET_ROOT=$(pwd)/.dotnet
-        export PATH="$PATH:${DOTNET_ROOT}:$HOME/.dotnet/tools"
-        export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-        bash ci/scripts/linux-setup-amd64.sh install
-
-        task -t Module.Taskfile.yaml dev-init
-        task -t Module.Taskfile.yaml test
+        chmod +x ./mise
+        ./mise settings experimental=true
+        ./mise bootstrap --yes
+        ./mise test
+    runAs: 0:0
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -155,6 +174,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 
 - name: Publish master
@@ -164,9 +185,11 @@ jobs:
     name: clone
     runInContainer: false
     interpreter:
-      type: DefaultInterpreter
+      type: PowerShellInterpreter
+      powershell: powershell.exe
       commands: |
         git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+    runAs: 0:0
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -174,10 +197,12 @@ jobs:
     name: Create git tag
     runInContainer: false
     interpreter:
-      type: DefaultInterpreter
+      type: PowerShellInterpreter
+      powershell: powershell.exe
       commands: |
         cd @project_name@
         task tag-current-commit -t Module.Taskfile.yaml
+    runAs: 0:0
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -185,8 +210,15 @@ jobs:
     name: VNBuild Build
     runInContainer: false
     interpreter:
-      type: DefaultInterpreter
-      commands: "vnbuild build --no-delay"
+      type: PowerShellInterpreter
+      powershell: powershell.exe
+      commands: |
+        cd @project_name@/ci
+
+        mise trust mise.toml
+        mise install
+        mise vnbuild-build
+    runAs: 0:0
     useTTY: true
     condition: SUCCESSFUL
     optional: false
@@ -194,9 +226,12 @@ jobs:
     name: VNBuild Publish
     runInContainer: false
     interpreter:
-      type: DefaultInterpreter
+      type: PowerShellInterpreter
+      powershell: powershell.exe
       commands: |
-        vnbuild publish --ftp "@secret:ftp_server_address@" --sign
+        cd @project_name@/ci
+        mise vnbuild-publish --ftp "@secret:ftp_server_address@" --sign
+    runAs: 0:0
     envVars:
     - name: FTP_USERNAME
       value: '@secret:ftp_username@'
@@ -212,4 +247,46 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 14400
+
+- name: Code Reviews
+  jobExecutor: windows
+  steps:
+  - type: CommandStep
+    name: basic-pr-review
+    runInContainer: false
+    interpreter:
+      type: PowerShellInterpreter
+      powershell: powershell.exe
+      commands: |
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+        cd @project_name@/ci/agents
+
+        mise trust agents-mise.toml
+        mise go-task pr-new
+    runAs: 0:0
+    envVars:
+    - name: OCR_LLM_URL
+      value: '@secret:review-llm-url@'
+    - name: OCR_LLM_TOKEN
+      value: '@secret:review-llm-token@'
+    - name: OCR_LLM_MODEL
+      value: vn-ci-review-agent
+    - name: MISE_OVERRIDE_CONFIG_FILENAMES
+      value: agents-mise.toml
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: -develop -master
+    userMatch: anyone
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
+  timeout: 14400
+

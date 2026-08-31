@@ -16,7 +16,7 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Product>VNLib Native Http Compression Provider</Product>
-    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
     <Description>.NET/8.0 dynamically loadable managed wrapper library for loading vnlib_compress native library. It provides an implementation of the IHttpCompressorManager interface for use with the VNLib.Net.Http library and servers wishing to support dynamic response compression.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Compression</RepositoryUrl>
@@ -35,17 +35,6 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.8.0-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="ErrorProne.NET.Structs" Version="0.6.1-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>

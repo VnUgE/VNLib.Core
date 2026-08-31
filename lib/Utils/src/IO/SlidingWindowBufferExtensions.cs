@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -34,7 +34,7 @@ using VNLib.Utils.Extensions;
 namespace VNLib.Utils.IO
 {
     /// <summary>
-    /// Extention methods for <see cref="ISlindingWindowBuffer{T}"/>
+    /// Extension methods for <see cref="ISlidingWindowBuffer{T}"/>
     /// </summary>
     public static class SlidingWindowBufferExtensions
     {
@@ -44,7 +44,7 @@ namespace VNLib.Utils.IO
         /// from the beginning.
         /// </summary>
         /// <returns>The number of bytes of available space in the buffer</returns>
-        public static ERRNO CompactBufferWindow<T>(this ISlindingWindowBuffer<T> sBuf)
+        public static ERRNO CompactBufferWindow<T>(this ISlidingWindowBuffer<T> sBuf)
         {
             //Nothing to compact if the starting data pointer is at the beining of the window
             if (sBuf.WindowStartPos > 0)
@@ -167,7 +167,7 @@ namespace VNLib.Utils.IO
         /// <param name="sBuf"></param>
         /// <param name="buffer">The output buffer to write data to</param>
         /// <returns>The number of elements written to the buffer</returns>
-        public static ERRNO Read<T>(this ISlindingWindowBuffer<T> sBuf, Span<T> buffer)
+        public static ERRNO Read<T>(this ISlidingWindowBuffer<T> sBuf, Span<T> buffer)
         {
             //Calculate the amount of data to copy
             int dataToCopy = Math.Min(buffer.Length, sBuf.AccumulatedSize);
@@ -187,7 +187,7 @@ namespace VNLib.Utils.IO
         /// <param name="input">The stream to read data from</param>
         /// <param name="cancellationToken">A token to cancel the operation</param>
         /// <returns>A value task representing the operation</returns>
-        public static async ValueTask AccumulateDataAsync(this ISlindingWindowBuffer<byte> accumulator, Stream input, CancellationToken cancellationToken)
+        public static async ValueTask AccumulateDataAsync(this ISlidingWindowBuffer<byte> accumulator, Stream input, CancellationToken cancellationToken)
         {
             //Get a buffer from the end of the current window to the end of the buffer
             Memory<byte> bufWindow = accumulator.RemainingBuffer;

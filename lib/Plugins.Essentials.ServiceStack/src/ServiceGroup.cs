@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -10,7 +10,7 @@
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -22,13 +22,7 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-using System.Net;
-using System.Linq;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-
-using VNLib.Utils.Extensions;
-using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
@@ -39,59 +33,17 @@ namespace VNLib.Plugins.Essentials.ServiceStack
     /// and may be loaded by a single server instance.
     /// </summary>
     /// <remarks>
-    /// Initalizes a new <see cref="ServiceGroup"/> of virtual hosts
+    /// Initializes a new <see cref="ServiceGroup"/> of virtual hosts
     /// with common transport
     /// </remarks>
     /// <param name="hosts">The hosts that share a common interface endpoint</param>
     public sealed class ServiceGroup(IEnumerable<IServiceHost> hosts)
     {
-        private readonly LinkedList<IServiceHost> _vHosts = new(hosts);
-        private readonly ConditionalWeakTable<IManagedPlugin, IEndpoint[]> _endpointsForPlugins = new();
+        private readonly IServiceHost[] _vHosts = [..hosts];
 
         /// <summary>
         /// The collection of hosts that are loaded by this group
         /// </summary>
-        public IReadOnlyCollection<IServiceHost> Hosts => _vHosts;
-
-        /// <summary>
-        /// Manually detatches runtime services and their loaded endpoints from all
-        /// endpoints.
-        /// </summary>
-        internal void UnloadAll()
-        {
-            //Remove all loaded endpoints
-            _vHosts.TryForeach(v => _endpointsForPlugins.ForEach(eps => v.OnRuntimeServiceDetach(eps.Key, eps.Value)));
-
-            //Clear all hosts
-            _vHosts.Clear();
-            //Clear all endpoints
-            _endpointsForPlugins.Clear();
-        }
-
-        internal void OnPluginLoaded(IManagedPlugin plugin)
-        {
-            //Get all new endpoints for plugin
-            IEndpoint[] newEndpoints = plugin.GetEndpoints()
-                .ToArray();
-
-            //Add endpoints to dict
-            _endpointsForPlugins.AddOrUpdate(plugin, newEndpoints);
-
-            //Add endpoints to hosts
-            _vHosts.TryForeach(v => v.OnRuntimeServiceAttach(plugin, newEndpoints));
-        }
-
-        internal void OnPluginUnloaded(IManagedPlugin plugin)
-        {
-            //Get the old endpoints from the controller reference and remove them
-            if (_endpointsForPlugins.TryGetValue(plugin, out IEndpoint[]? oldEps))
-            {
-                //Remove the old endpoints
-                _vHosts.TryForeach(v => v.OnRuntimeServiceDetach(plugin, oldEps));
-
-                //remove controller ref
-                _ = _endpointsForPlugins.Remove(plugin);
-            }
-        }
+        public IReadOnlyCollection<IServiceHost> Hosts => _vHosts;  
     }
 }

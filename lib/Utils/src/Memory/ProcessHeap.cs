@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -31,8 +31,8 @@ using VNLib.Utils.Native;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// Provides a <see cref="IUnmanagedHeap"/> wrapper for the <see cref="Marshal"/> virtualalloc 
-    /// global heap methods
+    /// Provides a <see cref="IUnmanagedHeap"/> wrapper for the <see cref="NativeMemory"/> 
+    /// heap allocator
     /// </summary>
     [ComVisible(false)]
     public unsafe class ProcessHeap : VnDisposeable, IUnmanagedHeap
@@ -46,13 +46,13 @@ namespace VNLib.Utils.Memory
         /// <inheritdoc/>
         /// <para>
         /// Is always <see cref="HeapCreation.Shared"/> as this heap is the default 
-        /// process heap. Meaining memory will be shared across the process
+        /// process heap. Meaning memory will be shared across the process
         /// </para>
         /// </summary>
         public HeapCreation CreationFlags { get; } = HeapCreation.Shared | HeapCreation.SupportsRealloc;
 
         /// <summary>
-        /// Initalizes a new global (cross platform) process heap
+        /// Initializes a new global (cross platform) process heap
         /// </summary>
         public ProcessHeap(HeapCreation flags = HeapCreation.None)
         {
@@ -65,7 +65,7 @@ namespace VNLib.Utils.Memory
              */
             CreationFlags = flags | HeapCreation.Shared | HeapCreation.SupportsRealloc;
 
-            // Clear the syncronization flag since locking is never needed or used
+            // Clear the synchronization flag since locking is never needed or used
             CreationFlags &= ~HeapCreation.UseSynchronization;
 
             Trace.WriteLine($"Default heap instance created {GetHashCode():x} with flags {CreationFlags:x}");

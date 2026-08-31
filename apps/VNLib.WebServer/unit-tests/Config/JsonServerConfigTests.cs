@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServerTests
@@ -28,6 +28,7 @@ using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using VNLib.WebServer.Config;
+using VNLib.WebServer.Config.Model;
 
 namespace VNLib.WebServerTests.Config
 {
@@ -252,6 +253,82 @@ namespace VNLib.WebServerTests.Config
             Assert.AreEqual(1, array[0]);
             Assert.AreEqual(2, array[1]);
             Assert.AreEqual(3, array[2]);
+        }
+
+        #endregion
+
+        #region Attribute-Based Config Property Tests
+
+        /// <summary>
+        /// Verifies that the attribute-based <see cref="ServerConfigExtensions.GetConfigProperty{T}(IServerConfig)"/>
+        /// extension correctly resolves a type attributed with <see cref="ConfigurationKeyAttribute"/> and returns
+        /// the deserialized configuration object.
+        /// </summary>
+        [TestMethod]
+        public void GetConfigProperty_AttributedType_ReturnsValue()
+        {
+            string configPath = GetTestDataPath("valid-config.json");
+            JsonServerConfig? config = JsonServerConfig.FromFile(configPath);
+
+            Assert.IsNotNull(config);
+
+            HttpGlobalConfig? httpConfig = config.GetConfigProperty<HttpGlobalConfig>();
+
+            Assert.IsNotNull(httpConfig);
+            Assert.AreEqual("HTTP/1.1", httpConfig.DefaultHttpVersion);
+            Assert.AreEqual(1000, httpConfig.MaxConnections);
+        }
+
+        /// <summary>
+        /// Verifies that the attribute-based extension method resolves a second attributed type
+        /// (<see cref="TcpConfigJson"/>) using its declared configuration key, confirming the pattern
+        /// generalizes across multiple attributed config types.
+        /// </summary>
+        [TestMethod]
+        public void GetConfigProperty_AttributedTcpConfig_ReturnsValue()
+        {
+            string configPath = GetTestDataPath("valid-config.json");
+            JsonServerConfig? config = JsonServerConfig.FromFile(configPath);
+
+            Assert.IsNotNull(config);
+
+            TcpConfigJson? tcpConfig = config.GetConfigProperty<TcpConfigJson>();
+
+            Assert.IsNotNull(tcpConfig);
+            Assert.AreEqual(5, tcpConfig.TcpKeepAliveTime);
+            Assert.AreEqual(1000, tcpConfig.BackLog);
+            Assert.IsTrue(tcpConfig.NoDelay);
+        }
+
+        /// <summary>
+        /// Verifies that the attribute-based extension method returns null (not an exception) when the
+        /// attributed configuration key is absent from the configuration document.
+        /// </summary>
+        [TestMethod]
+        public void GetConfigProperty_AttributedType_NotInDocument_ReturnsNull()
+        {
+            string configPath = GetTestDataPath("nested-properties.json");
+            JsonServerConfig? config = JsonServerConfig.FromFile(configPath);
+
+            Assert.IsNotNull(config);
+
+            HttpGlobalConfig? httpConfig = config.GetConfigProperty<HttpGlobalConfig>();
+            Assert.IsNull(httpConfig);
+        }
+
+        /// <summary>
+        /// Verifies that calling the attribute-based extension method on a type without
+        /// <see cref="ConfigurationKeyAttribute"/> throws <see cref="ArgumentException"/>.
+        /// </summary>
+        [TestMethod]
+        public void GetConfigProperty_TypeWithoutAttribute_ThrowsArgumentException()
+        {
+            string configPath = GetTestDataPath("valid-config.json");
+            JsonServerConfig? config = JsonServerConfig.FromFile(configPath);
+
+            Assert.IsNotNull(config);
+
+            Assert.ThrowsExactly<ArgumentException>(config.GetConfigProperty<string>);
         }
 
         #endregion

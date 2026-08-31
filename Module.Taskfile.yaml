@@ -18,7 +18,12 @@ tasks:
   default:
     desc: 'Builds the managed libraries in this module for development'
     cmds:
-     - cmd: dotnet build -c debug {{ .CLI_ARGS }}
+     - cmd: dotnet build 
+        --nologo
+        --configuration debug
+        --verbosity normal
+        --no-incremental
+        {{ .CLI_ARGS }}
 
   #called by build pipeline to sync repo
   update:
@@ -94,11 +99,7 @@ tasks:
      - cmd: echo "Ensure you have run 'task dev-init' before running tests to build native libraries"
        silent: true
 
-     - cmd: dotnet build 
-        --nologo
-        --configuration debug
-        --verbosity normal
-        --no-incremental       
+     - task: default     
 
      - cmd: dotnet test
         --no-build

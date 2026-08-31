@@ -6,13 +6,14 @@
     <RootNamespace>VNLib.Plugins.Runtime</RootNamespace>
     <AssemblyName>VNLib.Plugins.Runtime</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins.Runtime</PackageId>
-    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
     <Description>A runtime plugin loader for .NET. Allows runtime loading and tracking of .NET assemblies that export the VNLib.Plugin.IPlugin interface.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins.Runtime</RepositoryUrl>
@@ -20,17 +21,6 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.8.0-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="ErrorProne.NET.Structs" Version="0.6.1-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Plugins\src\VNLib.Plugins.csproj" />
@@ -47,6 +37,12 @@
       <PackagePath>\</PackagePath>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>VNLib.Plugins.Runtime.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -49,7 +49,7 @@ namespace VNLib.Utils
 
         /// <summary>
         /// Sets the internal state to diposed without calling <see cref="Free"/> operation.
-        /// Usefull if another code-path performs the free operation independant of a dispose opreation.
+        /// Useful if another code-path performs the free operation independant of a dispose opreation.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void SetDisposedState() => Disposed = true;

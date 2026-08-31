@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -113,13 +113,13 @@ namespace VNLib.Plugins.Essentials
 
 
         /*
-         * Okay. So this is suposed to be a stupid fast lookup table for lock-free 
+         * Okay. So this is supposed to be a stupid fast lookup table for lock-free 
          * service pool exchanges. The goal is for future runtime service expansion.
          * 
-         * The reason lookups must be unnoticabyly fast is because the should be
-         * VERY rarley changed and will be read on every request.
+         * The reason lookups must be unnoticeably fast is because they should be
+         * VERY rarely changed and will be read on every request.
          * 
-         * The goal of this table specifially is to make sure requesting a desired 
+         * The goal of this table specifically is to make sure requesting a desired 
          * service is extremely fast and does not require any locks or synchronization.
          */
         const int SESS_INDEX = 0;
@@ -183,7 +183,8 @@ namespace VNLib.Plugins.Essentials
                 if (sessions != null)
                 {
                     //Get the session
-                    entity.EventSessionHandle = await sessions.GetSessionAsync(httpEvent, entity.EventCancellation);
+                    entity.EventSessionHandle = await sessions.GetSessionAsync(httpEvent, entity.EventCancellation)
+                                                    .ConfigureAwait(false);
 
                     //If the processor had an error recovering the session, return the result to the processor
                     if (entity.EventSessionHandle.EntityStatus != FileProcessArgs.Continue)
@@ -206,18 +207,19 @@ namespace VNLib.Plugins.Essentials
                     }
 
                     //Exec middleware
-                    if (!await _middleware.ProcessAsync(entity))
+                    if (!await _middleware.ProcessAsync(entity).ConfigureAwait(false))
                     {
                         goto RespondAndExit;
                     }
 
                     if (!config.EndpointTable.IsEmpty)
                     {
-                        //See if the virtual file is servicable
+                        //See if the virtual file is serviceable
                         if (config.EndpointTable.TryGetEndpoint(entity.Server.Path, out IVirtualEndpoint<HttpEntity>? vf))
                         {
                             //Invoke the page handler process method
-                            VfReturnType rt = await vf.Process(entity);
+                            VfReturnType rt = await vf.Process(entity)
+                                                .ConfigureAwait(false);
 
                             //Process a virtual file
                             GetArgsFromVirtualReturn(entity, rt, out entity.EventArgs);
@@ -238,7 +240,8 @@ namespace VNLib.Plugins.Essentials
                     else
                     {
                         //Finally route the connection as a file
-                        entity.EventArgs = await RouteFileAsync(router, entity);
+                        entity.EventArgs = await RouteFileAsync(router, entity)
+                                                .ConfigureAwait(false);
                     }
 
                 RespondAndExit:
@@ -255,11 +258,12 @@ namespace VNLib.Plugins.Essentials
                     try
                     {
                         //Release the session
-                        await entity.EventSessionHandle.ReleaseAsync(httpEvent);
+                        await entity.EventSessionHandle.ReleaseAsync(httpEvent)
+                                .ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
-                        config.Log.Error(ex, "Exception raised while releasing the assocated session");
+                        config.Log.Error(ex, "Exception raised while releasing the associated session");
                     }
                 }
 
@@ -390,11 +394,11 @@ namespace VNLib.Plugins.Essentials
 
                 DateTime fileLastModified = File.GetLastWriteTimeUtc(filename);
 
-                //See if the last modifed header was set
-                DateTimeOffset? ifModifedSince = entity.Server.LastModified();
+                //See if the last modified header was set
+                DateTimeOffset? ifModifiedSince = entity.Server.LastModified();
 
                 //If the header was set, check the date, if the file has been modified since, continue sending the file
-                if (ifModifedSince.HasValue && ifModifedSince.Value > fileLastModified)
+                if (ifModifiedSince.HasValue && ifModifiedSince.Value > fileLastModified)
                 {
                     //File has not been modified 
                     entity.CloseResponse(HttpStatusCode.NotModified);
@@ -577,9 +581,9 @@ namespace VNLib.Plugins.Essentials
 
         /// <summary>
         /// Determines the best <see cref="FileProcessArgs"/> processing response for the given connection.
-        /// Alternativley may respond to the entity directly.
+        /// Alternatively may respond to the entity directly.
         /// </summary>
-        /// <param name="router">A reference to the current <see cref="IPageRouter"/> instance if cofigured</param>
+        /// <param name="router">A reference to the current <see cref="IPageRouter"/> instance if configured</param>
         /// <param name="entity">The http entity to process</param>
         /// <returns>The results to return to the file processor, this method must return an argument</returns>
         protected virtual ValueTask<FileProcessArgs> RouteFileAsync(IPageRouter? router, HttpEntity entity)
@@ -602,7 +606,7 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         public bool FindResourceInRoot(string resourcePath, bool fullyQualified, out string path)
         {
-            //Special case where user's can specify a fullly qualified path (meant to reach a remote file, eg UNC/network share or other disk)
+            //Special case where user's can specify a fully qualified path (meant to reach a remote file, eg UNC/network share or other disk)
             if (fullyQualified
                 && Path.IsPathRooted(resourcePath)
                 && Path.IsPathFullyQualified(resourcePath)
@@ -646,7 +650,7 @@ namespace VNLib.Plugins.Essentials
             //Check after fully qualified path name because above is a special case
             path = TranslateResourcePath(resourcePath);
             string extension = Path.GetExtension(path);
-            //Make sure extension isnt blocked
+            //Make sure extension isn't blocked
             if (Options.ExcludedExtensions.Contains(extension))
             {
                 return false;
@@ -663,8 +667,8 @@ namespace VNLib.Plugins.Essentials
                     {
                         //Get attributes
                         FileAttributes att = FileOperations.GetAttributes(path);
-                        //Make sure the file is accessable and isnt an unsafe file
-                        return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DissallowedAttributes) == 0);
+                        //Make sure the file is accessible and isn't an unsafe file
+                        return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
                     }
                 }
             }
@@ -673,8 +677,8 @@ namespace VNLib.Plugins.Essentials
             {
                 //Get attributes
                 FileAttributes att = FileOperations.GetAttributes(path);
-                //Make sure the file is accessable and isnt an unsafe file
-                return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DissallowedAttributes) == 0);
+                //Make sure the file is accessible and isn't an unsafe file
+                return ((att & Options.AllowedAttributes) > 0) && ((att & Options.DisallowedAttributes) == 0);
             }
             return false;
         }
@@ -690,7 +694,7 @@ namespace VNLib.Plugins.Essentials
             private readonly ImmutableArray<Type> _types = [.. expectedTypes];
 
             /// <summary>
-            /// Gets all of the desired types for the servicec pool
+            /// Gets all of the desired types for the service pool
             /// </summary>
             public ImmutableArray<Type> Types => _types;
 
@@ -723,12 +727,12 @@ namespace VNLib.Plugins.Essentials
             }
 
             /// <summary>
-            /// Determines if a desired services has been modified within
+            /// Determines if a desired service has been modified within
             /// the pool, if it has, the service will be exchanged for the
             /// new service.
             /// </summary>
             /// <typeparam name="T"></typeparam>
-            /// <param name="instance">A reference to the internal instance to exhange</param>
+            /// <param name="instance">A reference to the internal instance to exchange</param>
             /// <param name="tableIndex">The constant index for the service type</param>
             /// <returns>The exchanged service instance</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]

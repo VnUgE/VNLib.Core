@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -30,6 +30,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+using VNLib.Utils;
 using VNLib.Utils.IO;
 using VNLib.Net.Http;
 using VNLib.Plugins.Essentials.Content;
@@ -44,7 +45,6 @@ using VNLib.Plugins.Essentials.Extensions;
  * showed less GC load and less collections when SessionInfo 
  * remained a value type
  */
-#pragma warning disable CA1051 // Do not declare visible instance fields
 
 namespace VNLib.Plugins.Essentials
 {
@@ -52,15 +52,15 @@ namespace VNLib.Plugins.Essentials
     /// A container for an <see cref="HttpEvent"/> with its attached session.
     /// This class cannot be inherited.
     /// </summary>
-    public sealed class HttpEntity : IHttpEvent, IDisposable
+    public sealed class HttpEntity : VnDisposeable, IHttpEvent
     {
 
         /// <summary>
         /// The connection event entity
         /// </summary>
-        private readonly IHttpEvent Entity;
+        private readonly IHttpEvent _entity;
 
-        private readonly CancellationTokenSource EventCts;
+        private readonly CancellationTokenSource _eventCts;
 
         /// <summary>
         /// Creates a new <see cref="HttpEntity"/> instance with the optional 
@@ -80,10 +80,10 @@ namespace VNLib.Plugins.Essentials
 
         internal HttpEntity(IHttpEvent entity, IWebProcessor root)
         {
-            Entity = entity;
+            _entity = entity;
             RequestedRoot = root;
             //Init event cts
-            EventCts = new(root.Options.ExecutionTimeout);
+            _eventCts = new(root.Options.ExecutionTimeout);
 
             //See if the connection is coming from an downstream server
             IsBehindDownStreamServer = root.Options.DownStreamServers.Contains(entity.Server.RemoteEndpoint.Address);
@@ -114,19 +114,20 @@ namespace VNLib.Plugins.Essentials
         {
             if (EventSessionHandle.IsSet)
             {
-                _session = new(EventSessionHandle.SessionData!, Entity.Server, TrustedRemoteIp);
+                _session = new(EventSessionHandle.SessionData!, _entity.Server, TrustedRemoteIp);
             }
         }
 
         /// <summary>
         /// Cleans up internal resources
         /// </summary>
-        public void Dispose() => EventCts.Dispose();
+        protected override void Free() 
+            => _eventCts.Dispose();
 
         /// <summary>
         /// A token that has a scheduled timeout to signal the cancellation of the entity event
         /// </summary>
-        public CancellationToken EventCancellation => EventCts.Token;
+        public CancellationToken EventCancellation => _eventCts.Token;
 
         /// <summary>
         /// The session associated with the event
@@ -134,7 +135,7 @@ namespace VNLib.Plugins.Essentials
         public ref readonly SessionInfo Session => ref _session;
 
         /// <summary>
-        /// A value that indicates if the connecion came from a trusted downstream server
+        /// A value that indicates if the connection came from a trusted downstream server
         /// </summary>
         public readonly bool IsBehindDownStreamServer;
 
@@ -156,9 +157,9 @@ namespace VNLib.Plugins.Essentials
         public readonly DateTimeOffset RequestedTimeUtc;
 
         /// <summary>
-        /// The connection info object assocated with the entity
+        /// The connection info object associated with the entity
         /// </summary>
-        public IConnectionInfo Server => Entity.Server;
+        public IConnectionInfo Server => _entity.Server;
 
         /// <summary>
         /// User's ip. If the connection is behind a local proxy, returns the users actual IP. Otherwise returns the connection ip. 
@@ -173,20 +174,20 @@ namespace VNLib.Plugins.Essentials
         /// <summary>
         /// If the request has query arguments they are stored in key value format
         /// </summary>
-        public IReadOnlyDictionary<string, string> QueryArgs => Entity.QueryArgs;
+        public IReadOnlyDictionary<string, string> QueryArgs => _entity.QueryArgs;
 
         /// <summary>
         /// If the request body has form data or url encoded arguments they are stored in key value format
         /// </summary>
-        public IReadOnlyDictionary<string, string> RequestArgs => Entity.RequestArgs;
+        public IReadOnlyDictionary<string, string> RequestArgs => _entity.RequestArgs;
 
         /// <summary>
-        /// Contains all files upladed with current request
+        /// Contains all files uploaded with current request
         /// </summary>
-        public IReadOnlyList<FileUpload> Files => Entity.Files;
+        public IReadOnlyList<FileUpload> Files => _entity.Files;
 
         ///<inheritdoc/>
-        IHttpServer IHttpEvent.OriginServer => Entity.OriginServer;
+        IHttpServer IHttpEvent.OriginServer => _entity.OriginServer;
 
         /// <summary>
         /// Complete the session and respond to user
@@ -194,7 +195,8 @@ namespace VNLib.Plugins.Essentials
         /// <param name="code">Status code of operation</param>
         /// <exception cref="InvalidOperationException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void CloseResponse(HttpStatusCode code) => Entity.CloseResponse(code);
+        public void CloseResponse(HttpStatusCode code) 
+            => _entity.CloseResponse(code);
 
         ///<inheritdoc/>
         ///<exception cref="ContentTypeUnacceptableException"></exception>
@@ -208,7 +210,7 @@ namespace VNLib.Plugins.Essentials
             }
 
             /*
-             * If the underlying stream is actaully a memory stream, 
+             * If the underlying stream is actually a memory stream, 
              * create a wrapper for it to read as a memory response.
              * This is done to avoid a user-space copy since we can 
              * get access to access the internal buffer
@@ -218,15 +220,15 @@ namespace VNLib.Plugins.Essentials
              * or cause an overflow during reading
              * 
              * Finally not all memory streams allow fetching the internal 
-             * buffer, so check that it can be aquired.
+             * buffer, so check that it can be acquired.
              */
             if (
-                stream is MemoryStream ms
-                && length < int.MaxValue
-                && ms.TryGetBuffer(out ArraySegment<byte> arrSeg)
+                stream is MemoryStream ms && 
+                length < int.MaxValue && 
+                ms.TryGetBuffer(out ArraySegment<byte> arrSeg)
             )
             {
-                Entity.CloseResponse(
+                _entity.CloseResponse(
                     code,
                     type,
                     entity: new MemStreamWrapper(in arrSeg, ms, (int)length)
@@ -239,11 +241,13 @@ namespace VNLib.Plugins.Essentials
              * Readonly vn streams can also use a shortcut to avoid http buffer allocation and 
              * async streaming. This is done by wrapping the stream in a memory response reader
              * 
+             * Vnstream can only use the AsMemory() method if the buffer is smaller than int32.
+             * 
              * Allocating a memory manager requires that the stream is readonly
              */
             if (stream is VnMemoryStream vms && length < int.MaxValue)
             {
-                Entity.CloseResponse(
+                _entity.CloseResponse(
                    code,
                    type,
                    entity: new VnStreamWrapper(vms, (int)length)
@@ -259,7 +263,7 @@ namespace VNLib.Plugins.Essentials
              */
             if (stream is FileStream fs)
             {
-                Entity.CloseResponse(
+                _entity.CloseResponse(
                     code,
                     type,
                     entity: new DirectFileStream(fs.SafeFileHandle),
@@ -269,7 +273,7 @@ namespace VNLib.Plugins.Essentials
                 return;
             }
 
-            Entity.CloseResponse(code, type, stream, length);
+            _entity.CloseResponse(code, type, stream, length);
         }
 
         ///<inheritdoc/>
@@ -283,7 +287,7 @@ namespace VNLib.Plugins.Essentials
                 throw new ContentTypeUnacceptableException("The client does not accept the content type of the response");
             }
 
-            Entity.CloseResponse(code, type, entity);
+            _entity.CloseResponse(code, type, entity);
         }
 
         ///<inheritdoc/>
@@ -297,12 +301,13 @@ namespace VNLib.Plugins.Essentials
                 throw new ContentTypeUnacceptableException("The client does not accept the content type of the response");
             }
 
-            Entity.CloseResponse(code, type, stream, length);
+            _entity.CloseResponse(code, type, stream, length);
         }
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetControlFlag(ulong mask) => Entity.SetControlFlag(mask);
+        public void SetControlFlag(ulong mask) 
+            => _entity.SetControlFlag(mask);
 
         /*
          * Do not directly expose dangerous methods, but allow them to be called
@@ -310,12 +315,12 @@ namespace VNLib.Plugins.Essentials
 
         ///<inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler) => Entity.DangerousChangeProtocol(protocolHandler);
-
+        void IHttpEvent.DangerousChangeProtocol(IAlternateProtocol protocolHandler) 
+            => _entity.DangerousChangeProtocol(protocolHandler);    
 
         private sealed class VnStreamWrapper(VnMemoryStream memStream, int length) : IMemoryResponseReader
         {
-            //Store memory buffer, causes an internal allocation, so avoid calling mutliple times
+            //Store memory buffer, causes an internal allocation
             readonly ReadOnlyMemory<byte> _memory = memStream.AsMemory();
 
             readonly int length = length;

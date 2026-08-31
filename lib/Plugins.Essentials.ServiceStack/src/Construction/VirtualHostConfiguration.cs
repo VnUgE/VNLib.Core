@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -10,7 +10,7 @@
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -81,7 +81,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// Files that match any attribute flag set will be denied
         /// <para>Default: <see cref="FileAttributes.System"/></para>
         /// </summary>
-        public FileAttributes DissallowedAttributes { get; set; } = FileAttributes.System;
+        public FileAttributes DisallowedAttributes { get; set; } = FileAttributes.System;
 
         /// <summary>
         /// A table of known downstream servers/ports that can be trusted to proxy connections

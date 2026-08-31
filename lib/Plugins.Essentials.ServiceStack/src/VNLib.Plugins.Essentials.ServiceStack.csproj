@@ -12,8 +12,8 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins.Essentials.ServiceStack</PackageId>
-    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
-    <Description>Provides data structures for building a dynamic HTTP servicing stack with runtime plugin loading, dynamic endpoint routing, middleware* configuration, and multi-server managment.</Description>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
+    <Description>Provides data structures for building a dynamic HTTP servicing stack with runtime plugin loading, dynamic endpoint routing, middleware* configuration, and multi-server management.</Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins.Essentials.ServiceStack</RepositoryUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -34,21 +34,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.8.0-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="ErrorProne.NET.Structs" Version="0.6.1-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\Net.Http\src\VNLib.Net.Http.csproj" />
     <ProjectReference Include="..\..\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
     <ProjectReference Include="..\..\Plugins.Runtime\src\VNLib.Plugins.Runtime.csproj" />
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+    <ProjectReference Include="..\..\Plugins.Ipc\src\VNLib.Plugins.Ipc.csproj"></ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VNLib.Plugins.Essentials.ServiceStack.Tests" />
   </ItemGroup>
 
 </Project>

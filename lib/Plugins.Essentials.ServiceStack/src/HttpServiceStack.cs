@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -10,7 +10,7 @@
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -22,27 +22,27 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 using VNLib.Utils;
 using VNLib.Net.Http;
-using VNLib.Utils.Logging;
-using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 namespace VNLib.Plugins.Essentials.ServiceStack
 {
     /// <summary>
     /// An HTTP servicing stack that manages a collection of HTTP servers
-    /// their service domain
+    /// and their service domain. This stack manages the HTTP servers 
+    /// listening for requests, and the domain that responds to those 
+    /// requests.
     /// </summary>
     public sealed class HttpServiceStack : VnDisposeable
-    {
+    {       
         private readonly IReadOnlyCollection<IHttpServer> _servers;
         private readonly ServiceDomain _serviceDomain;
-        private readonly PluginManager _plugins;
 
         private CancellationTokenSource? _cts;
         private Task WaitForAllTask;
@@ -53,21 +53,20 @@ namespace VNLib.Plugins.Essentials.ServiceStack
         public IEnumerable<IHttpServer> Servers => _servers;
 
         /// <summary>
-        /// Gets the internal <see cref="IHttpPluginManager"/> that manages plugins for the entire
-        /// <see cref="HttpServiceStack"/>
+        /// The service domain containing all virtual hosts and their attached services
         /// </summary>
-        public IHttpPluginManager PluginManager => _plugins;        
+        public ServiceDomain ServiceDomain => _serviceDomain;
 
         /// <summary>
         /// Initializes a new <see cref="HttpServiceStack"/> that will 
-        /// generate servers to listen for services exposed by the 
-        /// specified host context
+        /// manage HTTP servers for the specified service domain
         /// </summary>
-        internal HttpServiceStack(IReadOnlyCollection<IHttpServer> servers, ServiceDomain serviceDomain, IPluginInitializer plugins)
+        /// <param name="servers">The collection of HTTP servers to manage</param>
+        /// <param name="serviceDomain">The service domain containing virtual hosts</param>
+        internal HttpServiceStack(IReadOnlyCollection<IHttpServer> servers, ServiceDomain serviceDomain)
         {
             _servers = servers;
             _serviceDomain = serviceDomain;
-            _plugins = new(plugins);
             WaitForAllTask = Task.CompletedTask;
         }
 
@@ -93,44 +92,26 @@ namespace VNLib.Plugins.Essentials.ServiceStack
             firstFault?.GetAwaiter().GetResult();
 
             //Task that waits for all to exit then cleans up
-            WaitForAllTask = Task.WhenAll(runners)
-                .ContinueWith(OnAllServerExit, CancellationToken.None, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Default);
+            WaitForAllTask = Task.WhenAll(runners);              
         }
-
-        /// <summary>
-        /// Loads all plugins into the service stack
-        /// </summary>
-        /// <param name="logProvider">A log provider for writing loading logs to</param>
-        public void LoadPlugins(ILogProvider logProvider) => _plugins.LoadPlugins(logProvider);
 
         /// <summary>
         /// Stops listening on all configured servers and returns a task that completes 
         /// when the service host has stopped all servers and unloaded resources
         /// </summary>
-        /// <returns>The task that completes when</returns>
+        /// <returns>The task that completes when all servers have exited</returns>
         public Task StopAndWaitAsync()
         {
             Check();
 
             _cts?.Cancel();
             return WaitForAllTask;
-        }
-
-        private void OnAllServerExit(Task allExit)
-        {
-            //Unload plugins
-            _plugins.UnloadPlugins();
-
-            //Unload the hosts
-            _serviceDomain.TearDown();
-        }
+        }       
 
         ///<inheritdoc/>
         protected override void Free()
         {
             _cts?.Dispose();
-
-            _plugins.Dispose();
         }
     }
 }

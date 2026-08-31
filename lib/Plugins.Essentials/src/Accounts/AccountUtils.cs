@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -39,7 +39,7 @@ namespace VNLib.Plugins.Essentials.Accounts
 
     /// <summary>
     /// Provides essential constants, static methods, and session/user extensions 
-    /// to facilitate unified user-controls, athentication, and security
+    /// to facilitate unified user-controls, authentication, and security
     /// application-wide
     /// </summary>
     public static partial class AccountUtil
@@ -85,7 +85,7 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="flags">Validation flags</param>
         /// <param name="cancellation">A token to cancel the validation</param>
         /// <exception cref="ArgumentNullException"></exception>
-        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occured</returns>
+        /// <returns>A value greater than 0 if successful, 0 or negative values if a failure occurred</returns>
         public static async Task<ERRNO> ValidatePasswordAsync(
             this IUserManager manager, 
             IUser user, 
@@ -102,35 +102,7 @@ namespace VNLib.Plugins.Essentials.Accounts
             return await manager
                 .ValidatePasswordAsync(user, ps, flags, cancellation)
                 .ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Updates a password associated with the specified user. If the update fails, the transaction
-        /// is rolled back.
-        /// </summary>
-        /// <param name="manager"></param>
-        /// <param name="user">The user account to update the password of</param>
-        /// <param name="password">The new password to set</param>
-        /// <param name="cancellation">A token to cancel the operation</param>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <returns>The result of the operation, the result should be 1 (aka true)</returns>
-        [Obsolete("Will be removed in future releases, use overload that accepts hashing provider")]
-        public static async Task<ERRNO> UpdatePasswordAsync(
-            this IUserManager manager, 
-            IUser user, 
-            string password, 
-            CancellationToken cancellation = default
-        )
-        {
-            ArgumentNullException.ThrowIfNull(user);
-            ArgumentNullException.ThrowIfNull(manager);
-
-            using PrivateString ps = PrivateString.ToPrivateString(password, ownsString: false);
-            
-            return await manager
-                .UpdatePasswordAsync(user, ps, cancellation)
-                .ConfigureAwait(false);
-        }
+        }      
 
         /// <summary>
         /// Updates a password associated with the specified user. If the update fails, the transaction
@@ -240,14 +212,14 @@ namespace VNLib.Plugins.Essentials.Accounts
         }
 
         /// <summary>
-        /// Determines if the current client has the authroziation level to access a given resource
+        /// Determines if the current client has the authorization level to access a given resource
         /// </summary>
         /// <param name="entity"></param>
-        /// <param name="mode">The authoziation level</param>
+        /// <param name="mode">The authorization level</param>
         /// <returns>True if the connection has the desired authorization status</returns>
         /// <exception cref="NotSupportedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsClientAuthorized(this HttpEntity entity, AuthorzationCheckLevel mode = AuthorzationCheckLevel.Critical)
+        public static bool IsClientAuthorized(this HttpEntity entity, AuthorizationCheckLevel mode = AuthorizationCheckLevel.Critical)
         {
             IAccountSecurityProvider prov = entity.GetSecProviderOrThrow();
 
@@ -288,7 +260,7 @@ namespace VNLib.Plugins.Essentials.Accounts
 
             //Store variables
             entity.Session.UserID = user.UserID;
-            entity.Session.Privilages = user.Privileges;
+            entity.Session.Privileges = user.Privileges;
 
             //Store client id for later use
             entity.Session[BROWSER_ID_ENTRY] = secInfo.ClientId;
@@ -452,7 +424,9 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="level">64bit privilege level to compare</param>
         /// <returns>true if the current user has at least the specified level or higher</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasLevel(this in SessionInfo session, byte level) => (session.Privilages & LEVEL_MSK) >= (((ulong)level << LEVEL_MSK_OFFSET) & LEVEL_MSK);
+        public static bool HasLevel(this in SessionInfo session, byte level) 
+            => (session.Privileges & LEVEL_MSK) >= (((ulong)level << LEVEL_MSK_OFFSET) & LEVEL_MSK);
+
         /// <summary>
         /// Determines if the group ID of the current user matches the specified group
         /// </summary>
@@ -460,7 +434,9 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="groupId">Group ID to compare</param>
         /// <returns>true if the user belongs to the group, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasGroup(this in SessionInfo session, ushort groupId) => (session.Privilages & GROUP_MSK) == (((ulong)groupId << GROUP_MSK_OFFSET) & GROUP_MSK);
+        public static bool HasGroup(this in SessionInfo session, ushort groupId)
+            => (session.Privileges & GROUP_MSK) == (((ulong)groupId << GROUP_MSK_OFFSET) & GROUP_MSK);
+
         /// <summary>
         /// Determines if the current user has an equivalent option code
         /// </summary>
@@ -468,26 +444,33 @@ namespace VNLib.Plugins.Essentials.Accounts
         /// <param name="option">Option code check</param>
         /// <returns>true if the user options field equals the option</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasOption(this in SessionInfo session, byte option) => (session.Privilages & OPTIONS_MSK) == (((ulong)option << OPTIONS_MSK_OFFSET) & OPTIONS_MSK);
+        public static bool HasOption(this in SessionInfo session, byte option) 
+            => (session.Privileges & OPTIONS_MSK) == (((ulong)option << OPTIONS_MSK_OFFSET) & OPTIONS_MSK);
 
         /// <summary>
-        /// Returns the status of the user's privlage read bit
+        /// Returns the status of the user's privilege read bit
         /// </summary>
         /// <returns>true if the current user has the read permission, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CanRead(this in SessionInfo session) => (session.Privilages & READ_MSK) == READ_MSK;
+        public static bool CanRead(this in SessionInfo session) 
+            => (session.Privileges & READ_MSK) == READ_MSK;
+
         /// <summary>
-        /// Returns the status of the user's privlage write bit
+        /// Returns the status of the user's privilege write bit
         /// </summary>
         /// <returns>true if the current user has the write permission, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CanWrite(this in SessionInfo session) => (session.Privilages & WRITE_MSK) == WRITE_MSK;
+        public static bool CanWrite(this in SessionInfo session) 
+            => (session.Privileges & WRITE_MSK) == WRITE_MSK;
+
         /// <summary>
-        /// Returns the status of the user's privlage delete bit
+        /// Returns the status of the user's privilege delete bit
         /// </summary>
         /// <returns>true if the current user has the delete permission, false otherwise</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CanDelete(this in SessionInfo session) => (session.Privilages & DELETE_MSK) == DELETE_MSK;
+        public static bool CanDelete(this in SessionInfo session) 
+            => (session.Privileges & DELETE_MSK) == DELETE_MSK;
+
         #endregion
 
         #region flc       

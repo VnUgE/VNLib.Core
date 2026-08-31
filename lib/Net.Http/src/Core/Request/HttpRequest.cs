@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -56,7 +56,7 @@ namespace VNLib.Net.Http.Core
          * Readonly ref allows for immutable accessors, but 
          * explicit initialization function for a mutable ref
          * that can be stored in local state to ensure proper state
-         * initalization.
+         * initialization.
          * 
          * Reason - easy and mistake free object reuse with safe 
          * null/default values and easy reset.
@@ -66,10 +66,10 @@ namespace VNLib.Net.Http.Core
         private readonly FileUpload[] _singleUpload = new FileUpload[1];
 
         /// <summary>
-        /// Gets a mutable structure ref only used to initalize the request 
+        /// Gets a mutable structure ref only used to initialize the request 
         /// state.
         /// </summary>
-        /// <returns>A mutable reference to the state structure for initalization purposes</returns>
+        /// <returns>A mutable reference to the state structure for initialization purposes</returns>
         internal ref HttpRequestState GetMutableStateForInit() => ref _state;
 
         /// <summary>

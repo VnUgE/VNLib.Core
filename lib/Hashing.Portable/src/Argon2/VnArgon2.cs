@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -101,7 +101,7 @@ namespace VNLib.Hashing
             {
                 Trace.WriteLine("Using the native MonoCypher library for Argon2 password hashing", "VnArgon2");
 
-                //Load shared monocyphter argon2 library
+                //Load shared monocypher argon2 library
                 return MonoCypherLibrary.Shared.Argon2CreateLibrary(_heap.Instance);
             }
             else
@@ -117,7 +117,7 @@ namespace VNLib.Hashing
 
 
         /// <summary>
-        /// Gets the sahred native library instance for the current process.
+        /// Gets the shared native library instance for the current process.
         /// </summary>
         /// <returns>The shared library instance</returns>
         /// <exception cref="DllNotFoundException"></exception>
@@ -132,25 +132,27 @@ namespace VNLib.Hashing
         /// <returns>A handle for the library</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="DllNotFoundException"></exception>
+        /// <exception cref="EntryPointNotFoundException">If the required functions are not available</exception>
         public static SafeArgon2Library LoadCustomLibrary(string dllPath, DllImportSearchPath searchPath)
         {
-            //Try to load the libary and always dispose it so the native method handle will unload the library
+            //Try to load the library and always dispose it so the native method handle will unload the library
             SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(dllPath, searchPath);
-            return new SafeArgon2Library(lib);
+            return LoadCustomLibrary(new(lib, true));
         }
 
         /// <summary>
-        /// Hashes a password with a salt and specified arguments
+        /// Wraps a loaded <see cref="SafeLibraryHandle"/> that holds the code for the 
+        /// argon2 library, with optional handle ownership.
         /// </summary>
-        /// <param name="lib"></param>
-        /// <param name="password">Span of characters containing the password to be hashed</param>
-        /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
-        /// <param name="secret">Optional secret to include in hash</param>
-        /// <param name="hashLen">Size of the hash in bytes</param>
-        /// <param name="costParams">Argon2 cost parameters</param>
-        /// <exception cref="VnArgon2Exception"></exception>
-        /// <exception cref="InsufficientMemoryException"></exception>
-        /// <returns>A <see cref="Encoding.Unicode"/> <see cref="string"/> containg the ready-to-store hash</returns>                
+        /// <param name="argon2LibHandle">The <see cref="Owned{T}"/> wrapper for the <see cref="SafeLibraryHandle"/>
+        /// holding the unmanaged code to wrap.
+        /// </param>
+        /// <returns>A handle for the library that wraps the handle</returns>
+        /// <exception cref="EntryPointNotFoundException">If the required functions are not available</exception>
+        public static SafeArgon2Library LoadCustomLibrary(Owned<SafeLibraryHandle> argon2LibHandle) 
+            => new (argon2LibHandle);
+        
+        /// <inheritdoc cref="Hash2id(IArgon2Library, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, in Argon2CostParams, uint)"/>
         public static string Hash2id(
             this IArgon2Library lib, 
             ReadOnlySpan<char> password, 
@@ -161,14 +163,14 @@ namespace VNLib.Hashing
         )
         {
             //Get bytes count
-            int saltbytes = LocEncoding.GetByteCount(salt);
+            int saltBytes = LocEncoding.GetByteCount(salt);
             int passBytes = LocEncoding.GetByteCount(password);
             
             //Alloc memory for salt
-            using MemoryHandle<byte> buffer = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, saltbytes + passBytes);
+            using MemoryHandle<byte> buffer = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, saltBytes + passBytes);
             
-            Span<byte> saltBuffer = buffer.AsSpan(0, saltbytes);
-            Span<byte> passBuffer = buffer.AsSpan(saltbytes, passBytes);
+            Span<byte> saltBuffer = buffer.AsSpan(0, saltBytes);
+            Span<byte> passBuffer = buffer.AsSpan(saltBytes, passBytes);
             
             //Decode from character buffers to binary buffers using default string encoding
             _ = LocEncoding.GetBytes(salt, saltBuffer);
@@ -191,18 +193,7 @@ namespace VNLib.Hashing
             return result;
         }
 
-        /// <summary>
-        /// Hashes a password with a salt and specified arguments
-        /// </summary>
-        /// <param name="lib"></param>
-        /// <param name="password">Span of characters containing the password to be hashed</param>
-        /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
-        /// <param name="secret">Optional secret to include in hash</param>
-        /// <param name="hashLen">Size of the hash in bytes</param>
-        /// <param name="costParams">Argon2 cost parameters</param>
-        /// <exception cref="VnArgon2Exception"></exception>
-        /// <exception cref="InsufficientMemoryException"></exception>
-        /// <returns>A <see cref="Encoding.Unicode"/> <see cref="string"/> containg the ready-to-store hash</returns>
+        /// <inheritdoc cref="Hash2id(IArgon2Library, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, in Argon2CostParams, uint)"/>          
         public static string Hash2id(
             this IArgon2Library lib,
             ReadOnlySpan<char> password, 
@@ -218,12 +209,12 @@ namespace VNLib.Hashing
             //Alloc memory for password, round to page size again
             using MemoryHandle<byte> pwdHandle = MemoryUtil.SafeAllocNearestPage<byte>(PwHeap, passBytes);
 
-            //Encode password, create a new span to make sure its proper size 
+            //Encode raw password, create a new span to make sure its proper size 
             passBytes = LocEncoding.GetBytes(password, pwdHandle.Span);
            
             string result = Hash2id(
                 lib: lib, 
-                password: pwdHandle.AsSpan(0, passBytes), //Only actuall size for decoding 
+                password: pwdHandle.AsSpan(0, passBytes), //Only actual size for decoding 
                 salt: salt, 
                 secret: secret, 
                 costParams: in costParams, 
@@ -239,18 +230,8 @@ namespace VNLib.Hashing
             return result;
         }
 
-        /// <summary>
-        /// Hashes a password with a salt and specified arguments
-        /// </summary>
-        /// <param name="lib"></param>
-        /// <param name="password">Span of characters containing the password to be hashed</param>
-        /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
-        /// <param name="secret">Optional secret to include in hash</param>
-        /// <param name="hashLen">Size of the hash in bytes</param>
-        /// <param name="costParams">Argon2 cost parameters</param>
-        /// <exception cref="VnArgon2Exception"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <returns>A <see cref="Encoding.Unicode"/> <see cref="string"/>containg the ready-to-store hash</returns>                
+        /// <inheritdoc cref="Hash2id(IArgon2Library, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, Span{byte}, in Argon2CostParams)"/>
+        /// <returns>A <see cref="Encoding.Unicode"/> <see cref="string"/>containing the ready-to-store hash</returns>                
         public static string Hash2id(
             this IArgon2Library lib,
             ReadOnlySpan<byte> password, 
@@ -294,7 +275,7 @@ namespace VNLib.Hashing
         /// <param name="lib"></param>
         /// <param name="password">Span of characters containing the password to be hashed</param>
         /// <param name="rawHashOutput">The output buffer to store the raw hash output</param>
-        /// <param name="salt">Span of characters contating the salt to include in the hashing</param>
+        /// <param name="salt">Span of characters containing the salt to include in the hashing</param>
         /// <param name="secret">Optional secret to include in hash</param>
         /// <param name="costParams">Argon2 cost parameters</param>>
         /// <exception cref="VnArgon2Exception"></exception>

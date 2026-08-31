@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -15,24 +15,13 @@
     <Company>Vaughn Nugent</Company>
     <Product>VNLib HTTP Library</Product>
     <Description>Provides a high performance HTTP 0.9-1.1 application processing layer for handling transport *agnostic connections and asynchronous event support for applications serving HTTP requests such as web content. This library has a large focus on low/no GC allocations using unmanaged memory support provided by the VNLib.Utils library. No external dependencies outside of the VNLib ecosystem are required. The VNLib.Plugins and VNLib.Plugins.Essentials libraries are highly recommended for serving web content.</Description>
-    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Http</RepositoryUrl>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.8.0-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="ErrorProne.NET.Structs" Version="0.6.1-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />

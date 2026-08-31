@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>    
     <TargetFramework>net8.0</TargetFramework>
@@ -15,7 +15,7 @@
     <Description>Provides managed and random cryptocraphic hashing helper classes, including complete Argon2 password hashing.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
-    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Hashing.Portable</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -23,16 +23,6 @@
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.8.0-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="ErrorProne.NET.Structs" Version="0.6.1-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\README.md">

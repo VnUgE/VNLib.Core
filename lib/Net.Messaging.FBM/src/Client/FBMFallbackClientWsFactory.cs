@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -37,7 +37,7 @@ namespace VNLib.Net.Messaging.FBM.Client
     /// on demand using the <see cref="ClientWebSocket"/> .NET default implementation
     /// </summary>
     /// <remarks>
-    /// Initalizes a new <see cref="FBMFallbackClientWsFactory"/> instance
+    /// Initializes a new <see cref="FBMFallbackClientWsFactory"/> instance
     /// </remarks>
     /// <param name="onConfigureSocket">A callback function that allows users to configure sockets when created</param>
     public class FBMFallbackClientWsFactory(Action<ClientWebSocketOptions>? onConfigureSocket = null) : IFbmWebsocketFactory

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -24,11 +24,14 @@
 
 using System;
 using System.IO;
+using System.Diagnostics;
 using System.Reflection;
 
 using VNLib.Utils;
-using VNLib.Utils.IO;
 using VNLib.Utils.Logging;
+
+using VNLib.Plugins.Runtime.Events;
+using VNLib.Plugins.Runtime.Watcher;
 
 namespace VNLib.Plugins.Runtime
 {
@@ -38,14 +41,14 @@ namespace VNLib.Plugins.Runtime
     /// </summary>
     public sealed class RuntimePluginLoader : VnDisposeable, IPluginReloadEventHandler
     {
-        private readonly IPluginAssemblyLoader Loader;
-        private readonly ILogProvider? Log;
-        private readonly IDisposable? Watcher;
+        private readonly IAssemblyLoader _loader;
+        private readonly ILogProvider? _log;
+        private readonly IDisposable? _watcher;
 
         /// <summary>
         /// Gets the plugin assembly loader configuration information
         /// </summary>
-        public IPluginAssemblyLoadConfig Config => Loader.Config;
+        public IPluginAssemblyLoadConfig Config { get; }
 
         /// <summary>
         /// Gets the plugin lifecycle controller
@@ -55,57 +58,47 @@ namespace VNLib.Plugins.Runtime
         /// <summary>
         /// Creates a new <see cref="RuntimePluginLoader"/> with the specified config and host config dom.
         /// </summary>
-        /// <param name="loader">The plugin's assembly loader</param>
+        /// <param name="config">The plugin's assembly loader configuration</param>
         /// <param name="log">A log provider to write plugin unload log events to</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public RuntimePluginLoader(IPluginAssemblyLoader loader, ILogProvider? log)
+        public RuntimePluginLoader(IPluginAssemblyLoadConfig config, ILogProvider? log)
         {
-            ArgumentNullException.ThrowIfNull(loader);
-            
-            Log = log;           
-            Loader = loader;
+            ArgumentNullException.ThrowIfNull(config);
+
+            Config = config;
+
+            _log = log;
+            _loader = config.GetLoader();
 
             //Configure watcher if requested
-            if (loader.Config.WatchForReload)
+            if (config.WatchForReload)
             {
-                Watcher = AssemblyWatcher.WatchAssembly(this, loader);
+                _watcher = AssemblyWatcher.WatchAssembly(this, config);
             }
 
             //Init container
-            Controller = new();
+            Controller = new(config);
         }
 
         /// <summary>
         /// Initializes the plugin loader, and populates the <see cref="Controller"/>
         /// with initialized plugins.
         /// </summary>
-        /// <returns>A task that represents the initialization</returns>
         /// <exception cref="IOException"></exception>
         /// <exception cref="FileNotFoundException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
         public void InitializeController()
         {
+            Check();
+
             //Prep the assembly loader
-            Loader.Load();
+            _loader.Load();
 
             //Load the main assembly
-            Assembly PluginAsm = Loader.GetAssembly();
+            Assembly PluginAsm = _loader.GetAssembly();
 
             //Init container from the assembly
             Controller.InitializePlugins(PluginAsm);
-
-            string[] cliArgs = Environment.GetCommandLineArgs();
-
-            //Write the config to binary to pass it to the plugin
-            using VnMemoryStream vms = new();
-
-            //Read config data
-            Loader.Config.ReadConfigurationData(vms);
-
-            //Reset memstream
-            vms.Seek(0, SeekOrigin.Begin);
-
-            //Configure log/doms
-            Controller.ConfigurePlugins(vms, cliArgs);
         }
 
         /// <summary>
@@ -114,17 +107,26 @@ namespace VNLib.Plugins.Runtime
         /// to block individual loading.
         /// </summary>
         /// <exception cref="AggregateException"></exception>
-        public void LoadPlugins() => Controller.LoadPlugins();
+        /// <exception cref="ObjectDisposedException"></exception>
+        public void LoadPlugins()
+        {
+            Check();
+
+            Controller.LoadPlugins();
+        }
 
         /// <summary>
-        /// Manually reload the internal <see cref="IPluginAssemblyLoader"/>
+        /// Manually reload the internal <see cref="IAssemblyLoader"/>
         /// which will reload the assembly and re-initialize the controller
         /// </summary>
         /// <param name="forceGc">A value that indicates if the current unload should cause a manual garbage collection</param>
         /// <exception cref="AggregateException"></exception>
         /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
         public void ReloadPlugins(bool forceGc)
         {
+            Check();
+
             //Not unloadable
             if (!Config.Unloadable)
             {
@@ -147,23 +149,28 @@ namespace VNLib.Plugins.Runtime
         /// for all listeners.
         /// </summary>
         /// <exception cref="AggregateException"></exception>
-        public void UnloadPlugins() => Controller.UnloadPlugins();
+        public void UnloadPlugins()
+        {
+            Check();
+
+            Controller.UnloadPlugins();
+        }
 
         /// <summary>
         /// Attempts to unload all plugins within the lifecycle controller, all event handlers
-        /// then attempts to unload the <see cref="IPluginAssemblyLoader"/> if dynamic unloading 
+        /// then attempts to unload the <see cref="IAssemblyLoader"/> if dynamic unloading 
         /// is enabled, otherwise does nothing.
         /// </summary>
         /// <param name="forceGc">A value that indicates if the current unload should cause a manual garbage collection</param>
         /// <exception cref="AggregateException"></exception>
         public void UnloadAll(bool forceGc)
         {
-            UnloadPlugins();
+            UnloadPlugins(); // Guards disposed state
 
             //If the assembly loader is unloadable calls its unload method
             if (Config.Unloadable)
             {
-                Loader.Unload();
+                _loader.Unload();
             }
 
             //Optionally wait for GC to finish
@@ -176,15 +183,17 @@ namespace VNLib.Plugins.Runtime
 
         //Process unload events
 
-        void IPluginReloadEventHandler.OnPluginUnloaded(IPluginAssemblyLoader loader)
+        void IPluginReloadEventHandler.OnAssemblyFileChanged()
         {
+            Debug.Assert(!Disposed, "Received assembly file change event after disposal, this should not happen");
+
             try
             {
                 //All plugins must be unloaded before the assembly loader
                 UnloadPlugins();
 
                 //Unload the loader before initializing
-                loader.Unload();
+                _loader.Unload();
 
                 //Reload the assembly and controller
                 InitializeController();
@@ -194,7 +203,7 @@ namespace VNLib.Plugins.Runtime
             }
             catch (Exception ex)
             {
-                Log?.Error("Failed reload plugins for {loader}\n{ex}", Config.AssemblyFile, ex);
+                _log?.Error("Failed reload plugins for {loader}\n{ex}", Config.AssemblyFile, ex);
             }
         }
 
@@ -202,9 +211,9 @@ namespace VNLib.Plugins.Runtime
         protected override void Free()
         {
             //Cleanup
-            Watcher?.Dispose();
+            _watcher?.Dispose();
             Controller.Dispose();
-            Loader.Dispose();
-        }
+            _loader.Dispose();
+        }    
     }
 }

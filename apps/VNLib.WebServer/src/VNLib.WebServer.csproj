@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -22,7 +22,7 @@
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Description>A high performance, reference .NET 8 web/http server using VNLib.Core, with the VNLib.Plugins.Essentials web framework</Description>
-    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
     <Product>VNLib.Webserver</Product>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/vnlib.core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/apps/VNLib.WebServer</RepositoryUrl>
@@ -53,24 +53,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.8.0-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="ErrorProne.NET.Structs" Version="0.6.1-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\..\..\lib\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
     <ProjectReference Include="..\..\..\lib\Net.Http\src\VNLib.Net.Http.csproj" />
-    <ProjectReference Include="..\..\..\lib\Net.Transport.SimpleTCP\src\VNLib.Net.Transport.SimpleTCP.csproj" />
+    <ProjectReference Include="..\..\..\lib\Net.Transport.Tcp\src\VNLib.Net.Transport.Tcp.csproj" />
     <ProjectReference Include="..\..\..\lib\Plugins.Essentials.ServiceStack\src\VNLib.Plugins.Essentials.ServiceStack.csproj" />
     <ProjectReference Include="..\..\..\third-party\DotNetCorePlugins\src\McMaster.NETCore.Plugins.csproj" />
   </ItemGroup>
@@ -80,6 +72,10 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="CreateTestPluginsDir" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <MakeDir Directories="$(OutDir)plugins" Condition="!Exists('$(OutDir)plugins')" />
+  </Target>
 
   <!-- Allow access to unit test executables -->
   <ItemGroup>

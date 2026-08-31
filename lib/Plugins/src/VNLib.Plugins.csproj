@@ -6,16 +6,17 @@
     <RootNamespace>VNLib.Plugins</RootNamespace>
     <AssemblyName>VNLib.Plugins</AssemblyName>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <PackageId>VNLib.Plugins</PackageId>
-    <Copyright>Copyright © 2025 Vaughn Nugent</Copyright>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
     <PackageTags>Plugins, VNLIb, VNLib Plugins, Plugin Base</PackageTags>
     <Product>VNLib Plugins Interface Assembly</Product>
-    <Description>Provides a standard interface for building dynamically loadable plugins and asynchronus web endpoint processing, compatible with the VNLib.Plugins.Runtime loader library.
+    <Description>Provides a standard interface for building dynamically loadable plugins and asynchronous web endpoint processing, compatible with the VNLib.Plugins.Runtime loader library.
     </Description>
     <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Plugins</RepositoryUrl>
@@ -23,17 +24,6 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ErrorProne.NET.CoreAnalyzers" Version="0.8.0-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="ErrorProne.NET.Structs" Version="0.6.1-beta.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\README.md">

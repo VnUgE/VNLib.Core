@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.PluginBase
@@ -114,7 +114,7 @@ namespace VNLib.Plugins
         /// The host application may invoke this method when the assembly is loaded and this plugin is constructed to pass
         /// a configuration object to the instance. This method populates the configuration objects if applicable.
         /// </summary>
-        [ConfigurationInitalizer]
+        [ConfigurationInitializer]
         public virtual void InitConfig(ReadOnlySpan<byte> config)
         {
             if (config.IsEmpty)
@@ -129,7 +129,7 @@ namespace VNLib.Plugins
         }
 
         /// <summary>
-        /// Responsible for initalizing the log provider. The host should invoke this method
+        /// Responsible for initializing the log provider. The host should invoke this method
         /// directly after the configuration is initialized
         /// </summary>
         /// <param name="cmdArgs"></param>
@@ -211,30 +211,7 @@ namespace VNLib.Plugins
                 outputTemplate: conf.Template,
                 flushToDiskInterval: TimeSpan.FromSeconds(conf.FlushIntervalSeconds)
             );
-        }
-
-        /// <summary>
-        /// When overriden handles a console command
-        /// </summary>
-        /// <param name="cmd"></param>
-        [ConsoleEventHandler]
-        public void HandleCommand(string cmd)
-        {
-            try
-            {
-                ProcessHostCommand(cmd);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex);
-            }
-        }
-
-        /// <summary>
-        /// Invoked when the host process has a command message to send 
-        /// </summary>
-        /// <param name="cmd">The command message</param>
-        protected abstract void ProcessHostCommand(string cmd);
+        }      
 
         ///<inheritdoc/>
         void IPlugin.PublishServices(IPluginServicePool pool) => OnPublishServices(pool);

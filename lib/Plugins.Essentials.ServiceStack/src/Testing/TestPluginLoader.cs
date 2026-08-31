@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins
@@ -231,7 +231,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Testing
 
         private static void InitConfig(T plugin, ReadOnlySpan<byte> configData)
         {
-            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitalizerAttribute, ConfigInitializer>(plugin!)
+            ManagedLibrary.GetMethodsWithAttribute<ConfigurationInitializerAttribute, ConfigInitializer>(plugin!)
                 .FirstOrDefault()
                 ?.Invoke(configData);
         }
