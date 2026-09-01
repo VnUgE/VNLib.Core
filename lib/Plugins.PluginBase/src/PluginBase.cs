@@ -211,30 +211,7 @@ namespace VNLib.Plugins
                 outputTemplate: conf.Template,
                 flushToDiskInterval: TimeSpan.FromSeconds(conf.FlushIntervalSeconds)
             );
-        }
-
-        /// <summary>
-        /// When overriden handles a console command
-        /// </summary>
-        /// <param name="cmd"></param>
-        [ConsoleEventHandler]
-        public void HandleCommand(string cmd)
-        {
-            try
-            {
-                ProcessHostCommand(cmd);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex);
-            }
-        }
-
-        /// <summary>
-        /// Invoked when the host process has a command message to send 
-        /// </summary>
-        /// <param name="cmd">The command message</param>
-        protected abstract void ProcessHostCommand(string cmd);
+        }      
 
         ///<inheritdoc/>
         void IPlugin.PublishServices(IPluginServicePool pool) => OnPublishServices(pool);

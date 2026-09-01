@@ -14,5 +14,15 @@
     "enabled": true,
     "path": "./plugins",
     "config_dir": "./config"
+  },
+  "tcp": {
+    "keepalive_sec": 5,
+    "keepalive_interval_sec": 2,
+    "max_recv_buffer": 655360,
+    "max_connections": 50000,
+    "backlog": 1000,
+    "tx_buffer": 65536,
+    "rx_buffer": 65536,
+    "no_delay": true
   }
 }

@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -27,8 +27,14 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
+    [ConfigurationKey(ConfigKey)]
     internal sealed class TcpConfigJson : IJsonOnDeserialized
     {
+        /// <summary>
+        /// The name of the configuration element 
+        /// </summary>
+        internal const string ConfigKey = "tcp";
+
         /// <summary>
         /// Number of worker threads (accept events) to accept incoming connections.
         /// </summary>

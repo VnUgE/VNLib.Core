@@ -1,0 +1,49 @@
+/*
+* Copyright (c) 2026 Vaughn Nugent
+*
+* Library: VNLib
+* Package: VNLib.Plugins.Essentials.ServiceStack
+* File: IPluginSharedMemoryManager.cs
+*
+* IPluginSharedMemoryManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger
+* VNLib collection of libraries and utilities.
+*
+* VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Affero General Public License as
+* published by the Free Software Foundation, either version 3 of the
+* License, or (at your option) any later version.
+*
+* VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU Affero General Public License for more details.
+*
+* You should have received a copy of the GNU Affero General Public License
+* along with this program.  If not, see https://www.gnu.org/licenses/.
+*/
+
+using VNLib.Plugins.Ipc.SharedMemory;
+
+namespace VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc
+{
+    /// <summary>
+    /// Represents a memory allocator for managed IPC regions. It's responsible for allocating and
+    /// freeing blocks of memory used for plugin IPC channels.
+    /// </summary>
+    public interface IPluginSharedMemoryManager
+    {
+        /// <summary>
+        /// Allocates a new memory handle for an IPC region.
+        /// </summary>
+        /// <param name="name">The name of the memory region</param>
+        /// <param name="size">The size, in bytes of the region to allocate</param>
+        /// <returns>The IPC region memory handle</returns>
+        IPluginMemoryRegion Alloc(string name, int size);
+
+        /// <summary>
+        /// Frees a previously allocated <see cref="IPluginMemoryRegion"/>
+        /// </summary>
+        /// <param name="region">The previously allocated <see cref="IPluginMemoryRegion"/></param>
+        void Free(IPluginMemoryRegion region);
+    }
+}

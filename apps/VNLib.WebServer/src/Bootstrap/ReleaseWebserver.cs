@@ -30,8 +30,10 @@ using System.Text;
 using VNLib.Net.Http;
 using VNLib.Plugins.Runtime.Batteries;
 using VNLib.Plugins.Runtime.Construction;
+using VNLib.Plugins.Runtime.Events;
 using VNLib.Plugins.Essentials.ServiceStack.Construction;
 using VNLib.Plugins.Essentials.ServiceStack.Plugins;
+using VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc;
 using VNLib.Utils.Logging;
 using VNLib.Utils.Memory;
 
@@ -42,8 +44,6 @@ using VNLib.WebServer.Middlewares;
 using VNLib.WebServer.Plugins;
 using VNLib.WebServer.RuntimeLoading;
 using VNLib.WebServer.VirtualHosts;
-
-using static VNLib.WebServer.Entry;
 
 namespace VNLib.WebServer.Bootstrap
 {
@@ -67,15 +67,24 @@ namespace VNLib.WebServer.Bootstrap
  | Hot Reload: {hr}
  | Reload Delay: {delay}s
  | Config dir: {conf}
+ | IPC Shared memory: {status}
 ----------------------------------";
 
         private readonly ProcessArguments args = procArgs;
+
+        private PluginSharedMemoryProvider? _pluginSharedMem;
 
         /// <summary>
         /// If plugins are enabled, bridges console commands to plugins with 
         /// console event handlers. 
         /// </summary>
         public PluginConsoleEventHandler ConsoleEventHandler { get; } = new();
+
+        protected override void Free()
+        {
+            _pluginSharedMem?.Dispose();
+            base.Free();
+        }
 
         ///<inheritdoc/>
         protected override PluginManager? ConfigurePlugins()
@@ -87,7 +96,7 @@ namespace VNLib.WebServer.Bootstrap
                 return null;
             }
 
-            ServerPluginConfig? conf = config.GetConfigProperty<ServerPluginConfig>(PLUGINS_CONFIG_PROP_NAME);
+            ServerPluginConfig? conf = config.GetConfigProperty<ServerPluginConfig>();
             if (conf is null)
             {
                 logger.AppLog.Debug("No plugin configuration found");
@@ -122,14 +131,26 @@ namespace VNLib.WebServer.Bootstrap
              * state capture. Assumes the service stack has been configured.
              * 
              */
+
+            List<IPluginEventListener> listeners = [
+                new PluginConfigInitializer(configReader),
+                ConsoleEventHandler,
+                new RuntimePluginServiceExporter(ServiceStack.CreateBinder())
+            ];
+
+            // If IPC shared memory is enabled, add it to the event handler list
+            if (conf.IpcSharedMem is not null && conf.IpcSharedMem.Enabled)
+            {
+                _pluginSharedMem = new(conf.IpcSharedMem.GetConfig());
+
+                // Add the listener to the store
+                listeners.Add(_pluginSharedMem.GetListener());
+            }
+
             PluginStack ps = new(
                 resolver: new PluginAssemblyResolver(conf, logger.AppLog),
                 debugLog: logger.AppLog,
-                listeners: [ 
-                    new PluginConfigInitializer(configReader), 
-                    ConsoleEventHandler,
-                    new RuntimePluginServiceExporter(ServiceStack.CreateBinder()) 
-                ]
+                listeners: listeners.ToArray()
             );
 
             logger.AppLog.Information(
@@ -138,7 +159,8 @@ namespace VNLib.WebServer.Bootstrap
                 conf.Path,
                 conf.HotReload,
                 conf.ReloadDelaySec,
-                conf.ConfigDir ?? "(local)"
+                conf.ConfigDir ?? "(local)",
+                conf.IpcSharedMem?.Enabled == true ? $"({conf.IpcSharedMem.MinRegionSize}, {conf.IpcSharedMem.MaxRegionSize})" : "Disabled"
             );
 
             if (conf.HotReload)
@@ -154,7 +176,7 @@ namespace VNLib.WebServer.Bootstrap
         {
             try
             {
-                HttpGlobalConfig? gConf = config.GetConfigProperty<HttpGlobalConfig>("http");
+                HttpGlobalConfig? gConf = config.GetConfigProperty<HttpGlobalConfig>();
                 Validate.EnsureNotNull(gConf, "Missing required HTTP configuration variables");
 
                 //Attempt to load the compressor manager, if null, compression is disabled

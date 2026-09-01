@@ -38,6 +38,11 @@
     <ProjectReference Include="..\..\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
     <ProjectReference Include="..\..\Plugins.Runtime\src\VNLib.Plugins.Runtime.csproj" />
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
+    <ProjectReference Include="..\..\Plugins.Ipc\src\VNLib.Plugins.Ipc.csproj"></ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VNLib.Plugins.Essentials.ServiceStack.Tests" />
   </ItemGroup>
 
 </Project>
