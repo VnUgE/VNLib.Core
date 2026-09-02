@@ -80,6 +80,7 @@ extern "C"
 #define WTL_ERR_NOT_FOUND       (-4)
 #define WTL_ERR_DUPLICATE       (-5)
 #define WTL_ERR_WILL_EVICT      (-6)
+#define WTL_ERR_ITR_END         (-7)
 
 #define WTL_ITEM_EVICTED        (1)
 
@@ -172,6 +173,8 @@ typedef struct wtl_config_struct
     uint64_t seed;
 
 } WtlConfig;
+
+typedef struct WtlIterator WtlIterator;
 
 /* ---------- Public API ---------- */
 
@@ -304,6 +307,18 @@ VNLIB_EXPORT int32_t VNLIB_CC WtlTouch(WtlCtx* cache, WtlKey key);
 * @returns  WTL_SUCCESS if update succeeded, error code otherwise.
 */
 VNLIB_EXPORT int32_t VNLIB_CC WtlAgeSketch(WtlCtx* cache);
+
+/*
+* Allows iterating the internal table across all stored values. Ordering is
+* not guaranteed. Start a new iterating by setting itrState's pointed value to null 
+* (not null pointer). outValue is optional, if valid, the value of the next slot
+* is written to it. Inserting or removing random values during iterating is undefined,
+* however removing values after they are iterated is supported.
+* 
+* @returns  WTL_SUCCESS if the iteration succeeded, WTL_ERR_ITR_END when the end 
+* of the table has been reached. Error code otherwise
+*/
+VNLIB_EXPORT int32_t VNLIB_CC WtlIterateNextValue(const WtlCtx* cache, WtlIterator** itrState, WtlValue* outValue);
 
 
 #ifdef __cplusplus

@@ -42,32 +42,32 @@
 * remainder, so the three segments sum to capacity exactly.
 */
 vnlib_fn_internal void wtlConfigResolveInternal(
-	const WtlConfig* src,
-	struct wtl_internal_cache_config* dst
+    const WtlConfig* src,
+    struct wtl_internal_cache_config* dst
 )
 {
-	DEBUG_ASSERT(src);
-	DEBUG_ASSERT(dst);
+    DEBUG_ASSERT(src);
+    DEBUG_ASSERT(dst);
 
-	uint32_t window, main, protectedSize;
+    uint32_t window, main, protectedSize;
 
-	// Clamp window to 2 minimum entries for very small tables, 
-	// easier for lru lists. See above guarantees section
-	window = (src->capacity * src->windowPct + WTL_NUM_MAX_PERCENT) / 100;
-	window = window < 2 ? 2 : window;
-	
-	main = src->capacity - window;
-	protectedSize = (main * src->protectedPct) / 100;
+    // Clamp window to 2 minimum entries for very small tables, 
+    // easier for lru lists. See above guarantees section
+    window = (src->capacity * src->windowPct + WTL_NUM_MAX_PERCENT) / 100;
+    window = window < 2 ? 2 : window;
+    
+    main = src->capacity - window;
+    protectedSize = (main * src->protectedPct) / 100;
 
-	struct wtl_internal_cache_config conf = {
-		.capacity		= src->capacity,
-		.keySeed		= src->seed,
-		.windowSize		= window,
-		.protectedSize  = protectedSize,
-		.probationSize  = (main - protectedSize)
-	};
+    struct wtl_internal_cache_config conf = {
+        .capacity		= src->capacity,
+        .keySeed		= src->seed,
+        .windowSize		= window,
+        .protectedSize  = protectedSize,
+        .probationSize  = (main - protectedSize)
+    };
 
-	*dst = conf;
+    *dst = conf;
 }
 
 /*
@@ -76,307 +76,307 @@ vnlib_fn_internal void wtlConfigResolveInternal(
 * so the size formula and the pointer walk cannot drift apart.
 */
 vnlib_fn_internal void wtlConfigGetMemoryLayout(
-	const WtlConfig* config, 
-	struct wtl_cache_layout* out
+    const WtlConfig* config, 
+    struct wtl_cache_layout* out
 )
 {
-	DEBUG_ASSERT(config);
-	DEBUG_ASSERT(out);	
+    DEBUG_ASSERT(config);
+    DEBUG_ASSERT(out);	
 
-	uint64_t offset = _alignUp(sizeof(WtlCtx), WTL_CACHE_LINE);
+    uint64_t offset = _alignUp(sizeof(WtlCtx), WTL_CACHE_LINE);
 
-	// Must round up to pow2
-	out->htRealCapacity = _htCapacityWithOverhead((uint64_t)config->capacity);
+    // Must round up to pow2
+    out->htRealCapacity = _htCapacityWithOverhead((uint64_t)config->capacity);
 
-	out->slotsOffset = offset;
-	out->slotsBytes = out->htRealCapacity * sizeof(WtlHashSlot);
+    out->slotsOffset = offset;
+    out->slotsBytes = out->htRealCapacity * sizeof(WtlHashSlot);
 
-	offset = _alignUp(offset + out->slotsBytes, WTL_CACHE_LINE);
+    offset = _alignUp(offset + out->slotsBytes, WTL_CACHE_LINE);
 
-	out->sketchOffset = offset;
-	out->sketchBytes = (uint64_t)(((uint64_t)config->sketchDepth) * (uint64_t)(config->sketchWidth));
+    out->sketchOffset = offset;
+    out->sketchBytes = (uint64_t)(((uint64_t)config->sketchDepth) * (uint64_t)(config->sketchWidth));
 
-	out->total = offset + out->sketchBytes;
+    out->total = offset + out->sketchBytes;
 }
 
 /* ---------------- INLINE HELPERS ---------------- */
 
 static _vn_inline uint32_t _getKeyHashCode(const WtlCtx* cache, cspan_t key)
 {
-	DEBUG_ASSERT(cache);
-	return wtlHash32(key, cache->config.keySeed);
+    DEBUG_ASSERT(cache);
+    return wtlHash32(key, cache->config.keySeed);
 }
 
 static _vn_inline void _assignValueFromEntry(const WtlEntry* entry, WtlValue* value)
 {
-	DEBUG_ASSERT(entry);
-	DEBUG_ASSERT(value);
+    DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(value);
 
-	// Copy value data from our entry
-	value->key = spanGetOffsetC(entry->key, 0);
-	value->keyLen = spanGetSizeC(entry->key);
-	value->value = entry->value;
+    // Copy value data from our entry
+    value->key = spanGetOffsetC(entry->key, 0);
+    value->keyLen = spanGetSizeC(entry->key);
+    value->value = entry->value;
 }
 
 static _vn_inline void _assignEntryFromValue(const WtlValue* value, uint32_t hashCode, WtlEntry* entry)
 {
-	DEBUG_ASSERT(value);
-	DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(value);
+    DEBUG_ASSERT(entry);
 
-	// Assign new entry values
-	entry->hash = hashCode;
-	entry->value = value->value;
+    // Assign new entry values
+    entry->hash = hashCode;
+    entry->value = value->value;
 
-	spanInitC(&entry->key, value->key, value->keyLen);
+    spanInitC(&entry->key, value->key, value->keyLen);
 }
 
 static _vn_inline WtlEntry* _chooseVictim(const WtlCtx* cache, WtlEntry* first, WtlEntry* other)
 {
-	uint32_t firstEst, otherEst;
+    uint32_t firstEst, otherEst;
 
-	DEBUG_ASSERT(cache);
-	DEBUG_ASSERT(first);
-	DEBUG_ASSERT(other);	
+    DEBUG_ASSERT(cache);
+    DEBUG_ASSERT(first);
+    DEBUG_ASSERT(other);	
 
-	firstEst = wtlSketchEstimate(&cache->sketch, first->hash);
-	otherEst = wtlSketchEstimate(&cache->sketch, other->hash);
+    firstEst = wtlSketchEstimate(&cache->sketch, first->hash);
+    otherEst = wtlSketchEstimate(&cache->sketch, other->hash);
 
-	// If first estimate is greater than other, then other is the victim
-	// otherwise choose first as the victim
-	return firstEst > otherEst
-		? other
-		: first;
+    // If first estimate is greater than other, then other is the victim
+    // otherwise choose first as the victim
+    return firstEst > otherEst
+        ? other
+        : first;
 }
 
 static _vn_inline void _lruEntryPush(WtlCtx* cache, WtlEntry* entry, WtlEntryLruMemberType newMembership)
 {
-	int lruRet;
-	DEBUG_ASSERT(cache);
-	DEBUG_ASSERT(entry);	
+    int lruRet;
+    DEBUG_ASSERT(cache);
+    DEBUG_ASSERT(entry);	
 
-	switch (newMembership)
-	{
-	case WTL_LRU_MEMBER_WINDOW:
-		lruRet = lruPush(&cache->windowCache, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into window cache");
-		break;
-	
-	case WTL_LRU_MEMBER_PROBATION:
-		lruRet = lruPush(&cache->mainCache.probation, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into probation cache");
-		break;
+    switch (newMembership)
+    {
+    case WTL_LRU_MEMBER_WINDOW:
+        lruRet = lruPush(&cache->windowCache, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into window cache");
+        break;
+    
+    case WTL_LRU_MEMBER_PROBATION:
+        lruRet = lruPush(&cache->mainCache.probation, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into probation cache");
+        break;
 
-	case WTL_LRU_MEMBER_PROTECTED:
-		lruRet = lruPush(&cache->mainCache.protected, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into main protected cache");
-		break;
-	
-	case WTL_LRU_MEMBER_NONE:
-	default:
-		DEBUG_ASSERT2(0, "Invalid LRU list member");
-		lruRet = 0;
-		break;
-	}
+    case WTL_LRU_MEMBER_PROTECTED:
+        lruRet = lruPush(&cache->mainCache.protected, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into main protected cache");
+        break;
+    
+    case WTL_LRU_MEMBER_NONE:
+    default:
+        DEBUG_ASSERT2(0, "Invalid LRU list member");
+        lruRet = 0;
+        break;
+    }
 
-	// Update list membership if pushed correctly
-	if (lruRet)
-	{
-		entry->lruMember = newMembership;
-	}
+    // Update list membership if pushed correctly
+    if (lruRet)
+    {
+        entry->lruMember = newMembership;
+    }
 }
 
 static _vn_inline void _lruEntryPushTail(WtlCtx* cache, WtlEntry* entry, WtlEntryLruMemberType newMembership)
 {
-	int lruRet;
-	DEBUG_ASSERT(cache);
-	DEBUG_ASSERT(entry);
+    int lruRet;
+    DEBUG_ASSERT(cache);
+    DEBUG_ASSERT(entry);
 
-	switch (newMembership)
-	{
-	case WTL_LRU_MEMBER_WINDOW:
-		lruRet = lruPushTail(&cache->windowCache, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into window cache tail");
-		break;
+    switch (newMembership)
+    {
+    case WTL_LRU_MEMBER_WINDOW:
+        lruRet = lruPushTail(&cache->windowCache, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into window cache tail");
+        break;
 
-	case WTL_LRU_MEMBER_PROBATION:
-		lruRet = lruPushTail(&cache->mainCache.probation, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into probation cache tail");
-		break;
+    case WTL_LRU_MEMBER_PROBATION:
+        lruRet = lruPushTail(&cache->mainCache.probation, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into probation cache tail");
+        break;
 
-	case WTL_LRU_MEMBER_PROTECTED:
-		lruRet = lruPushTail(&cache->mainCache.protected, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into main protected cache tail");
-		break;
+    case WTL_LRU_MEMBER_PROTECTED:
+        lruRet = lruPushTail(&cache->mainCache.protected, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to push entry into main protected cache tail");
+        break;
 
-	case WTL_LRU_MEMBER_NONE:
-	default:
-		DEBUG_ASSERT2(0, "Invalid LRU list member");
-		lruRet = 0;
-		break;
-	}
+    case WTL_LRU_MEMBER_NONE:
+    default:
+        DEBUG_ASSERT2(0, "Invalid LRU list member");
+        lruRet = 0;
+        break;
+    }
 
-	// Update list membership if pushed correctly
-	if (lruRet)
-	{
-		entry->lruMember = newMembership;
-	}
+    // Update list membership if pushed correctly
+    if (lruRet)
+    {
+        entry->lruMember = newMembership;
+    }
 }
 
 static _vn_inline void _lruEntryUnlink(WtlCtx* cache, WtlEntry* entry)
 {
-	int lruRet;
-	DEBUG_ASSERT(cache);
-	DEBUG_ASSERT(entry);
+    int lruRet;
+    DEBUG_ASSERT(cache);
+    DEBUG_ASSERT(entry);
 
-	switch (entry->lruMember)
-	{
-	case WTL_LRU_MEMBER_WINDOW:
-		lruRet = lruUnlink(&cache->windowCache, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to unlink entry from window cache");
-		break;
+    switch (entry->lruMember)
+    {
+    case WTL_LRU_MEMBER_WINDOW:
+        lruRet = lruUnlink(&cache->windowCache, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to unlink entry from window cache");
+        break;
 
-	case WTL_LRU_MEMBER_PROBATION:
-		lruRet = lruUnlink(&cache->mainCache.probation, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to unlink entry from probation cache");
-		break;
+    case WTL_LRU_MEMBER_PROBATION:
+        lruRet = lruUnlink(&cache->mainCache.probation, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to unlink entry from probation cache");
+        break;
 
-	case WTL_LRU_MEMBER_PROTECTED:
-		lruRet = lruUnlink(&cache->mainCache.protected, entry);
-		DEBUG_ASSERT2(lruRet, "LRU Failed to unlink entry from main protected cache");
-		break;
+    case WTL_LRU_MEMBER_PROTECTED:
+        lruRet = lruUnlink(&cache->mainCache.protected, entry);
+        DEBUG_ASSERT2(lruRet, "LRU Failed to unlink entry from main protected cache");
+        break;
 
-	case WTL_LRU_MEMBER_NONE:
-	default:
-		DEBUG_ASSERT2(0, "Entry has no list membership");
-		lruRet = 0;
-		break;
-	}
+    case WTL_LRU_MEMBER_NONE:
+    default:
+        DEBUG_ASSERT2(0, "Entry has no list membership");
+        lruRet = 0;
+        break;
+    }
 
-	// Clear membership flags if unlinked correctly
-	if (lruRet)
-	{		
-		entry->lruMember = WTL_LRU_MEMBER_NONE;
-	}	
+    // Clear membership flags if unlinked correctly
+    if (lruRet)
+    {		
+        entry->lruMember = WTL_LRU_MEMBER_NONE;
+    }	
 }
 
 static _vn_inline int _newEntryCanEvict(const WtlCtx* cache)
 {
-	return lruCount(&cache->windowCache) >= cache->config.windowSize
-		&& lruCount(&cache->mainCache.probation) >= cache->config.probationSize;
+    return lruCount(&cache->windowCache) >= cache->config.windowSize
+        && lruCount(&cache->mainCache.probation) >= cache->config.probationSize;
 }
 
 /* ---------------- INTERNAL HELPERS ---------------- */
 
 vnlib_fn_internal WtlEntry* wtlFindEntryFromKey(WtlCtx* cache, cspan_t key)
 {
-	WtlEntry* entry;
-	uint32_t hash;
+    WtlEntry* entry;
+    uint32_t hash;
 
-	DEBUG_ASSERT(cache);
-	DEBUG_ASSERT(!spanIsNullC(key) && !spanIsEmptyC(key));
+    DEBUG_ASSERT(cache);
+    DEBUG_ASSERT(!spanIsNullC(key) && !spanIsEmptyC(key));
 
-	// Compute hash of key
-	hash = _getKeyHashCode(cache, key);
+    // Compute hash of key
+    hash = _getKeyHashCode(cache, key);
 
-	// Check table for entry
-	entry = wtlHashTableLookup(&cache->table, hash);
-	if (!entry)
-	{
-		return NULL;
-	}
+    // Check table for entry
+    entry = wtlHashTableLookup(&cache->table, hash);
+    if (!entry)
+    {
+        return NULL;
+    }
 
-	// Sanity check on hashes
-	DEBUG_ASSERT2(entry->hash == hash, "An entry was returned by lookup table with the wrong hash code");
-	DEBUG_ASSERT(!spanIsNullC(entry->key));
+    // Sanity check on hashes
+    DEBUG_ASSERT2(entry->hash == hash, "An entry was returned by lookup table with the wrong hash code");
+    DEBUG_ASSERT(!spanIsNullC(entry->key));
 
-	// Ensure key matches
-	if (
-		spanGetSizeC(key) != spanGetSizeC(entry->key) ||
-		memcmp(spanGetOffsetC(entry->key, 0), spanGetOffsetC(key, 0), spanGetSizeC(entry->key)) != 0
-		)
-	{
-		// Key does not match exactly, it's not the same entry, but hash collision
+    // Ensure key matches
+    if (
+        spanGetSizeC(key) != spanGetSizeC(entry->key) ||
+        memcmp(spanGetOffsetC(entry->key, 0), spanGetOffsetC(key, 0), spanGetSizeC(entry->key)) != 0
+        )
+    {
+        // Key does not match exactly, it's not the same entry, but hash collision
 
-		return NULL;
-	}
+        return NULL;
+    }
 
-	return entry;
+    return entry;
 }
 
 vnlib_fn_internal void wtlPromoteEntryToProtected(WtlCtx* cache, WtlEntry* entry)
 {
-	DEBUG_ASSERT(cache);
-	DEBUG_ASSERT(entry);
-	DEBUG_ASSERT(entry->lruMember == WTL_LRU_MEMBER_PROBATION);
+    DEBUG_ASSERT(cache);
+    DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(entry->lruMember == WTL_LRU_MEMBER_PROBATION);
 
-	_lruEntryUnlink(cache, entry);
+    _lruEntryUnlink(cache, entry);
 
-	// Protected segment is full, so we need to demote lru protected
-	if (lruCount(&cache->mainCache.protected) >= cache->config.protectedSize)
-	{
-		WtlEntry* demoted = lruPop(&cache->mainCache.protected);
-		DEBUG_ASSERT(demoted);
+    // Protected segment is full, so we need to demote lru protected
+    if (lruCount(&cache->mainCache.protected) >= cache->config.protectedSize)
+    {
+        WtlEntry* demoted = lruPop(&cache->mainCache.protected);
+        DEBUG_ASSERT(demoted);
 
-		// Push as demoted to tail of probation segment
-		_lruEntryPushTail(cache, demoted, WTL_LRU_MEMBER_PROBATION);
-	}
+        // Push as demoted to tail of probation segment
+        _lruEntryPushTail(cache, demoted, WTL_LRU_MEMBER_PROBATION);
+    }
 
-	// Now part of the protected segment
-	_lruEntryPush(cache, entry, WTL_LRU_MEMBER_PROTECTED);
+    // Now part of the protected segment
+    _lruEntryPush(cache, entry, WTL_LRU_MEMBER_PROTECTED);
 }	
 
 vnlib_fn_internal WtlEntry* wtlPushNewEntry(WtlCtx* cache, WtlEntry* entry)
 {
-	WtlEntry* candidate = NULL, * victim = NULL;
+    WtlEntry* candidate = NULL, * victim = NULL;
 
-	DEBUG_ASSERT(cache); 
-	DEBUG_ASSERT(entry);
+    DEBUG_ASSERT(cache); 
+    DEBUG_ASSERT(entry);
 
-	// entry needs to enter the window cache
-	_lruEntryPush(cache, entry, WTL_LRU_MEMBER_WINDOW);
+    // entry needs to enter the window cache
+    _lruEntryPush(cache, entry, WTL_LRU_MEMBER_WINDOW);
 
-	// If window has room were done, otherwise we need to shuffle lists
-	if (lruCount(&cache->windowCache) <= cache->config.windowSize)
-	{
-		return NULL;
-	}
+    // If window has room were done, otherwise we need to shuffle lists
+    if (lruCount(&cache->windowCache) <= cache->config.windowSize)
+    {
+        return NULL;
+    }
 
-	candidate = lruPeek(&cache->windowCache);
+    candidate = lruPeek(&cache->windowCache);
 
-	// Window is overflowing and needs to move to probation, see if room is available
+    // Window is overflowing and needs to move to probation, see if room is available
 
-	if (lruCount(&cache->mainCache.probation) < cache->config.probationSize)
-	{
-		// Pushing into probation is safe, there is room
+    if (lruCount(&cache->mainCache.probation) < cache->config.probationSize)
+    {
+        // Pushing into probation is safe, there is room
 
-		// Unlink it from window and push into probation
-		_lruEntryUnlink(cache, candidate);
-		_lruEntryPush(cache, candidate, WTL_LRU_MEMBER_PROBATION);
+        // Unlink it from window and push into probation
+        _lruEntryUnlink(cache, candidate);
+        _lruEntryPush(cache, candidate, WTL_LRU_MEMBER_PROBATION);
 
-		return NULL;
-	}	
+        return NULL;
+    }	
 
-	// Probation is full, time to choose eviction candidate
-	victim = _chooseVictim(cache, candidate, lruPeek(&cache->mainCache.probation));
+    // Probation is full, time to choose eviction candidate
+    victim = _chooseVictim(cache, candidate, lruPeek(&cache->mainCache.probation));
 
-	// Victim is probee, candidate is window
-	if (victim->lruMember == WTL_LRU_MEMBER_PROBATION)
-	{		
-		// Candidate is window time, unlink it and stuff it into the probation
-		_lruEntryUnlink(cache, candidate);
-		_lruEntryPush(cache, candidate, WTL_LRU_MEMBER_PROBATION);		
-	}
-	else
-	{
-		// Candidate was selected as eviction victim
-		DEBUG_ASSERT(victim->lruMember == WTL_LRU_MEMBER_WINDOW);
-		DEBUG_ASSERT(candidate == victim);
-	}	
+    // Victim is probee, candidate is window
+    if (victim->lruMember == WTL_LRU_MEMBER_PROBATION)
+    {		
+        // Candidate is window time, unlink it and stuff it into the probation
+        _lruEntryUnlink(cache, candidate);
+        _lruEntryPush(cache, candidate, WTL_LRU_MEMBER_PROBATION);		
+    }
+    else
+    {
+        // Candidate was selected as eviction victim
+        DEBUG_ASSERT(victim->lruMember == WTL_LRU_MEMBER_WINDOW);
+        DEBUG_ASSERT(candidate == victim);
+    }	
 
-	// Always unlink the victim
-	_lruEntryUnlink(cache, victim);
+    // Always unlink the victim
+    _lruEntryUnlink(cache, victim);
 
-	return victim;
+    return victim;
 }
 
 /* ---------------- PUBLIC API ---------------- */
@@ -384,385 +384,455 @@ vnlib_fn_internal WtlEntry* wtlPushNewEntry(WtlCtx* cache, WtlEntry* entry)
 VNLIB_EXPORT const char* VNLIB_CC WtlGetVersionString(void)
 {
 #ifndef WTL_VERSION_STRING
-	#error No library version string defined
+    #error No library version string defined
 #else
-	return WTL_VERSION_STRING;
+    return WTL_VERSION_STRING;
 #endif // !WTL_VERSION_STRING	
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlGetMemorySize(const WtlConfig* config)
 {
-	struct wtl_cache_layout memLayout;
+    struct wtl_cache_layout memLayout;
 
-	// Ensure percentages
-	{
-		// Limit minimum capacity
-		if (config->capacity < WTL_MIN_CAPACITY)
-		{
-			return WTL_ERR_INVALID_ARG;
-		}
+    // Ensure percentages
+    {
+        // Limit minimum capacity
+        if (config->capacity < WTL_MIN_CAPACITY)
+        {
+            return WTL_ERR_INVALID_ARG;
+        }
 
-		if (
-			config->protectedPct == 0 ||
-			config->windowPct == 0
-		)
-		{
-			return WTL_ERR_INVALID_ARG;
-		}
+        if (
+            config->protectedPct == 0 ||
+            config->windowPct == 0
+        )
+        {
+            return WTL_ERR_INVALID_ARG;
+        }
 
-		if (
-			config->protectedPct > WTL_NUM_MAX_PERCENT ||
-			config->windowPct > WTL_NUM_MAX_PERCENT
-			)
-		{
-			return WTL_ERR_INVALID_ARG;
-		}
+        if (
+            config->protectedPct > WTL_NUM_MAX_PERCENT ||
+            config->windowPct > WTL_NUM_MAX_PERCENT
+            )
+        {
+            return WTL_ERR_INVALID_ARG;
+        }
 
-		// List segment sizes are valid, continue
-	}
+        // List segment sizes are valid, continue
+    }
 
-	// Validate sketch
-	{
-		WtlSketchConfig sketch = {
-			.depth				= config->sketchDepth,
-			.width				= config->sketchWidth,
-			.resetThreshold		= config->sketchResetThreshold,
-			.seed				= config->sketchSeed
-		};
+    // Validate sketch
+    {
+        WtlSketchConfig sketch = {
+            .depth				= config->sketchDepth,
+            .width				= config->sketchWidth,
+            .resetThreshold		= config->sketchResetThreshold,
+            .seed				= config->sketchSeed
+        };
 
-		if (wtlSketchConfigIsValid(&sketch) != 0)
-		{
-			return WTL_ERR_INVALID_ARG;
-		}
+        if (wtlSketchConfigIsValid(&sketch) != 0)
+        {
+            return WTL_ERR_INVALID_ARG;
+        }
 
-		// Sketch config is valid, continue
-	}
+        // Sketch config is valid, continue
+    }
 
-	// Hashtable is valid so long as capacity > 0 and the system has enough memory
+    // Hashtable is valid so long as capacity > 0 and the system has enough memory
 
-	wtlConfigGetMemoryLayout(config, &memLayout);
+    wtlConfigGetMemoryLayout(config, &memLayout);
 
-	/*
-	* size_t is the variable width generally used for malloc() family calls and 
-	* a good indicator of how much memory the system can afford to allocate. Users
-	* generally should be nowhere near this value, but to protect overflows we can 
-	* use it as a theoretical max memory boundary. 
-	* 
-	* Otherwise int32 is our max upper bound for this function so cap to int32 max
-	*/
+    /*
+    * size_t is the variable width generally used for malloc() family calls and 
+    * a good indicator of how much memory the system can afford to allocate. Users
+    * generally should be nowhere near this value, but to protect overflows we can 
+    * use it as a theoretical max memory boundary. 
+    * 
+    * Otherwise int32 is our max upper bound for this function so cap to int32 max
+    */
 
 #if SIZE_MAX < INT32_MAX
-	if (memLayout.total >= SIZE_MAX) return WTL_ERR_INVALID_ARG;
+    if (memLayout.total >= SIZE_MAX) return WTL_ERR_INVALID_ARG;
 #else
-	if (memLayout.total > (uint64_t)INT32_MAX) return WTL_ERR_INVALID_ARG;
+    if (memLayout.total > (uint64_t)INT32_MAX) return WTL_ERR_INVALID_ARG;
 #endif
 
-	// Safe to cast to int32 without overflow
-	return (int32_t)memLayout.total;
+    // Safe to cast to int32 without overflow
+    return (int32_t)memLayout.total;
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlInit(const WtlConfig* config, WtlCtx* cache)
 {	
-	// Absolute base address for the cache table, required for cache/alignment
-	uint8_t* const absBaseOffset = (uint8_t*)(cache);
-	struct wtl_cache_layout memLayout;
+    // Absolute base address for the cache table, required for cache/alignment
+    uint8_t* const absBaseOffset = (uint8_t*)(cache);
+    struct wtl_cache_layout memLayout;
 
-	WTL_CHECK_NULL(config);
-	WTL_CHECK_NULL(cache);
+    WTL_CHECK_NULL(config);
+    WTL_CHECK_NULL(cache);
 
-	// Load cache memory layout
-	wtlConfigGetMemoryLayout(config, &memLayout);
+    // Load cache memory layout
+    wtlConfigGetMemoryLayout(config, &memLayout);
 
-	// Minimal guard for overruns/overflows
+    // Minimal guard for overruns/overflows
 #if SIZE_MAX < INT32_MAX
-	if (memLayout.total >= SIZE_MAX) return WTL_ERR_INVALID_ARG;
+    if (memLayout.total >= SIZE_MAX) return WTL_ERR_INVALID_ARG;
 #else
-	if (memLayout.total > (uint64_t)INT32_MAX) return WTL_ERR_INVALID_ARG;
+    if (memLayout.total > (uint64_t)INT32_MAX) return WTL_ERR_INVALID_ARG;
 #endif
 
-	memset(cache, 0, memLayout.total);
+    memset(cache, 0, memLayout.total);
 
-	// Resolve and set internal configuration
-	// down-cast the const away for initialization, otherwise config is const through 
-	// normal lifetime
-	wtlConfigResolveInternal(config, (struct wtl_internal_cache_config*)(&cache->config));
+    // Resolve and set internal configuration
+    // down-cast the const away for initialization, otherwise config is const through 
+    // normal lifetime
+    wtlConfigResolveInternal(config, (struct wtl_internal_cache_config*)(&cache->config));
 
-	// Setup hashtable
-	{
-		// Use computed overhead table capacity, safe to cast to u32 if total size < u32
-		cache->table.capacity = (uint32_t)memLayout.htRealCapacity;
-		cache->table.slots = (WtlHashSlot*)(absBaseOffset + memLayout.slotsOffset);
+    // Setup hashtable
+    {
+        // Use computed overhead table capacity, safe to cast to u32 if total size < u32
+        cache->table.capacity = (uint32_t)memLayout.htRealCapacity;
+        cache->table.slots = (WtlHashSlot*)(absBaseOffset + memLayout.slotsOffset);
 
-		// Ensure hashtable is valid
-		if (wtlHashTableIsValid(&cache->table) != WTL_SUCCESS)
-		{
-			return WTL_ERR_INVALID_ARG;
-		}
-	}
+        // Ensure hashtable is valid
+        if (wtlHashTableIsValid(&cache->table) != WTL_SUCCESS)
+        {
+            return WTL_ERR_INVALID_ARG;
+        }
+    }
 
-	// Setup sketch
-	{
-		WtlSketchConfig sketchConf = {
-			.depth			= config->sketchDepth,
-			.width			= config->sketchWidth,
-			.resetThreshold	= config->sketchResetThreshold,
-			.seed			= config->sketchSeed
-		};
+    // Setup sketch
+    {
+        WtlSketchConfig sketchConf = {
+            .depth			= config->sketchDepth,
+            .width			= config->sketchWidth,
+            .resetThreshold	= config->sketchResetThreshold,
+            .seed			= config->sketchSeed
+        };
 
-		// Assign sketch config
-		*((WtlSketchConfig*)(&cache->sketch.config)) = sketchConf;	
-		
-		// Assign sketch table memory from base offset
-		spanInit(
-			&cache->sketch.table,
-			(absBaseOffset + memLayout.sketchOffset),
-			(uint32_t)memLayout.sketchBytes
-		);
+        // Assign sketch config
+        *((WtlSketchConfig*)(&cache->sketch.config)) = sketchConf;	
+        
+        // Assign sketch table memory from base offset
+        spanInit(
+            &cache->sketch.table,
+            (absBaseOffset + memLayout.sketchOffset),
+            (uint32_t)memLayout.sketchBytes
+        );
 
-		// Ensure sketch config is valid before continuing
-		if (wtlSketchIsValid(&cache->sketch) != WTL_SUCCESS)
-		{
-			return WTL_ERR_INVALID_ARG;
-		}
-	}
+        // Ensure sketch config is valid before continuing
+        if (wtlSketchIsValid(&cache->sketch) != WTL_SUCCESS)
+        {
+            return WTL_ERR_INVALID_ARG;
+        }
+    }
 
-	return WTL_SUCCESS;
+    return WTL_SUCCESS;
 }
 
 VNLIB_EXPORT uint32_t VNLIB_CC WtlCount(const WtlCtx* cache)
 {
-	return cache ? wtlHashTableCount(&cache->table) : 0;
+    return cache ? wtlHashTableCount(&cache->table) : 0;
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlPeek(WtlCtx* cache, WtlKey key, WtlValue* outValue)
 {
-	cspan_t keySpan;
-	WtlEntry* entry;
+    cspan_t keySpan;
+    WtlEntry* entry;
 
-	// Validate user args
-	WTL_CHECK_NULL(cache);
-	WTL_CHECK_NULL(key.key);  // Early check for null key pointer
+    // Validate user args
+    WTL_CHECK_NULL(cache);
+    WTL_CHECK_NULL(key.key);  // Early check for null key pointer
 
-	// Set key span and validate. Null may be allowed of size is 0 or 
-	// assigned manually so must check both 
-	spanInitC(&keySpan, key.key, key.len);
-	if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
-	{
-		return WTL_ERR_INVALID_ARG;
-	}
+    // Set key span and validate. Null may be allowed of size is 0 or 
+    // assigned manually so must check both 
+    spanInitC(&keySpan, key.key, key.len);
+    if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
+    {
+        return WTL_ERR_INVALID_ARG;
+    }
 
-	// Find the entry from the user's supplied key
-	entry = wtlFindEntryFromKey(cache, keySpan);
-	if (!entry)
-	{
-		return WTL_ERR_NOT_FOUND;
-	}
+    // Find the entry from the user's supplied key
+    entry = wtlFindEntryFromKey(cache, keySpan);
+    if (!entry)
+    {
+        return WTL_ERR_NOT_FOUND;
+    }
 
-	// Caller can set out to null if they just want to see if the key 
-	// exists. If they set outValue param, then assign it.
-	if (outValue) 
-	{
-		// Overwrites the outValue's fields with data from the found entry
-		_assignValueFromEntry(entry, outValue);
-	}
+    // Caller can set out to null if they just want to see if the key 
+    // exists. If they set outValue param, then assign it.
+    if (outValue) 
+    {
+        // Overwrites the outValue's fields with data from the found entry
+        _assignValueFromEntry(entry, outValue);
+    }
 
-	return WTL_SUCCESS;
+    return WTL_SUCCESS;
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlAgeSketch(WtlCtx* cache)
 {
-	WTL_CHECK_NULL(cache);
+    WTL_CHECK_NULL(cache);
 
-	wtlSketchAge(&cache->sketch);
+    wtlSketchAge(&cache->sketch);
 
-	return WTL_SUCCESS;
+    return WTL_SUCCESS;
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlRemove(WtlCtx* cache, WtlKey key)
 {
-	cspan_t keySpan;
-	WtlEntry* entry;
+    cspan_t keySpan;
+    WtlEntry* entry;
 
-	// Validate user args
-	WTL_CHECK_NULL(cache);
-	WTL_CHECK_NULL(key.key);  // Early check for null key pointer
+    // Validate user args
+    WTL_CHECK_NULL(cache);
+    WTL_CHECK_NULL(key.key);  // Early check for null key pointer
 
-	// Set key span and validate. Null may be allowed of size is 0 or 
-	// assigned manually so must check both 
-	spanInitC(&keySpan, key.key, key.len);
-	if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
-	{
-		return WTL_ERR_INVALID_ARG;
-	}
+    // Set key span and validate. Null may be allowed of size is 0 or 
+    // assigned manually so must check both 
+    spanInitC(&keySpan, key.key, key.len);
+    if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
+    {
+        return WTL_ERR_INVALID_ARG;
+    }
 
-	entry = wtlFindEntryFromKey(cache, keySpan);
-	if (!entry)
-	{
-		return WTL_ERR_NOT_FOUND;
-	}
+    entry = wtlFindEntryFromKey(cache, keySpan);
+    if (!entry)
+    {
+        return WTL_ERR_NOT_FOUND;
+    }
 
-	// Remove entry from internal list segments
-	_lruEntryUnlink(cache, entry);
+    // Remove entry from internal list segments
+    _lruEntryUnlink(cache, entry);
 
-	// Remove from table, also invalidates entry memory
-	return (int32_t)wtlHashTableRemove(&cache->table, entry);
+    // Remove from table, also invalidates entry memory
+    return (int32_t)wtlHashTableRemove(&cache->table, entry);
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlRemoveValue(WtlCtx* cache, const WtlValue* value)
 {
-	WtlKey key;
+    WtlKey key;
 
-	WTL_CHECK_NULL(value);
+    WTL_CHECK_NULL(value);
 
-	// Assign key data only, we don't care about the value pointer
-	// WtlRemove will validate the key memory and length
-	key.key = value->key;
-	key.len = value->keyLen;
+    // Assign key data only, we don't care about the value pointer
+    // WtlRemove will validate the key memory and length
+    key.key = value->key;
+    key.len = value->keyLen;
 
-	return WtlRemove(cache, key);
+    return WtlRemove(cache, key);
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlGet(WtlCtx* cache, WtlKey key, WtlValue* outValue)
 {
-	cspan_t keySpan;
-	WtlEntry* entry;
+    cspan_t keySpan;
+    WtlEntry* entry;
 
-	// Validate user args
-	WTL_CHECK_NULL(cache);
-	WTL_CHECK_NULL(outValue);
-	WTL_CHECK_NULL(key.key);  // Early check for null key pointer
+    // Validate user args
+    WTL_CHECK_NULL(cache);
+    WTL_CHECK_NULL(outValue);
+    WTL_CHECK_NULL(key.key);  // Early check for null key pointer
 
-	// Set key span and validate. Null may be allowed of size is 0 or 
-	// assigned manually so must check both 
-	spanInitC(&keySpan, key.key, key.len);
-	if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
-	{
-		return WTL_ERR_INVALID_ARG;
-	}
+    // Set key span and validate. Null may be allowed of size is 0 or 
+    // assigned manually so must check both 
+    spanInitC(&keySpan, key.key, key.len);
+    if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
+    {
+        return WTL_ERR_INVALID_ARG;
+    }
 
-	entry = wtlFindEntryFromKey(cache, keySpan);
-	if (!entry)
-	{
-		return WTL_ERR_NOT_FOUND;
-	}
+    entry = wtlFindEntryFromKey(cache, keySpan);
+    if (!entry)
+    {
+        return WTL_ERR_NOT_FOUND;
+    }
 
-	// Record the key hit 
-	wtlSketchRecord(&cache->sketch, entry->hash);
+    // Record the key hit 
+    wtlSketchRecord(&cache->sketch, entry->hash);
 
-	switch (entry->lruMember)
-	{
-		// Nothing to do, just promote to tip for window or protected 
-		// segments
-	case WTL_LRU_MEMBER_WINDOW:
-		lruMoveToHead(&cache->windowCache, entry);
-		break;
+    switch (entry->lruMember)
+    {
+        // Nothing to do, just promote to tip for window or protected 
+        // segments
+    case WTL_LRU_MEMBER_WINDOW:
+        lruMoveToHead(&cache->windowCache, entry);
+        break;
 
-	case WTL_LRU_MEMBER_PROTECTED:
-		lruMoveToHead(&cache->mainCache.protected, entry);
-		break;
+    case WTL_LRU_MEMBER_PROTECTED:
+        lruMoveToHead(&cache->mainCache.protected, entry);
+        break;
 
-		// When in probation, entry must be promoted to protected 
-		// segment on hit
-	case WTL_LRU_MEMBER_PROBATION:
-		wtlPromoteEntryToProtected(cache, entry);
-		break;
+        // When in probation, entry must be promoted to protected 
+        // segment on hit
+    case WTL_LRU_MEMBER_PROBATION:
+        wtlPromoteEntryToProtected(cache, entry);
+        break;
 
-	case WTL_LRU_MEMBER_NONE:
-	default:
-		DEBUG_ASSERT2(0, "Entry update failed, does not belong to an lru list");
-		return WTL_ERROR;
-	}
+    case WTL_LRU_MEMBER_NONE:
+    default:
+        DEBUG_ASSERT2(0, "Entry update failed, does not belong to an lru list");
+        return WTL_ERROR;
+    }
 
-	// All good, give the value back to the user :) 
-	_assignValueFromEntry(entry, outValue);
+    // All good, give the value back to the user :) 
+    _assignValueFromEntry(entry, outValue);
 
-	return WTL_SUCCESS;
+    return WTL_SUCCESS;
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlInsert(WtlCtx* cache, const WtlValue* value, WtlValue* evictedVal)
 {
-	uint32_t keyHash;
-	cspan_t keySpan;
-	WtlEntry* entry = NULL, * evicted = NULL;
+    uint32_t keyHash;
+    cspan_t keySpan;
+    WtlEntry* entry = NULL, * evicted = NULL;
 
-	// Validate user args
-	WTL_CHECK_NULL(cache);
-	WTL_CHECK_NULL(value);
-	WTL_CHECK_NULL(value->key);	// early check for null key pointer
+    // Validate user args
+    WTL_CHECK_NULL(cache);
+    WTL_CHECK_NULL(value);
+    WTL_CHECK_NULL(value->key);	// early check for null key pointer
 
-	spanInitC(&keySpan, value->key, value->keyLen);
-	if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
-	{
-		return WTL_ERR_INVALID_ARG;
-	}
+    spanInitC(&keySpan, value->key, value->keyLen);
+    if (spanIsEmptyC(keySpan) || spanIsNullC(keySpan))
+    {
+        return WTL_ERR_INVALID_ARG;
+    }
 
-	/*
-	* Evicted pointer may be null if the caller does not want to service an
-	* eviction. They can attempt an insertion, and if an eviction will occur
-	* return an error if the evicted ptr is null
-	*/
-	if (!evictedVal && _newEntryCanEvict(cache))
-	{
-		return WTL_ERR_WILL_EVICT;
-	}
+    /*
+    * Evicted pointer may be null if the caller does not want to service an
+    * eviction. They can attempt an insertion, and if an eviction will occur
+    * return an error if the evicted ptr is null
+    */
+    if (!evictedVal && _newEntryCanEvict(cache))
+    {
+        return WTL_ERR_WILL_EVICT;
+    }
 
-	keyHash = _getKeyHashCode(cache, keySpan);
-	
-	switch (wtlHashTableInsert(&cache->table, keyHash, &entry))
-	{
-		// Inserted, ready for use, ensure pointing to valid memory
-	case WTL_SUCCESS:
-		DEBUG_ASSERT(entry);
-		break;
+    keyHash = _getKeyHashCode(cache, keySpan);
+    
+    switch (wtlHashTableInsert(&cache->table, keyHash, &entry))
+    {
+        // Inserted, ready for use, ensure pointing to valid memory
+    case WTL_SUCCESS:
+        DEBUG_ASSERT(entry);
+        break;
 
-	case WTL_TABLE_ERR_FULL:
-		return WTL_ERR_NO_MEMORY;
+    case WTL_TABLE_ERR_FULL:
+        return WTL_ERR_NO_MEMORY;
 
-	case WTL_ERR_DUPLICATE:
-		return WTL_ERR_DUPLICATE;
+    case WTL_ERR_DUPLICATE:
+        return WTL_ERR_DUPLICATE;
 
-	default:
-		return WTL_ERROR;
-	}
+    default:
+        return WTL_ERROR;
+    }
 
-	// Always clear new entry
-	memset(entry, 0, sizeof(WtlEntry));
+    // Always clear new entry
+    memset(entry, 0, sizeof(WtlEntry));
 
-	// Update sketch record
-	wtlSketchRecord(&cache->sketch, keyHash);
+    // Update sketch record
+    wtlSketchRecord(&cache->sketch, keyHash);
 
-	_assignEntryFromValue(value, keyHash, entry);
-	DEBUG_ASSERT(keyHash == entry->hash);
+    _assignEntryFromValue(value, keyHash, entry);
+    DEBUG_ASSERT(keyHash == entry->hash);
 
-	// Push new entries and process an eviction
-	evicted = wtlPushNewEntry(cache, entry);
-	if (evicted)
-	{
-		DEBUG_ASSERT(evictedVal);
+    // Push new entries and process an eviction
+    evicted = wtlPushNewEntry(cache, entry);
+    if (evicted)
+    {
+        DEBUG_ASSERT(evictedVal);
 
-		DEBUG_ASSERT(evicted->hash != 0);
-		DEBUG_ASSERT(evicted->lruMember == WTL_LRU_MEMBER_NONE);
+        DEBUG_ASSERT(evicted->hash != 0);
+        DEBUG_ASSERT(evicted->lruMember == WTL_LRU_MEMBER_NONE);
 
-		// Copy evicted data before freeing entry
-		_assignValueFromEntry(evicted, evictedVal);
+        // Copy evicted data before freeing entry
+        _assignValueFromEntry(evicted, evictedVal);
 
-		// Free/zero entry memory back to pool
-		wtlHashTableRemove(&cache->table, evicted);
-		evicted = NULL;
+        // Free/zero entry memory back to pool
+        wtlHashTableRemove(&cache->table, evicted);
+        evicted = NULL;
 
-		// Notify caller that an item was evicted
-		return WTL_ITEM_EVICTED;
-	}
-	else
-	{
-		return WTL_SUCCESS;
-	}	
+        // Notify caller that an item was evicted
+        return WTL_ITEM_EVICTED;
+    }
+    else
+    {
+        return WTL_SUCCESS;
+    }	
 }
 
 VNLIB_EXPORT int32_t VNLIB_CC WtlTouch(WtlCtx* cache, WtlKey key)
 {
-	WtlValue outVal;
+    WtlValue outVal;
 
-	// Pass a pointer to the out val, but discard it
-	return WtlGet(cache, key, &outVal);
+    // Pass a pointer to the out val, but discard it
+    return WtlGet(cache, key, &outVal);
+}
+
+VNLIB_EXPORT int32_t VNLIB_CC WtlIterateNextValue(const WtlCtx* cache, WtlIterator** itrState, WtlValue* outValue)
+{
+    WtlHashSlot* cursor, * baseAddr, * maxAddr;
+
+    WTL_CHECK_NULL(cache);
+    WTL_CHECK_NULL(itrState);
+
+    baseAddr = cache->table.slots;
+    maxAddr = baseAddr + cache->table.capacity;
+    cursor = (WtlHashSlot*)(*itrState);		// Iterator currently is just cursor of the current slot, pointer cast
+
+    if (!cursor)
+    {
+        // Set to the first table pointer
+        cursor = baseAddr;
+    }
+    // Sanity check the itrState current pointer is within valid table memory
+    else if (cursor < baseAddr || cursor > maxAddr)
+    {
+        // cur has been tampered or corrupted, not in table
+        return WTL_ERR_INVALID_ARG;
+    }
+    // If cursor is exactly at the last slot, user called again, after end
+    else if (cursor == maxAddr)
+    {
+        return WTL_ERR_ITR_END;
+    }
+    else
+    {
+        // Move cursor one more position
+        cursor++;
+    }
+    
+    // Iterate while address is less than max, otherwise end of table
+    while (cursor < maxAddr)
+    {
+        // If status is tombstone or empty, move to next slot
+        switch (cursor->hash)
+        {
+        case WTL_TABLE_STATUS_TOMB:
+        case WTL_TABLE_STATUS_EMPTY:
+            break;
+        default: // Valid value
+            goto ItemFound;
+        }
+
+        // Move to next slot
+        cursor++;
+    }
+
+    // Loop hit end, set cursor to end
+    DEBUG_ASSERT(cursor == maxAddr);
+
+    // Cast cursor back to iterator pointer
+    *itrState = (WtlIterator*)cursor;
+    return WTL_ERR_ITR_END;
+
+ItemFound:
+    
+    // If user wants the value, assign it
+    if (outValue)
+    {
+        _assignValueFromEntry(&cursor->entry, outValue);
+    }
+
+    // Store iterator state for next iteration
+    *itrState = (WtlIterator*)cursor;
+    return WTL_SUCCESS;
 }
