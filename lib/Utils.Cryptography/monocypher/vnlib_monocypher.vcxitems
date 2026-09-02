@@ -1,5 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
+  <PropertyGroup>
+    <TargetFramework>C99</TargetFramework>
+    <PackageId>vnlib_mimalloc</PackageId>
+    <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <Product>VNLib Native Http Compression C library</Product>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
+    <Description>Integrates the MonoCypher native library into a wrapper utility library for usage in VNLib.Hashing.Portable for Blake2, Argon2 and more coming.</Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Cryptography/monocypher</RepositoryUrl>
+    <bin_dir>bin/</bin_dir>
+    <Artifacts>msvc-x64-debug-vnlib_monocypher.tgz,msvc-x64-release-vnlib_monocypher.tgz,src.tgz</Artifacts>
+  </PropertyGroup>
   <PropertyGroup Label="Globals">
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
@@ -20,7 +33,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)LICENSE" />
-    <None Include="$(MSBuildThisFileDirectory)package.json" />
     <None Include="$(MSBuildThisFileDirectory)readme.md" />
     <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
     <None Include="$(MSBuildThisFileDirectory)vendor\.editorconfig" />

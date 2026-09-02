@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
@@ -60,31 +60,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// this property to ensure that the default library can be loaded
         /// </para>
         /// </summary>
-        public static MonoCypherLibrary Shared => _defaultLib.Instance;
-
-        /// <summary>
-        /// Loads a new instance of the MonoCypher library with environment defaults
-        /// <para>
-        /// You should call <see cref="CanLoadDefaultLibrary"/> before calling this 
-        /// function
-        /// </para>
-        /// </summary>
-        /// <returns>The new library instance</returns>
-        /// <exception cref="DllNotFoundException"></exception>
-        /// <exception cref="MissingMemberException"></exception>
-        public static MonoCypherLibrary LoadNewInstance() => LoadDefaultLibraryInternal();
-
-        /// <summary>
-        /// Loads the MonoCypher library from the specified shared library path
-        /// </summary>
-        /// <param name="path">The file path or library name to search for</param>
-        /// <param name="searchPath">The directory search flags</param>
-        /// <returns>The new <see cref="MonoCypherLibrary"/> instance</returns>
-        public static MonoCypherLibrary LoadLibrary(string path, DllImportSearchPath searchPath)
-        {
-            SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(path, searchPath);
-            return new(lib, ownsHandle: true);
-        }
+        public static MonoCypherLibrary Shared => _defaultLib.Instance;      
 
         private static MonoCypherLibrary LoadDefaultLibraryInternal()
         {
@@ -94,13 +70,12 @@ namespace VNLib.Hashing.Native.MonoCypher
             Trace.WriteLine("Attempting to load global native MonoCypher library from: " + monoCypherLibPath, "MonoCypher");
 
             SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(monoCypherLibPath, DllImportSearchPath.SafeDirectories);
-            return new(lib, ownsHandle: true);
+
+            return new(new(lib, ownsValue: true));
         }
 
-
-        private readonly SafeLibraryHandle _library;
+        private readonly Owned<SafeLibraryHandle> _library;
         private readonly FunctionTable _functions;
-        private readonly bool _ownsHandle;
 
         internal ref readonly FunctionTable Functions
         {
@@ -116,15 +91,20 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// specified library handle
         /// </summary>
         /// <param name="library">The safe MonoCypher library handle</param>
-        /// <param name="ownsHandle">A value that indicates if the current instance owns the library handle</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public MonoCypherLibrary(SafeLibraryHandle library, bool ownsHandle)
+        public MonoCypherLibrary(Owned<SafeLibraryHandle> library)
         {
-            _library = library ?? throw new ArgumentNullException(nameof(library));
-            _ownsHandle = ownsHandle;
+            _library = library;
 
             //Init the function table
             InitFunctionTable(library, out _functions);
+
+            bool addRef = false;
+            library.Value.DangerousAddRef(ref addRef);
+            if (!addRef)
+            {
+                throw new ArgumentException("Failed to increment library handle count");
+            }
         }
         
         private static void InitFunctionTable(SafeLibraryHandle library, out FunctionTable functions)
@@ -132,25 +112,24 @@ namespace VNLib.Hashing.Native.MonoCypher
             functions = new FunctionTable
             {
                 //Argon2
-                Argon2Hash = library.DangerousGetFunction<MCPasswordModule.Argon2Hash>(),
-                Argon2CalcWorkArea = library.DangerousGetFunction<MCPasswordModule.Argon2CalcWorkArea>(),
+                Argon2Hash              = library.DangerousGetFunction<MCPasswordModule.Argon2Hash>(),
+                Argon2CalcWorkArea      = library.DangerousGetFunction<MCPasswordModule.Argon2CalcWorkArea>(),
 
                 //Blake2b
-                Blake2GetContextSize = library.DangerousGetFunction<MCBlake2Module.Blake2GetContextSize>(),
-                Blake2Init = library.DangerousGetFunction<MCBlake2Module.Blake2Init>(),
-                Blake2Update = library.DangerousGetFunction<MCBlake2Module.Blake2Update>(),
-                Blake2Final = library.DangerousGetFunction<MCBlake2Module.Blake2Final>(),
-                Blake2GethashSize = library.DangerousGetFunction<MCBlake2Module.Blake2GetHashSize>(),
+                Blake2GetContextSize    = library.DangerousGetFunction<MCBlake2Module.Blake2GetContextSize>(),
+                Blake2Init              = library.DangerousGetFunction<MCBlake2Module.Blake2Init>(),
+                Blake2Update            = library.DangerousGetFunction<MCBlake2Module.Blake2Update>(),
+                Blake2Final             = library.DangerousGetFunction<MCBlake2Module.Blake2Final>(),
+                Blake2GethashSize       = library.DangerousGetFunction<MCBlake2Module.Blake2GetHashSize>(),
             };
         }
 
         ///<inheritdoc/>
         protected override void Free()
         {
-            if(_ownsHandle)
-            {
-                _library.Dispose();
-            }
+            // Decrement handle count and if owned, free the library
+            _library.Value.DangerousRelease();
+            _library.Dispose();
         }
 
         internal readonly struct FunctionTable
