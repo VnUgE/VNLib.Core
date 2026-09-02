@@ -17,40 +17,31 @@ static int AgeSketchParameterValidation(void)
 * half while an cold key stays at zero.
 */
 static int AgeSketchHalvesEstimates(void)
-{    
+{
     WtlCtx* cache = allocCache(NULL);
 
-    EXPECT_EQ(WtlInsert(cache, &_dummyValues[0], NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &_dummyValues[0], NULL), WTL_SUCCESS);   
 
+    // The stored entry carries the derived key hash
+    const WtlEntry* entry = lruHeadGet(&cache->windowCache);
+    ENSURE(entry); // fault guard
+
+    // The insert records 1 access; 20 gets record 20 more
+    for (int i = 0; i < 20; i++)
     {
         WtlValue outVal;
-
-        // The stored entry carries the derived key hash
-        const WtlEntry* entry = lruHeadGet(&cache->windowCache);       
-        ENSURE(entry); // fault guard
-        
-
-        // The insert records 1 access; 20 gets record 20 more
-        for (int i = 0; i < 20; i++)
-        {
-            memset(&outVal, 0, sizeof(WtlValue));
-            EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);
-        }
-
-        EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 21u);
-
-        // Manual age halves every counter, 21 >>= 1 is 10
-        EXPECT_EQ(WtlAgeSketch(cache), WTL_SUCCESS);
-        EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 10u);
-
-        // Access counter restarts, cold key stays at zero
-        EXPECT_EQ(cache->sketch.accessCount, 0u);
-        {
-            cspan_t coldSpan;
-            spanInitC(&coldSpan, _dummyKeys[1].key, _dummyKeys[1].len);
-            EXPECT_EQ(wtlSketchEstimate(&cache->sketch, wtlHash32(coldSpan, cache->config.keySeed)), 0u);
-        }
+        EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);
     }
+
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 21u);
+
+    // Manual age halves every counter, 21 >>= 1 is 10
+    EXPECT_EQ(WtlAgeSketch(cache), WTL_SUCCESS);
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 10u);
+
+    // Access counter restarts, cold key stays at zero
+    EXPECT_EQ(cache->sketch.accessCount, 0u);
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, getKeyHashCode(cache, _dummyKeys[1])), 0u);
 
     free(cache);
     return 0;
@@ -64,34 +55,36 @@ static int AgeSketchHalvesEstimates(void)
 static int AgeSketchAgesAutomaticallyAtThreshold(void)
 {
     // Low threshold so the auto-age is reachable with a few gets
+    WtlValue outVal;
     WtlConfig cfg = _defaultConfig;
     cfg.sketchResetThreshold = 20;
    
     WtlCtx* cache = allocCache(&cfg);
 
+    // Always ads 1 to sketch for the key
     EXPECT_EQ(WtlInsert(cache, &_dummyValues[0], NULL), WTL_SUCCESS);
 
+    const WtlEntry* entry = findEntryByKey(cache, _dummyKeys[0]);
+    ENSURE(entry); // fault guard
+
+    // Increment to threshold-1 should trigger age. 
+    for (int i = 0; i < 18; i++)
     {
-        WtlValue outVal;
-        const WtlEntry* entry = lruHeadGet(&cache->windowCache);        
-        ENSURE(entry); // fault guard
-
-        // 19 gets (plus the insert's access) reach the threshold of 20,
-        // triggering the automatic age. 20 accesses halve to 10
-        for (int i = 0; i < 19; i++)
-        {
-            memset(&outVal, 0, sizeof(WtlValue));
-            EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);
-        }
-
-        EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 10u);
-        EXPECT_EQ(cache->sketch.accessCount, 0u);
-
-        // Further gets accumulate normally above the decayed base
         EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);
-        EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 11u);
-        EXPECT_EQ(cache->sketch.accessCount, 1u);
     }
+
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 19u);
+
+    // Should trigger an age on next get
+    EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);
+
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 10u);
+    EXPECT_EQ(cache->sketch.accessCount, 0u);
+
+    // Further gets accumulate normally above the decayed base
+    EXPECT_EQ(WtlGet(cache, _dummyKeys[0], &outVal), WTL_SUCCESS);
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), 11u);
+    EXPECT_EQ(cache->sketch.accessCount, 1u);
 
     free(cache);
     return 0;
