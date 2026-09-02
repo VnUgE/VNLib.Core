@@ -3,29 +3,29 @@
 
 static int PeekParameterValidation(void)
 {
-	WtlKey emptyKey = { NULL, 0 };
-	WtlValue outVal;
-	WtlCtx* cache = allocCache(NULL);
+    WtlKey emptyKey = { NULL, 0 };
+    WtlValue outVal;
+    WtlCtx* cache = allocCache(NULL);
 
-	// Ensure normal lookup without any keys is normal
-	EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], &outVal), WTL_ERR_NOT_FOUND);
+    // Ensure normal lookup without any keys is normal
+    EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], &outVal), WTL_ERR_NOT_FOUND);
 
-	EXPECT_EQ(WtlPeek(NULL, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
-	EXPECT_EQ(WtlPeek(cache, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
-	
-	// Peek allows null out pointer for quick checks
-	EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], NULL), WTL_ERR_NOT_FOUND);
+    EXPECT_EQ(WtlPeek(NULL, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
+    EXPECT_EQ(WtlPeek(cache, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
+    
+    // Peek allows null out pointer for quick checks
+    EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], NULL), WTL_ERR_NOT_FOUND);    
 
-	// Valid key pointer but empty length
-	emptyKey.key = "not null";
-	emptyKey.len = 0;
+    // Valid key pointer but empty length
+    emptyKey.key = "not null";
+    emptyKey.len = 0;
 
-	EXPECT_EQ(WtlPeek(cache, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
+    EXPECT_EQ(WtlPeek(cache, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
 
-	// Null key pointer with valid len, span checks should catch
-	emptyKey.key = NULL;
-	emptyKey.len = 5;
-	EXPECT_EQ(WtlPeek(cache, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
+    // Null key pointer with valid len, span checks should catch
+    emptyKey.key = NULL;
+    emptyKey.len = 5;
+    EXPECT_EQ(WtlPeek(cache, emptyKey, &outVal), WTL_ERR_INVALID_ARG);
 
     // Peek with null out pointer on a HIT must still succeed
     {
@@ -34,8 +34,8 @@ static int PeekParameterValidation(void)
         EXPECT_EQ(WtlCount(cache), DUMMY_VALUE_SIZE);
     }
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -45,21 +45,21 @@ static int PeekParameterValidation(void)
 */
 static int PeekReturnsDesiredValue(void)
 {
-	WtlValue outVal;
-	WtlKey dummyKey = _dummyKeys[0];
-	WtlCtx* cache = allocCache(NULL);	
+    WtlValue outVal;
+    WtlKey dummyKey = _dummyKeys[0];
+    WtlCtx* cache = allocCache(NULL);	
 
-	_addDummyValues(cache);	
-	memset(&outVal, 0, sizeof(outVal));
+    _addDummyValues(cache);	
+    memset(&outVal, 0, sizeof(outVal));
 
-	EXPECT_EQ(WtlPeek(cache, dummyKey, &outVal), WTL_SUCCESS);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, &outVal), WTL_SUCCESS);
 
-	ENSURE(outVal.key);	//Fault guard
-	EXPECT_TRUE(strcmp(outVal.key, dummyKey.key) == 0);
-	EXPECT_TRUE(outVal.value == _dummyValues[0].value);
+    ENSURE(outVal.key);	//Fault guard
+    EXPECT_TRUE(strcmp(outVal.key, dummyKey.key) == 0);
+    EXPECT_TRUE(outVal.value == _dummyValues[0].value);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -68,20 +68,20 @@ static int PeekReturnsDesiredValue(void)
 */
 static int PeekLoadedTableReturnsNotFound(void)
 {
-	WtlValue outVal;
-	WtlCtx* cache = allocCache(NULL);
-	WtlKey notFound = dummy_key("not found");
+    WtlValue outVal;
+    WtlCtx* cache = allocCache(NULL);
+    WtlKey notFound = dummy_key("not found");
 
-	// Add dummy vals
-	_addDummyValues(cache);
+    // Add dummy vals
+    _addDummyValues(cache);
 
-	EXPECT_NE(WtlCount(cache), 0);
+    EXPECT_NE(WtlCount(cache), 0);
 
-	EXPECT_EQ(WtlPeek(cache, notFound, &outVal), WTL_ERR_NOT_FOUND);
-	EXPECT_EQ(WtlPeek(cache, notFound, NULL), WTL_ERR_NOT_FOUND);
+    EXPECT_EQ(WtlPeek(cache, notFound, &outVal), WTL_ERR_NOT_FOUND);
+    EXPECT_EQ(WtlPeek(cache, notFound, NULL), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -90,16 +90,16 @@ static int PeekLoadedTableReturnsNotFound(void)
 */
 static int PeekEmptyTableReturnsNotFound(void)
 {
-	WtlValue outVal;
-	WtlCtx* cache = allocCache(NULL);
+    WtlValue outVal;
+    WtlCtx* cache = allocCache(NULL);
 
-	EXPECT_EQ(WtlCount(cache), 0);
+    EXPECT_EQ(WtlCount(cache), 0);
 
-	EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], &outVal), WTL_ERR_NOT_FOUND);
-	EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], NULL), WTL_ERR_NOT_FOUND);
+    EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], &outVal), WTL_ERR_NOT_FOUND);
+    EXPECT_EQ(WtlPeek(cache, _dummyKeys[0], NULL), WTL_ERR_NOT_FOUND);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
@@ -108,110 +108,64 @@ static int PeekEmptyTableReturnsNotFound(void)
 */
 static int PeekDoesNotIncrementsCounterForKey(void)
 {
-	cspan_t keySpan;
-	uint32_t hashCode;
-	WtlKey dummyKey = _dummyKeys[0];
-	WtlCtx* cache = allocCache(NULL);
+    cspan_t keySpan;
+    uint32_t hashCode;
+    WtlKey dummyKey = _dummyKeys[0];
+    WtlCtx* cache = allocCache(NULL);
 
-	// Get hashcode for dummy key
-	spanInitC(&keySpan, dummyKey.key, dummyKey.len);
-	hashCode = wtlHash32(keySpan, cache->config.keySeed);
+    // Get hashcode for dummy key
+    spanInitC(&keySpan, dummyKey.key, dummyKey.len);
+    hashCode = wtlHash32(keySpan, cache->config.keySeed);
 
-	_addDummyValues(cache);
+    _addDummyValues(cache);
 
-	// Estimate should be 1 on insert before get is called
-	EXPECT_EQ(wtlSketchEstimate(&cache->sketch, hashCode), 1);
+    // Estimate should be 1 on insert before get is called
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, hashCode), 1);
 
-	EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlPeek(cache, dummyKey, NULL), WTL_SUCCESS);
 
-	// Estimate should have increased since get a full get
-	EXPECT_EQ(wtlSketchEstimate(&cache->sketch, hashCode), 1);
+    // Estimate should have increased since get a full get
+    EXPECT_EQ(wtlSketchEstimate(&cache->sketch, hashCode), 1);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 /*
-* Confirms that Peek does not modify the sketch table in any way 
-* on key hits or misses
+* Confirms that Peek does not change _any_ table 
+* state. For now this is a quick check, we can know that
+* currently peek does not modify any internals, lists, 
+* hashtable or sketch. 
 */
-static int PeekDoesNotAlterSketchForAnyKey(void)
-{
-	WtlCtx* cache = allocCache(NULL);
-	cspan_t sketchMem = spanToC(cache->sketch.table);
-
-	// Buffer to hold initial state after insertion
-	uint8_t* sketchCompBuf = (uint8_t*)malloc(spanGetSizeC(sketchMem));
-	ENSURE(sketchCompBuf);
-
-	_addDummyValues(cache);	
-
-	// copy sketch table to local buffer
-	memmove(sketchCompBuf, spanGetOffsetC(sketchMem, 0), spanGetSizeC(sketchMem));
-
-	// sanity check, should match exactly
-	EXPECT_EQ(memcmp(sketchCompBuf, spanGetOffsetC(sketchMem, 0), spanGetSizeC(sketchMem)), 0);
-
-	// Peek all dummy keys, should all be found
-	for (int i = 0; i < DUMMY_VALUE_SIZE; i++)
-	{
-		ENSURE(WtlPeek(cache, _dummyKeys[i], NULL) == WTL_SUCCESS);
-	}
-
-	// Memcmp should still match after peek on the sketch table
-	EXPECT_EQ(memcmp(sketchCompBuf, spanGetOffsetC(sketchMem, 0), spanGetSizeC(sketchMem)), 0);
-
-	// Peek all misses from the dummy32 table
-	for (int i = 0; i < 32; i++)
-	{
-		WtlKey key = { .key = _dummy32[i].key, .len = _dummy32[i].keyLen };
-
-		ENSURE(WtlPeek(cache, key, NULL) == WTL_ERR_NOT_FOUND);
-	}
-
-	// Still clean after misses
-	EXPECT_EQ(memcmp(sketchCompBuf, spanGetOffsetC(sketchMem, 0), spanGetSizeC(sketchMem)), 0);
-
-	free(sketchCompBuf);
-	free(cache);
-	return 0;
-}
-
-/*
-* Confirms that Peek does not change the state of any internal 
-* lru lists.
-*/
-static int PeekDoesNotAlterLists(void)
+static int PeekDoesNotAlterCache(void)
 {	
-	WtlCtx* cache = allocCache(NULL);	
+    int32_t memSize = WtlGetMemorySize(&_defaultConfig);
+    TASSERT(memSize > 0);
 
-	_addDummyValues(cache);	
+    // Alloc cache memory and ensure it succeed
+    WtlCtx* cache = (WtlCtx*)malloc(memSize);
+    WtlCtx* copy  = (WtlCtx*)malloc(memSize);
+    TASSERT(cache && copy);
 
-	uint32_t window = lruCount(&cache->windowCache);
-	uint32_t probation = lruCount(&cache->mainCache.probation);
-	uint32_t protected = lruCount(&cache->mainCache.protected);
+    // Init cache and assert success
+    TASSERT(WtlInit(&_defaultConfig, cache) == WTL_SUCCESS);
 
-	const WtlEntry* windowTail = lruPeek(&cache->windowCache);
-	const WtlEntry* probeeTail = lruPeek(&cache->mainCache.probation);
-	const WtlEntry* protectedTail = lruPeek(&cache->mainCache.protected);
+    _addDummyValues(cache);
+ 
+    // After setup, copy the entire table memory 
+    memmove(copy, cache, memSize);
 
-	for (int i = 0; i < DUMMY_VALUE_SIZE; i++)
-	{
-		ENSURE(WtlPeek(cache, _dummyKeys[i], NULL) == WTL_SUCCESS);
-	}
-	
-	// Lists should be the same as before peek
-	EXPECT_EQ(lruCount(&cache->windowCache), window);
-	EXPECT_EQ(lruCount(&cache->mainCache.probation), probation);
-	EXPECT_EQ(lruCount(&cache->mainCache.protected), protected);
+    for (int i = 0; i < DUMMY_VALUE_SIZE; i++)
+    {
+        ENSURE(WtlPeek(cache, _dummyKeys[i], NULL) == WTL_SUCCESS);
+    }
 
-	// Ensure items did not move in lists
-	EXPECT_TRUE(lruPeek(&cache->windowCache) == windowTail);
-	EXPECT_TRUE(lruPeek(&cache->mainCache.probation) == probeeTail);
-	EXPECT_TRUE(lruPeek(&cache->mainCache.protected) == protectedTail);
+    // Expect the table memory should be identical after move
+    EXPECT_EQ(memcmp(cache, copy, memSize), 0);
 
-	free(cache);
-	return 0;
+    free(cache);
+    free(copy);
+    return 0;
 }
 
 /*
@@ -220,31 +174,30 @@ static int PeekDoesNotAlterLists(void)
 */
 static int PeekReliesOnKeyStrings(void)
 {
-	WtlCtx* cache = allocCache(NULL);
+    WtlCtx* cache = allocCache(NULL);
 
-	WtlKey key1 = dummy_key("hello world");
-	WtlKey key2 = dummy_key("hello world");
+    WtlKey key1 = dummy_key("hello world");
+    WtlKey key2 = dummy_key("hello world");
 
-	WtlValue val = dummy_value("hello world");
+    WtlValue val = dummy_value("hello world");
 
-	EXPECT_EQ(WtlInsert(cache, &val, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlInsert(cache, &val, NULL), WTL_SUCCESS);
 
-	EXPECT_EQ(WtlPeek(cache, key1, NULL), WTL_SUCCESS);
-	EXPECT_EQ(WtlPeek(cache, key2, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlPeek(cache, key1, NULL), WTL_SUCCESS);
+    EXPECT_EQ(WtlPeek(cache, key2, NULL), WTL_SUCCESS);
 
-	free(cache);
-	return 0;
+    free(cache);
+    return 0;
 }
 
 static int RunPeekTests(void)
 {
-	RUN_TEST(PeekParameterValidation());
-	RUN_TEST(PeekReturnsDesiredValue());
-	RUN_TEST(PeekLoadedTableReturnsNotFound());
-	RUN_TEST(PeekEmptyTableReturnsNotFound());	
-	RUN_TEST(PeekDoesNotIncrementsCounterForKey());
-	RUN_TEST(PeekDoesNotAlterSketchForAnyKey());
-	RUN_TEST(PeekDoesNotAlterLists());
+    RUN_TEST(PeekParameterValidation());
+    RUN_TEST(PeekReturnsDesiredValue());
+    RUN_TEST(PeekLoadedTableReturnsNotFound());
+    RUN_TEST(PeekEmptyTableReturnsNotFound());	
+    RUN_TEST(PeekDoesNotIncrementsCounterForKey());
+    RUN_TEST(PeekDoesNotAlterCache());
 
-	return 0;
+    return 0;
 }

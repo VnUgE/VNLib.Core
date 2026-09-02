@@ -149,10 +149,88 @@ static int Config_MemoryLayout(void)
     return 0;
 }
 
+/*
+* Finds a capacity whose layout total exceeds INT32_MAX. The layout
+* total grows monotonically with capacity, so a single walk suffices.
+*/
+static uint32_t _findOversizedCapacity(WtlConfig* config, struct wtl_cache_layout* layout)
+{
+    uint32_t capacity = 0;
+
+    do
+    {
+        capacity += 0x100000u;
+        config->capacity = capacity;
+        wtlConfigGetMemoryLayout(config, layout);
+    }
+    while (layout->total <= (uint64_t)INT32_MAX);
+
+    // A crossing capacity must exist on 64-bit platforms
+    ENSURE(layout->total > (uint64_t)INT32_MAX);
+    return capacity;
+}
+
+/*
+* Confirms WtlGetMemorySize rejects a config whose layout total
+* exceeds INT32_MAX (the return type is int32), and that a config
+* whose total sits just below the cap still reports its exact size.
+*/
+static int Config_MemorySizeCappedAtInt32Max(void)
+{   
+    WtlConfig config = _defaultConfig;
+    struct wtl_cache_layout layout;
+
+    // Just below the cap: the exact total must be reported
+    _findOversizedCapacity(&config, &layout);
+
+    do
+    {
+        config.capacity -= 0x1000u;
+        wtlConfigGetMemoryLayout(&config, &layout);
+    }
+    while (layout.total > (uint64_t)INT32_MAX);
+
+    EXPECT_EQ((uint64_t)WtlGetMemorySize(&config), layout.total);
+
+    // Over the cap: rejected
+    EXPECT_EQ(_findOversizedCapacity(&config, &layout), config.capacity);
+    EXPECT_EQ(WtlGetMemorySize(&config), WTL_ERR_INVALID_ARG);
+
+    return 0;
+}
+
+/*
+* Confirms WtlInit refuses a config whose layout total exceeds
+* INT32_MAX before touching the caller's memory block. A 0xFF
+* sentinel block proves no bytes were written.
+*/
+static int InitRejectsOversizedLayout(void)
+{
+    uint8_t block[WTL_CACHE_LINE];
+    WtlConfig config = _defaultConfig;
+    struct wtl_cache_layout layout;
+
+    memset(block, 0xFF, sizeof(block));
+
+    _findOversizedCapacity(&config, &layout);
+
+    // Init must fail before the memset inside WtlInit runs
+    EXPECT_EQ(WtlInit(&config, (WtlCtx*)block), WTL_ERR_INVALID_ARG);
+
+    for (uint32_t i = 0; i < sizeof(block); i++)
+    {
+        EXPECT_EQ(block[i], 0xFF);
+    }
+
+    return 0;
+}
+
 static int RunConfigTests(void)
 {
     RUN_TEST(ConfigHappyPath());
     RUN_TEST(Config_InvalidValues_Fails());
     RUN_TEST(Config_MemoryLayout());
+    RUN_TEST(Config_MemorySizeCappedAtInt32Max());
+    RUN_TEST(InitRejectsOversizedLayout());
     return 0;
 }

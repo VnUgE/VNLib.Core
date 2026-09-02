@@ -11,15 +11,6 @@
 #include <lru.h>
 #include <hashtable.h>
 
-static _vn_inline void _initDummyValue(WtlValue* value, const char* keyString)
-{
-	memset(value, 0, sizeof(WtlValue));
-
-	value->key = keyString;
-	value->keyLen = strlen32(keyString);
-	value->value = keyString;
-}
-
 static const WtlConfig _defaultConfig = {		
 	.seed			= 87862408u,
 
@@ -109,12 +100,35 @@ static WtlCtx* allocCache(const WtlConfig* config)
 	return cache;
 }
 
+static uint32_t getKeyHashCode(const WtlCtx* cache, WtlKey key)
+{    
+    cspan_t keySpan;
+    spanInitC(&keySpan, key.key, key.len);
+    return wtlHash32(keySpan, cache->config.keySeed);
+}
+
+static WtlEntry* findEntryByKey(WtlCtx* cache, WtlKey key)
+{   
+    cspan_t keySpan;
+    spanInitC(&keySpan, key.key, key.len);
+    return wtlFindEntryFromKey(cache, keySpan);
+}
+
+static WtlEntry* findEntryByValue(WtlCtx* cache, const WtlValue* value)
+{
+    WtlKey key = { .key = value->key, .len = value->keyLen };
+
+    return findEntryByKey(cache, key);
+}
+
 #include "config-setup.c"
 #include "get.c"
 #include "insert.c"
 #include "peek.c"
 #include "remove.c"
 #include "remove-value.c"
+#include "touch.c"
+#include "age.c"
 
 static int VersionStringIsSet(void)
 {
@@ -126,40 +140,9 @@ static int VersionStringIsSet(void)
 	return 0;
 }
 
-static int RecordIncreasesItemFrequency(void)
-{
-	WtlEntry* entry = NULL;
-	WtlCtx* cache = allocCache(NULL);
-	uint32_t sketchVal;
-
-	_addDummyValues(cache);
-
-	{
-		// Get the last window item
-		entry = lruPeek(&cache->windowCache);
-		
-		ENSURE(entry);
-
-		// Get current sketch on addition
-		sketchVal = wtlSketchEstimate(&cache->sketch, entry->hash);
-	}
-
-	WtlKey touchKey = { .key = entry->key.data, .len = entry->key.size };
-	EXPECT_EQ(WtlTouch(cache, touchKey), WTL_SUCCESS);
-	
-	// Entry should be head now
-	EXPECT_FALSE(entry == lruPeek(&cache->windowCache));
-	EXPECT_TRUE(entry == lruHeadGet(&cache->windowCache));
-
-	// Sketch should have increased by 1
-	EXPECT_EQ(wtlSketchEstimate(&cache->sketch, entry->hash), sketchVal + 1);
-
-	free(cache);
-	return 0;
-}
-
 int RunTests(void)
-{
+	{
+
 	RUN_TEST(VersionStringIsSet());
 
 	TEST_GROUP(RunConfigTests());
@@ -175,6 +158,9 @@ int RunTests(void)
 	TEST_GROUP(RunRemoveValueTests());
 
 	RUN_TEST(RecordIncreasesItemFrequency());
+    TEST_GROUP(RunTouchTests());
+
+    TEST_GROUP(RunAgeTests());
 
 	return 0;
 }
