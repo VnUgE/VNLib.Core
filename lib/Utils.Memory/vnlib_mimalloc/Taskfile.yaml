@@ -137,7 +137,7 @@ tasks:
      - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
      - cmd: cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
 
-     - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
+     - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -C '{{ .TARGET_DIR }}' -czf '{{ .ARCHIVE_PATH }}' .
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
