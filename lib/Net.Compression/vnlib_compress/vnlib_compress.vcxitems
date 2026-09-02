@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <TargetFramework>C99</TargetFramework>
+    <PackageId>vnlib_compress</PackageId>
+    <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <Product>VNLib Native Http Compression C library</Product>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
+    <Description>A CMake cross platform native data compression library, provides brotli and zlib compressors in a single stream api.</Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Net.Compression/vnlib_compress</RepositoryUrl>
+    <bin_dir>bin/</bin_dir>
+    <Artifacts>msvc-x64-debug-vnlib_compress.tgz,msvc-x64-release-vnlib_compress.tgz,src.tgz</Artifacts>
+  </PropertyGroup>
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{f2e07583-6244-41a4-84a3-e29fd257ee7c}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)src/feature_brotli.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src/compression.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src/feature_zlib.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src/feature_zstd.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)src/feature_brotli.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src/compression.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src/feature_zstd.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src/platform.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)src/feature_zlib.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="$(MSBuildThisFileDirectory)CMakeLists.txt" />
+  </ItemGroup>
+</Project>

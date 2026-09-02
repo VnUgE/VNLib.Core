@@ -28,20 +28,11 @@ tasks:
         --configuration {{ .CONFIGURATION }} 
         --verbosity detailed
         {{ .MS_ARGS }} 
-        {{ .CLI_ARGS }}
-    
+        {{ .CLI_ARGS }}    
 
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
     dir: '{{ .USER_WORKING_DIR }}'
-    cmds:
-     #remove unnecessary files from the release dir
-     - cmd: powershell -Command "Get-ChildItem -Recurse '{{ .RELEASE_DIR }}/' -Include *.pdb,*.xml | Remove-Item"
-
-     - task: pack-parallel
-
-  pack-parallel:
-    internal: true
     deps:
      - task: packsource
      
@@ -50,33 +41,38 @@ tasks:
      
      - task: postbuild
        vars: { BUILD_MODE: release }
+    cmds:     
+     - cmd: echo "Postbuild complete for {{ .PROJECT_NAME }}"
+       silent: true
 
   postbuild:
-    dir: '{{.USER_WORKING_DIR}}'
-    internal: true
+    dir: '{{ .USER_WORKING_DIR }}'
+    internal: false
     vars:
       #the build output directory
       BUILD_OUT: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/publish"
-    cmds:
-     - cmd: cp ../build.readme.txt '{{ .BUILD_OUT }}/readme.txt'
-
-     #tar outputs
-     - cmd: cd "{{ .BUILD_OUT }}" && tar{{ if eq OS "windows" }}.exe{{ end }} -czf "{{ .TARGET_DIR }}/{{ .BUILD_MODE }}.tgz" .
+      #removes unnecessary files from the release packages
+      TAR_ARGS: '{{ if eq .BUILD_MODE  "release" }}--exclude="*.pdb" --exclude="*.xml"{{ end }}'
+    cmds: 
+     - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} 
+         -czf "{{ .TARGET_DIR }}/{{ .BUILD_MODE }}.tgz" {{ .TAR_ARGS }}
+         -C "{{ .BUILD_OUT }}" .
  
   packsource:
     dir: '{{ .USER_WORKING_DIR }}'
-    internal: true
+    desc: 'Creates an archive for '
+    internal: false
+    vars:
+      EXCLUDES: 
+        --exclude '*obj*'
+        --exclude '*bin*'
     cmds:
-    #copy source code to target
-     -  
-      powershell -Command "Get-ChildItem -Include *.cs,*.csproj -Recurse 
-      | Where { \$_.FullName -notlike '*\obj\*' -and \$_.FullName -notlike '*\bin\*' } 
-      | Resolve-Path -Relative 
-      | tar{{ if eq OS "windows" }}.exe{{ end }} --files-from - -czf '{{ .TARGET_DIR }}/src.tgz'"
+      - cmd: cd ../ && tar{{ if eq OS "windows" }}.exe{{ end }} 
+          {{ .EXCLUDES }}
+          -czf "{{ .TARGET_DIR }}/src.tgz" . 
 
-
-#Remove the output dirs on clean
   clean:
+    desc: 'Cleans local project artifacts and outputs. Typically called by vnbuild.'
     dir: '{{ .USER_WORKING_DIR }}'
     ignore_error: true
     cmds:
