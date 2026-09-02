@@ -1,5 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
+  <PropertyGroup>
+    <TargetFramework>C99</TargetFramework>
+    <PackageId>vnlib_rpmalloc</PackageId>
+    <Authors>Vaughn Nugent</Authors>
+    <Company>Vaughn Nugent</Company>
+    <Product>VNLib Native Http Compression C library</Product>
+    <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>
+    <Description>A port of rpmalloc library that exposes a universal NativeHeapApi for use with VNLib.Utils enabled applications.</Description>
+    <PackageProjectUrl>https://www.vaughnnugent.com/resources/software/modules/VNLib.Core</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/VnUgE/VNLib.Core/tree/master/lib/Utils.Memory/vnlib_rpmalloc</RepositoryUrl>
+    <bin_dir>bin/</bin_dir>
+    <Artifacts>msvc-x64-debug-vnlib_rpmalloc.tgz,msvc-x64-release-vnlib_rpmalloc.tgz,src.tgz</Artifacts>
+  </PropertyGroup>
   <PropertyGroup Label="Globals">
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
@@ -23,7 +36,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)vnlib_rpmalloc.c" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)package.json" />
     <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
   </ItemGroup>
   <ItemGroup>

@@ -80,7 +80,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vnlib.plugins.essentials.se
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VNLib.Plugins.Essentials.ServiceStack.Tests", "tests\vnlib.plugins.essentials.servicestack\VNLib.Plugins.Essentials.ServiceStack.Tests.csproj", "{90C8C1B0-D337-40B8-926A-AA1C1AC8145F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vnlib_compress", "lib\Net.Compression\vnlib_compress\src\vnlib_compress.vcxitems", "{F2E07583-6244-41A4-84A3-E29FD257EE7C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Net.Compression", "Net.Compression", "{47795673-73E5-7779-275B-9D8F3CCEA139}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vnlib_compress", "lib\Net.Compression\vnlib_compress\vnlib_compress.vcxitems", "{7999D2EB-4919-43DF-8C78-C8EAC130A64D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -340,6 +342,12 @@ Global
 		{90C8C1B0-D337-40B8-926A-AA1C1AC8145F}.Release|x64.Build.0 = Release|Any CPU
 		{90C8C1B0-D337-40B8-926A-AA1C1AC8145F}.Release|x86.ActiveCfg = Release|Any CPU
 		{90C8C1B0-D337-40B8-926A-AA1C1AC8145F}.Release|x86.Build.0 = Release|Any CPU
+		{7999D2EB-4919-43DF-8C78-C8EAC130A64D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7999D2EB-4919-43DF-8C78-C8EAC130A64D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7999D2EB-4919-43DF-8C78-C8EAC130A64D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7999D2EB-4919-43DF-8C78-C8EAC130A64D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7999D2EB-4919-43DF-8C78-C8EAC130A64D}.Release|x64.ActiveCfg = Release|Any CPU
+		{7999D2EB-4919-43DF-8C78-C8EAC130A64D}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -373,7 +381,8 @@ Global
 		{63460C6B-CB6D-0ECD-FF9E-B5B46ACDFD07} = {C373C8DD-B13B-496C-8832-ADE5547CB2F8}
 		{07E4981D-5361-5595-CE59-FACC6BA6E596} = {C373C8DD-B13B-496C-8832-ADE5547CB2F8}
 		{90C8C1B0-D337-40B8-926A-AA1C1AC8145F} = {07E4981D-5361-5595-CE59-FACC6BA6E596}
-		{F2E07583-6244-41A4-84A3-E29FD257EE7C} = {A7EC3CF5-76B0-4235-AE9F-05409E3308B9}
+		{47795673-73E5-7779-275B-9D8F3CCEA139} = {2E02CD05-8D6C-48E3-AC86-B1DC8283B04B}
+		{7999D2EB-4919-43DF-8C78-C8EAC130A64D} = {47795673-73E5-7779-275B-9D8F3CCEA139}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EA12D69B-8232-40F9-98F8-8A1C73796BFE}
