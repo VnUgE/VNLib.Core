@@ -112,9 +112,15 @@ static _vn_inline uint64_t _alignUp(uint64_t value, uint64_t align)
 }
 
 static _vn_inline uint64_t _pow2RoundUp(uint64_t x)
-{
-    while ((x & (x - 1))) x++;
-    return x;
+{  
+    x--;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x |= x >> 32;
+    return x + 1;
 }
 
 /*
