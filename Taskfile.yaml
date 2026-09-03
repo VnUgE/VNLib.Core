@@ -33,6 +33,7 @@ tasks:
   #when build succeeds, archive the output into a tgz 
   postbuild_success:
     dir: '{{ .USER_WORKING_DIR }}'
+    desc: 'Called by vnbuild after build succeeds. Used to prepare completed build artifacts.'
     deps:
      - task: packsource
      
@@ -45,9 +46,13 @@ tasks:
      - cmd: echo "Postbuild complete for {{ .PROJECT_NAME }}"
        silent: true
 
+  postbuild_failed:
+    desc: 'Called by vnbuild when an error occured during build task'
+    cmds: []
+
   postbuild:
     dir: '{{ .USER_WORKING_DIR }}'
-    internal: false
+    internal: true
     vars:
       #the build output directory
       BUILD_OUT: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/publish"
@@ -60,19 +65,23 @@ tasks:
  
   packsource:
     dir: '{{ .USER_WORKING_DIR }}'
-    desc: 'Creates an archive for '
-    internal: false
+    desc: 'Creates an archive for package source files'
+    internal: true
     vars:
       EXCLUDES: 
-        --exclude '*obj*'
-        --exclude '*bin*'
+        --exclude 'obj/'
+        --exclude 'bin/'
     cmds:
       - cmd: cd ../ && tar{{ if eq OS "windows" }}.exe{{ end }} 
           {{ .EXCLUDES }}
-          -czf "{{ .TARGET_DIR }}/src.tgz" . 
+          -czf "{{ .TARGET_DIR }}/src.tgz" .
+
+  publish:
+    desc: 'Called by vnbuild during a publish command'
+    cmds: []
 
   clean:
-    desc: 'Cleans local project artifacts and outputs. Typically called by vnbuild.'
+    desc: 'Cleans local project artifacts and outputs. Typically called by vnbuild clean command.'
     dir: '{{ .USER_WORKING_DIR }}'
     ignore_error: true
     cmds:
