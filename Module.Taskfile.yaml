@@ -8,7 +8,7 @@
 
 #this file must be in the same directory as the solution file
 
-version: '3'
+version: '3.45'
 
 vars:  
   ARCHIVE_FILE_NAME: '{{ .ARCHIVE_FILE_NAME | default "archive.tgz" }}'
