@@ -19,6 +19,10 @@
  * along with vnlib_wtlfu. If not, see http://www.gnu.org/licenses/.
  */
 
+/*
+* Confirms that WtlGet rejects bad arguments such as null
+* pointers and invalid properties.
+*/
 static int GetParameterValidation(void)
 {
     WtlKey emptyKey = { NULL, 0 };
@@ -52,6 +56,12 @@ static int GetParameterValidation(void)
     return 0;
 }
 
+/*
+* Confirms that a stored value can be read back by its key.
+* Inserts the global dummy values then reads them all back 
+* by their corresponding keys and confirms the table returns all
+* matching fields. Currently just does a pointer check.
+*/
 static int GetBasic(void)
 {	
     WtlCtx* cache = allocCache(&_defaultConfig);
@@ -69,8 +79,8 @@ static int GetBasic(void)
         EXPECT_EQ(WtlGet(cache, _dummyKeys[i], &get), WTL_SUCCESS);
 
         // Ensure value properties are equal to the originally stored value
-        EXPECT_TRUE(get.key == getVal.key);
         EXPECT_TRUE(get.keyLen == getVal.keyLen);
+        EXPECT_EQ(memcmp(get.key, getVal.key, getVal.keyLen), 0);      
         EXPECT_TRUE(get.value == getVal.value);
     }
 
@@ -78,6 +88,10 @@ static int GetBasic(void)
     return 0;
 }
 
+/*
+* Confirms that WtlGet returns NOT_FOUND for a key that was never
+* inserted, and leaves the out value empty.
+*/
 static int GetNotFound(void)
 {	
     WtlValue get;
@@ -101,6 +115,11 @@ static int GetNotFound(void)
     return 0;
 }
 
+/*
+* Confirms that a successful get is recorded in the sketch.
+* The estimate for a fresh key is 1 after insert, and must be 
+* incremented by one after get().
+*/
 static int GetIncrementsCounterForKey(void)
 {
     WtlValue outVal;

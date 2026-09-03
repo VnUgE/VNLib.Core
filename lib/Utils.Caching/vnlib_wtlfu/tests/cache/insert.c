@@ -19,6 +19,11 @@
  * along with vnlib_wtlfu. If not, see http://www.gnu.org/licenses/.
  */
 
+/*
+* Confirms that WtlInsert rejects bad arguments.
+* A null cache, a null value, a null key pointer, or an empty key
+* length are all rejected, and nothing is inserted.
+*/
 static int InsertParameterValidation(void)
 {
     WtlValue outVal;
@@ -68,6 +73,10 @@ static int InsertParameterValidation(void)
     return 0;
 }
 
+/*
+* Confirms that a new insert increases the cache count, and that
+* the internal hashtable count matches the public count.
+*/
 static int InsertBasic(void)
 {
     WtlCtx* cache = allocCache(NULL);
@@ -78,7 +87,7 @@ static int InsertBasic(void)
     EXPECT_EQ(WtlInsert(cache, &val1, NULL), WTL_SUCCESS);
     EXPECT_EQ(WtlInsert(cache, &val2, NULL), WTL_SUCCESS);
 
-    // Cound should reflect
+    // Count should reflect
     EXPECT_EQ(WtlCount(cache), 2);
 
     // Hash table count should be the same as public count
@@ -88,6 +97,10 @@ static int InsertBasic(void)
     return 0;
 }
 
+/*
+* Confirms that new inserts go into the window list, and that the
+* probation and protected lists stay empty.
+*/
 static int InsertInsertsIntoWindowFirst(void)
 {
     WtlCtx* cache = allocCache(NULL);
@@ -106,6 +119,11 @@ static int InsertInsertsIntoWindowFirst(void)
     return 0;
 }
 
+/*
+* Confirms that an insert at full capacity is rejected with WILL_EVICT.
+* The cache is filled to window + probation capacity, both segments
+* must be exactly full, and the next insert fails without evicting.
+*/
 static int InsertFailsWithWillEvictWhenNull(void)
 {
     WtlCtx* cache = allocCache(NULL);
@@ -122,13 +140,17 @@ static int InsertFailsWithWillEvictWhenNull(void)
     EXPECT_EQ(lruCount(&cache->windowCache), cache->config.windowSize);
     EXPECT_EQ(lruCount(&cache->mainCache.probation), cache->config.probationSize);
 
-    // Exect an eviction with one more insertion
+    // Expect an eviction with one more insertion
     EXPECT_EQ(WtlInsert(cache, &_dummyValues[0], NULL), WTL_ERR_WILL_EVICT);
 
     free(cache);
     return 0;
 }
 
+/*
+* Confirms that every fresh insert lands at the head of the window
+* list, no matter what state the cache internals are in.
+*/
 static int InsertAlwaysInsertsIntoWindowHead(void)
 {
     WtlValue evicted;
@@ -157,6 +179,11 @@ static int InsertAlwaysInsertsIntoWindowHead(void)
     return 0;
 }
 
+/*
+* Confirms that when the window overflows, the least recent item is
+* moved to the probation list. With a window size of 2, the third
+* insert pushes the first item to probation.
+*/
 static int InsertMovesLruItemToProbation(void)
 {
     WtlCtx* cache = allocCache(NULL);
@@ -182,6 +209,10 @@ static int InsertMovesLruItemToProbation(void)
     return 0;
 }
 
+/*
+* Confirms that inserting the same key twice fails with DUPLICATE,
+* and the cache count stays at one.
+*/
 static int InsertDucpliateKeysReturnsError(void)
 {
     WtlCtx* cache = allocCache(NULL);
@@ -335,6 +366,10 @@ static int InsertEvictsCorrectItemIdentity(void)
     return 0;
 }
 
+/*
+* Confirms that filling the window and adding one more item overflows
+* the least recent item into probation, without evicting.
+*/
 static int InsertMovesToProbationWhenWindowFull(void)
 {
     WtlCtx* cache = allocCache(NULL);

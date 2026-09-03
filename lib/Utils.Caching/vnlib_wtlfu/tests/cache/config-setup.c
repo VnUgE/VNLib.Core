@@ -19,6 +19,14 @@
  * along with vnlib_wtlfu. If not, see http://www.gnu.org/licenses/.
  */
 
+/*
+* Confirms that a valid config initializes correctly.
+* WtlGetMemorySize reports a positive size and WtlInit succeeds,
+* then the initialized cache is inspected: capacity and key seed
+* are copied over, the window/protected/probation slices add up to
+* the full capacity, the sketch uses the requested dimensions, and
+* the hashtable is sized with load factor overhead.
+*/
 static int ConfigHappyPath(void)
 {
     int32_t memSize = WtlGetMemorySize(&_defaultConfig);
@@ -75,6 +83,10 @@ static int ConfigHappyPath(void)
     return 0;
 }
 
+/*
+* Confirms that invalid config values are rejected before any
+* memory is allocated.
+*/
 static int Config_InvalidValues_Fails(void)
 {
 
@@ -137,6 +149,13 @@ static int Config_InvalidValues_Fails(void)
     return 0;
 }
 
+/*
+* Confirms that the computed memory layout is correct for a valid
+* config. The sketch and slot regions are the expected sizes, every
+* region starts on a cache line boundary after the header, the
+* regions never overlap, and the layout total stays in sync with
+* what WtlGetMemorySize reports.
+*/
 static int Config_MemoryLayout(void)
 {
     WtlConfig config = _defaultConfig;
@@ -210,7 +229,7 @@ static int Config_MemorySizeCappedAtInt32Max(void)
 
     EXPECT_EQ((uint64_t)WtlGetMemorySize(&config), layout.total);
 
-    // Over the cap: rejected
+    // Over the cap gets rejected
     EXPECT_EQ(_findOversizedCapacity(&config, &layout), config.capacity);
     EXPECT_EQ(WtlGetMemorySize(&config), WTL_ERR_INVALID_ARG);
 
@@ -218,9 +237,8 @@ static int Config_MemorySizeCappedAtInt32Max(void)
 }
 
 /*
-* Confirms WtlInit refuses a config whose layout total exceeds
-* INT32_MAX before touching the caller's memory block. A 0xFF
-* sentinel block proves no bytes were written.
+* Confirms WtlInit rejects configurations where the total memory size
+* surpasses INT32_MAX before continuing with initialization.
 */
 static int InitRejectsOversizedLayout(void)
 {
