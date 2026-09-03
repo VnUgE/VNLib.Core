@@ -1,10 +1,9 @@
-
 /*
 * Copyright (c) 2026 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_wtlfu
-* File: tests/hash/vectors.h
+* File: vectors.h
 *
 * This library is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public License

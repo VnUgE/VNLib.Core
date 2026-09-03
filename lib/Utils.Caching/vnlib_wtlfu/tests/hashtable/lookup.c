@@ -3,7 +3,7 @@
 *
 * Library: VNLib
 * Package: vnlib_wtlfu
-* File: tests/hashtable/lookup.c
+* File: lookup.c
 *
 * This library is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public License
