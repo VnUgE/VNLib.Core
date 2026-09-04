@@ -7,12 +7,11 @@
 #and the purpose of this taskfile is to package up the output of a build 
 #from the solution file, and package it up into a tgz files for distribution
 
-version: '3'
+version: '3.45'
 
 vars:
-  BINARY_DIR: 'bin'
+  BINARY_DIR: '{{ .BINARY_DIR | default "bin" }}'
   TARGET_FRAMEWORK: '{{ .TARGET_FRAMEWORK | default "net8.0" }}'
-  RELEASE_DIR: "./bin/release/{{ .TARGET_FRAMEWORK }}/publish"
   TARGET_DIR: '{{ .USER_WORKING_DIR }}/{{ .BINARY_DIR }}'
 
 tasks:
@@ -53,6 +52,8 @@ tasks:
   postbuild:
     dir: '{{ .USER_WORKING_DIR }}'
     internal: true
+    requires:
+      vars: [BINARY_DIR, BUILD_MODE, TARGET_FRAMEWORK, TARGET_DIR]
     vars:
       #the build output directory
       BUILD_OUT: "{{ .BINARY_DIR }}/{{ .BUILD_MODE }}/{{ .TARGET_FRAMEWORK }}/publish"
@@ -67,6 +68,8 @@ tasks:
     dir: '{{ .USER_WORKING_DIR }}'
     desc: 'Creates an archive for package source files'
     internal: true
+    requires:
+      vars: [TARGET_DIR]
     vars:
       EXCLUDES: 
         --exclude 'obj/'

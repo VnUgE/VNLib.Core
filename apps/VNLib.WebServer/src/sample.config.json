@@ -148,7 +148,15 @@
     "ipc_shared_memory": {
       "enabled": true,            // enables the IPC shared memory system (default = true)
       "max_region_size": 65536,   // maximum size (in bytes) allowed for plugin memory regions (default = 64k)
-      "min_region_size": 1        // sets minimum size (in bytes) for regions (default = 1)
+      "min_region_size": 1,       // sets minimum size (in bytes) for regions (default = 1)
+
+      // A list of shared regions to reserve at startup
+      "region_reservations": [
+        {
+          "name": "plugins.essentials.exports",
+          "size": 4096
+        }
+      ]
     }
   },
 

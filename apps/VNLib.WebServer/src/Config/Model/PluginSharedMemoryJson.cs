@@ -22,7 +22,9 @@
 * along with VNLib.WebServer. If not, see http://www.gnu.org/licenses/.
 */
 
+using System.Linq;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 using VNLib.Utils.Memory;
@@ -52,6 +54,9 @@ namespace VNLib.WebServer.Config.Model
         [JsonPropertyName("min_region_size")]
         public int MinRegionSize { get; init; } = 1;
 
+        [JsonPropertyName("reserved_regions")]
+        public ReservedRegionJson[]? ReservedRegions { get; init; }
+
         /// <summary>
         /// Gets the <see cref="PluginSharedMemoryConfig"/> from the deserialized properties.
         /// This creates a new configuration object on invocation. Check <see cref="Enabled"/> before
@@ -64,11 +69,16 @@ namespace VNLib.WebServer.Config.Model
 
             IUnmanagedHeap heap = MemoryUtil.Shared;
 
+            // Collect reservations if there are any
+            IEnumerable<PluginSharedMemoryHostReservation>? reservations = ReservedRegions
+                ?.Select(r => new PluginSharedMemoryHostReservation(r.RegionName!, r.Size));
+
             return new PluginSharedMemoryConfig
             {
                 Allocator = new PluginSharedMemoryAllocator(heap, zeroAllocations: true),
                 MaxRegionSize = MaxRegionSize,
                 MinRegionSize = MinRegionSize,
+                HostReservations = reservations
             };
         }
 
@@ -81,6 +91,31 @@ namespace VNLib.WebServer.Config.Model
 
             Validate.EnsureRange(MaxRegionSize, MinRegionSize, int.MaxValue, "shared_memory.max_region_size");
             Validate.EnsureRange(MinRegionSize, 1, MaxRegionSize, "shared_memory.min_region_size");
+
+            if (ReservedRegions != null)
+            {
+                for (int i = 0; i < ReservedRegions.Length; i++)
+                {
+                    ReservedRegionJson reg = ReservedRegions[i];
+
+                    Validate.EnsureNotNull(reg.RegionName, $"Invalid reserved region name 'reserved_regions[{i}].name'");
+                    Validate.EnsureRange(reg.Size, MinRegionSize, MaxRegionSize, $"reserved_regions[{i}].size");
+
+                    // Normalize to lowercase 
+                    reg.RegionName = reg.RegionName.ToLowerInvariant();
+                }
+            }
+        }
+
+        public class ReservedRegionJson
+        {
+            [JsonPropertyName("name")]
+            public string? RegionName { get; set; }
+
+            [JsonPropertyName("size")]
+            public int Size { get; init; }
+
+            public override string ToString() => $"({RegionName}:{Size})";
         }
     }
 }
