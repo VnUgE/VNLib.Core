@@ -45,6 +45,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc
     {
         private readonly PluginSharedMemoryRegistry _registry;
         private readonly PluginSharedMemoryConfig _config;
+        private readonly IIpcRegionOwner[] _reservedRegions;
 
         /// <summary>
         /// Creates a new <see cref="PluginSharedMemoryProvider"/> with the specified
@@ -64,6 +65,25 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc
 
             _config = config;
             _registry = new(config);
+
+            // reserve regions if any are set
+            _reservedRegions = config.HostReservations is not null
+                ? AllocHostReservedRegions(_registry, config.HostReservations)
+                : [];
+        }
+
+        private static IIpcRegionOwner[] AllocHostReservedRegions(
+            PluginSharedMemoryRegistry registry, 
+            IEnumerable<PluginSharedMemoryHostReservation> res
+        )
+        {
+            // Dictionary will catch duplicate keys, MapRegion will catch bad strings and bad sizes
+           return res.ToDictionary(
+                    static v => v.RegionName.ToLowerInvariant(),
+                    static v => v.Size
+                ) 
+                .Select(kv => registry.MapRegion(kv.Key, kv.Value))
+                .ToArray();
         }
 
         /// <summary>
@@ -83,7 +103,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc
 
         ///<inheritdoc/>
         protected override void Free()
-            => _registry.Dispose();
+        {
+            // Prefer explicitly unmapping regions before disposing for debugging/tracing reasons.
+            Array.ForEach(_reservedRegions, _registry.ReleaseHandle);
+
+            _registry.Dispose();
+        }
 
         /*
          * This initializer hooks into the plugin load events to know when plugins

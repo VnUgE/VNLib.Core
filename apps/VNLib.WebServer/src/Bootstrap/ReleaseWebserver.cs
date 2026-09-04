@@ -68,6 +68,7 @@ namespace VNLib.WebServer.Bootstrap
  | Reload Delay: {delay}s
  | Config dir: {conf}
  | IPC Shared memory: {status}
+ | IPC reserved regions: {regions}
 ----------------------------------";
 
         private readonly ProcessArguments args = procArgs;
@@ -160,7 +161,8 @@ namespace VNLib.WebServer.Bootstrap
                 conf.HotReload,
                 conf.ReloadDelaySec,
                 conf.ConfigDir ?? "(local)",
-                conf.IpcSharedMem?.Enabled == true ? $"({conf.IpcSharedMem.MinRegionSize}, {conf.IpcSharedMem.MaxRegionSize})" : "Disabled"
+                conf.IpcSharedMem?.Enabled == true ? $"({conf.IpcSharedMem.MinRegionSize}, {conf.IpcSharedMem.MaxRegionSize})" : "Disabled",
+                conf.IpcSharedMem?.Enabled == true ? conf.IpcSharedMem.ReservedRegions : "[]"
             );
 
             if (conf.HotReload)
