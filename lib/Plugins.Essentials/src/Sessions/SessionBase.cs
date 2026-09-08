@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -63,9 +63,6 @@ namespace VNLib.Plugins.Essentials.Sessions
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => Flags.Set(MODIFIED_MSK, value);
         }
-
-        ///<inheritdoc/>
-        public abstract string SessionType { get; }
 
         ///<inheritdoc/>
         public abstract string SessionID { get; }

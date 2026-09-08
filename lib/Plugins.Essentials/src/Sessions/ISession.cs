@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -37,14 +37,9 @@ namespace VNLib.Plugins.Essentials.Sessions
     public interface ISession : IIndexable<string, string>
     {
         /// <summary>
-        /// A value specifying the type of the loaded session
-        /// </summary>
-        string SessionType { get; }
-
-        /// <summary>
         /// UTC time in when the session was created
         /// </summary>
-        DateTimeOffset Created { get; }       
+        DateTimeOffset Created { get; }
 
         /// <summary>
         /// Key that identifies the current session. (Identical to cookie::sessionid)
