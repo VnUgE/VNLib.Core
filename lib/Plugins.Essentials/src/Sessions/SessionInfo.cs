@@ -30,7 +30,6 @@ using VNLib.Utils;
 
 using static VNLib.Plugins.Essentials.Statics;
 
-
 /*
  * SessionInfo is a structure since it is only meant used in 
  * an HttpEntity context, so it may be allocated as part of 
@@ -121,16 +120,7 @@ namespace VNLib.Plugins.Essentials.Sessions
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession.Privileges = value;
-        }  
-
-        /// <summary>
-        /// A value specifying the type of the backing session
-        /// </summary>
-        public readonly string SessionType
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.SessionType;
-        }
+        } 
 
         /// <summary>
         /// Flags the session as invalid. IMPORTANT: the user's session data is no longer valid, no data 
