@@ -1,6 +1,6 @@
 # VNLib.Plugins.Essentials
 
-A library you need to extend the functionality of your VNLib.Net.Http server. It provides tons of primitives for building powerful web/http services. Some include, stateful sessions, user accounts, account security, web security boilerplate, authentication, OAuth2, content-routing, and extensions for rapid controller development.
+A collection of core web framework primitives for building extensible VNLib HTTP applications. Includes virtual endpoint routing, middleware pipeline, session contracts, and HTTP utility extensions.
 
 ## Builds
 Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my website (link below). All tar-gzip (.tgz) files will have an associated .sha384 appended checksum of the desired download file.

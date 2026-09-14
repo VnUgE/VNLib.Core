@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -25,9 +25,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-using VNLib.Plugins.Essentials.Endpoints;
-
-namespace VNLib.Plugins.Essentials
+namespace VNLib.Plugins.Essentials.Endpoints
 {
     /// <summary>
     /// Represents a table of virtual endpoints that can be used to process incoming connections
