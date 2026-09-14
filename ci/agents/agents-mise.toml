@@ -9,8 +9,8 @@ experimental = true
 "dnf:git" = "latest"
 
 [tools]
-task = "3.51"
-"aqua:alibaba/open-code-review" = "latest"
+task = "3.53"
+"aqua:alibaba/open-code-review" = "v1.10.0"
 
 [tasks.go-task]
 dir = '../../'
