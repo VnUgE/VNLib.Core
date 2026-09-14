@@ -676,13 +676,24 @@ namespace VNLib.Plugins.Essentials
             /// <param name="instance">The service instance to store</param>
             public void SetService(Type service, object? instance)
             {
+                ArgumentNullException.ThrowIfNull(service);
+
+                //Validate the instance matches the requested service type
+                if (instance is not null && !service.IsInstanceOfType(instance))
+                {
+                    throw new ArgumentException("The instance does not match the service type", nameof(instance));
+                }
+
+                // Capture session providers and/or page routers from supplied type
+                // attempt to publish them across all processors using volatile write.
                 if (service.IsAssignableTo(typeof(ISessionProvider)))
                 {
-                    SessionProvider = (ISessionProvider?)instance;
+                    Volatile.Write(ref SessionProvider, (ISessionProvider?)instance);
                 }
-                else if (service.IsAssignableTo(typeof(IPageRouter)))
+
+                if (service.IsAssignableTo(typeof(IPageRouter)))
                 {
-                    PageRouter = (IPageRouter?)instance;
+                    Volatile.Write(ref PageRouter, (IPageRouter?)instance);
                 }
             }          
         }
