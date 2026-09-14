@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -44,7 +44,6 @@ namespace VNLib.Plugins.Essentials.Sessions
 
         protected const string USER_ID_ENTRY = "__.i.uid";
         protected const string PRIV_ENTRY = "__.i.pl";
-        protected const string SESSION_TYPE_ENTRY = "__.i.tp";
 
         /// <summary>
         /// A <see cref="BitField"/> of status flags for the state of the current session.

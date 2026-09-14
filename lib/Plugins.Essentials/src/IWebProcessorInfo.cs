@@ -3,9 +3,9 @@
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: IWebProcessor.cs 
-*
-* IWebProcessor.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+ * File: IWebProcessorInfo.cs 
+ *
+ * IWebProcessorInfo.cs is part of VNLib.Plugins.Essentials which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 

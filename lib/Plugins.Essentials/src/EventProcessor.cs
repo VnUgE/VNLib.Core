@@ -82,7 +82,7 @@ namespace VNLib.Plugins.Essentials
             {
                 return false;
             }
-            //Trailing / means dir, so look for a default file (index.html etc) (most likely so check first?)
+            //Trailing / means dir, so look for a default file (index.html etc) first
             if (Path.EndsInDirectorySeparator(path))
             {
                 string comp = path;
@@ -281,7 +281,7 @@ namespace VNLib.Plugins.Essentials
         }
 
         /// <summary>
-        /// Accepts the entity to process a file for an the selected <see cref="FileProcessArgs"/> 
+        /// Accepts the entity to process a file for the selected <see cref="FileProcessArgs"/>
         /// by user code and determines what file-system file to open and respond to the connection with.
         /// </summary>
         /// <param name="entity">The entity to process the file for</param>
@@ -307,7 +307,7 @@ namespace VNLib.Plugins.Essentials
                     case FpRoutine.Deny:
                         CloseWithError(HttpStatusCode.Forbidden, entity);
                         return;
-                    //Not return not found
+                    // Return not found
                     case FpRoutine.NotFound:
                         CloseWithError(HttpStatusCode.NotFound, entity);
                         return;
@@ -594,7 +594,7 @@ namespace VNLib.Plugins.Essentials
         /// </summary>
         /// <param name="errorCode">The error code that was created during processing</param>
         /// <param name="entity">The active IHttpEvent representing the faulted request</param>
-        /// <returns>A value indicating if the entity was proccsed by this call</returns>
+        /// <returns>A value indicating if the entity was processed by this call</returns>
         public abstract bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity);
 
         /// <summary>

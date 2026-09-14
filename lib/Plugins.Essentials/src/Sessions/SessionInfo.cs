@@ -47,7 +47,8 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// </summary>
     /// <remarks>
     /// This structure should not be stored and should not be accessed when the parent http entity 
-    /// has been closed.
+    /// has been closed. Members will throw if accessed when <see cref="IsSet"/> is false;
+    /// always check <see cref="IsSet"/> before accessing other members.
     /// </remarks>
     public readonly struct SessionInfo : IObjectStorage, IEquatable<SessionInfo>
     { 
