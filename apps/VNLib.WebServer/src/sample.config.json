@@ -6,7 +6,7 @@
   "tcp": {
     "keepalive_sec": 0,           //How long to wait for a keepalive response before closing the connection (0 to disable tcp keepalive)
     "keepalive_interval_sec": 0,  //How long to wait between keepalive probes
-    "max_recv_size": 655360,      //640k absolute maximum recv buffer (defaults to OS socket buffer size)
+    "max_recv_buffer": 655360,    //640k absolute maximum recv buffer (defaults to OS socket buffer size)
     "max_connections": 50000,     //Per listener instance
     "backlog": 1000,              //OS socket backlog,
     "no_delay": false,            //OS socket no delay (TCP_NODELAY) to disable Nagle's algorithm
@@ -151,7 +151,7 @@
       "min_region_size": 1,       // sets minimum size (in bytes) for regions (default = 1)
 
       // A list of shared regions to reserve at startup
-      "region_reservations": [
+      "reserved_regions": [
         {
           "name": "plugins.essentials.exports",
           "size": 4096

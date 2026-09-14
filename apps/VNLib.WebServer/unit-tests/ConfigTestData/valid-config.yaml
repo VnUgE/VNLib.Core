@@ -6,6 +6,9 @@ http:
 virtual_hosts:
   - hostname: example.com
     path: /var/www
+    interfaces:
+      - address: 127.0.0.1
+        port: 8080
 
 plugins:
   enabled: true
