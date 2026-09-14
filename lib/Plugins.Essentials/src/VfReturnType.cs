@@ -31,7 +31,8 @@ namespace VNLib.Plugins.Essentials
     public enum VfReturnType
     {
         /// <summary>
-        /// Signals that the virtual endpoint 
+        /// Signals that the virtual endpoint did not handle the request,
+        /// and processing should continue as a static file request
         /// </summary>
         ProcessAsFile,
 

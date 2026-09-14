@@ -231,7 +231,7 @@ namespace VNLib.Utils.IO
 
             if (!destination.CanWrite)
             {
-                throw new IOException("The destination stream is not writeable");
+                throw new IOException("The destination stream is not writable");
             }
 
             while (LenToPosDiff > 0)
@@ -603,7 +603,7 @@ namespace VNLib.Utils.IO
 
         /// <summary>
         /// Returns a <see cref="ReadOnlyMemory{T}"/> structure which is a window of the buffered
-        /// data as it currently sits. For writeable streams, you must call this function 
+        /// data as it currently sits. For writable streams, you must call this function 
         /// every time the size of the stream changes. The memory structure is just a "pointer" to 
         /// the internal buffer.
         /// </summary>

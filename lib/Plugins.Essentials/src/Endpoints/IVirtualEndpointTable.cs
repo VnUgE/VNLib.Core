@@ -65,8 +65,8 @@ namespace VNLib.Plugins.Essentials.Endpoints
         /// Attempts to get the endpoint associated with the specified path
         /// </summary>
         /// <param name="path">The connection path to recover the endpoint from</param>
-        /// <param name="endpoint"></param>
-        /// <returns></returns>
+        /// <param name="endpoint">When this method returns, contains the endpoint associated with the specified path, if found</param>
+        /// <returns><see langword="true"/> if an endpoint was found for the specified path; otherwise, <see langword="false"/></returns>
         bool TryGetEndpoint(string path, [NotNullWhen(true)] out IVirtualEndpoint<HttpEntity>? endpoint);
     }
 }

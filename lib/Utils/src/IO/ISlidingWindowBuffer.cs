@@ -29,7 +29,7 @@ namespace VNLib.Utils.IO
     /// <summary>
     /// Represents a sliding window buffer for reading/writing data
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="T">The type of elements stored in the buffer</typeparam>
     public interface ISlidingWindowBuffer<T> : IDataAccumulator<T>
     {
         /// <summary>

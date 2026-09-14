@@ -1,11 +1,11 @@
-vnlib_mimmalloc Copyright (C) 2026 Vaughn Nugent
+vnlib_mimalloc Copyright (C) 2026 Vaughn Nugent
 
-vnlib_mimmalloc is a wrapper library for Mimalloc by Microsoft that implements the NativeHeapApi 
+vnlib_mimalloc is a wrapper library for Mimalloc by Microsoft that implements the NativeHeapApi 
 functions, and exports them by default for use as a library. The CMake configuration is setup to produce both
 a static and shared library you can link against. The NativeHeapApi.h file is included in the source tree
 of the archive this readme is included in. Simply add the header to your project and link against the library.
 
-The NativHeapApi was designed to consolidate heap based operations into a single interface for the purpose of
+The NativeHeapApi was designed to consolidate heap based operations into a single interface for the purpose of
 .NET interop. The shared library (DLL) that is produced can be loaded into a .NET application that uses my 
 VNLib.Utils library. 
 
@@ -20,7 +20,7 @@ If you cannot view the website, here are the basic instructions that may become 
 PREREQUISITES:
 - Taskfile.dev (https://taskfile.dev/#/installation)
 - CMake (https://cmake.org/download/)
-- MSBuild (Vistual Studio build tools) and the CL.exe compiler-linker (Windows only)
+- MSBuild (Visual Studio build tools) and the CL.exe compiler-linker (Windows only)
 - GNU Make + GCC (Unix only)
 
 NOTE: 

@@ -46,7 +46,7 @@ tasks:
        silent: true
 
   postbuild_failed:
-    desc: 'Called by vnbuild when an error occured during build task'
+    desc: 'Called by vnbuild when an error occurred during build task'
     cmds: []
 
   postbuild:
