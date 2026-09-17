@@ -33,7 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)LICENSE" />
-    <None Include="$(MSBuildThisFileDirectory)readme.md" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" />
     <None Include="$(MSBuildThisFileDirectory)Taskfile.yaml" />
     <None Include="$(MSBuildThisFileDirectory)vendor\.editorconfig" />
     <None Include="$(MSBuildThisFileDirectory)vendor\AUTHORS.md" />

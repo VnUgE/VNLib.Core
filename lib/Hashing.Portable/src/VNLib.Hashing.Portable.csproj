@@ -12,7 +12,7 @@
 
   <PropertyGroup>
     <Product>VNLib Hashing Function/Alg Library</Product>
-    <Description>Provides managed and random cryptocraphic hashing helper classes, including complete Argon2 password hashing.</Description>
+    <Description>Provides managed and random cryptographic hashing helper classes, including complete Argon2 password hashing.</Description>
     <Authors>Vaughn Nugent</Authors>
     <Company>Vaughn Nugent</Company>
     <Copyright>Copyright © 2026 Vaughn Nugent</Copyright>

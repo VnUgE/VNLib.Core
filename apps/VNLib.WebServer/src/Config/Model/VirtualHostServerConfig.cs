@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -179,6 +179,12 @@ namespace VNLib.WebServer.Config.Model
                 foreach (string hostname in Hostnames)
                 {
                     Validate.EnsureNotNull(hostname, "Hostname is null, all hostnames must be defined");
+
+                    // Loose string requirements for hostnames
+                    Validate.Assert(
+                        Regex.IsMatch(hostname, @"^\S+$"),
+                        $"The hostname: {hostname} is not a valid hostname format"
+                    );
                 }
             }
 
@@ -223,6 +229,18 @@ namespace VNLib.WebServer.Config.Model
                 {
                     Validate.EnsureNotNull(server, "Downstream server address is null, all entries must be defined");
                     Validate.EnsureValidIp(server, $"Downstream server address is invalid: {server}");
+                }
+            }
+
+            if (DenyExtensions?.Length > 0)
+            {
+                foreach (string ext in DenyExtensions)
+                {
+                    Validate.EnsureNotNull(ext, "Denied file extension is null, all entries must be defined");
+                    Validate.Assert(
+                        Regex.IsMatch(ext, @"^\.[a-zA-Z0-9]+$"),
+                        $"The file extension: {ext} is not a valid file extension format"
+                    );
                 }
             }
 

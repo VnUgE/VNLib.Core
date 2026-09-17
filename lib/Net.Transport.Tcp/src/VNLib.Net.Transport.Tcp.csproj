@@ -13,7 +13,7 @@
   
   <PropertyGroup>
     <PackageId>VNLib.Net.Transport.Tcp</PackageId>
-    <Product>VNLib Simple Transport Library</Product>
+    <Product>VNLib TCP Transport Library</Product>
     <PackageTags>vnlib, tcp, transport, networking</PackageTags>
     <Description>Provides a library for single process asynchronous, event driven, TCP socket listening and supporting structures to implement simple high performance TCP servers with or without TLS security.</Description>
     <Authors>Vaughn Nugent</Authors>
@@ -24,13 +24,10 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-  </PropertyGroup>
+  </PropertyGroup> 
 
   <ItemGroup>
-    <PackageReference Include="System.IO.Pipelines" Version="10.0.11" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="10.0.12" />
     <ProjectReference Include="..\..\Utils\src\VNLib.Utils.csproj" />
   </ItemGroup>
 

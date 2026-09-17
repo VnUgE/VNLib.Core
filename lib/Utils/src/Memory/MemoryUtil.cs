@@ -60,7 +60,7 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// The environment variable name used to enable share heap diagnostics
         /// </summary>
-        public const string SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV = "VNLIB_SHARED_HEAP_DIAGNOSTICS";
+        public const string SHARED_HEAP_ENABLE_DIAGNOSTICS_ENV = "VNLIB_SHARED_HEAP_DIAGNOSTICS";
 
         /// <summary>
         /// The environment variable name used to specify the raw flags to pass to the shared heap
@@ -121,7 +121,7 @@ namespace VNLib.Utils.Memory
         private static IUnmanagedHeap InitSharedHeapInternal()
         {
             //Get env for heap diag
-            _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV), out ERRNO diagEnable);
+            _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_ENABLE_DIAGNOSTICS_ENV), out ERRNO diagEnable);
             _ = ERRNO.TryParse(Environment.GetEnvironmentVariable(SHARED_HEAP_GLOBAL_ZERO), out ERRNO globalZero);
 
             Trace.WriteLineIf(diagEnable, "Shared heap diagnostics enabled");

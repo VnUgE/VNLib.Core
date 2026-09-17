@@ -124,10 +124,10 @@ namespace VNLib.Utils.Memory.Caching
         ///<inheritdoc/>
         public ICollection<TKey> Keys => LookupTable.Keys;
 
-        ///<summary>
+        /// <summary>
         /// Not supported
         /// </summary>
-        ///<exception cref="NotImplementedException"></exception>
+        /// <exception cref="NotSupportedException">Values are not stored in an independent collection.</exception>
         public virtual ICollection<TValue> Values 
             => throw new NotSupportedException("Values are not stored in an independent collection, as they are not directly mutable");
 

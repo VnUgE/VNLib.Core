@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -257,7 +257,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// </summary>
         /// <param name="sizeHint">The minimum desired size of the buffer to return</param>
         /// <returns>A memory segment of the internal buffer</returns>
-        /// <exception cref="NotImplementedException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException">The size hint is greater than the remaining size of the internal buffer.</exception>
         Memory<byte> IBufferWriter<byte>.GetMemory(int sizeHint)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan(sizeHint, RemainingSize);
@@ -297,7 +297,6 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <summary>
         /// Resets the internal state of the accumulator, clearing any written data.
         /// </summary>
-        /// <exception cref="NotImplementedException"></exception>
         public void Reset() => _written = 0;      
 
         ///<inheritdoc/>

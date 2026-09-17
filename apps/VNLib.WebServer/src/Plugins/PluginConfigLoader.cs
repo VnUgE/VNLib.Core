@@ -138,7 +138,7 @@ namespace VNLib.WebServer.Plugins
             {
                 using JsonDocument mergedConfig = hostConfig.Merge(
                     other: in pluginConfig,
-                    initalName: HostConfigElementName,
+                    initialName: HostConfigElementName,
                     secondName: PluginConfigElementName
                 );
 

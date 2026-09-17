@@ -311,7 +311,7 @@ Starting...
 
     Optional environment variables:
         {MemoryUtil.SHARED_HEAP_FILE_PATH} - Specifies the path to the native heap allocator library
-        {MemoryUtil.SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV} - Enables heap diagnostics for the shared heap 1 = enabled, 0 = disabled
+        {MemoryUtil.SHARED_HEAP_ENABLE_DIAGNOSTICS_ENV} - Enables heap diagnostics for the shared heap 1 = enabled, 0 = disabled
         {MemoryUtil.SHARED_HEAP_GLOBAL_ZERO} - Enables zeroing of all allocations from the shared heap 1 = enabled, 0 = disabled
         {MemoryUtil.SHARED_HEAP_RAW_FLAGS} - Raw flags to pass to the shared heap allocator's HeapCreate function, hexadeciaml encoded
         {VnArgon2.ARGON2_LIB_ENVIRONMENT_VAR_NAME} - Specifies the path to the Argon2 native library

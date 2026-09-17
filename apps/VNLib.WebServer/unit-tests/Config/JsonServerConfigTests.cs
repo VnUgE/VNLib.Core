@@ -346,10 +346,10 @@ namespace VNLib.WebServerTests.Config
 
             Assert.IsNotNull(config);
 
-            int timeout = config.GetConfigProperty<int>("http::timeout_ms");
+            int timeout = config.GetConfigProperty<int>("http::recv_timeout_ms");
             int maxConn = config.GetConfigProperty<int>("http::max_connections");
 
-            Assert.AreEqual(30000, timeout);
+            Assert.AreEqual(5000, timeout);
             Assert.AreEqual(1000, maxConn);
         }
 
