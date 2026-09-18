@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -32,7 +32,7 @@ using VNLib.Net.Transport.Tcp;
 
 namespace VNLib.WebServer.Transport
 {
-    internal sealed class SslTcpTransportContext(ITcpListner server, ITcpConnectionDescriptor descriptor, SslStream stream) 
+    internal sealed class SslTcpTransportContext(ITcpListener server, ITcpConnectionDescriptor descriptor, SslStream stream) 
         : TcpTransportContext(server, descriptor, stream)
     {
         private TransportSecurityInfo? _securityInfo;

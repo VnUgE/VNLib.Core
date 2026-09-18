@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -79,8 +79,8 @@ namespace VNLib.Net.Http.Core.Response
         internal void SetStatusCode(HttpStatusCode code)
         {
             /*
-             * Since the server's internals control the flow of the HTTP reqeust/response
-             * lifecycle, it's an internal error if the headers have been sent but the status 
+             * Since the server's internals control the flow of the HTTP request/response
+             * lifecycle, it's an internal error if the headers have been sent but the status
              * code gets modified. 
              * 
              * In the condition where this happens, it's also not important to raise an exception, 

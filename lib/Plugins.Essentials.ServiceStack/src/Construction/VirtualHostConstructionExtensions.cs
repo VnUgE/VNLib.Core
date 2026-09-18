@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -10,7 +10,7 @@
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -132,7 +132,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <param name="attributes">The disallowed file attributes</param>
         /// <returns>The current instance for chaining</returns>
         public static IVirtualHostBuilder WithDisallowedAttributes(this IVirtualHostBuilder vhBuilder, FileAttributes attributes)
-            => vhBuilder.WithOption(c => c.DissallowedAttributes = attributes);
+            => vhBuilder.WithOption(c => c.DisallowedAttributes = attributes);
 
         /// <summary>
         /// Sets the downstream servers that connections will trust

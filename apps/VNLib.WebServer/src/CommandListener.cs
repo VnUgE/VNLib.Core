@@ -31,8 +31,8 @@ using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Utils.Memory.Diagnostics;
 using VNLib.Net.Http;
+using VNLib.Plugins.Runtime.Batteries;
 using VNLib.Plugins.Essentials.ServiceStack;
-using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 using VNLib.WebServer.Bootstrap;
 
@@ -86,15 +86,19 @@ namespace VNLib.WebServer
 
         private readonly HttpServiceStack _serviceStack = server.ServiceStack;
 
-
         /// <summary>
-        /// Listens for commands and processes them in a continuous loop
+        /// Listens for commands and processes them in a continuous loop. This function should always be 
+        /// run on a separate thread to avoid blocking as plugins can block the thread to take control of 
+        /// the console.
         /// </summary>
         /// <param name="shutdownEvent">A <see cref="ManualResetEvent"/> that is set when the Stop command is received</param>
         /// <param name="server">The webserver for the current process</param>
         public void ListenForCommands(TextReader input, TextWriter output, string name)
         {
             log.Information("Listening for commands on {con}", name);
+
+            // Check that the base server supports the plugin console and get a reference to it if it does
+            PluginConsoleEventHandler? pluginConsole = (server is ReleaseWebserver r) ? r.ConsoleEventHandler : null;
 
             while (shutdownEvent.WaitOne(0) == false)
             {
@@ -106,7 +110,7 @@ namespace VNLib.WebServer
                 }
                 switch (s[0].ToLower(null))
                 {                   
-                    //handle plugin
+                    //handle plugin command directly
                     case "p":
                         {
                             if (s.Length < 3)
@@ -115,19 +119,27 @@ namespace VNLib.WebServer
                                 break;
                             }
 
-                            if (server.PluginStack is null)
+                            if (server.Plugins is null)
                             {
                                 output.WriteLine("Plugin stack is not initialized");
                                 break;
                             }
 
+                            if (pluginConsole == null)
+                            {
+                                output.WriteLine("Plugin console is not available or supported");
+                                break;
+                            }
+
                             string message = string.Join(' ', s[2..]);
-
-                            bool sent = server.PluginStack.SendCommand(s[1], message);
-
-                            if (!sent)
+                         
+                            if (!pluginConsole.SendConsoleCommand(s[1], message))
                             {
                                 output.WriteLine("Plugin not found");
+                                output.WriteLine(
+                                    "Available plugins: {0}", 
+                                    string.Join(", ", pluginConsole.GetEnabledNames())
+                                );
                             }
                         }
                         break;
@@ -140,22 +152,45 @@ namespace VNLib.WebServer
                                 break;
                             }
 
-                            if (server.PluginStack is null)
+                            if (server.Plugins is null)
                             {
                                 output.WriteLine("Plugin stack is not initialized");
                                 break;
                             }
 
+                            if (pluginConsole == null)
+                            {
+                                output.WriteLine("Plugin console is not available or supported");
+                                break;
+                            }
+
+                            if (!pluginConsole.IsEnabled(s[1]))
+                            {
+                                output.WriteLine("Plugin not found or does not support console commands");
+                                output.WriteLine(
+                                   "Available plugins: {0}",
+                                   string.Join(", ", pluginConsole.GetEnabledNames())
+                                );
+                                break;
+                            }
+
                             //Enter plugin command loop
-                            EnterPluginLoop(input, output, s[1], server.PluginStack);
+                            EnterPluginLoop(input, output, s[1], pluginConsole);
                         }
                         break;
                     case "reload":
                         {
+                            if (server.Plugins is null)
+                            {
+                                output.WriteLine("Plugin stack is not initialized");
+                                break;
+                            }
+
                             try
                             {
                                 //Reload all plugins
-                                server.ReloadPlugins();
+                                server.Plugins.ReloadPlugins(false);
+                                output.WriteLine("Plugins reloaded successfully");
                             }
                             catch (Exception ex)
                             {
@@ -234,10 +269,10 @@ namespace VNLib.WebServer
             TextReader input,
             TextWriter output,
             string pluginName, 
-            PluginManager man
+            PluginConsoleEventHandler man
         )
         {
-            output.WriteLine("Entering plugin {0}. Type 'exit' to leave", pluginName);
+            output.WriteLine("Entering plugin {0}. Type 'exit' or 'quit' to leave", pluginName);
 
             while (true)
             {
@@ -251,15 +286,18 @@ namespace VNLib.WebServer
                     continue;
                 }
 
-                if (string.Equals(cmdText, "exit", StringComparison.OrdinalIgnoreCase))
+                switch (cmdText.ToLower(null))
                 {
-                    break;
+                    case "quit": // Support quit but do not advertise it
+                    case "exit":
+                        output.WriteLine("Exiting plugin {0}", pluginName);
+                        return;                         
                 }
 
                 // Exec command
-                if (!man.SendCommand(pluginName, cmdText))
+                if (!man.SendConsoleCommand(pluginName, cmdText))
                 {
-                    output.WriteLine("Plugin does not exist exiting loop");
+                    output.WriteLine("Plugin does not exist or has unloaded exiting loop");
                     break;
                 }
             }

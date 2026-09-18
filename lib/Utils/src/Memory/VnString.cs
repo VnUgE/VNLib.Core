@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -79,7 +79,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Creates and empty <see cref="VnString"/>, not particularly usefull, just and empty instance.
+        /// Creates and empty <see cref="VnString"/>, not particularly useful, just and empty instance.
         /// </summary>
         public VnString()
         {

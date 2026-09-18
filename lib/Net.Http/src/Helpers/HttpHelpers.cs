@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -331,11 +331,11 @@ namespace VNLib.Net.Http
         public static ContentType GetContentTypeFromFile(ReadOnlySpan<char> path)
         {
             //Get the file's extension
-            ReadOnlySpan<char> extention = Path.GetExtension(path);
+            ReadOnlySpan<char> extension = Path.GetExtension(path);
             //Trim leading .
-            extention = extention.Trim('.');
+            extension = extension.Trim('.');
             //If the extension is defined, perform a lookup, otherwise return the default 
-            return ExtensionToCt.GetValueOrDefault(extention.ToString(), ContentType.Binary);
+            return ExtensionToCt.GetValueOrDefault(extension.ToString(), ContentType.Binary);
         }
 
         /// <summary>

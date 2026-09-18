@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -305,7 +305,7 @@ namespace VNLib.Net.Http.Core
                                 //Content length has already been calculated, ERROR, rfc 7230
                                 if(parseState.ContentLength > 0)
                                 {
-                                    Config.ServerLog.Debug("Message warning, recieved multiple content length headers");
+                                    Config.ServerLog.Debug("Message warning, received multiple content length headers");
                                     return HttpStatusCode.BadRequest;
                                 }
 

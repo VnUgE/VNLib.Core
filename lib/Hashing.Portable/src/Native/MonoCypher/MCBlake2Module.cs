@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -84,7 +84,7 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// <param name="library"></param>
         /// <param name="hashSize">The hash size between 1 and <see cref="MaxHashSize"/> inclusive</param>
         /// <param name="heap">The heap to allocate the stream on</param>
-        /// <returns>The initialzied <see cref="IHashStream"/> instance</returns>
+        /// <returns>The initialized <see cref="IHashStream"/> instance</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static IHashStream Blake2CreateStream(this MonoCypherLibrary library, byte hashSize, IUnmanagedHeap? heap)
@@ -301,7 +301,7 @@ namespace VNLib.Hashing.Native.MonoCypher
                     throw new ArgumentNullException("key","The key pointer is null");
 
                 default:
-                    throw new Exception($"An unknown error occured while hashing: {result}");
+                    throw new Exception($"An unknown error occurred while hashing: {result}");
 
             }
 #pragma warning restore CA2208 // Instantiate argument exceptions correctly
@@ -318,7 +318,7 @@ namespace VNLib.Hashing.Native.MonoCypher
             internal Blake2Stream(MonoCypherLibrary library, IUnmanagedHeap heap, byte hashSize) :base(IntPtr.Zero, true)
             {
                 Debug.Assert(hashSize > 0 && hashSize <= MaxHashSize, "Hash size must be between 1 and 64 inclusive");
-                Debug.Assert(library != null, "Library argument passed to internal blake2 stream constructur is null");
+                Debug.Assert(library != null, "Library argument passed to internal blake2 stream constructor is null");
                 _library = library;
                 _heap = heap;
                 HashSize = hashSize;

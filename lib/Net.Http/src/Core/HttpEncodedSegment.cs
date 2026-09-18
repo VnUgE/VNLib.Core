@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -102,7 +102,7 @@ namespace VNLib.Net.Http.Core
         /// </summary>
         /// <param name="data">The string data to encode</param>
         /// <param name="enc">The encoder used to convert the character data to bytes</param>
-        /// <returns>The initalized <see cref="HttpEncodedSegment"/> structure</returns>
+        /// <returns>The initialized <see cref="HttpEncodedSegment"/> structure</returns>
         /// <exception cref="OverflowException"></exception>
         public static HttpEncodedSegment FromString(string data, Encoding enc)
         {

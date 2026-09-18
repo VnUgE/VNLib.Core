@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -40,7 +40,7 @@ namespace VNLib.Utils.Async
         private readonly Channel<T> _channel;
 
         /// <summary>
-        /// Initalizes a new multi-threaded bound channel queue, that accepts 
+        /// Initializes a new multi-threaded bound channel queue, that accepts 
         /// the <paramref name="capacity"/> number of items before it will 
         /// return asynchronously, or fail to enqueue items
         /// </summary>
@@ -49,13 +49,13 @@ namespace VNLib.Utils.Async
         { }
 
         /// <summary>
-        /// Initalizes a new multi-threaded unbound channel queue
+        /// Initializes a new multi-threaded unbound channel queue
         /// </summary>
         public AsyncQueue() : this(false, false)
         { }
 
         /// <summary>
-        /// Initalizes a new queue that allows specifying concurrency requirements 
+        /// Initializes a new queue that allows specifying concurrency requirements 
         /// and a bound/unbound channel capacity
         /// </summary>
         /// <param name="singleWriter">A value that specifies only a single thread be enqueing items?</param>
@@ -92,14 +92,14 @@ namespace VNLib.Utils.Async
         }
 
         /// <summary>
-        /// Initalizes a new unbound channel based queue
+        /// Initializes a new unbound channel based queue
         /// </summary>
         /// <param name="ubOptions">Channel options</param>
         public AsyncQueue(UnboundedChannelOptions ubOptions) 
             => _channel = Channel.CreateUnbounded<T>(ubOptions);
 
         /// <summary>
-        /// Initalizes a new bound channel based queue
+        /// Initializes a new bound channel based queue
         /// </summary>
         /// <param name="options">Channel options</param>
         public AsyncQueue(BoundedChannelOptions options) 

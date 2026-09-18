@@ -103,6 +103,10 @@ tasks:
            {{ if eq OS "windows" }}-A x64{{ end }}
            -DCOMPRESS_RPMALLOC_SOURCE_DIR={{ .RPMALLOC_SRC_DIR }}' 
 
+  publish:
+    desc: 'DO NOT USE. Called by vnbuild'
+    cmds: []
+
   postbuild_success:
     desc: 'DO NOT USE. This is an internal task'
     requires:
@@ -123,16 +127,14 @@ tasks:
         "{{ .PROJECT_NAME }}.dll 
         {{ .PROJECT_NAME }}.lib 
         platform.h
-        compression.h
-        license.txt"
+        compression.h"
 
       DEBUG_TAR_FILES: 
         "{{ .PROJECT_NAME }}.dll 
         {{ .PROJECT_NAME }}.pdb 
         {{ .PROJECT_NAME }}.lib 
         platform.h
-        compression.h
-        license.txt"
+        compression.h"
 
       DIST_HEADERS: 
         "platform.h
@@ -161,14 +163,17 @@ tasks:
       TARGET_DIR: '{{ .CMAKE_BUILD_DIR }}/{{ .BUILD_MODE }}'
       ARCHIVE_PATH: '{{ .ARTIFACT_DIR }}/msvc-x64-{{ .BUILD_MODE }}-{{ .PROJECT_NAME }}.tgz'
     cmds:
-      # publish the license file for distribution
-      - cmd: cp ../LICENSE '{{ .TARGET_DIR }}/license.txt'
+      # publish the license file for distribution, added below in the tar file list
+      - cmd: cp ../LICENSE '{{ .TARGET_DIR }}/LICENSE.txt'
      
       # publish headers for distribution
       - for: { var: DIST_HEADERS }
         cmd: cp 'src/{{ .ITEM }}' '{{ .TARGET_DIR }}/{{ .ITEM }}'
 
-      - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' {{ .TAR_FILES }}
+      - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} 
+          -czf '{{ .ARCHIVE_PATH }}'
+          -C '{{ .TARGET_DIR }}' 
+          {{ .TAR_FILES }} LICENSE.txt
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
@@ -185,6 +190,7 @@ tasks:
         LICENSE
         CMakeLists.txt
         Taskfile.yaml
+        vnlib_compress.vcxitems
 
     cmds:
      - cmd: cp ../LICENSE 'LICENSE' 

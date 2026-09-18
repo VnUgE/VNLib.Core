@@ -361,7 +361,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         /// <summary>
         /// Close a response to a connection with a character buffer using the server wide
-        /// <see cref="ConnectionInfo.Encoding"/> encoding
+        /// <see cref="IConnectionInfo.Encoding"/> encoding
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">The response status code</param>
@@ -409,7 +409,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <param name="code">The response status code</param>
         /// <param name="type">The <see cref="ContentType"/> the data represents</param>
         /// <param name="data">The binary buffer to send</param>
-        /// <remarks>The data paramter is copied into an internal <see cref="IMemoryResponseReader"/></remarks>
+        /// <remarks>The data parameter is copied into an internal <see cref="IMemoryResponseReader"/></remarks>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
@@ -500,7 +500,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         #endregion
 
         /// <summary>
-        /// Attempts to read and deserialize a JSON object from the reqeust body (form data or urlencoded)
+        /// Attempts to read and deserialize a JSON object from the request body (form data or urlencoded)
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
@@ -514,7 +514,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         public static bool TryGetJsonFromArg<T>(this IHttpEvent ev, string key, out T? obj) => TryGetJsonFromArg(ev, key, SR_OPTIONS, out obj);
         
         /// <summary>
-        /// Attempts to read and deserialize a JSON object from the reqeust body (form data or urlencoded)
+        /// Attempts to read and deserialize a JSON object from the request body (form data or urlencoded)
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
@@ -686,14 +686,13 @@ namespace VNLib.Plugins.Essentials.Extensions
                 return ValueTask.FromResult<T?>(default);
             }
 
-            //avoid copying the ev struct, so return deserialize task
-            static async ValueTask<T?> Deserialize(Stream data, JsonSerializerOptions? options, CancellationToken token)
+            //avoid copying the ev struct, so return deserialze task
+            static async ValueTask<T?> Deserialze(Stream data, JsonSerializerOptions? options, CancellationToken token)
             {
                 try
                 {
                     //Beware this will buffer the entire file object before it attmepts to de-serialize it
-                    return await JsonSerializer.DeserializeAsync<T?>(data, options, token)
-                        .ConfigureAwait(false);
+                    return await VnEncoding.JSONDeserializeFromBinaryAsync<T?>(data, options, token);
                 }
                 catch (JsonException je)
                 {

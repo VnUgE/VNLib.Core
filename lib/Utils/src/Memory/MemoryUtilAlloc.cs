@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -210,7 +210,7 @@ namespace VNLib.Utils.Memory
         /// <param name="pool"></param>
         /// <param name="size">The minimum size array to allocate</param>
         /// <param name="zero">Should elements from 0 to size be set to default(T)</param>
-        /// <returns>A new <see cref="OpenResourceHandle{T}"/> encapsulating the rented array</returns>
+        /// <returns>A new <see cref="ArrayPoolBuffer{T}"/> encapsulating the rented array</returns>
         public static ArrayPoolBuffer<T> SafeAlloc<T>(ArrayPool<T> pool, int size, bool zero = false) where T : struct
         {
             ArgumentNullException.ThrowIfNull(pool);

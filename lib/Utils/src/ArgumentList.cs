@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -37,7 +37,7 @@ namespace VNLib.Utils
         private readonly List<string> _args;
 
         /// <summary>
-        /// Initalzies a the argument parser by copying the given argument array
+        /// Initializes a the argument parser by copying the given argument array
         /// </summary>
         /// <param name="args">The array of arguments to clone</param>
         /// <exception cref="ArgumentNullException"></exception>
@@ -45,7 +45,7 @@ namespace VNLib.Utils
         { }
 
         /// <summary>
-        /// Initalizes the argument parser by copying the given argument list
+        /// Initializes the argument parser by copying the given argument list
         /// </summary>
         /// <param name="args">The argument list to clone</param>
         /// <exception cref="ArgumentNullException"></exception>

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -40,7 +40,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Begins listening for connections on configured interfaces for configured hostnames.
         /// </summary>
-        /// <param name="cancellationToken">A token used to stop listening for incomming connections and close all open websockets</param>
+        /// <param name="cancellationToken">A token used to stop listening for incoming connections and close all open websockets</param>
         /// <returns>A task that resolves when the server has exited</returns>
         Task Start(CancellationToken cancellationToken);
     }

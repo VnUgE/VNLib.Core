@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -34,18 +34,26 @@ namespace VNLib.Utils.IO
     /// <summary>
     /// A basic accumulator style write buffered stream
     /// </summary>
-    public class WriteOnlyBufferedStream : Stream
+    /// <remarks>
+    /// Creates a new <see cref="WriteOnlyBufferedStream"/> that writes encoded data to the base stream 
+    /// and uses the specified buffer.
+    /// </remarks>
+    /// <param name="baseStream">The underlying stream to write data to</param>
+    /// <param name="buffer">The internal <see cref="ISlidingWindowBuffer{T}"/> to use</param>
+    /// <param name="leaveOpen">A value indicating of the stream should be left open when the buffered stream is closed</param>
+    /// <exception cref="ArgumentNullException"></exception>
+    public class WriteOnlyBufferedStream(Stream baseStream, ISlidingWindowBuffer<byte> buffer, bool leaveOpen = false) : Stream
     {
-        private readonly ISlindingWindowBuffer<byte> _buffer;
-        private readonly bool LeaveOpen;
+        private readonly ISlidingWindowBuffer<byte> _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+        private readonly bool LeaveOpen = leaveOpen;
 
         /// <summary>
         /// Gets the underlying stream that interfaces with the backing store
         /// </summary>
-        public Stream BaseStream { get; init; }
+        public Stream BaseStream { get; init; } = baseStream ?? throw new ArgumentNullException(nameof(buffer));
 
         /// <summary>
-        /// Initalizes a new <see cref="WriteOnlyBufferedStream"/> using the specified backing 
+        /// Initializes a new <see cref="WriteOnlyBufferedStream"/> using the specified backing 
         /// stream, allocating a pooled buffer of the specified size, and optionally leaves the stream open.
         /// </summary>
         /// <param name="baseStream">The backing stream to write buffered data to</param>
@@ -69,21 +77,6 @@ namespace VNLib.Utils.IO
         public WriteOnlyBufferedStream(Stream baseStream, int bufferSize, IStreamBufferFactory<byte> bufferFactory, bool leaveOpen = false)
             : this(baseStream, bufferFactory?.CreateBuffer(bufferSize)!, leaveOpen)
         {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="WriteOnlyBufferedStream"/> that writes encoded data to the base stream 
-        /// and uses the specified buffer.
-        /// </summary>
-        /// <param name="baseStream">The underlying stream to write data to</param>
-        /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
-        /// <param name="leaveOpen">A value indicating of the stream should be left open when the buffered stream is closed</param>
-        /// <exception cref="ArgumentNullException"></exception>
-        public WriteOnlyBufferedStream(Stream baseStream, ISlindingWindowBuffer<byte> buffer, bool leaveOpen = false)
-        {
-            BaseStream = baseStream ?? throw new ArgumentNullException(nameof(buffer));
-            _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
-            LeaveOpen = leaveOpen;
         }
 
         ///<inheritdoc/>

@@ -1,4 +1,4 @@
-﻿{
+{
 
   //Host application config, config is loaded as a read-only DOM that is available 
   //to the host and loaded child plugins, all elements are available to plugins via the 'HostConfig' property
@@ -6,7 +6,7 @@
   "tcp": {
     "keepalive_sec": 0,           //How long to wait for a keepalive response before closing the connection (0 to disable tcp keepalive)
     "keepalive_interval_sec": 0,  //How long to wait between keepalive probes
-    "max_recv_size": 655360,      //640k absolute maximum recv buffer (defaults to OS socket buffer size)
+    "max_recv_buffer": 655360,    //640k absolute maximum recv buffer (defaults to OS socket buffer size)
     "max_connections": 50000,     //Per listener instance
     "backlog": 1000,              //OS socket backlog,
     "no_delay": false,            //OS socket no delay (TCP_NODELAY) to disable Nagle's algorithm
@@ -17,13 +17,13 @@
   },
 
   "http": {
-    "default_version": "HTTP/1.1",      //The defaut HTTP version to being requests with (does not support http/2 yet)
+    "default_version": "HTTP/1.1",      //The default HTTP version to begin requests with (does not support http/2 yet)
     "multipart_max_buf_size": 20480,    //The size of the buffer to use when parsing multipart/form data uploads
-    "multipart_max_size": 80240,        //The maxium ammount of data (in bytes) allows for mulitpart/form data file uploads
-    "max_entity_size": 1024000,         //Absolute maximum size (in bytes) of the request entity body (exludes headers)    
-    "max_request_header_count": 50,     //The maxium number of headers allowed in an HTTP request message
-    "max_connections": 5000,            //The maxium number of allowed network connections, before 503s will be issued automatically and connections closed   
-    "request_header_buf_size": 8128,    //The buffer size to use when parsing headers (also the maxium request header size allowed) 
+    "multipart_max_size": 80240,        //The maximum amount of data (in bytes) allowed for multipart/form data file uploads
+    "max_entity_size": 1024000,         //Absolute maximum size (in bytes) of the request entity body (excludes headers)    
+    "max_request_header_count": 50,     //The maximum number of headers allowed in an HTTP request message
+    "max_connections": 5000,            //The maximum number of allowed network connections, before 503s will be issued automatically and connections closed   
+    "request_header_buf_size": 8128,    //The buffer size to use when parsing headers (also the maximum request header size allowed) 
     "response_header_buf_size": 16384,  //The size (in bytes) of the buffer used to store all response header data
     "max_uploads_per_request": 10,      //Max number of file (or multi-part) uploads allowed per request
     "keepalive_ms": 1000000,            //Keepalive ms for HTTP1.1 keepalive connections
@@ -33,8 +33,8 @@
     "compression": {
       "enabled": true,      //controls compression globally
       "assembly": "",       //A custom assembly path (ex: 'VNLib.Net.Compression.dll')
-      "max_size": 512000,   //Maxium size of a response to compress before it's bypassed
-      "min_size": 2048      //Minium size of a response to compress, if smaller compression is bypassed
+      "max_size": 512000,   //Maximum size of a response to compress before it's bypassed
+      "min_size": 2048      //Minimum size of a response to compress, if smaller compression is bypassed
     }
   },
 
@@ -42,7 +42,7 @@
   "virtual_hosts": [
     {
 
-      "enabled": true,         //A flag that enables or disables this virtual host
+      "enabled": true,         //A flag that enables or disables this virtual host (if unset default is true)
     
       "path": "path/to/website/root",    //The directory path for files served by this endpoint
 
@@ -128,7 +128,7 @@
         ".js": 864000,   //all .js files will have a max-age of 10 days   
       },
 
-      //Maxium ammount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned
+      //Maximum amount of time a request is allowed to be processed (includes loading or waiting for sessions) before operations will be cancelled and a 503 returned
       "max_execution_time_ms": 20000
     }
   ],
@@ -140,9 +140,24 @@
     //Hot-reload creates collectable assemblies that allow full re-load support in the host application, should only be used for development purposes!
     "hot_reload": false,
     "reload_delay_sec": 2,
-    "path": "/path/to/plugins_dir",
+    "path": "plugins/",
     //"assets":"",
     //"config_dir": ""
+
+    // Controls the Inter-Plugin Communications (IPC) shared memory subsystem
+    "ipc_shared_memory": {
+      "enabled": true,            // enables the IPC shared memory system (default = true)
+      "max_region_size": 65536,   // maximum size (in bytes) allowed for plugin memory regions (default = 64k)
+      "min_region_size": 1,       // sets minimum size (in bytes) for regions (default = 1)
+
+      // A list of shared regions to reserve at startup
+      "reserved_regions": [
+        {
+          "name": "plugins.essentials.exports",
+          "size": 4096
+        }
+      ]
+    }
   },
 
   "logs": {
@@ -168,26 +183,8 @@
   },
 
 
-  //Global secrets object, used by the host and pluings for a specialized secrets
+  //Global secrets object, used by the host and plugins for specialized secrets
   "secrets": {
 
-  },
-
-  //global or local configuration to define custom password hashing requirements instead of defaults
-
-  "passwords": {
-    "custom_assembly": null, //A custom assembly path
-
-    //Optionally specify parameters, or use defaults. If defined, you must specify all parameters
-    //Not all Argon2 native libraries support these options
-    "disabled_argon2_options": {
-      "memory_cost": 65536,
-      "iterations": 4,
-      "parallelism": 4,
-      "salt_length": 16,
-      "hash_length": 32
-    },
-
-    "argon2_lib_path": null, //A custom path to the Argon2 native library, otherwise the default library is loaded
   }
 }

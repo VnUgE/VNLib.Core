@@ -178,7 +178,7 @@ tasks:
       SOURCE_FILES:
         src/*
         vendor/*
-        readme.md
+        README.md
         LICENSE
         CMakeLists.txt
         Taskfile.yaml

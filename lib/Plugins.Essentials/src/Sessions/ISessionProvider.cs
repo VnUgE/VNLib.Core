@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -31,7 +31,7 @@ using VNLib.Net.Http;
 namespace VNLib.Plugins.Essentials.Sessions
 {
     /// <summary>
-    /// Provides stateful session objects assocated with HTTP connections
+    /// Provides stateful session objects associated with HTTP connections
     /// </summary>
     public interface ISessionProvider
     {
@@ -44,6 +44,6 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// <exception cref="TimeoutException"></exception>
         /// <exception cref="SessionException"></exception>
         /// <exception cref="OperationCanceledException"></exception>
-        public ValueTask<SessionHandle> GetSessionAsync(IHttpEvent entity, CancellationToken cancellationToken);
+        ValueTask<SessionHandle> GetSessionAsync(IHttpEvent entity, CancellationToken cancellationToken);
     }
 }

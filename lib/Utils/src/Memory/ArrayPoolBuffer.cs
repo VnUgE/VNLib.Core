@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -49,7 +49,7 @@ namespace VNLib.Utils.Memory
         public T[] Buffer { get; private set; }
 
         /// <summary>
-        /// Inital/desired size of internal buffer
+        /// Initial/desired size of internal buffer
         /// </summary>
         public int InitSize { get; }
       

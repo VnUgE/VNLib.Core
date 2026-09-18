@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -140,7 +140,7 @@ namespace VNLib.Net.Messaging.FBM.Server
 
         private sealed class MessageSegmentEnumerator(FBMResponseMessage message) : IAsyncMessageReader
         {
-            private readonly ISlindingWindowBuffer<byte> _accumulator = message._headerAccumulator;
+            private readonly ISlidingWindowBuffer<byte> _accumulator = message._headerAccumulator;
 
             bool HeadersRead;
 
