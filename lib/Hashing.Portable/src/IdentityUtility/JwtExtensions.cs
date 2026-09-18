@@ -30,6 +30,7 @@ using System.Security.Cryptography;
 using VNLib.Utils;
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
+using VNLib.Utils.Codecs;
 
 namespace VNLib.Hashing.IdentityUtility
 {
@@ -146,7 +147,7 @@ namespace VNLib.Hashing.IdentityUtility
         private static int CalcPadding(int length) => (4 - (length % 4)) & 0x03;
         private static int DecodeUnpadded(ReadOnlySpan<byte> prePadding, Span<byte> output)
         {
-            ERRNO count = VnEncoding.Base64UrlDecode(prePadding, output);            
+            ERRNO count = Base64Url.Decode(prePadding, output);
             return count ? count : throw new FormatException($"Failed to decode the utf8 encoded data");
         }
 
@@ -363,7 +364,7 @@ namespace VNLib.Hashing.IdentityUtility
             }
 
             //Do an in-place base64 conversion of the signature to base64url
-            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, bytesWritten, false);
+            ERRNO encoded = Base64Url.EncodeInPlace(signatureBuffer, bytesWritten, false);
           
             if (!encoded)
             {
@@ -458,7 +459,7 @@ namespace VNLib.Hashing.IdentityUtility
             }
 
             //Do an in-place base64 conversion of the signature to base64url
-            ERRNO encoded = VnEncoding.Base64UrlEncodeInPlace(signatureBuffer, alg.HashSize(), false);
+            ERRNO encoded = Base64Url.EncodeInPlace(signatureBuffer, alg.HashSize(), false);
           
             if (!encoded)
             {

@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -33,7 +33,6 @@ using System.Runtime.CompilerServices;
 
 using VNLib.Net.Http;
 using VNLib.Hashing;
-using VNLib.Utils;
 using VNLib.Utils.IO;
 using static VNLib.Plugins.Essentials.Statics;
 
@@ -577,8 +576,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
 
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
-        /// file. It will be deserialzied to the specified object
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// file. It will be deserialized to the specified object
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
@@ -618,7 +617,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
         /// file. It will be parsed into a new <see cref="JsonDocument"/>
         /// </summary>
         /// <param name="ev"></param>
@@ -656,8 +655,8 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
-        /// file. It will be deserialzied to the specified object
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// file. It will be deserialized to the specified object
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
@@ -686,13 +685,14 @@ namespace VNLib.Plugins.Essentials.Extensions
                 return ValueTask.FromResult<T?>(default);
             }
 
-            //avoid copying the ev struct, so return deserialze task
-            static async ValueTask<T?> Deserialze(Stream data, JsonSerializerOptions? options, CancellationToken token)
+            //avoid copying the ev struct, so return deserialize task
+            static async ValueTask<T?> Deserialize(Stream data, JsonSerializerOptions? options, CancellationToken token)
             {
                 try
                 {
-                    //Beware this will buffer the entire file object before it attmepts to de-serialize it
-                    return await VnEncoding.JSONDeserializeFromBinaryAsync<T?>(data, options, token);
+                    //Beware this will buffer the entire file object before it attempts to de-serialize it
+                    return await JsonSerializer.DeserializeAsync<T>(data, options, token)
+                        .ConfigureAwait(false);
                 }
                 catch (JsonException je)
                 {
