@@ -97,7 +97,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 
 		-Wextra
 		-fstack-protector
-		-march=native
+		-march=native # NOTE: compiles with native arch tuning, cannot safely distribute portable linux builds
 	)
 
 	#enable debug compiler options
