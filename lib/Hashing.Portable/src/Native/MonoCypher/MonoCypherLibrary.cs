@@ -71,7 +71,16 @@ namespace VNLib.Hashing.Native.MonoCypher
 
             SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(monoCypherLibPath, DllImportSearchPath.SafeDirectories);
 
-            return new(new(lib, ownsValue: true));
+            try
+            {
+                return new(new(lib, ownsValue: true));
+            }
+            catch
+            {
+                //Wrapping failed (missing entry points), release the loaded library before propagating
+                lib.Dispose();
+                throw;
+            }
         }
 
         private readonly Owned<SafeLibraryHandle> _library;
@@ -92,6 +101,9 @@ namespace VNLib.Hashing.Native.MonoCypher
         /// </summary>
         /// <param name="library">The safe MonoCypher library handle</param>
         /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="MissingMemberException"></exception>
+        /// <exception cref="EntryPointNotFoundException"></exception>
         public MonoCypherLibrary(Owned<SafeLibraryHandle> library)
         {
             _library = library;
