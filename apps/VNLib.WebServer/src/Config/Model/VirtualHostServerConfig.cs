@@ -249,10 +249,10 @@ namespace VNLib.WebServer.Config.Model
                 foreach (string file in DefaultFiles)
                 {
                     Validate.EnsureNotNull(file, "Default file name is null, all entries must be defined");
-                    //Ensure the format looks like a plain file name with an extension.
-                    //This rejects path separators, traversal sequences, and extensionless names.
+                    //Ensure the format looks like a plain file name. Extensionless names are allowed.
+                    //This rejects path separators and traversal sequences.
                     Validate.Assert(
-                        Regex.IsMatch(file, @"^(?!.*\.\.)[a-zA-Z0-9_.-]+\.[a-zA-Z]{2,}$"),
+                        Regex.IsMatch(file, @"^(?!.*\.\.)[a-zA-Z0-9_.-]+$"),
                         $"The file path: {file} is not a valid file path format"
                     );
                 }
