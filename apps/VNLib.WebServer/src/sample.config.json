@@ -46,7 +46,7 @@
     
       "path": "path/to/website/root",    //The directory path for files served by this endpoint
 
-      //The hostname to listen for, "*" as wildcard, and "[system]" as the default hostname for the current machine. Must be unique
+      //The hostname to listen for, "*" as wildcard. Must be unique
       "hostnames": [ "*", "localhost" ],
 
       "trace": false,               //Enables connection trace logging for this endpoint
