@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -293,10 +293,11 @@ namespace VNLib.Utils.IO
                     ReadOnlyMemory<byte> window = asMemory.Slice((int)_position, blockSize);
 
                     //write async
-                    await destination.WriteAsync(window, cancellationToken);
+                    await destination.WriteAsync(window, cancellationToken)
+                        .ConfigureAwait(false);
 
                     //Update position
-                    _position += bufferSize;
+                    _position += blockSize;
                 }
             }
             else
