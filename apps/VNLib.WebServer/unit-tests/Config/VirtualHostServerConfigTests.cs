@@ -796,32 +796,28 @@ namespace VNLib.WebServerTests.Config
         }
 
         /// <summary>
-        /// Verifies that a default file name with no extension throws ServerConfigurationException.
+        /// Verifies that a default file name with no extension is accepted.
+        /// Extensionless names (e.g. extensionless binaries, README) are valid default files.
         /// </summary>
         [TestMethod]
-        public void OnDeserialized_DefaultFileWithoutExtension_ThrowsException()
+        public void OnDeserialized_DefaultFileWithoutExtension_Success()
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.DefaultFiles = ["index"];
 
-            Assert.ThrowsExactly<ServerConfigurationException>(() =>
-                config.OnDeserialized()
-            );
+            config.OnDeserialized();
         }
 
         /// <summary>
-        /// Verifies that a default file name with a single-character extension throws ServerConfigurationException.
-        /// Extensions must be at least two characters (e.g., "js", "cs").
+        /// Verifies that a default file name with a single-character extension is accepted.
         /// </summary>
         [TestMethod]
-        public void OnDeserialized_DefaultFileWithSingleCharExtension_ThrowsException()
+        public void OnDeserialized_DefaultFileWithSingleCharExtension_Success()
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.DefaultFiles = ["index.h"];
 
-            Assert.ThrowsExactly<ServerConfigurationException>(() =>
-                config.OnDeserialized()
-            );
+            config.OnDeserialized();
         }
 
         /// <summary>
@@ -846,6 +842,18 @@ namespace VNLib.WebServerTests.Config
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.DefaultFiles = ["my-page.html", "my_file.js", "index.min.js"];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that leading-dot files, extensionless names, and digit extensions pass validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DefaultFileDotfilesAndDigitExtensions_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DefaultFiles = [".htaccess", "README", "song.mp3", "data.7z"];
 
             config.OnDeserialized();
         }
