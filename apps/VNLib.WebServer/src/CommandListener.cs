@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -86,6 +86,24 @@ namespace VNLib.WebServer
 
         private readonly HttpServiceStack _serviceStack = server.ServiceStack;
 
+        private static bool TrySendPluginCommand(
+            PluginConsoleEventHandler console, 
+            TextWriter output, 
+            string pluginName, 
+            string command
+        )
+        {
+            try
+            {
+                return console.SendConsoleCommand(pluginName, command);
+            }
+            catch (Exception ex)
+            {
+                output.WriteLine("Plugin {0} command failed.\n{1}", pluginName, ex);
+                return true;
+            }
+        }
+
         /// <summary>
         /// Listens for commands and processes them in a continuous loop. This function should always be 
         /// run on a separate thread to avoid blocking as plugins can block the thread to take control of 
@@ -133,7 +151,7 @@ namespace VNLib.WebServer
 
                             string message = string.Join(' ', s[2..]);
                          
-                            if (!pluginConsole.SendConsoleCommand(s[1], message))
+                            if (!TrySendPluginCommand(pluginConsole, output, s[1], message))
                             {
                                 output.WriteLine("Plugin not found");
                                 output.WriteLine(
@@ -260,6 +278,7 @@ namespace VNLib.WebServer
             }
         }
 
+
         /*
          * Function scopes commands as if the user is writing directly to 
          * the plugin. All commands are passed to the plugin manager for
@@ -295,7 +314,7 @@ namespace VNLib.WebServer
                 }
 
                 // Exec command
-                if (!man.SendConsoleCommand(pluginName, cmdText))
+                if (!TrySendPluginCommand(man, output, pluginName, cmdText))
                 {
                     output.WriteLine("Plugin does not exist or has unloaded exiting loop");
                     break;
@@ -304,6 +323,6 @@ namespace VNLib.WebServer
         }
 
         private static void CollectCache(HttpServiceStack controller) 
-            => controller.Servers.ForEach(static server => (server as HttpServer)!.CacheClear());
+            => controller.Servers.ForEach(static server => (server as HttpServer)!.CacheClear());       
     }
 }
