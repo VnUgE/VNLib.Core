@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -23,11 +23,14 @@
 */
 
 using System;
+using System.IO;
+using System.Threading.Tasks;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
+using System.IO;
 
 namespace VNLib.Utils.IO.Tests
 {
@@ -204,6 +207,110 @@ namespace VNLib.Utils.IO.Tests
             vms.SetLength(128);
             Assert.AreEqual(128, vms.Length);
             Assert.AreEqual(0, vms.Position);
+        }
+
+        [TestMethod()]
+        public async Task CopyToAsyncPartialFinalChunkTest()
+        {
+            using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
+            using MemoryStream dest = new();
+
+            for (int i = 0; i < 100; i++)
+            {
+                vms.WriteByte((byte)i);
+            }
+
+            Assert.AreEqual(100, vms.Position);
+            Assert.AreEqual(100, vms.Length);
+
+            //Rewind, the copy starts at the current position
+            vms.Seek(0, SeekOrigin.Begin);
+
+            //100 bytes with a 16-byte copy buffer forces a partial final chunk (6x16 + 4),
+            //the position must advance by bytes written, not the buffer size
+            await vms.CopyToAsync(dest, 16);
+
+            Assert.AreEqual(100, vms.Position, "Position should match the number of bytes copied on a partial final chunk.");
+
+            byte[] array = dest.ToArray();
+            Assert.HasCount(100, array);
+
+            Assert.IsTrue(vms.AsSpan().SequenceEqual(array));
+        }
+
+        [TestMethod()]
+        public async Task CopyToAsyncPartialPositionTest()
+        {
+            using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
+            using MemoryStream dest = new();
+
+            for (int i = 0; i < 100; i++)
+            {
+                vms.WriteByte((byte)i);
+            }
+
+            //Start mid-stream, only the remaining 70 bytes (30..100) should be copied
+            vms.Seek(30, SeekOrigin.Begin);
+
+            //70 bytes with a 16-byte copy buffer forces a partial final chunk (4x16 + 6)
+            await vms.CopyToAsync(dest, 16);
+
+            Assert.AreEqual(100, vms.Position, "Position should match the end of the stream after copying from a partial position.");
+
+            byte[] array = dest.ToArray();
+            Assert.HasCount(70, array);
+
+            for (int i = 0; i < array.Length; i++)
+            {
+                Assert.AreEqual((byte)(i + 30), array[i]);
+            }
+        }
+
+        [TestMethod()]
+        public async Task CopyToAsyncExactMultipleTest()
+        {
+            using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
+            using MemoryStream dest = new();
+
+            for (int i = 0; i < 64; i++)
+            {
+                vms.WriteByte((byte)i);
+            }
+
+            vms.Seek(0, SeekOrigin.Begin);
+
+            //64 bytes with a 16-byte copy buffer copies in full chunks with no partial final chunk
+            await vms.CopyToAsync(dest, 16);
+
+            Assert.AreEqual(64, vms.Position);
+
+            byte[] array = dest.ToArray();
+            Assert.HasCount(64, array);
+
+            Assert.IsTrue(vms.AsSpan().SequenceEqual(array));
+        }
+
+        [TestMethod()]
+        public async Task CopyToAsyncEmptyStreamTest()
+        {
+            using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
+            using MemoryStream dest = new();
+
+            //Nothing to copy, position must not move and no data should be written
+            await vms.CopyToAsync(dest, 16);
+
+            Assert.AreEqual(0, vms.Position);
+            Assert.AreEqual(0, dest.Length);
+        }
+
+        [TestMethod()]
+        public async Task CopyToAsyncInvalidArgsTest()
+        {
+            using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
+            using MemoryStream dest = new();
+
+            await Assert.ThrowsExactlyAsync<ArgumentNullException>(() => vms.CopyToAsync(null!, 16));
+            await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => vms.CopyToAsync(dest, 0));
         }
     }
 }
