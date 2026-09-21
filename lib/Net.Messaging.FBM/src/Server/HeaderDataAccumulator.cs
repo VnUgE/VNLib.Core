@@ -55,7 +55,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         
         ///<inheritdoc/>
         public void AdvanceStart(int count) 
-            => WindowEndPos += count;
+            => WindowStartPos += count;
         
         ///<inheritdoc/>
         public void Reset()
