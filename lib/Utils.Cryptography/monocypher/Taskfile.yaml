@@ -6,7 +6,7 @@
 #This taskfile is called in this directory and is specific to the vnlib_monocypher project
 #that handles the MSBuild outside of the solution file
 
-version: '3'
+version: '3.45'
 
 vars:
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_monocypher" }}'

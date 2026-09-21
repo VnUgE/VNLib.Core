@@ -78,9 +78,10 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc
         )
         {
             // Dictionary will catch duplicate keys, MapRegion will catch bad strings and bad sizes
-           return res.ToDictionary(
-                    static v => v.RegionName.ToLowerInvariant(),
-                    static v => v.Size
+            return res.ToDictionary(
+                    static v => v.RegionName,
+                    static v => v.Size,
+                    StringComparer.OrdinalIgnoreCase
                 ) 
                 .Select(kv => registry.MapRegion(kv.Key, kv.Value))
                 .ToArray();

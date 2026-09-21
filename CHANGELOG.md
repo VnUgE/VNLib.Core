@@ -49,6 +49,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking Change:** Correct `MemoryUtil` environment constant spelling (`SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV`→`SHARED_HEAP_ENABLE_DIAGNOSTICS_ENV`) - (utils) [4ae9267](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=4ae9267675139105c119da43ddcb3a38ae5fc676)
 - **Breaking Change:** Tighten virtual host config validation (hostname whitespace rejection, `deny_extensions` format validation) with unit tests - (webserver) [e176c58](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=e176c58c93b6347cdf6510270e835a8873e13674), [0ab8c75](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=0ab8c75b083860300ea318ed367a370ccf0d3b8f)
 - Warn when SO_REUSEPORT is enabled since port reuse is not currently supported - (webserver) [6067295](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=6067295709a7b41726751efecad0792df90dd5aa)
+- Relax `default_files` validation to allow extensionless names, leading-dot files, and digit extensions - (webserver) [c6ed196](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=c6ed19620a6c9a91c68bc7a6407838de4bbade91)
+- Map zstd native errors -18/-19 (`ERR_ZSTD_INVALID_STATE`, `ERR_ZSTD_COMPRESSION_FAILED`) to managed exceptions - (compression) [b77e867](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=b77e867cc34215ed99d23c7b7f517e4fac9d3dca)
+- Restore `IEndpoint` path validations, unrooted paths (missing leading `/`) are rejected at registration - (essentials) [d5d2772](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=d5d277218a9919d0e0870e5d99f9a84f9867d52f)
+- Remove documented-but-never-implemented `[system]` hostname expansion from the sample config - (webserver) [aae2942](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=aae2942d435830e8f320a122d954aef02b92c383)
+- Validate `path_filter` regex syntax during config loading instead of failing at host build time - (webserver) [8746f19](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=8746f19a60f4abf008693cce1667da6634435f5f)
+- Harden namespaced (`::`) config lookup, missing sections still return default but traversing through non-object values now throws instead of mis-deserializing - (webserver) [a35d37f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=a35d37f6c522e820f7c82506af3df61bbdaa29d0)
+- Include `.vcxitems` in mimalloc/rpmalloc `src.tgz` source distributions - (memory) [f00fe79](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=f00fe79380d79571f481f26fd88b87cd2fb0e658)
 
 ### Fixed
 
@@ -59,6 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug in internal utility function in `MemoryUtil.cs` class - (utils) [65a9381](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=65a938125a16220d91fa9f75ee558d60a7f9b911)
 - Replace the Name and ValidFor properties for the SingleCookieController class - (essentials) [4286ec7](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=4286ec712058d1fe817ff948b4b3a10dfd5da501)
 - Add unit test coverage for shared memory reserved regions - (ipc) [b0f5076](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=b0f5076b8e5aea100b96af1c6a5b09a75a3e4312), [ba779dc](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=ba779dc4a0846296039905c659a16cb86a9c389f)
+- Guard plugin console command dispatch so a throwing plugin handler is logged instead of breaking the host command loop - (plugins-runtime) [833cdcd](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=833cdcdfbb100ba8e1658631a8e17707c004cf98)
+- Fix native library handle leak when wrapping a custom argon2/monocypher library fails - (hashing) [0705144](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=070514472aacaaacfdfec92757f071d781c5fa0f)
+- Map `COMP_LEVEL_NO_COMPRESSION` to `ZSTD_minCLevel()` instead of level 1 for true no-compression parity with gzip - (compression) [06bb2bc](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=06bb2bca83fce3481170ee72c72d0e0d3f32c391)
+- Correct upload/entity-size validation direction, uploads now require a max entity size instead of the reverse - (http) [6764a7f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=6764a7f2ca0f57ace0872e1bc5f9316692c6c42a)
 
 ### Performance
 
