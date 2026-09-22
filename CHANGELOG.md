@@ -70,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix native library handle leak when wrapping a custom argon2/monocypher library fails - (hashing) [0705144](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=070514472aacaaacfdfec92757f071d781c5fa0f)
 - Map `COMP_LEVEL_NO_COMPRESSION` to `ZSTD_minCLevel()` instead of level 1 for true no-compression parity with gzip - (compression) [06bb2bc](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=06bb2bca83fce3481170ee72c72d0e0d3f32c391)
 - Correct upload/entity-size validation direction, uploads now require a max entity size instead of the reverse - (http) [6764a7f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=6764a7f2ca0f57ace0872e1bc5f9316692c6c42a)
+- Correct sample.config.json `allowed_origins` to `allowed_authority`. Bug that silently ignored values in the sample config - (webserver) [7f07e3f](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=7f07e3fb278717105d1d6a4e7a9ed57d3a6cbc9a)
 
 ### Performance
 
