@@ -103,7 +103,7 @@
       "cors": {
         "enabled": true,                    //Enables cors protections for this host
         "deny_cors_connections": false,     //If true, all cors connections will be denied
-        "allowed_origins": [ "localhost:8089" ]
+        "allowed_authority": [ "localhost:8089" ]
       },
 
       //A list of error file objects, files are loaded into memory (and watched for changes) and returned when the specified error code occurs
