@@ -19,12 +19,26 @@
 * along with vnlib_compress. If not, see http://www.gnu.org/licenses/.
 */
 
+/*
+* TODO (compression refactor): consider extending the compression API to
+* publish content size ahead of time when it is known, so we can use
+* ZSTD_CCtx_setPledgedSrcSize (advanced init) for better ratio and speed.
+* Size is often unknown here (chunked encoding carries no length), so this
+* must stay optional with unknown-size streaming as the default path.
+*/
+
 #define ZSTD_STATIC_LINKING_ONLY 1
 
 #include <zstd.h>
 #include "feature_zstd.h"
 
 #define STREAM_FLAG_FINISHED 0x01
+
+#define ZSTD_COMP_LEVEL_NONE    ZSTD_minCLevel()	// built-in helper for minimum level
+#define ZSTD_COMP_LEVEL_FASTEST	0x01				// Fastest compression is about 1
+#define ZSTD_COMP_LEVEL_OPTIMAL 0x06				// balanced perf/comp for data compression
+// 9 is highest optimal value for streaming data, higher greatly reduces performance benefits for streaming
+#define ZSTD_COMP_LEVEL_MAX		0x09
 
 struct zstd_stream_state
 {
@@ -99,26 +113,26 @@ int ZstdAllocCompressor(comp_state_t* state)
 	switch (state->level)
 	{
 	case COMP_LEVEL_NO_COMPRESSION:
-		compLevel = ZSTD_minCLevel();  /* No compression, fastest path */
+		compLevel = ZSTD_COMP_LEVEL_NONE;  /* No compression, fastest path */
 		break;
 
 	case COMP_LEVEL_FASTEST:
-		compLevel = 1;  /* Fastest compression */
+		compLevel = ZSTD_COMP_LEVEL_FASTEST;  
 		break;
 
 	case COMP_LEVEL_OPTIMAL:
-		compLevel = 6;  /* Balanced performance/compression */
+		compLevel = ZSTD_COMP_LEVEL_OPTIMAL;  /* Balanced performance/compression */
 		break;
 
 	case COMP_LEVEL_SMALLEST_SIZE:
-		compLevel = ZSTD_maxCLevel();  /* Maximum compression */
+		compLevel = ZSTD_COMP_LEVEL_MAX;
 		break;
 
 	default:
 		compLevel = ZSTD_CLEVEL_DEFAULT;  /* Default level */
 		break;
 	}
-
+	
 	/* Initialize the compression stream */
 	result = ZSTD_initCStream(streamState->stream, compLevel);
 
