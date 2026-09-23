@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -62,7 +62,7 @@ namespace VNLib.Utils.Memory.Caching
 
         /// <summary>
         /// Initializes an empty <see cref="LRUCollection{TKey, TValue}"/> and sets
-        /// the lookup table's inital capacity
+        /// the lookup table's initial capacity
         /// </summary>
         /// <param name="initialCapacity">LookupTable initial capacity</param>
         protected LRUCollection(int initialCapacity) : this(initialCapacity, keyComparer: null!)
@@ -124,10 +124,10 @@ namespace VNLib.Utils.Memory.Caching
         ///<inheritdoc/>
         public ICollection<TKey> Keys => LookupTable.Keys;
 
-        ///<summary>
+        /// <summary>
         /// Not supported
         /// </summary>
-        ///<exception cref="NotImplementedException"></exception>
+        /// <exception cref="NotSupportedException">Values are not stored in an independent collection.</exception>
         public virtual ICollection<TValue> Values 
             => throw new NotSupportedException("Values are not stored in an independent collection, as they are not directly mutable");
 

@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -55,7 +55,7 @@ namespace VNLib.Plugins.Essentials
         /// <summary>
         /// Files that match any attribute flag set will be denied
         /// </summary>
-        FileAttributes DissallowedAttributes { get; }      
+        FileAttributes DisallowedAttributes { get; }      
         
         /// <summary>
         /// A table of known downstream servers/ports that can be trusted to proxy connections

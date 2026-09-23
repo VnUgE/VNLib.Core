@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -50,7 +50,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <summary>
         /// Gets the default header character encoding instance
         /// </summary>
-        public static Encoding DefaultEncoding { get; } = Encoding.UTF8;
+        public static Encoding DefaultEncoding => Encoding.UTF8;
 
         /// <summary>
         /// The FBM protocol header line termination symbols

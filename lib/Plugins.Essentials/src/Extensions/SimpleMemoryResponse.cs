@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -37,7 +37,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
         /// <summary>
         /// Copies the data in the specified buffer to the internal buffer 
-        /// to initalize the new <see cref="SimpleMemoryResponse"/>
+        /// to initialize the new <see cref="SimpleMemoryResponse"/>
         /// </summary>
         /// <param name="data">The data to copy</param>
         public SimpleMemoryResponse(ReadOnlySpan<byte> data)

@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -24,8 +24,10 @@
 
 using System;
 
+using VNLib.Utils;
 using VNLib.Utils.Native;
 using VNLib.Utils.Extensions;
+using VNLib.Utils.Resources;
 
 namespace VNLib.Hashing
 {
@@ -33,7 +35,7 @@ namespace VNLib.Hashing
     /// Represents a handle to a <see cref="SafeLibraryHandle"/>'s 
     /// native method for hashing data with Argon2
     /// </summary>
-    public class SafeArgon2Library : IArgon2Library, IDisposable
+    public class SafeArgon2Library : VnDisposeable, IArgon2Library
     {
         /*
         * The native library method delegate type
@@ -41,45 +43,52 @@ namespace VNLib.Hashing
         [SafeMethodName("argon2id_ctx")]
         delegate int Argon2InvokeHash(IntPtr context);
 
-        private readonly SafeMethodHandle<Argon2InvokeHash> methodHandle;
+        private readonly Owned<SafeLibraryHandle> _lib;
+        private readonly Argon2InvokeHash _invokeFn;
 
         /// <summary>
         /// The safe library handle to the native library
         /// </summary>
-        public SafeLibraryHandle LibHandle { get; }
+        public SafeLibraryHandle LibHandle => _lib.Value;
 
-        internal SafeArgon2Library(SafeLibraryHandle lib)
+        /// <summary>
+        /// Creates a new <see cref="SafeArgon2Library"/> wrapper around the 
+        /// supplied native library handle and attempts to load the function 
+        /// table. 
+        /// </summary>
+        /// <param name="lib"></param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="EntryPointNotFoundException">If the required functions are not exposed</exception>
+        public SafeArgon2Library(Owned<SafeLibraryHandle> lib)
         {
-            LibHandle = lib;
+            _lib = lib;
+
             //Get the native method
-            methodHandle = lib.GetFunction<Argon2InvokeHash>();
+            _invokeFn = lib.Value.DangerousGetFunction<Argon2InvokeHash>();
+
+            // Increment handle count. Can be TOCOU from loading function and now
+            // that's okay because raising an exception unwinds any dependencies
+
+            bool addRef = false;
+            lib.Value.DangerousAddRef(ref addRef);
+            if (!addRef)
+            {
+                throw new ArgumentException("Failed to increment library handle count");
+            }            
         }
 
         ///<inheritdoc/>
         ///<exception cref="ObjectDisposedException"></exception>
         public int Argon2Hash(IntPtr context)
         {
-            LibHandle.ThrowIfClosed();
-            return methodHandle.Method!.Invoke(context);
+            Check();
+            return _invokeFn.Invoke(context);
         }
 
-        /// <summary>
-        /// Disposes the library handle and method handle
-        /// </summary>
-        public void Dispose()
+        protected override void Free()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        ///<inheritdoc/>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                methodHandle.Dispose();
-                LibHandle.Dispose();
-            }           
+            _lib.Value.DangerousRelease();
+            _lib.Dispose();
         }
     }
 }

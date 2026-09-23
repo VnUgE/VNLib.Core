@@ -1,16 +1,16 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
-* File: PluginManager.cs 
+* File: PluginManager.cs
 *
-* PluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which 
-* is part of the larger VNLib collection of libraries and utilities.
+* PluginManager.cs is part of VNLib.Plugins.Essentials.ServiceStack which is part of the larger 
+* VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -22,97 +22,179 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
-
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Threading.Tasks;
 
+using VNLib.Plugins.Runtime;
 using VNLib.Utils;
+using VNLib.Utils.Extensions;
 using VNLib.Utils.Logging;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Plugins
 {
 
     /// <summary>
-    /// A sealed type that manages the plugin interaction layer. Manages the lifetime of plugin
-    /// instances, exposes controls, and relays stateful plugin events.
+    /// A convenience class for managing the lifecycle of a <see cref="IPluginStack"/> and 
+    /// its associated plugins. This class provides methods for loading, reloading, and unloading plugins
+    /// while also handling diagnostics and error logging. 
     /// </summary>
-    internal sealed class PluginManager(IPluginInitializer stack) : VnDisposeable, IHttpPluginManager
+    public sealed class PluginManager : VnDisposeable
     {
+        private readonly IPluginStack _stack;       
+        private readonly ILogProvider _debugLog;
+
+        private bool _isBuilt;
 
         /// <summary>
-        /// The collection of internal controllers
+        /// Initializes a new <see cref="PluginManager"/> with a runtime plugin stack
         /// </summary>
-        public IEnumerable<IManagedPlugin> Plugins => _loadedPlugins;
-
-        private IManagedPlugin[] _loadedPlugins = [];
-
-        /// <summary>
-        /// Configures the manager to capture and manage plugins within a plugin stack
-        /// </summary>
-        /// <param name="debugLog"></param>
-        /// <exception cref="InvalidOperationException"></exception>
-        /// <exception cref="AggregateException"></exception>
-        public void LoadPlugins(ILogProvider debugLog)
+        /// <param name="pluginStack">The runtime plugin stack to manage</param>
+        /// <param name="debugLog">The log provider for plugin diagnostics</param>
+        public PluginManager(IPluginStack pluginStack, ILogProvider debugLog)
         {
-            _ = stack ?? throw new InvalidOperationException("Plugin stack has not been set.");
+            ArgumentNullException.ThrowIfNull(pluginStack);
+            ArgumentNullException.ThrowIfNull(debugLog);
 
-            Check();
-
-            //Initialize the plugin stack and store the loaded plugins
-            _loadedPlugins = stack.InitializePluginStack(debugLog);
-
-            debugLog.Information("Plugin loading completed");
+            _stack = pluginStack;
+            _debugLog = debugLog;
         }
 
-
-        /// <inheritdoc/>
-        public bool SendCommandToPlugin(string pluginName, string message, StringComparison nameComparison = StringComparison.Ordinal)
+        private void LoadPluginCore(RuntimePluginLoader loader)
         {
-            Check();
+            Stopwatch sw = new();
 
-            foreach (IManagedPlugin plugin in _loadedPlugins)
+            sw.Start();
+
+            try
             {
-                if (plugin.SendCommandToPlugin(pluginName, message, nameComparison))
-                {
-                    return true;
-                }
+                loader.InitializeController();
+            }
+            catch (Exception ex)
+            {
+                _debugLog.Error(
+                    "Exception raised during initialization of {pl}. Failed to install plugin\n{ex}",
+                    loader.Config.AssemblyFile,
+                    ex
+                );
+
+                sw.Stop();
+
+                // exit now
+                return;
             }
 
-            return false;
+            long initTime = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+
+            try
+            {
+                loader.LoadPlugins();
+
+                // Try to detect if the dynamic assembly did not unify correctly and
+                // give the user feedback instead of a silent fail
+                if (loader.Controller.Plugins.Count == 0)
+                {
+                    _debugLog.Warn(
+                        "No plugin instances were exposed via {asm} assembly. This may be due to an assembly or version mismatch",
+                        loader
+                    );
+                }
+
+                sw.Stop();
+
+                // Print short name for readability during normal operation
+                _debugLog.Debug("Loaded {pl}. Init time {init} ms, load time {tm} ms",
+                    Path.GetFileName(loader.Config.AssemblyFile),
+                    initTime,
+                    sw.ElapsedMilliseconds
+                );
+            }
+            catch (Exception ex)
+            {
+                _debugLog.Error("Exception raised during loading {asf}. Failed to load plugin \n{ex}", loader.Config.AssemblyFile, ex);
+            }
+            finally
+            {
+                sw.Stop();
+            }
         }
 
-        /// <inheritdoc/>
-        public void ForceReloadAllPlugins()
+        /// <summary>
+        /// Loads plugins into the current service manager. The log provider
+        /// passed to the constructor will be used for plugin diagnostics.
+        /// </summary>
+        /// <param name="concurrent"><see langword="true"/> to load plugins concurrently; otherwise, <see langword="false"/> to load serially.</param>
+        /// <exception cref="AggregateException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        public void LoadPlugins(bool concurrent)
+        {
+            Check();       
+
+            // First time build stack
+            if (!_isBuilt)
+            {
+                _stack.BuildStack();
+                _isBuilt = true;
+            }
+
+            /*
+             * Optional concurrency for loading plugins, which can be expensive if there are 
+             * many plugins with heavy initialization logic.
+             */
+            if (concurrent)
+            {
+                Parallel.ForEach(_stack.Plugins, LoadPluginCore);
+            }
+            else
+            {
+                _stack.Plugins.TryForeach(LoadPluginCore);
+            }
+        }
+
+        /// <summary>
+        /// Manually reloads all plugins loaded to the current service manager
+        /// </summary>
+        /// <param name="concurrent"><see langword="true"/> to reload plugins concurrently; otherwise, <see langword="false"/> to reload serially.</param>
+        /// <exception cref="AggregateException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void ReloadPlugins(bool concurrent)
         {
             Check();
 
-            //Reload all plugins, causing an event cascade
-            stack.ReloadPlugins();
+            if (concurrent)
+            {
+                // Attempt to reload plugins concurrently.
+                Parallel.ForEach(_stack.Plugins, static rtl => rtl.ReloadPlugins(false));
+
+                // Invoke GC once completed
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+            else
+            {
+                // Helper extension reload sequentially
+                _stack.ReloadAll();
+            }           
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Unloads all loaded plugins and calls their event handlers
+        /// </summary>
+        /// <exception cref="AggregateException"></exception>
+        /// <exception cref="ObjectDisposedException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         public void UnloadPlugins()
         {
             Check();
 
-            //Unload all plugin controllers
-            stack.UnloadPlugins();
-
-            /*
-             * All plugin instances must be destroyed because the 
-             * only way they will be loaded is from their files 
-             * again, so they must be released
-             */
-            Free();
+            _stack.UnloadAll();            
         }
 
-        protected override void Free()
-        {
-            //Clear plugin table
-            _loadedPlugins = [];
-
-            //Dispose the plugin stack
-            stack.Dispose();
-        }
+        ///<inheritdoc/>
+        protected override void Free() => _stack.Dispose();
     }
 }

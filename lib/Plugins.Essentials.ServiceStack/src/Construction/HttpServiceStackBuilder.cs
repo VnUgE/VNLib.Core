@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -10,7 +10,7 @@
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -27,24 +27,21 @@ using System.Linq;
 using System.Collections.Generic;
 
 using VNLib.Net.Http;
-using VNLib.Plugins.Runtime;
-using VNLib.Plugins.Essentials.ServiceStack.Plugins;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {
 
     /// <summary>
     /// A data structure used to build/create a <see cref="HttpServiceStack"/>
-    /// around a <see cref="ServiceDomain"/>
+    /// around a <see cref="ServiceDomain"/> mapping HTTP servers to their 
+    /// respective service hosts. 
     /// </summary>
     public sealed class HttpServiceStackBuilder
     {
         private readonly ServiceBuilder _serviceBuilder = new();
 
         /// <summary>
-        /// Initializes a new <see cref="HttpServiceStack"/> that will 
-        /// generate servers to listen for services exposed by the 
-        /// specified host context
+        /// Initializes a new <see cref="HttpServiceStackBuilder"/>
         /// </summary>
         public HttpServiceStackBuilder()
         { }
@@ -53,9 +50,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 
         private Action<ServiceBuilder>? _hostBuilder;
         private Func<IReadOnlyCollection<ServiceGroup>, IHttpServer[]>? _getServers;
-        private Func<IPluginStack>? _getPlugins;
-        private Action<ICollection<IManualPlugin>>? _addManualPlugins;
-        private bool loadConcurrently;
 
         /// <summary>
         /// Uses the supplied callback to get a collection of virtual hosts
@@ -70,7 +64,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         }
 
         /// <summary>
-        /// Spcifies a callback function that builds <see cref="IHttpServer"/> instances from the hosts
+        /// Specifies a callback function that builds <see cref="IHttpServer"/> instances from the hosts
         /// </summary>
         /// <param name="getServers">A callback method that gets the http server implementation for the service group</param>
         /// <returns>The current instance for chaining</returns>
@@ -81,29 +75,21 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         }
 
         /// <summary>
-        /// Enables the stack to support plugins
-        /// </summary>
-        /// <param name="getStack">The callback function that returns the plugin stack when requested</param>
-        /// <returns>The current instance for chaining</returns>
-        public HttpServiceStackBuilder WithPluginStack(Func<IPluginStack> getStack)
-        {
-            _getPlugins = getStack;
-            return this;
-        }
-
-        /// <summary>
         /// Configures the stack to use the built-in http server implementation
         /// </summary>
         /// <param name="getTransports">The transport builder callback function</param>
-        /// <param name="config">The http configuration structure used to initalize servers</param>
+        /// <param name="config">The http configuration structure used to initialize servers</param>
         /// <returns>The current instance for chaining</returns>
-        public HttpServiceStackBuilder WithBuiltInHttp(Func<IReadOnlyCollection<ServiceGroup>, HttpTransportMapping[]> getTransports, HttpConfig config) 
+        public HttpServiceStackBuilder WithBuiltInHttp(
+            Func<IReadOnlyCollection<ServiceGroup>, HttpTransportMapping[]> getTransports, 
+            HttpConfig config
+        ) 
             => WithBuiltInHttp(getTransports, _ => config);
 
         /// <summary>
         /// Configures the stack to use the built-in http server implementation
         /// </summary>
-        /// <param name="getBindings">A callback function that gets transport bindings for servie groups</param>
+        /// <param name="getBindings">A callback function that gets transport bindings for service groups</param>
         /// <param name="configCallback">The http configuration builder callback method</param>
         /// <returns>The current instance for chaining</returns>
         public HttpServiceStackBuilder WithBuiltInHttp(
@@ -124,29 +110,6 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         });
 
         /// <summary>
-        /// Adds a collection of manual plugin instances to the stack. Every call 
-        /// to this method will replace the previous collection.
-        /// </summary>
-        /// <param name="plugins">The array of plugins (or params) to add</param>
-        /// <returns>The current instance for chaining</returns>
-        public HttpServiceStackBuilder WithManualPlugins(Action<ICollection<IManualPlugin>>? plugins)
-        {
-            _addManualPlugins = plugins;
-            return this;
-        }
-
-        /// <summary>
-        /// Sets the load concurrency flag for the plugin stack
-        /// </summary>
-        /// <param name="value">True to enable concurrent loading, false for serial loading</param>
-        /// <returns>The current instance for chaining</returns>
-        public HttpServiceStackBuilder LoadPluginsConcurrently(bool value)
-        {
-            loadConcurrently = value;
-            return this;
-        }
-
-        /// <summary>
         /// Builds the new <see cref="HttpServiceStack"/> from the configured callbacks
         /// </summary>
         /// <returns>The newly constructed <see cref="HttpServiceStack"/> that may be used to manage your http services</returns>
@@ -158,12 +121,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
             //Host builder callback is optional
             _hostBuilder?.Invoke(ServiceBuilder);
 
-            //Inint the service domain
-            ServiceDomain sd = new();
+            IEnumerable<ServiceGroup> groups = _serviceBuilder.BuildGroups();
 
-            sd.BuildDomain(_serviceBuilder);
+            //Init the service domain
+            ServiceDomain sd = new(groups);
 
-            //Get http servers from the user callback for the service domain, let the caller decide how to route them
+            //Get http servers from the user callback for the service domain
             IHttpServer[] servers = _getServers.Invoke(sd.ServiceGroups);
 
             if (servers.Length == 0)
@@ -171,43 +134,12 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
                 throw new ArgumentException("No service hosts were configured. You must define at least one virtual host for the domain");
             }
 
-            if(servers.Any(servers => servers is null))
+            if (servers.Any(servers => servers is null))
             {
                 throw new ArgumentException("One or more servers were not initialized correctly. Check the server configuration callback");
             }
 
-            return new(servers, sd, GetPluginStack(sd));
-        }
-
-        private PluginStackInitializer GetPluginStack(ServiceDomain domain)
-        {
-            List<IManualPlugin> _manualPlugins = [];
-
-            //Add manual plugins if configured
-            _addManualPlugins?.Invoke(_manualPlugins);
-
-            //Only load plugins if the callback is configured
-            IPluginStack? plugins = _getPlugins?.Invoke();
-
-#pragma warning disable CA2000 // Dispose objects before losing scope
-            plugins ??= new EmptyPluginStack();
-#pragma warning restore CA2000 // Dispose objects before losing scope
-
-            return new(domain.GetListener(), plugins, [.. _manualPlugins], loadConcurrently);
-        }
-
-        /*
-         * An empty plugin stack that is used when the plugin callback is not configured
-         */
-        private sealed class EmptyPluginStack : IPluginStack
-        {
-            public IReadOnlyCollection<RuntimePluginLoader> Plugins { get; } = Array.Empty<RuntimePluginLoader>();
-
-            public void BuildStack()
-            { }
-
-            public void Dispose()
-            { }
+            return new(servers, sd);
         }
     }
 }

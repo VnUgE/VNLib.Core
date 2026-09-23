@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -47,13 +47,13 @@ namespace VNLib.Utils.IO
     /// </remarks>
     /// <param name="baseStream">The underlying stream to write data to</param>
     /// <param name="encoding">The <see cref="Encoding"/> to use when writing to the stream</param>
-    /// <param name="buffer">The internal <see cref="ISlindingWindowBuffer{T}"/> to use</param>
+    /// <param name="buffer">The internal <see cref="ISlidingWindowBuffer{T}"/> to use</param>
     /// <exception cref="ArgumentNullException"></exception>
-    public class VnStreamWriter(Stream baseStream, Encoding encoding, ISlindingWindowBuffer<byte> buffer) : TextWriter
+    public class VnStreamWriter(Stream baseStream, Encoding encoding, ISlidingWindowBuffer<byte> buffer) : TextWriter
     {
         private readonly Encoder Enc = encoding.GetEncoder();
 
-        private readonly ISlindingWindowBuffer<byte> _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+        private readonly ISlidingWindowBuffer<byte> _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
        
         private bool closed;
 

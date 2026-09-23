@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -126,24 +126,7 @@ namespace VNLib.Utils.Extensions
             MemoryHandle<T> handle = Alloc<T>(heap, size, zero);
             return ToMemoryManager(handle, ownsHandle: true);
         }
-
-        /// <summary>
-        /// Allows direct allocation of a fixed size <see cref="MemoryManager{T}"/> from a <see cref="IUnmanagedHeap"/> instance
-        /// of the specified number of elements
-        /// </summary>
-        /// <typeparam name="T">The unmanaged data type</typeparam>
-        /// <param name="heap"></param>
-        /// <param name="size">The number of elements to allocate on the heap</param>
-        /// <param name="zero">Optionally zeros conents of the block when allocated</param>
-        /// <returns>The <see cref="MemoryManager{T}"/> wrapper around the block of memory</returns>
-        /// <exception cref="ArgumentException"></exception>
-        /// <exception cref="OutOfMemoryException"></exception>
-        /// <exception cref="ObjectDisposedException"></exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [Obsolete("Use AllocMemory instead")]
-        public static MemoryManager<T> DirectAlloc<T>(this IUnmanagedHeap heap, int size, bool zero = false) where T : unmanaged 
-            => AllocMemory<T>(heap, size, zero);
-
+        
         /// <summary>
         /// Gets the integer length (number of elements) of the <see cref="IMemoryHandle{T}"/>
         /// </summary>
@@ -472,7 +455,7 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="heap"></param>
         /// <param name="initialData">The initial data to set the buffer to</param>
-        /// <returns>The initalized <see cref="MemoryHandle{T}"/> block</returns>
+        /// <returns>The initialized <see cref="MemoryHandle{T}"/> block</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -497,7 +480,7 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="heap"></param>
         /// <param name="initialData">The initial data to set the buffer to</param>
-        /// <returns>The initalized <see cref="MemoryHandle{T}"/> block</returns>
+        /// <returns>The initialized <see cref="MemoryHandle{T}"/> block</returns>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

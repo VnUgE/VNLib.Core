@@ -39,7 +39,7 @@ if(UNIX)
 	set_target_properties(${_PROJECT_NAME} ${_PROJECT_NAME}_static PROPERTIES OUTPUT_NAME vn_monocypher)
 endif()
 
-target_compile_features(${_PROJECT_NAME} PRIVATE c_std_99)		#force compiler to use c90 standard for library
+target_compile_features(${_PROJECT_NAME} PRIVATE c_std_99)		#force compiler to use c99 standard for library
 
 add_compile_definitions(VNLIB_EXPORTING)
 
@@ -97,6 +97,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 
 		-Wextra
 		-fstack-protector
+		-march=native # NOTE: compiles with native arch tuning, cannot safely distribute portable linux builds
 	)
 
 	#enable debug compiler options
@@ -109,6 +110,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 			-g				#enable debugger info
 			-Og				#disable optimizations
 			-Wall			#enable all warnings
+			-Wconversion	#warn on implicit conversions that may change values (matches upstream 4.0.3 flags)
 			-Werror			#treat warnings as errors
 			-pedantic		#enable pedantic mode
 		)
@@ -126,8 +128,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
 			-O3				#enable max optimizations
 			-Werror			#treat warnings as errors
 		)
-
-		target_compile_definitions(${_PROJECT_NAME} PRIVATE DEBUG)
+		
 
 	endif()
 

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -33,24 +33,24 @@ namespace VNLib.Plugins.Essentials.Endpoints
     public readonly record struct ProtectionSettings
     {
         /// <summary>
-        /// Requires TLS be enabled for all incomming requets (or loopback adapter)
+        /// Requires TLS be enabled for all incoming requests (or loopback adapter)
         /// </summary>
         public readonly bool DisabledTlsRequired { get; init; }
 
         /// <summary>
-        /// Checks that sessions are enabled for incomming requests 
+        /// Checks that sessions are enabled for incoming requests 
         /// and that they are not new sessions.
         /// </summary>
         public readonly bool DisableSessionsRequired { get; init; }
 
         /// <summary>
-        /// Enables referr match protection. Requires that if a referer header is
+        /// Enables referrer match protection. Requires that if a referrer header is
         /// set that it matches the current origin
         /// </summary>
         public readonly bool DisableRefererMatch { get; init; }
 
         /// <summary>
-        /// Disables response caching, by setting the cache control headers appropriatly.
+        /// Disables response caching, by setting the cache control headers appropriately.
         /// Default is disabled
         /// </summary>
         public readonly bool EnableCaching { get; init; }      

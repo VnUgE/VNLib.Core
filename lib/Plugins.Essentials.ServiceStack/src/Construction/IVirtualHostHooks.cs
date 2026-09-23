@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials.ServiceStack
@@ -10,7 +10,7 @@
 *
 * VNLib.Plugins.Essentials.ServiceStack is free software: you can redistribute it and/or modify 
 * it under the terms of the GNU Affero General Public License as 
-* published by the Free Software Foundation, either version 2 of the
+* published by the Free Software Foundation, either version 3 of the
 * License, or (at your option) any later version.
 *
 * VNLib.Plugins.Essentials.ServiceStack is distributed in the hope that it will be useful,
@@ -36,13 +36,13 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// <summary>
         /// <para>
         /// Called when the server intends to process a file and requires translation from a 
-        /// uri path to a usable filesystem path 
+        /// URI path to a usable filesystem path 
         /// </para>
         /// <para>
         /// NOTE: This function must be thread-safe!
         /// </para>
         /// </summary>
-        /// <param name="requestPath">The path requested by the request </param>
+        /// <param name="requestPath">The URI path requested by the client</param>
         /// <returns>The translated and filtered filesystem path used to identify the file resource</returns>
         string TranslateResourcePath(string requestPath);
 
@@ -56,7 +56,7 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Construction
         /// </summary>
         /// <param name="errorCode">The error code that was created during processing</param>
         /// <param name="entity">The active IHttpEvent representing the faulted request</param>
-        /// <returns>A value indicating if the entity was proccsed by this call</returns>
+        /// <returns>A value indicating if the entity was processed by this call</returns>
         bool ErrorHandler(HttpStatusCode errorCode, IHttpEvent entity);
 
         /// <summary>

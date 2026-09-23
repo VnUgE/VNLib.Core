@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -35,11 +35,11 @@ namespace VNLib.Utils.Resources
     /// threads as efficiently as possible for long running processes.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    /// <param name="initalizer">The callback function that initializes the instance</param>
-    public sealed class LazyInitializer<T>(Func<T> initalizer)
+    /// <param name="initializer">The callback function that initializes the instance</param>
+    public sealed class LazyInitializer<T>(Func<T> initializer)
     {
         private readonly object _lock = new();
-        private readonly Func<T> initalizer = initalizer ?? throw new ArgumentNullException(nameof(initalizer));
+        private readonly Func<T> initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
 
         private T? _instance;
         private bool _isLoaded;      
@@ -85,7 +85,7 @@ namespace VNLib.Utils.Resources
                          * the thread that invokes the load function                      
                          */
 
-                        _instance = initalizer();
+                        _instance = initializer();
 
                         //Finally set the load state
                         _isLoaded = true;

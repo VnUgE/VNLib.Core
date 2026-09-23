@@ -1,6 +1,6 @@
 # VNLib.Net.Rest.Client
 
-Provides helpful extensions for rapid development of rest client libraries. Thread safe client pooling, endpoint construction framework, and OAuth2 authentication implementation.
+Provides helpful extensions for rapid development of rest client libraries. Thread safe client pooling and a fluent endpoint construction framework for defining type-mapped REST endpoints.
 
 ### Third party deps  
 This library relies on the [RestSharp](https://github.com/restsharp/RestSharp) rest client library. This may change in the future for a higher-performance alternative, but for now I really like RestSharp and it is currently well supported. 

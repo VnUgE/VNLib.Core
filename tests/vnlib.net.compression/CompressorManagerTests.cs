@@ -304,7 +304,7 @@ namespace VNLib.Net.CompressionTests
         }
 
         /*
-         * This test method initalizes a new compressor instance of the desired type
+         * This test method initializes a new compressor instance of the desired type
          * creates a test data buffer, compresses it using the compressor instance
          * then decompresses the compressed data using a managed decompressor as 
          * a reference and compares the results.

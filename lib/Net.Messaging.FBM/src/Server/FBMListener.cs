@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -217,7 +217,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                 //Get response data reader
                 await using IAsyncMessageReader messageEnumerator = context.Response.GetResponseData();
 
-                //Load inital segment
+                //Load initial segment
                 if (await messageEnumerator.MoveNextAsync() && !session.CancellationToken.IsCancellationRequested)
                 {                  
 

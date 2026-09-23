@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Runtime
@@ -28,7 +28,7 @@ using System.Collections.Generic;
 namespace VNLib.Plugins.Runtime
 {
     /// <summary>
-    /// Provides a container and functionality to manage an entire collection 
+    /// Provides a container and functionality to manage an entire collection
     /// of plugins.
     /// </summary>
     public interface IPluginStack : IDisposable

@@ -6,7 +6,7 @@
 #This taskfile is called in this directory and is specific to the vnlib_rpmalloc project
 #that handles the MSBuild outside of the solution file
 
-version: '3'
+version: '3.45'
 
 vars:
   DEP_NAME: 'rpmalloc'
@@ -137,7 +137,7 @@ tasks:
      - cmd: cp LICENSE '{{ .TARGET_DIR }}/license.txt'
      - cmd: cp build.readme.txt '{{ .TARGET_DIR }}/readme.txt'
 
-     - cmd: cd {{ .TARGET_DIR }} && tar{{ if eq OS "windows" }}.exe{{ end }} -czf '{{ .ARCHIVE_PATH }}' .
+     - cmd: tar{{ if eq OS "windows" }}.exe{{ end }} -C '{{ .TARGET_DIR }}' -czf '{{ .ARCHIVE_PATH }}' .
 
   pack-source:
     desc: 'Packs the source code into a tar file for distribution' 
@@ -153,6 +153,7 @@ tasks:
         LICENSE
         NativeHeapApi.h
         '{{ .PROJECT_NAME }}.c'
+        '{{ .PROJECT_NAME }}.vcxitems'
 
     cmds:
      # tar up the source
