@@ -151,6 +151,8 @@ set(MI_OVERRIDE OFF CACHE BOOL "Disable malloc overrides" FORCE)
 set(MI_WIN_REDIRECT OFF CACHE BOOL "Disable Windows redirection" FORCE)
 set(MI_OSX_INTERPOSE OFF CACHE BOOL "Disable OSX interpose" FORCE)
 set(MI_OSX_ZONE OFF CACHE BOOL "Disable OSX zone" FORCE)
+#Disable sampled profiling, we consume the library, profiling is opt-in only
+set(MI_PROFILE OFF CACHE STRING "Disable mimalloc profiling" FORCE)
 
 add_subdirectory(
 	${CMAKE_CURRENT_SOURCE_DIR}/vendor
