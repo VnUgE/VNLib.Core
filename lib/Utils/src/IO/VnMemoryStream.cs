@@ -455,9 +455,9 @@ namespace VNLib.Utils.IO
                     ArgumentOutOfRangeException.ThrowIfGreaterThan(_offset, 0, nameof(offset));
                     ArgumentOutOfRangeException.ThrowIfLessThan(_offset, -_length, nameof(offset));
 
-                    //Calc new seek position from end of stream, should be len -1 so 0 can be specified from the end
+                    //Calc new seek position from end of stream, offset 0 seeks to the end (length)
                     nint realIndex = _length + _offset;
-                    return _position = Math.Min(realIndex, 0);
+                    return _position = Math.Max(realIndex, 0);
 
                 default:
                     throw new ArgumentException("Stream operation is not supported on current stream");
