@@ -30,13 +30,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using VNLib.Utils.Memory;
 using VNLib.Utils.Extensions;
-using System.IO;
 
 namespace VNLib.Utils.IO.Tests
 {
     [TestClass()]
     public class VnMemoryStreamTests
     {
+        #region Constructors
+
         [TestMethod()]
         public void VnMemoryStreamConstructorTest()
         {
@@ -99,13 +100,17 @@ namespace VNLib.Utils.IO.Tests
                 Assert.AreEqual(0, vms.Position);
 
                 //Check values copied
-                while(vms.Position < vms.Length)
+                while (vms.Position < vms.Length)
                 {
                     byte test = testMemory.Span[(int)vms.Position];
                     Assert.AreEqual(test, vms.ReadByte());
                 }
             }
         }
+
+        #endregion
+
+        #region Readonly
 
         [TestMethod()]
         public void VnMemoryStreamReadonlyTest()
@@ -125,6 +130,10 @@ namespace VNLib.Utils.IO.Tests
             Assert.ThrowsExactly<NotSupportedException>(() => vms.WriteByte(0));
 
         }
+
+        #endregion
+
+        #region Windows
 
         [TestMethod()]
         public void GetMemOrSpanTest()
@@ -164,6 +173,10 @@ namespace VNLib.Utils.IO.Tests
             Assert.IsTrue(array.AsSpan().SequenceEqual(testData));
         }
 
+        #endregion
+
+        #region SetLength
+
         [TestMethod]
         public void SetLengthTest()
         {
@@ -180,7 +193,7 @@ namespace VNLib.Utils.IO.Tests
             Assert.AreEqual(512, vms.Length);
             Assert.AreEqual(0, vms.Position);
 
-            // Check that position smaller than legnth gets reset below new length
+            // Check that position smaller than length gets reset below new length
             vms.Seek(100, System.IO.SeekOrigin.Begin);           
             Assert.AreEqual(100, vms.Position, "Position should not change if it is less than the new length.");
 
@@ -208,6 +221,10 @@ namespace VNLib.Utils.IO.Tests
             Assert.AreEqual(128, vms.Length);
             Assert.AreEqual(0, vms.Position);
         }
+
+        #endregion
+
+        #region CopyToAsync
 
         [TestMethod()]
         public async Task CopyToAsyncPartialFinalChunkTest()
@@ -312,5 +329,7 @@ namespace VNLib.Utils.IO.Tests
             await Assert.ThrowsExactlyAsync<ArgumentNullException>(() => vms.CopyToAsync(null!, 16));
             await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => vms.CopyToAsync(dest, 0));
         }
+
+        #endregion
     }
 }
