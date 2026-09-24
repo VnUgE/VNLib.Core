@@ -33,13 +33,16 @@ using VNLib.Utils.Extensions;
 
 namespace VNLib.Utils.IO.Tests
 {
-    [TestClass()]
-    public class VnMemoryStreamTests
+    [TestClass]
+    public sealed class VnMemoryStreamTests
     {
         #region Constructors
 
-        [TestMethod()]
-        public void VnMemoryStreamConstructorTest()
+        /// <summary>
+        /// Verifies all constructor overloads initialize an empty stream with the expected length, position, and capabilities.
+        /// </summary>
+        [TestMethod]
+        public void Constructor_Overloads_InitializeExpectedState()
         {
             using (VnMemoryStream vms = new())
             {
@@ -112,8 +115,11 @@ namespace VNLib.Utils.IO.Tests
 
         #region Readonly
 
-        [TestMethod()]
-        public void VnMemoryStreamReadonlyTest()
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.CreateReadonly(VnMemoryStream)"/> marks a writable stream readonly and blocks writes.
+        /// </summary>
+        [TestMethod]
+        public void CreateReadonly_WritableStream_MarksReadonly()
         {
             using VnMemoryStream vms = new(MemoryUtil.Shared, 0, false);
 
@@ -177,8 +183,11 @@ namespace VNLib.Utils.IO.Tests
 
         #region SetLength
 
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.SetLength(long)"/> resizes the stream, clamps an out-of-range position, and rejects negative values.
+        /// </summary>
         [TestMethod]
-        public void SetLengthTest()
+        public void SetLength_Resize_UpdatesLengthAndClampsPosition()
         {
             using VnMemoryStream vms = new(1024, false);
 
@@ -205,8 +214,11 @@ namespace VNLib.Utils.IO.Tests
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => vms.SetLength(-1), "Setting length to a negative value should throw ArgumentOutOfRangeException.");
         }
 
-        [TestMethod()]
-        public void EmptyStreamTest()
+        /// <summary>
+        /// Verifies a zero-size stream initializes empty and allows later resizing.
+        /// </summary>
+        [TestMethod]
+        public void Constructor_EmptyStream_AllowsResize()
         {
             using VnMemoryStream vms = new(0, false);
             
@@ -226,8 +238,11 @@ namespace VNLib.Utils.IO.Tests
 
         #region CopyToAsync
 
-        [TestMethod()]
-        public async Task CopyToAsyncPartialFinalChunkTest()
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.CopyToAsync(Stream, int, CancellationToken)"/> advances the position by bytes written, not the buffer size, on a partial final chunk.
+        /// </summary>
+        [TestMethod]
+        public async Task CopyToAsync_PartialFinalChunk_AdvancesByBytesWritten()
         {
             using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
             using MemoryStream dest = new();
@@ -255,8 +270,11 @@ namespace VNLib.Utils.IO.Tests
             Assert.IsTrue(vms.AsSpan().SequenceEqual(array));
         }
 
-        [TestMethod()]
-        public async Task CopyToAsyncPartialPositionTest()
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.CopyToAsync(Stream, int, CancellationToken)"/> copies only the remaining bytes when starting mid-stream.
+        /// </summary>
+        [TestMethod]
+        public async Task CopyToAsync_PartialPosition_CopiesRemainder()
         {
             using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
             using MemoryStream dest = new();
@@ -283,8 +301,11 @@ namespace VNLib.Utils.IO.Tests
             }
         }
 
-        [TestMethod()]
-        public async Task CopyToAsyncExactMultipleTest()
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.CopyToAsync(Stream, int, CancellationToken)"/> copies all data when the length is an exact multiple of the buffer size.
+        /// </summary>
+        [TestMethod]
+        public async Task CopyToAsync_ExactMultiple_CopiesAll()
         {
             using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
             using MemoryStream dest = new();
@@ -307,8 +328,11 @@ namespace VNLib.Utils.IO.Tests
             Assert.IsTrue(vms.AsSpan().SequenceEqual(array));
         }
 
-        [TestMethod()]
-        public async Task CopyToAsyncEmptyStreamTest()
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.CopyToAsync(Stream, int, CancellationToken)"/> on an empty stream moves no data and leaves the position unchanged.
+        /// </summary>
+        [TestMethod]
+        public async Task CopyToAsync_EmptyStream_WritesNothing()
         {
             using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
             using MemoryStream dest = new();
@@ -320,14 +344,66 @@ namespace VNLib.Utils.IO.Tests
             Assert.AreEqual(0, dest.Length);
         }
 
-        [TestMethod()]
-        public async Task CopyToAsyncInvalidArgsTest()
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.CopyToAsync(Stream, int, CancellationToken)"/> rejects a null destination and a non-positive buffer size.
+        /// </summary>
+        [TestMethod]
+        public async Task CopyToAsync_InvalidArgs_Throws()
         {
             using VnMemoryStream vms = new(MemoryUtil.Shared, 128, false);
             using MemoryStream dest = new();
 
             await Assert.ThrowsExactlyAsync<ArgumentNullException>(() => vms.CopyToAsync(null!, 16));
             await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => vms.CopyToAsync(dest, 0));
+        }
+
+        #endregion
+
+        #region AsyncIO
+
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.ReadAsync(Memory{byte}, CancellationToken)"/> completes synchronously with the requested data.
+        /// </summary>
+        [TestMethod]
+        public async Task ReadAsync_Memory_ReturnsSynchronousResult()
+        {
+            using VnMemoryStream vms = new(128, false);
+
+            for (int i = 0; i < 100; i++)
+            {
+                vms.WriteByte((byte)i);
+            }
+
+            vms.Seek(0, SeekOrigin.Begin);
+
+            byte[] chunk = new byte[25];
+
+            int read = await vms.ReadAsync(chunk.AsMemory());
+
+            Assert.AreEqual(25, read, "ReadAsync should return the number of bytes read.");
+            Assert.AreEqual(25, vms.Position, "Position should advance by the number of bytes read.");
+
+            for (int i = 0; i < read; i++)
+            {
+                Assert.AreEqual((byte)i, chunk[i], "Read data should match the written data.");
+            }
+        }
+
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.WriteAsync(ReadOnlyMemory{byte}, CancellationToken)"/> writes synchronously and updates the stream.
+        /// </summary>
+        [TestMethod]
+        public async Task WriteAsync_Memory_WritesSynchronously()
+        {
+            using VnMemoryStream vms = new(128, false);
+
+            byte[] testData = [1, 2, 3, 4, 5, 6, 7, 8];
+
+            await vms.WriteAsync(testData.AsMemory());
+
+            Assert.AreEqual(testData.Length, vms.Length, "Length should match the written data.");
+            Assert.AreEqual(testData.Length, vms.Position, "Position should advance by the written data.");
+            Assert.IsTrue(vms.AsSpan().SequenceEqual(testData), "Stream contents should match the written data.");
         }
 
         #endregion
