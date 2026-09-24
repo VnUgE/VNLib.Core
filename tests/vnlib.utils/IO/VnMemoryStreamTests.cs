@@ -139,10 +139,61 @@ namespace VNLib.Utils.IO.Tests
 
         #endregion
 
-        #region Windows
+        #region Clone
 
-        [TestMethod()]
-        public void GetMemOrSpanTest()
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.Clone"/> creates a readonly shallow copy sharing the stream data without taking ownership of the handle.
+        /// </summary>
+        [TestMethod]
+        public void Clone_ReadonlyStream_SharesDataWithoutOwnership()
+        {
+            using VnMemoryStream vms = new(128, false);
+
+            for (int i = 0; i < 100; i++)
+            {
+                vms.WriteByte((byte)i);
+            }
+
+            //Shallow copies require a readonly stream
+            _ = VnMemoryStream.CreateReadonly(vms);
+
+            using (VnMemoryStream clone = (VnMemoryStream)vms.Clone())
+            {
+                Assert.AreEqual(vms.Length, clone.Length, "Clone should share the stream length.");
+                Assert.AreEqual(0, clone.Position, "Clone should start at the beginning of the stream.");
+                Assert.IsFalse(clone.CanWrite, "Clone should be readonly.");
+                Assert.IsTrue(clone.AsSpan().SequenceEqual(vms.AsSpan()), "Clone should share the stream data.");
+                Assert.AreEqual(0, clone.ReadByte(), "Clone should read from the beginning of the shared data.");
+            }
+
+            //Disposing the clone must not dispose the shared handle
+            Assert.AreEqual(100, vms.Length, "Original stream should remain usable after the clone is disposed.");
+
+            vms.Seek(0, SeekOrigin.Begin);
+
+            Assert.AreEqual(0, vms.ReadByte(), "Original stream data should be intact after the clone is disposed.");
+        }
+
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.GetReadonlyShallowCopy"/> rejects writable streams.
+        /// </summary>
+        [TestMethod]
+        public void GetReadonlyShallowCopy_WritableStream_Throws()
+        {
+            using VnMemoryStream vms = new(128, false);
+
+            Assert.ThrowsExactly<NotSupportedException>(vms.GetReadonlyShallowCopy, "Shallow copy on a writable stream should throw.");
+        }
+
+        #endregion
+
+        #region Stream windows
+
+        /// <summary>
+        /// Verifies <see cref="VnMemoryStream.AsSpan"/>, <see cref="VnMemoryStream.AsMemory"/>, and <see cref="VnMemoryStream.ToArray"/> return the written stream data.
+        /// </summary>
+        [TestMethod]
+        public void AsSpan_AsMemory_ToArray_ReturnWrittenData()
         {
             //Alloc stream with some initial buffer size
             using VnMemoryStream vms = new(1024, false);
