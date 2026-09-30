@@ -11,7 +11,7 @@ process-compose = "1.122"
 DOTNET_SYSTEM_GLOBALIZATION_INVARIANT = "1"
 DOTNET_CLI_TELEMETRY_OPTOUT = "1"
 
-[tasks.ci-integration-tests]
+[tasks.run-ci-tests]
 dir = '.'
 run = [
 	'task setup-server',

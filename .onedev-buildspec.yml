@@ -60,6 +60,36 @@ jobs:
   includeDownstreamWhenRebuild: false
   timeout: 3600
 
+- name: Windows CI Tests
+  jobExecutor: windows
+  steps:
+  - type: CommandStep
+    name: Run webserver CI tests
+    runInContainer: false
+    interpreter:
+      type: PowerShellInterpreter
+      powershell: powershell.exe
+      commands: |
+        git clone @server_url@/@project_path@ --branch @branch@ @project_name@
+        cd @project_name@/tests/vnlib.webserver/integration-tests
+
+        mise trust mise.toml
+        mise run-ci-tests
+    runAs: 0:0
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  triggers:
+  - type: BranchUpdateTrigger
+    branches: develop
+    userMatch: anyone
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
+  timeout: 3600
+
 - name: Staging build
   jobExecutor: windows
   steps:
