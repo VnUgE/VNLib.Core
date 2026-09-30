@@ -31,10 +31,9 @@ tasks:
 
   setup-server:
     desc: Stages the server and test plugin into the server workspace
-    deps:
+    cmds:
       - task: build-server
       - task: build-plugin
-    cmds:
       - cmd: mkdir -p "{{ .WORKSPACE_DIR }}/wwwroot"
         ignore_error: true
 
