@@ -1,0 +1,15 @@
+meta {
+  name: get-unknown-not-found
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/test/does-not-exist
+}
+
+tests {
+  test("status is 404", function() {
+    expect(res.status).to.equal(404);
+  });
+}

@@ -372,3 +372,6 @@ lib/Net.Compression/vnlib_compress/third-party/*
 
 #enable the souce directory called "build" from zstd vendored source 
 !lib/Net.Compression/vnlib_compress/zstd/build/*
+
+# ignore CI test workspace dir
+/tests/vnlib.webserver/integration-tests/workspace

@@ -1,0 +1,91 @@
+# Minimal integration-test config.
+tcp:
+  keepalive_sec: 0
+  keepalive_interval_sec: 0
+  max_connections: 100
+  backlog: 100
+  no_delay: false
+  reuse_address: true
+  tx_buffer: 65536
+  rx_buffer: 65536
+
+http:
+  default_version: HTTP/1.1
+  multipart_max_buf_size: 20480
+  multipart_max_size: 80240
+  max_entity_size: 1024000
+  max_request_header_count: 50
+  max_connections: 500
+  request_header_buf_size: 8128
+  response_header_buf_size: 16384
+  max_uploads_per_request: 10
+  keepalive_ms: 5000
+  recv_timeout_ms: 5000
+  send_timeout_ms: 10000
+
+  compression:
+    enabled: false
+    assembly: ''
+    max_size: 512000
+    min_size: 2048
+
+virtual_hosts:
+  - enabled: true
+    path: ./wwwroot
+    hostnames:
+      - '*'
+    trace: false
+    force_port_check: false
+
+    benchmark:
+      enabled: false
+      random: true
+      size: 128
+
+    interfaces:
+      - address: 127.0.0.1
+        port: 8365
+        ssl: false
+        client_cert_required: false
+        use_os_ciphers: false
+        tcp_no_delay: null
+
+    downstream_servers:
+      - 127.0.0.1
+    deny_extensions:
+      - .env
+      - .htaccess
+      - .php
+      - .gitignore
+    default_files:
+      - index.html
+      - index.htm
+
+    cors:
+      enabled: false
+      deny_cors_connections: false
+      allowed_origins: []
+
+    cache_default_sec: 0
+    file_http_max_age: {}
+    max_execution_time_ms: 10000
+
+plugins:
+  enabled: true
+  hot_reload: false
+  reload_delay_sec: 2
+  path: plugins/
+
+  ipc_shared_memory:
+    enabled: false
+    max_region_size: 65536
+    min_region_size: 1
+    reserved_regions: []
+
+logs:
+  sys_log:
+    enabled: false
+  app_log:
+    enabled: false
+
+secrets: {}

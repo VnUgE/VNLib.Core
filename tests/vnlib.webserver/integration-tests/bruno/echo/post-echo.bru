@@ -1,0 +1,30 @@
+meta {
+  name: post-echo
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/test/echo
+}
+
+headers {
+  content-type: application/json
+}
+
+body {
+  {
+    "message": "ping"
+  }
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("returns echo result", function() {
+    expect(res.body.result).to.equal("echo");
+    expect(res.body.success).to.equal(true);
+  });
+}

@@ -1,0 +1,32 @@
+
+version: "0.5"
+
+is_tui_disabled: true
+log_level: debug
+
+processes:
+  webserver:
+    command: dotnet vnlib.webserver/VNLib.WebServer.dll --config ../test-config/config_ci_01.yaml --input-off --verbose
+    working_dir: workspace/
+    availability:
+      restart: "always"
+      backoff_seconds: 2
+      max_restarts: 5
+    # probe the test plugin endpoint to gate the bruno run on a healthy server
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: ${TEST_SERVER_PORT}
+        path: /test/hello
+      initial_delay_seconds: 10
+      period_seconds: 5
+
+  # run bruno after webserver is healthy, then exit (fails the run on test failure)
+  tests:
+    command: task run-tests
+    availability:
+      exit_on_termination: true
+      restart: "no"
+    depends_on:
+      webserver:
+        condition: process_healthy

@@ -1,0 +1,15 @@
+meta {
+  name: delete-hello-method-not-allowed
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/test/hello
+}
+
+tests {
+  test("status is 405", function() {
+    expect(res.status).to.equal(405);
+  });
+}

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>VNLib.WebServer.IntegrationTests.TestPlugin</RootNamespace>
+    <AssemblyName>TestPlugin</AssemblyName>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <!-- Resolve nuget dll files and store them in the output dir for runtime loading -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\lib\Plugins.PluginBase\src\VNLib.Plugins.PluginBase.csproj" />
+    <ProjectReference Include="..\..\..\..\lib\Plugins.Essentials\src\VNLib.Plugins.Essentials.csproj" />
+  </ItemGroup>
+</Project>
