@@ -375,3 +375,6 @@ lib/Net.Compression/vnlib_compress/third-party/*
 
 # ignore CI test workspace dir
 /tests/vnlib.webserver/integration-tests/workspace
+
+# ignore integration test mise install state
+/tests/vnlib.webserver/integration-tests/.mise

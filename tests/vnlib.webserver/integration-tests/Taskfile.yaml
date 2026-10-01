@@ -1,10 +1,5 @@
 # This taskfile stages a local web server with the integration test plugin
-# and runs the bruno collection against it. It is intentionally standalone:
-# no mise tasks or CI jobs reference it yet (a dedicated mise config comes later).
-#
-# Assumed steps (run `task dev-init -t ../../Module.Taskfile.yaml` first for native deps):
-# task setup-server (in this directory)
-# process-compose run tests
+# and runs the bruno collection against it.
 
 version: '3.45'
 
@@ -47,9 +42,7 @@ tasks:
       - cmd: bru run --env local --env-var baseUrl={{ .TEST_SERVER_URL }}
 
   clean:
-    desc: Removes the staged server directory and build outputs
-    requires:
-      vars: [ SERVER_BUILD_DIR ]
+    desc: Removes the staged server workspace
     cmds:
-      - cmd: rm -rf "{{ .SERVER_BUILD_DIR }}"
+      - cmd: rm -rf "{{ .WORKSPACE_DIR }}"
         ignore_error: true
