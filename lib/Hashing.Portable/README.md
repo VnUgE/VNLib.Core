@@ -3,7 +3,7 @@
 
 *A collection of common cryptographic functions, optimized using the VNLib.Utils library for interop and memory management.*
 
-This library supports optional loading of native libraries such as Argon2 and vnlib_monocyper at runtime for extended feature support such as Argon2id password hashing, Blake2 support, and more.
+This library supports optional loading of native libraries such as Argon2 and vnlib_monocypher at runtime for extended feature support such as Argon2id password hashing, Blake2 support, and more.
 
 ## Builds
 Debug build w/ symbols & xml docs, release builds, NuGet packages, and individually packaged source code are available on my website (link below).All tar-gzip (.tgz) files will have an associated checksum and PGP signature of the desired download file.

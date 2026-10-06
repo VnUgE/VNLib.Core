@@ -33,7 +33,7 @@ using VNLib.Utils.Logging;
 using VNLib.Utils.Extensions;
 using VNLib.Net.Http;
 using VNLib.Plugins.Essentials.Middleware;
-using VNLib.Plugins.Essentials.Runtime;
+using VNLib.Plugins.Essentials.Endpoints;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Construction
 {

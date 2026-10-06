@@ -158,7 +158,7 @@ namespace VNLib.WebServer.Plugins
             {
                 if (Config.Unloadable)
                 {
-                    //Cleanup old loader, dont invoke GC because runtime will handle it
+                    //Cleanup old loader, don't invoke GC because runtime will handle it
                     _loader.Destroy(false);
                 }
             }

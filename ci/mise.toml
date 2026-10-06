@@ -1,5 +1,9 @@
 min_version = "2024.9.5"
 
+# Experimental features (bootstrap package managers) enabled
+[settings]
+experimental = true
+
 # OS-level build dependencies installed via apt (Debian/Ubuntu) or dnf (Fedora/RHEL)
 [bootstrap.packages]
 "apt:build-essential" = "latest"
@@ -11,8 +15,8 @@ min_version = "2024.9.5"
 
 [tools]
 dotnet = "8.0"
-cmake = "4.3.1"
-task = "3.52"
+cmake = "4.4"
+task = "3.53"
 "dotnet:GitVersion.Tool" = "6.4.0"
 
 [tools."http:vnbuild"]

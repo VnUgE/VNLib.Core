@@ -9,7 +9,7 @@
 # distribution. The changes file and license file are also
 # included
 
-version: '3'
+version: '3.45'
 
 tasks:
 

@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -179,6 +179,12 @@ namespace VNLib.WebServer.Config.Model
                 foreach (string hostname in Hostnames)
                 {
                     Validate.EnsureNotNull(hostname, "Hostname is null, all hostnames must be defined");
+
+                    // Loose string requirements for hostnames
+                    Validate.Assert(
+                        Regex.IsMatch(hostname, @"^\S+$"),
+                        $"The hostname: {hostname} is not a valid hostname format"
+                    );
                 }
             }
 
@@ -226,17 +232,43 @@ namespace VNLib.WebServer.Config.Model
                 }
             }
 
+            if (DenyExtensions?.Length > 0)
+            {
+                foreach (string ext in DenyExtensions)
+                {
+                    Validate.EnsureNotNull(ext, "Denied file extension is null, all entries must be defined");
+                    Validate.Assert(
+                        Regex.IsMatch(ext, @"^\.[a-zA-Z0-9]+$"),
+                        $"The file extension: {ext} is not a valid file extension format"
+                    );
+                }
+            }
+
             if (DefaultFiles?.Length > 0)
             {
                 foreach (string file in DefaultFiles)
                 {
                     Validate.EnsureNotNull(file, "Default file name is null, all entries must be defined");
-                    //Ensure the format looks like a plain file name with an extension.
-                    //This rejects path separators, traversal sequences, and extensionless names.
+                    //Ensure the format looks like a plain file name. Extensionless names are allowed.
+                    //This rejects path separators and traversal sequences.
                     Validate.Assert(
-                        Regex.IsMatch(file, @"^(?!.*\.\.)[a-zA-Z0-9_.-]+\.[a-zA-Z]{2,}$"),
+                        Regex.IsMatch(file, @"^(?!.*\.\.)[a-zA-Z0-9_.-]+$"),
                         $"The file path: {file} is not a valid file path format"
                     );
+                }
+            }
+
+            if (PathFilter is not null)
+            {
+                try
+                {
+                    //Compile the pattern now so invalid patterns fail config loading
+                    //instead of host building with a bare regex error
+                    _ = new Regex(PathFilter);
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new ServerConfigurationException($"The path_filter: {PathFilter} is not a valid regex pattern", ex);
                 }
             }
 

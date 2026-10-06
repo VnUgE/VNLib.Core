@@ -496,7 +496,7 @@ namespace VNLib.Utils.Memory.Tests
         public void GetSharedHeapStatsTest()
         {
             //Confirm heap diagnostics are enabled
-            Assert.AreEqual<string?>("1", Environment.GetEnvironmentVariable(MemoryUtil.SHARED_HEAP_ENABLE_DIAGNOISTICS_ENV));
+            Assert.AreEqual<string?>("1", Environment.GetEnvironmentVariable(MemoryUtil.SHARED_HEAP_ENABLE_DIAGNOSTICS_ENV));
 
             //Get current stats
             HeapStatistics preTest = MemoryUtil.GetSharedHeapStats();

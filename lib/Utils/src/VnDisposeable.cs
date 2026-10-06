@@ -48,8 +48,8 @@ namespace VNLib.Utils
         protected virtual void Check() => ObjectDisposedException.ThrowIf(Disposed, this);
 
         /// <summary>
-        /// Sets the internal state to diposed without calling <see cref="Free"/> operation.
-        /// Useful if another code-path performs the free operation independant of a dispose opreation.
+        /// Sets the internal state to disposed without calling <see cref="Free"/> operation.
+        /// Useful if another code-path performs the free operation independent of a dispose operation.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void SetDisposedState() => Disposed = true;

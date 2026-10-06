@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -25,9 +25,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-using VNLib.Plugins.Essentials.Endpoints;
-
-namespace VNLib.Plugins.Essentials
+namespace VNLib.Plugins.Essentials.Endpoints
 {
     /// <summary>
     /// Represents a table of virtual endpoints that can be used to process incoming connections
@@ -67,8 +65,8 @@ namespace VNLib.Plugins.Essentials
         /// Attempts to get the endpoint associated with the specified path
         /// </summary>
         /// <param name="path">The connection path to recover the endpoint from</param>
-        /// <param name="endpoint"></param>
-        /// <returns></returns>
+        /// <param name="endpoint">When this method returns, contains the endpoint associated with the specified path, if found</param>
+        /// <returns><see langword="true"/> if an endpoint was found for the specified path; otherwise, <see langword="false"/></returns>
         bool TryGetEndpoint(string path, [NotNullWhen(true)] out IVirtualEndpoint<HttpEntity>? endpoint);
     }
 }

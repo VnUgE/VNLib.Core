@@ -15,4 +15,4 @@ Documentation, specifications, and setup guides are available on my website.
 [Nuget Feeds](https://www.vaughnnugent.com/resources/software/modules)  
 
 ## License
-The software for this library is licensed under the GNU Affero General Public License (or any later version). See the [LICENSE](LICENSE.txt) file for more information.
+The software for this library is licensed under the GNU Affero General Public License (or any later version). See the [LICENSE](LICENSE) file for more information.

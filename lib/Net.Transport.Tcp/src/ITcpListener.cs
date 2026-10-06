@@ -59,7 +59,7 @@ namespace VNLib.Net.Transport.Tcp
         /// </para>
         /// </summary>
         /// <param name="descriptor">The existing descriptor to close</param>
-        /// <param name="reuse">A value that indicates if the server can safley reuse the descriptor instance</param>
+        /// <param name="reuse">A value that indicates if the server can safely reuse the descriptor instance</param>
         /// <returns>A task that represents the closing operations</returns>
         /// <exception cref="ArgumentNullException"></exception>
         ValueTask CloseConnectionAsync(ITcpConnectionDescriptor descriptor, bool reuse);

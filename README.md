@@ -1,4 +1,4 @@
-﻿
+
 # VNLib.Core
 
 <p align="left">
@@ -8,10 +8,10 @@
   <a href="https://github.com/VnUgE/vnlib.core/tags">
     <img src="https://img.shields.io/github/v/tag/vnuge/vnlib.core?include_prereleases&label=latest%20release" alt="Latest release"/>
   </a>
-  <a href="https://www.vaughnnugent.com/Resources/Software/Modules/VNLib.Core-issues">
+  <a href="https://www.vaughnnugent.com/resources/software/modules/vnlib.core-issues">
     <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fwww.vaughnnugent.com%2Fapi%2Fgit%2Fissues%3Fmodule%3DVNLib.Core&query=%24%5B'result'%5D.length&label=all%20issues" alt="Issues"/>
   </a>
-  <a href="https://www.vaughnnugent.com/Resources/Software/Modules/VNLib.Core">
+  <a href="https://www.vaughnnugent.com/resources/software/modules/vnlib.core">
     <img src="https://img.shields.io/website?url=https%3A%2F%2Fwww.vaughnnugent.com" alt="Website Status"/>
   </a>
 </p>
@@ -47,9 +47,9 @@ The easiest way to access the .NET libraries is by adding the [VNLib NuGet feed]
 - [Documentation and Guides](https://www.vaughnnugent.com/resources/software/articles?tags=docs,_vnlib.core)
 
 #### Release Cycle & Distribution
-VNLib follows a Continuous Delivery model, which allows for rapid and incremental development, aiming for small weekly releases. Projects are distributed as individual packages, and official distributions include:
-- Pre-built binaries for most platforms that support Ahead-of-Time (AOT) compilation.
-- Component-level source code and build scripts.
+VNLib follows a Continuous Delivery model with incremental development and periodic stable releases. Projects are distributed as individual packages, and official distributions include:
+- Pre-compiled Windows DLLs for native C libraries.
+- .NET packages, component-level source code and build scripts.
 - SHA256 checksums and PGP cryptographic signatures for all packages.
 
 #### API Stability & Versioning
@@ -63,8 +63,11 @@ A core pillar of VNLib is runtime stability. Great care is taken to ensure that 
 
 VNLib is designed to be cross-platform. Components should work on any platform that supports a C compiler or a modern .NET runtime. While integration testing is not performed on all operating systems, the architecture is platform-agnostic by design.
 
+#### Licensing
+Each package is licensed individually - see its `LICENSE` file in each project directory.
+
 #### Contributing
-Note that GitHub and Codeberg integrations are disabled. VNLib takes its independence seriously and does not use third-party platforms for development, issue tracking, or pull requests. Information about contributing to the project can be found on the official website. While the reach of free platforms is respected, project independence is a core value.
+Note that GitHub and Codeberg integrations are disabled. VNLib takes its independence seriously and does not use third-party platforms for development, issue tracking, or pull requests. Information about contributing to the project can be found on the [module page](https://www.vaughnnugent.com/resources/software/modules/vnlib.core). While the reach of free platforms is respected, project independence is a core value.
 
 The project is, however, very interested in seeing what is built with VNLib! If you have created a plugin or a project you would like to share, please get in touch via the contact information on the official website.
 

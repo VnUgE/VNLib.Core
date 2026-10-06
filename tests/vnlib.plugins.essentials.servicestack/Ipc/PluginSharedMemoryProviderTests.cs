@@ -35,6 +35,7 @@ using VNLib.Plugins.Runtime;
 using VNLib.Plugins.Runtime.Events;
 using VNLib.Plugins.Ipc.SharedMemory;
 using VNLib.Plugins.Essentials.ServiceStack.Plugins.Ipc;
+using System.Linq;
 
 namespace VNLib.Plugins.Essentials.ServiceStack.Tests.Ipc
 {
@@ -342,9 +343,9 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Tests.Ipc
         /// <summary>
         /// Verifies that <see cref="IPluginMemoryRegionAccessor.GetRegion"/> returns the exact
         /// same <see cref="IPluginMemoryRegion"/> instance held by the owner plugin, confirming
-        /// the registry wires both plugins to the same backing allocation. The
-        /// <see cref="Unsafe.AreSame"/> check additionally asserts that both views point to
-        /// the same base memory address.
+        /// the registry wires both plugins to the same backing allocation. Pointer identity is
+        /// asserted through both <see cref="IPluginMemoryRegion.GetReference(int)"/> and
+        /// <see cref="IPluginMemoryRegion.AsSpan()"/> to cover both access paths.
         /// </summary>
         [TestMethod]
         public void SharedRegion_GetRegion_ReturnsSameRegionAsOwner()
@@ -363,40 +364,214 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Tests.Ipc
             Assert.AreSame(ownerRegion, accessorRegion);
 
             Assert.IsTrue(Unsafe.AreSame(
-                ref ownerRegion.GetReference(0), 
+                ref ownerRegion.GetReference(0),
                 ref accessorRegion.GetReference(0))
+            );
+
+            Assert.IsTrue(Unsafe.AreSame(
+                ref ownerRegion.AsSpan()[0],
+                ref accessorRegion.AsSpan()[0])
             );
         }
 
+        #endregion
+
+        #region Reserved Regions
+
         /// <summary>
-        /// Verifies that bytes written through the owner's region span are immediately visible
-        /// through the accessor's independently-acquired span, proving both plugins share the
-        /// same underlying native memory block.
+        /// Verifies that a plugin decorated with <see cref="SharedRegionOpenAttribute"/>
+        /// targeting a host-reserved region receives an immediately-valid accessor with
+        /// the correct region size after <c>LoadPlugins</c>.
         /// </summary>
         [TestMethod]
-        public void SharedRegion_OwnerWrites_ReaderObservesBytes()
+        public void ReservedRegion_PluginOpensReservedRegion_AccessorIsValid()
         {
-            using LoadedContext ctx = GetContext();
-            ctx.LoadPlugins();
+            const int regionSize = 256;
 
-            AllocPlugin allocPlugin = ctx.GetPlugin<AllocPlugin>();
-            OpenPlugin openPlugin   = ctx.GetPlugin<OpenPlugin>();
+            using TrackedHeapWrapper heap = new(MemoryUtil.Shared, false);
+            PluginSharedMemoryConfig config = new()
+            {
+                Allocator       = new PluginSharedMemoryAllocator(heap, false),
+                MinRegionSize   = 64,
+                MaxRegionSize   = 4096,
+                HostReservations = [
+                    new PluginSharedMemoryHostReservation("host_reserved_region", regionSize)
+                ]
+            };
 
-            IPluginMemoryRegion accessorRegion = openPlugin.Accessor!.GetRegion();
+            using PluginSharedMemoryProvider provider = new(config);
 
-            // Write a known pattern through the owner's view
-            Span<byte> ownerView = allocPlugin.Region!.AsSpan();
-            ownerView[0] = 0xDE;
-            ownerView[1] = 0xAD;
-            ownerView[2] = 0xBE;
-            ownerView[3] = 0xEF;
+            using RuntimePluginLoader loader = new(
+                new TestPluginLoadConfig(Assembly.GetExecutingAssembly()),
+                null
+            );
 
-            // Read back through the accessor's independently-obtained span
-            Span<byte> accessorView = accessorRegion.AsSpan();
-            Assert.AreEqual((byte)0xDE, accessorView[0]);
-            Assert.AreEqual((byte)0xAD, accessorView[1]);
-            Assert.AreEqual((byte)0xBE, accessorView[2]);
-            Assert.AreEqual((byte)0xEF, accessorView[3]);
+            loader.Controller.Register(provider.GetListener());
+            loader.InitializeController();
+            loader.LoadPlugins();
+        
+            ReservedOpenPlugin? plugin = loader.Controller.GetPlugin<ReservedOpenPlugin>();
+            Assert.IsNotNull(plugin);
+
+            // Region should be valid immediately 
+            Assert.IsNotNull(plugin.Accessor);
+            Assert.IsTrue(plugin.Accessor.IsValid());
+            Assert.IsNotNull(plugin.Accessor.GetRegion());
+
+            IPluginMemoryRegion region = plugin.Accessor.GetRegion();
+            Assert.AreEqual(regionSize, region.Length);
+
+            loader.UnloadAll(false);
+        }
+
+        [TestMethod]
+        public void ReservedRegionIsAllocated()
+        {
+            const int testRegionSize = 64;
+
+            using TrackedHeapWrapper heap = new(MemoryUtil.Shared, false);
+            PluginSharedMemoryConfig config = new()
+            {
+                Allocator       = new PluginSharedMemoryAllocator(heap, false),
+                MinRegionSize   = 64,
+                MaxRegionSize   = 4096,
+                HostReservations = [ 
+                    new PluginSharedMemoryHostReservation("test_region", testRegionSize) 
+                ]
+            };
+
+            Assert.AreEqual(0ul, heap.GetCurrentStats().AllocatedBlocks);
+
+            // Construction should validate and pre-allocate reserved regions
+            using (PluginSharedMemoryProvider provider = new(config))
+            {
+                // ensure reserved regions get allocated
+                HeapStatistics stats = heap.GetCurrentStats();
+                uint reservations = (uint)config.HostReservations.Count();
+
+                Assert.AreEqual(
+                    reservations,
+                    stats.AllocatedBlocks,
+                    "Expected the number of allocated blocks to equal the number of reservations"
+                );
+
+                Assert.AreEqual(testRegionSize * reservations, stats.AllocatedBytes);
+            }
+
+            // Ensure all regions are unmapped again
+            Assert.AreEqual(0ul, heap.GetCurrentStats().AllocatedBlocks);
+
+        }
+
+        /// <summary>
+        /// Verifies that multiple host-reserved regions are all allocated with the
+        /// correct total block count and byte total, and that all are released on dispose.
+        /// </summary>
+        [TestMethod]
+        public void ReservedRegion_MultipleRegions_AllAllocatedAndReleased()
+        {
+            using TrackedHeapWrapper heap = new(MemoryUtil.Shared, false);
+            PluginSharedMemoryConfig config = new()
+            {
+                Allocator       = new PluginSharedMemoryAllocator(heap, false),
+                MinRegionSize   = 64,
+                MaxRegionSize   = 4096,
+                HostReservations = [
+                    new PluginSharedMemoryHostReservation("region_a", 128),
+                    new PluginSharedMemoryHostReservation("region_b", 256),
+                    new PluginSharedMemoryHostReservation("region_c", 512)
+                ]
+            };
+
+            using (PluginSharedMemoryProvider provider = new(config))
+            {
+                HeapStatistics stats = heap.GetCurrentStats();
+                Assert.AreEqual(3ul, stats.AllocatedBlocks);
+                Assert.AreEqual((uint)128 + 256 + 512, stats.AllocatedBytes);
+            }
+
+            Assert.AreEqual(0ul, heap.GetCurrentStats().AllocatedBlocks);
+        }
+
+        /// <summary>
+        /// Verifies that providing duplicate region names in <c>HostReservations</c>
+        /// throws <see cref="ArgumentException"/> from the dictionary construction.
+        /// </summary>
+        [TestMethod]
+        public void ReservedRegion_DuplicateNames_ThrowsArgumentException()
+        {
+            using TrackedHeapWrapper heap = new(MemoryUtil.Shared, false);
+            PluginSharedMemoryConfig config = new()
+            {
+                Allocator       = new PluginSharedMemoryAllocator(heap, false),
+                MinRegionSize   = 64,
+                MaxRegionSize   = 4096,
+                HostReservations = [
+                    new PluginSharedMemoryHostReservation("same_name", 128),
+                    new PluginSharedMemoryHostReservation("same_name", 256)
+                ]
+            };
+
+            Assert.ThrowsExactly<ArgumentException>(() => new PluginSharedMemoryProvider(config));
+        }
+
+        /// <summary>
+        /// Verifies that host-reserved regions and plugin-allocated regions coexist
+        /// without interference, and that the dispose ordering (ReleaseHandle on
+        /// reserved handles, then registry sweep for plugin regions) correctly
+        /// frees all memory without double-free.
+        /// </summary>
+        [TestMethod]
+        public void ReservedRegion_CoexistsWithPluginAlloc_DisposeFreesAll()
+        {
+            using TrackedHeapWrapper heap = new(MemoryUtil.Shared, false);
+            PluginSharedMemoryConfig config = new()
+            {
+                Allocator       = new PluginSharedMemoryAllocator(heap, false),
+                MinRegionSize   = 64,
+                MaxRegionSize   = 65536,
+                HostReservations = [
+                    new PluginSharedMemoryHostReservation("host_reserved_region", 256)
+                ]
+            };
+
+            using (PluginSharedMemoryProvider provider = new(config))
+            {
+                using RuntimePluginLoader loader = new(
+                    new TestPluginLoadConfig(Assembly.GetExecutingAssembly()),
+                    null
+                );
+
+                loader.Controller.Register(provider.GetListener());
+                loader.InitializeController();
+                loader.LoadPlugins();
+
+                // 1 reserved + 1 plugin-allocated (AllocPlugin) = 2 blocks
+                Assert.AreEqual(2ul, heap.GetCurrentStats().AllocatedBlocks);              
+            }
+
+            Assert.AreEqual(0ul, heap.GetCurrentStats().AllocatedBlocks);          
+        }
+
+        /// <summary>
+        /// Verifies that an empty reservation array results in zero allocations
+        /// and that the provider remains fully functional.
+        /// </summary>
+        [TestMethod]
+        public void ReservedRegion_EmptyArray_AllocatesNothing()
+        {
+            using TrackedHeapWrapper heap = new(MemoryUtil.Shared, false);
+            PluginSharedMemoryConfig config = new()
+            {
+                Allocator       = new PluginSharedMemoryAllocator(heap, false),
+                MinRegionSize   = 64,
+                MaxRegionSize   = 4096,
+                HostReservations = []
+            };
+
+            using PluginSharedMemoryProvider provider = new(config);
+
+            Assert.AreEqual(0ul, heap.GetCurrentStats().AllocatedBlocks);
         }
 
         #endregion
@@ -529,6 +704,24 @@ namespace VNLib.Plugins.Essentials.ServiceStack.Tests.Ipc
             public IPluginMemoryRegionAccessor? Accessor { get; set; }
 
             public void Load() { }
+            public void Unload() { }
+            public void PublishServices(IPluginServicePool pool) { }
+        }
+
+        /// <summary>
+        /// Test plugin that opens a host-reserved shared memory region. Decorated
+        /// with <see cref="SharedRegionOpenAttribute"/> targeting a region name
+        /// that is pre-allocated via <c>HostReservations</c> in the provider config.
+        /// </summary>
+        private sealed class ReservedOpenPlugin : IPlugin
+        {
+            public string PluginName => nameof(ReservedOpenPlugin);
+
+            [SharedRegionOpen("host_reserved_region")]
+            public IPluginMemoryRegionAccessor? Accessor { get; set; }
+
+            public void Load() { }
+
             public void Unload() { }
             public void PublishServices(IPluginServicePool pool) { }
         }

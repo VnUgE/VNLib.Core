@@ -6,7 +6,7 @@
 #This taskfile is specific to this project, since it must be compiled on the target platform
 #this simply packs the source code into a tgz file for download
 
-version: '3'
+version: '3.45'
 
 vars:
   PROJECT_NAME: '{{ .PROJECT_NAME | default "vnlib_compress" }}'

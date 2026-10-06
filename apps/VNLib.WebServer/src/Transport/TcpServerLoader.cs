@@ -174,6 +174,12 @@ namespace VNLib.WebServer.Transport
                 tcpLogger.Warn("Socket option TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);
             }
 
+            //Port reuse is accepted for forward compatibility but not implemented, warn so it is not silently ignored
+            if (baseConfig.ReusePort)
+            {
+                tcpLogger.Warn("Socket option SO_REUSEPORT was enabled for {iface} but port reuse is not currently supported and will be ignored", iface);
+            }
+
             //Print warning message, since inline scheduler is an advanced feature
             if (iface.Ssl && UseInlineScheduler)
             {
