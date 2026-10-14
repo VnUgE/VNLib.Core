@@ -10,6 +10,7 @@ post {
 
 headers {
   content-type: application/json
+  x-echo-check: header-value-123
 }
 
 body {
@@ -23,8 +24,17 @@ tests {
     expect(res.status).to.equal(200);
   });
 
-  test("returns echo result", function() {
-    expect(res.body.result).to.equal("echo");
+  test("reflects the posted message", function() {
     expect(res.body.success).to.equal(true);
+    expect(res.body.message).to.equal("ping");
+  });
+
+  test("reflects the check header and json content type", function() {
+    expect(res.body.echoedHeader).to.equal("header-value-123");
+    expect(res.body.jsonContent).to.equal(true);
+  });
+
+  test("responds with json", function() {
+    expect(res.headers['content-type']).to.include('application/json');
   });
 }

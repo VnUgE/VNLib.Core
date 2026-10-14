@@ -1,0 +1,19 @@
+meta {
+  name: get-extensionless-infers-html
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/hello
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("extensionless path serves the html file", function() {
+    expect(res.body).to.include("CI-HELLO-FILE");
+  });
+}

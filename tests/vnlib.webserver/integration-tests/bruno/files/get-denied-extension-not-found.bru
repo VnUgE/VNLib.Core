@@ -1,0 +1,19 @@
+meta {
+  name: get-denied-extension-not-found
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/secret.env
+}
+
+tests {
+  test("denied extension returns 404", function() {
+    expect(res.status).to.equal(404);
+  });
+
+  test("denied extension serves the custom error file", function() {
+    expect(res.body).to.include("CI-NOT-FOUND-FILE");
+  });
+}

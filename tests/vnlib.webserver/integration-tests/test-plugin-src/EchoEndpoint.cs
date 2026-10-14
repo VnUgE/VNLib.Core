@@ -23,7 +23,11 @@
 */
 
 using System;
+using System.Net;
+using System.Text.Json;
+using System.Threading.Tasks;
 
+using VNLib.Net.Http;
 using VNLib.Plugins;
 using VNLib.Plugins.Essentials;
 using VNLib.Plugins.Essentials.Endpoints;
@@ -32,8 +36,10 @@ using VNLib.Plugins.Essentials.Extensions;
 namespace VNLib.WebServer.IntegrationTests.TestPlugin
 {
     /// <summary>
-    /// A minimal unauthenticated endpoint used to verify POST body
-    /// handling. Responds to POST requests with a fixed JSON message.
+    /// A content-reading echo endpoint. Parses the posted JSON entity body
+    /// and reflects the <c>message</c> property along with the
+    /// <c>x-echo-check</c> request header back to the caller. A missing or
+    /// invalid entity body is reported as a bad request.
     /// </summary>
     internal sealed class EchoEndpoint : ResourceEndpointBase
     {
@@ -61,15 +67,53 @@ namespace VNLib.WebServer.IntegrationTests.TestPlugin
         }
 
         ///<inheritdoc/>
-        protected override VfReturnType Post(HttpEntity entity)
+        protected override async ValueTask<VfReturnType> PostAsync(HttpEntity entity)
+        {
+            //Entity bodies arrive as file uploads, a missing body is a bad request
+            if (entity.Files.Count == 0)
+            {
+                return BadRequest(entity, "Missing request entity body");
+            }
+
+            //Recover the posted json document from the upload
+            using JsonDocument? request = await entity.GetJsonFromFileAsync()
+                .ConfigureAwait(false);
+
+            if (request is null)
+            {
+                return BadRequest(entity, "Invalid request data");
+            }
+
+            //The message property is required for the echo response
+            if (!request.RootElement.TryGetProperty("message", out JsonElement message)
+                || message.ValueKind != JsonValueKind.String)
+            {
+                return BadRequest(entity, "Missing message property");
+            }
+
+            //Reflect the check header and observed content type for header coverage
+            string? checkHeader = entity.Server.Headers["x-echo-check"];
+
+            object response = new
+            {
+                success = true,
+                message = message.GetString(),
+                echoedHeader = checkHeader,
+                jsonContent = entity.Server.ContentType == ContentType.Json,
+            };
+
+            return VirtualOkJson(entity, response);
+        }
+
+        private static VfReturnType BadRequest(HttpEntity entity, string result)
         {
             WebMessage response = new()
             {
-                Result = "echo",
-                Success = true,
+                Result = result,
+                Success = false,
             };
 
-            return VirtualOk(entity, response);
+            return VirtualCloseJson(entity, response, HttpStatusCode.BadRequest);
         }
     }
 }

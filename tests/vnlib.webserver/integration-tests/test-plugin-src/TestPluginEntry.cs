@@ -52,7 +52,11 @@ namespace VNLib.WebServer.IntegrationTests.TestPlugin
             _endpoints.Add(new HelloEndpoint(this));
             _endpoints.Add(new EchoEndpoint(this));
 
-            Services.Add(new ServiceExport(typeof(IVirtualEndpointDefinition), this, ExportFlags.None));
+            Services.Add(new ServiceExport(
+                typeof(IVirtualEndpointDefinition), 
+                this, 
+                ExportFlags.None
+            ));
 
             Log.Information("Test plugin loaded with {count} endpoints", _endpoints.Count);
         }

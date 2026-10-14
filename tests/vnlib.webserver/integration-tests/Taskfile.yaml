@@ -29,8 +29,6 @@ tasks:
     cmds:
       - task: build-server
       - task: build-plugin
-      - cmd: mkdir -p "{{ .WORKSPACE_DIR }}/wwwroot"
-        ignore_error: true
 
   run-tests:
     desc: Runs the bruno collection against the staged server (requires bru on PATH)

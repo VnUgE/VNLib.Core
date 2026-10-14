@@ -31,7 +31,7 @@ http:
 
 virtual_hosts:
   - enabled: true
-    path: ./wwwroot
+    path: ../test-config/wwwroot
     hostnames:
       - '*'
     trace: false
@@ -46,9 +46,6 @@ virtual_hosts:
       - address: 127.0.0.1
         port: 8365
         ssl: false
-        client_cert_required: false
-        use_os_ciphers: false
-        tcp_no_delay: null
 
     downstream_servers:
       - 127.0.0.1
@@ -65,6 +62,11 @@ virtual_hosts:
       enabled: false
       deny_cors_connections: false
       allowed_origins: []
+
+    # loads custom error files to exercise error file caches
+    error_files:
+      - code: 404
+        path: ../test-config/errors/404.html
 
     cache_default_sec: 0
     file_http_max_age: {}

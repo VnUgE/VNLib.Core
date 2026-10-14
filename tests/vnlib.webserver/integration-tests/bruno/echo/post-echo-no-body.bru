@@ -1,0 +1,20 @@
+meta {
+  name: post-echo-no-body
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/test/echo
+}
+
+headers {
+  content-type: application/json
+}
+
+tests {
+  test("status is 400 without an entity body", function() {
+    expect(res.status).to.equal(400);
+    expect(res.body.success).to.equal(false);
+  });
+}

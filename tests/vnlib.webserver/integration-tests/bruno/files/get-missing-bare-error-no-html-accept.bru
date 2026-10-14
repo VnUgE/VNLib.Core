@@ -1,0 +1,23 @@
+meta {
+  name: get-missing-bare-error-no-html-accept
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/does-not-exist.html
+}
+
+headers {
+  accept: application/json
+}
+
+tests {
+  test("missing file returns 404 without html accept", function() {
+    expect(res.status).to.equal(404);
+  });
+
+  test("custom error file is withheld when html is not accepted", function() {
+    expect(!res.body || !res.body.includes("CI-NOT-FOUND-FILE")).to.equal(true);
+  });
+}

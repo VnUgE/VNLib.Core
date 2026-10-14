@@ -1,0 +1,19 @@
+meta {
+  name: get-index-default-file
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/
+}
+
+tests {
+  test("status is 200", function() {
+    expect(res.status).to.equal(200);
+  });
+
+  test("serves the default index file", function() {
+    expect(res.body).to.include("CI-INDEX-FILE");
+  });
+}

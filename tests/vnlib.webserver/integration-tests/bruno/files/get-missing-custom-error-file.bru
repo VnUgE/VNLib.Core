@@ -1,0 +1,20 @@
+meta {
+  name: get-missing-custom-error-file
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/does-not-exist.html
+}
+
+tests {
+  test("missing file returns 404", function() {
+    expect(res.status).to.equal(404);
+  });
+
+  test("missing file serves the custom error file", function() {
+    expect(res.body).to.include("CI-NOT-FOUND-FILE");
+    expect(res.headers['content-type']).to.include('text/html');
+  });
+}
