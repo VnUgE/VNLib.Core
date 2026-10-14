@@ -16,7 +16,7 @@ experimental = true
 [tools]
 dotnet = "8.0"
 cmake = "4.4"
-task = "3.53"
+task = "3.54"
 "dotnet:GitVersion.Tool" = "6.4.0"
 
 [tools."http:vnbuild"]
