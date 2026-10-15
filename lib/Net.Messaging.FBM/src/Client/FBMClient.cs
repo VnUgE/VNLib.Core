@@ -178,8 +178,15 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Reset wait handle before return
             ConnectionStatusHandle.Reset();
 
+            // Alloc receive buffer on current thread, and pass to process() to avoid exceptions in thread
+            IFBMMemoryHandle recvBuffer = Config.MemoryManager.InitHandle();
+            Config.MemoryManager.AllocBuffer(recvBuffer, Config.RecvBufferSize);
+
             //Begin listening for requests in a background task
-            _ = Task.Run(ProcessContinuousRecvAsync, cancellationToken);
+            _ = Task.Run(
+                () => ProcessContinuousRecvAsync(recvBuffer), 
+                cancellationToken
+            );
         }
 
         /// <summary>
@@ -440,13 +447,10 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// until the socket is closed, or canceled
         /// </summary>
         /// <returns></returns>
-        protected async Task ProcessContinuousRecvAsync()
+        protected async Task ProcessContinuousRecvAsync(IFBMMemoryHandle recvBuffer)
         {
             Debug("Beginning receive loop");
 
-            //Alloc recv buffer
-            IFBMMemoryHandle recvBuffer = Config.MemoryManager.InitHandle();
-            Config.MemoryManager.AllocBuffer(recvBuffer, Config.RecvBufferSize);
             try
             {
                 if (!Config.MemoryManager.TryGetHeap(out IUnmanagedHeap? heap))
