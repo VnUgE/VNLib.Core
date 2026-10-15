@@ -137,7 +137,16 @@ namespace VNLib.Hashing
         {
             //Try to load the library and always dispose it so the native method handle will unload the library
             SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(dllPath, searchPath);
-            return LoadCustomLibrary(new(lib, true));
+            try
+            {
+                return LoadCustomLibrary(new(lib, true));
+            }
+            catch
+            {
+                //Wrapping failed (missing entry points), release the loaded library before propagating
+                lib.Dispose();
+                throw;
+            }
         }
 
         /// <summary>

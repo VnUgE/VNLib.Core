@@ -99,7 +99,7 @@ int ZstdAllocCompressor(comp_state_t* state)
 	switch (state->level)
 	{
 	case COMP_LEVEL_NO_COMPRESSION:
-		compLevel = 1;  /* ZSTD minimum level */
+		compLevel = ZSTD_minCLevel();  /* No compression, fastest path */
 		break;
 
 	case COMP_LEVEL_FASTEST:

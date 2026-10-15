@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -82,10 +82,23 @@ namespace VNLib.Plugins.Essentials.Endpoints
         {
             //Check
             ArgumentNullException.ThrowIfNull(endpoints);
-            //Make sure all endpoints specify a path
-            if (endpoints.Any(static e => string.IsNullOrWhiteSpace(e?.Path)))
+
+            foreach (IEndpoint? endpoint in endpoints)
             {
-                throw new ArgumentException("Endpoints array contains one or more empty endpoints");
+                if (endpoint is null)
+                {
+                    throw new ArgumentException("One or more supplied endpoints is null");
+                }
+
+                if (string.IsNullOrWhiteSpace(endpoint.Path))
+                {
+                    throw new ArgumentException("Endpoints array contains one or more empty endpoints");
+                }
+
+                if (endpoint.Path[0] != '/')
+                {
+                    throw new ArgumentException($"Endpoint path '{endpoint.Path}' is not rooted (must begin with '/')");
+                }
             }
 
             if (endpoints.Length == 0)
