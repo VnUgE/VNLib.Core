@@ -451,6 +451,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         {
             Debug("Beginning receive loop");
 
+            VnMemoryStream? responseBuffer = null;
+
             try
             {
                 if (!Config.MemoryManager.TryGetHeap(out IUnmanagedHeap? heap))
@@ -462,7 +464,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
                 //Recv event loop
                 while (true)
-                {
+                {                    
                     //Listen for incoming packets with the initial data buffer
                     ValueWebSocketReceiveResult result = await _socket.ReceiveAsync(rcvMemory, CancellationToken.None)
                         .ConfigureAwait(false);
@@ -474,10 +476,11 @@ namespace VNLib.Net.Messaging.FBM.Client
                         break;
                     }
 
-                    //Alloc data buffer and write initial data
-                    VnMemoryStream responseBuffer = new(heap, recvBuffer.GetSpan()[..result.Count]);
+                    //Alloc data buffer and write initial data, most messages should fit in singal ws message, so 
+                    // it avoids overallocating a buffer for the common path.
+                    responseBuffer = new(heap, recvBuffer.GetSpan()[..result.Count]);
 
-                    //Receive packets until the EOF is reached
+                    // Receive packets until the EOF is reached
                     while (!result.EndOfMessage)
                     {
                         // receive more data
@@ -487,29 +490,32 @@ namespace VNLib.Net.Messaging.FBM.Client
                         //Make sure the buffer is not too large
                         if ((responseBuffer.Length + result.Count) > Config.MaxMessageSize)
                         {
-                            //Dispose the buffer before exiting
-                            responseBuffer.Dispose();
+                            //Dispose the buffer before exiting                           
                             Debug("Received a message that was too large, skipped");
                             goto Skip;
                         }
 
-                        //Copy continuous data
+                        // Copy message to buffer
                         responseBuffer.Write(recvBuffer.GetSpan()[..result.Count]);
                     }
 
                     if (responseBuffer.Length <= 4)
-                    {
+                    {                        
                         Debug("Empty message received from server");
-                        continue;
+                        goto Skip;
                     }
 
                     //Reset the buffer stream position before calling handler
                     _ = responseBuffer.Seek(0, SeekOrigin.Begin);
                     ProcessResponse(responseBuffer);
+                    responseBuffer = null;
 
                 // Goto skip statement to cleanup resources
-                Skip: ;
+                Skip:
 
+                    // If not cleared dispose the buffer
+                    responseBuffer?.Dispose();
+                    responseBuffer = null;
                 }
             }
             catch (OperationCanceledException)
@@ -528,7 +534,9 @@ namespace VNLib.Net.Messaging.FBM.Client
             }
             finally
             {               
-                Config.MemoryManager.FreeBuffer(recvBuffer);               
+                Config.MemoryManager.FreeBuffer(recvBuffer);
+
+                responseBuffer?.Dispose();
 
                 // Set all pending events
                 foreach (FBMRequest request in ActiveRequests.Values)
