@@ -473,11 +473,6 @@ namespace VNLib.Net.Messaging.FBM.Client
                         // When the loop breaks, the close connection handler will be invoked
                         break;
                     }
-                    if (result.Count <= 4)
-                    {
-                        Debug("Empty message received from server");
-                        continue;
-                    }
 
                     //Alloc data buffer and write initial data
                     VnMemoryStream responseBuffer = new(heap, recvBuffer.GetSpan()[..result.Count]);
@@ -500,6 +495,12 @@ namespace VNLib.Net.Messaging.FBM.Client
 
                         //Copy continuous data
                         responseBuffer.Write(recvBuffer.GetSpan()[..result.Count]);
+                    }
+
+                    if (responseBuffer.Length <= 4)
+                    {
+                        Debug("Empty message received from server");
+                        continue;
                     }
 
                     //Reset the buffer stream position before calling handler
