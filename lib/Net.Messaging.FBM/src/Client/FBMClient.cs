@@ -79,7 +79,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         private readonly FBMClientConfig _config;
 
         private readonly IObjectRental<FBMRequest> _requestRental;
-        private readonly bool _ownsObjectRenal;
+        private readonly bool _ownsObjectRental;
 
         /// <summary>
         /// The configuration for the current client
@@ -118,7 +118,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Create new request rental if none supplied, it will have to be disposed when the client exits
             if (requestRental is null)
             {
-                _ownsObjectRenal = true;
+                _ownsObjectRental = true;
                 _requestRental = ObjectRental.CreateReusable(ReusableRequestConstructor, 100);
             }
             else
@@ -155,7 +155,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
 
         /// <summary>
-        /// Asynchronously opens a WebSocket connection with the specifed remote server
+        /// Asynchronously opens a WebSocket connection with the specified remote server
         /// </summary>
         /// <param name="serverUri">The address of the server to connect to</param>
         /// <param name="cancellationToken">A cancellation token</param>
@@ -622,7 +622,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             ConnectionStatusHandle.Dispose();
 
             //Dispose object rental if we own it
-            if (_ownsObjectRenal && _requestRental is IDisposable disp)
+            if (_ownsObjectRental && _requestRental is IDisposable disp)
             {
                 disp.Dispose();
             }
