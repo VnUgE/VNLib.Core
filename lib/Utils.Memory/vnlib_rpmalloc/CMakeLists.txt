@@ -65,6 +65,9 @@ if(MSVC)
 		/TC
 		/GS 
 
+		#atomic support is now required for v2.0.x+
+		/experimental:c11atomics
+
 		#disable warnings for struct padding and spectre mitigation when WX is enabled
 		$<$<CONFIG:Debug>:/wd5045>
 		$<$<CONFIG:Debug>:/wd4820>
@@ -115,10 +118,6 @@ list(APPEND _RP_COMP_DEFS
 	ENABLE_ADAPTIVE_THREAD_CACHE=1
 	ENABLE_THREAD_CACHE=1		#always enable per-thred cache
 	ENABLE_OVERRIDE=0			#disable malloc override, not needed for our uses
-
-	#add some debugging/tracing for debug mode
-	$<$<CONFIG:Debug>:ENABLE_TRACE=1>
-	$<$<CONFIG:Debug>:ENABLE_VALIDATE_ARGS=1>
 )
 
 if(ENABLE_GREEDY)

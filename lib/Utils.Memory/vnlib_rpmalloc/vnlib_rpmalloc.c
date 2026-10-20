@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 *
 * Library: VNLib
 * Package: vnlib_rpmalloc
@@ -56,13 +56,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        rpmalloc_initialize();
+        rpmalloc_initialize(0);
         break;
     case DLL_THREAD_ATTACH:
         rpmalloc_thread_initialize();
         break;
     case DLL_THREAD_DETACH:
-        rpmalloc_thread_finalize(1);
+        rpmalloc_thread_finalize();
         break;
     case DLL_PROCESS_DETACH:
         rpmalloc_finalize();
