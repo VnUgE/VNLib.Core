@@ -87,7 +87,7 @@ static void thread_destructor(void*);
 
 static void __attribute__((constructor)) initializer(void) {
     rpmalloc_set_main_thread();
-    rpmalloc_initialize();
+    rpmalloc_initialize(0);
     pthread_key_create(&destructor_key, thread_destructor);
 }
 
@@ -112,7 +112,7 @@ static void* thread_starter(void* argptr) {
 
 static void thread_destructor(void* value) {
     (void)sizeof(value);
-    rpmalloc_thread_finalize(1);
+    rpmalloc_thread_finalize();
 }
 
 
