@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 namespace VNLib.Net.Http
 {
     /// <summary>
-    /// Allows implementation for a protocol swtich from HTTP to another protocol
+    /// Allows implementation for a protocol switch from HTTP to another protocol
     /// </summary>
     public interface IAlternateProtocol
     {

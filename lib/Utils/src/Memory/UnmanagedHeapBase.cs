@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -214,7 +214,7 @@ namespace VNLib.Utils.Memory
         /// <param name="elements">The new number of elements within the block</param>
         /// <param name="size">The size of the element type (in bytes)</param>
         /// <param name="zero">A flag to indicate if the new region of the block should be zeroed</param>
-        /// <returns>A pointer to the same block, but resized, null if the allocation falied</returns>
+        /// <returns>A pointer to the same block, but resized, null if the allocation failed</returns>
         /// <remarks>
         /// Heap base relies on the block pointer to remain unchanged if the resize fails so the
         /// block is still valid, and the return value is used to determine if the resize was successful

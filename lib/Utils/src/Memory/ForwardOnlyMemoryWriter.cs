@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -96,7 +96,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Advances the writer forward the specifed number of elements
+        /// Advances the writer forward by the specified number of elements
         /// </summary>
         /// <param name="count">The number of elements to advance the writer by</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>

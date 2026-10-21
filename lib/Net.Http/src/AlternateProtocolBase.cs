@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -85,7 +85,7 @@ namespace VNLib.Net.Http
         public virtual void CancelAll() => CancelSource?.Cancel();
 
         /// <summary>
-        /// Called when the protocol swtich handshake has completed and the transport is 
+        /// Called when the protocol switch handshake has completed and the transport is
         /// available for the new protocol
         /// </summary>
         /// <param name="transport">The transport stream</param>

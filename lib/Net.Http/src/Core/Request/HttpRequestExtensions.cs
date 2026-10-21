@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -53,7 +53,7 @@ namespace VNLib.Net.Http.Core.Request
 
             /*
              * Priority order is gzip, deflate, br. Br is last for dynamic compression 
-             * because of performace. We also need to make sure the server supports 
+             * because of performance. We also need to make sure the server supports
              * the desired compression method also.
              */
 
@@ -172,7 +172,7 @@ namespace VNLib.Net.Http.Core.Request
                     break;
                 case ContentType.MultiPart:
                     {
-                        //Make sure we have a boundry specified
+                        //Make sure we have a boundary specified
                         if (string.IsNullOrWhiteSpace(request.State.Boundry))
                         {
                             break;
@@ -182,7 +182,7 @@ namespace VNLib.Net.Http.Core.Request
 
                         int chars = await BufferInputStreamAsChars(request.InputStream, formBody, GetFdBuffer(context), info.Encoding);
 
-                        //Split the body as a span at the boundries
+                        //Split the body as a span at the boundaries
                         ((ReadOnlySpan<char>)formBody.AsSpan(0, chars))
                             .Split(
                                 splitter: $"--{request.State.Boundry}", 
@@ -222,7 +222,7 @@ namespace VNLib.Net.Http.Core.Request
 
         /*
          * Reads the input stream into the char buffer and returns the number of characters read. This method
-         * expands the char buffer as needed to accomodate the input stream.
+         * expands the char buffer as needed to accommodate the input stream.
          * 
          * We assume the parsing method checked the size of the input stream so we can assume its safe to read
          * all of it into memory.
@@ -396,7 +396,7 @@ namespace VNLib.Net.Http.Core.Request
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void UrlEncodedSplitCb(ReadOnlySpan<char> kvArg, HttpRequest Request)
         {
-            //Get key side of agument (or entire argument if no value is set)
+            //Get key side of argument (or entire argument if no value is set)
             ReadOnlySpan<char> key = kvArg.SliceBeforeParam('=');
             ReadOnlySpan<char> value = kvArg.SliceAfterParam('=');
 

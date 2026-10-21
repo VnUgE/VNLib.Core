@@ -75,8 +75,8 @@ namespace VNLib.Net.Http
     {
         /// <summary>
         /// The host key that determines a "wildcard" host, meaning the 
-        /// default connection handler when an incomming connection has 
-        /// not specific route
+        /// default connection handler when an incoming connection has no
+        /// specific route
         /// </summary>
         public const string WILDCARD_KEY = "*";
 
@@ -289,7 +289,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Begins listening for connections on configured interfaces for configured hostnames.
         /// </summary>
-        /// <param name="cancellationToken">A token used to stop listening for incomming connections and close all open websockets</param>
+        /// <param name="cancellationToken">A token used to stop listening for incoming connections and close all open websockets</param>
         /// <returns>A task that resolves when the server has exited</returns>
         /// <exception cref="SocketException"></exception>
         /// <exception cref="ThreadStateException"></exception>

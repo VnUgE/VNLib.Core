@@ -71,7 +71,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         public event EventHandler<FBMClientErrorEventArgs>? ConnectionClosedOnError;
 
         /// <summary>
-        /// Raised when the client listener operaiton has completed as a normal closure
+        /// Raised when the client listener operation has completed as a normal closure
         /// </summary>
         public event EventHandler? ConnectionClosed;
 
@@ -105,7 +105,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// supplied config.
         /// </summary>
         /// <param name="config">The client config</param>
-        /// <param name="websocket">The websocket instance used to comunicate with an FBMServer</param>
+        /// <param name="websocket">The websocket instance used to communicate with an FBMServer</param>
         public FBMClient(ref readonly FBMClientConfig config, IFbmClientWebsocket websocket)
             : this(in config, websocket, requestRental: null)
         { }
@@ -158,14 +158,14 @@ namespace VNLib.Net.Messaging.FBM.Client
 
 
         /// <summary>
-        /// Asynchronously opens a websocket connection with the specifed remote server
+        /// Asynchronously opens a websocket connection with the specified remote server
         /// </summary>
         /// <param name="serverUri">The address of the server to connect to</param>
         /// <param name="cancellationToken">A cancellation token</param>
         /// <returns></returns>
         public async Task ConnectAsync(Uri serverUri, CancellationToken cancellationToken = default)
         {
-            //Uribuilder to send config parameters to the server
+            //UriBuilder to send config parameters to the server
             UriBuilder urib = new(serverUri);
             urib.Query +=
                 $"{REQ_RECV_BUF_QUERY_ARG}={Config.RecvBufferSize}" +
@@ -180,7 +180,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             //Reset wait handle before return
             ConnectionStatusHandle.Reset();
 
-            //Begin listeing for requests in a background task
+            //Begin listening for requests in a background task
             _ = Task.Run(ProcessContinuousRecvAsync, cancellationToken);
         }
 
@@ -279,7 +279,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="payload">Data to stream to the server</param>
         /// <param name="contentType">The content type of the stream of data</param>
         /// <param name="cancellationToken">A token to cancel the operation</param>
-        /// <returns>A task that resolves when the data is sent and the resonse is received</returns>
+        /// <returns>A task that resolves when the data is sent and the response is received</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
@@ -293,8 +293,8 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// <param name="payload">Data to stream to the server</param>
         /// <param name="contentType">The content type of the stream of data</param>
         /// <param name="cancellationToken">A token to cancel the operation</param>
-        /// <param name="timeout">A maxium wait timeout period. If -1 or 0 the timeout is disabled</param>
-        /// <returns>A task that resolves when the data is sent and the resonse is received</returns>
+        /// <param name="timeout">A maximum wait timeout period. If -1 or 0 the timeout is disabled</param>
+        /// <returns>A task that resolves when the data is sent and the response is received</returns>
         /// <exception cref="ArgumentException"></exception>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
@@ -324,7 +324,7 @@ namespace VNLib.Net.Messaging.FBM.Client
 
                 Debug("Streaming {bytes} with id {id}", requestData.Length, request.MessageId);
 
-                //Write an empty body in the request so a content type header is writen
+                //Write an empty body in the request so a content type header is written
                 request.WriteBody(default, contentType);
 
                 Memory<byte> bufferMemory = _streamBuffer.GetMemory();
@@ -335,7 +335,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                     //Send the initial request packet
                     await _socket.SendAsync(requestData, WebSocketMessageType.Binary, endOfMessage: false, cancellationToken);
 
-                    //Stream mesage body
+                    //Stream message body
                     do
                     {
                         //Read data
@@ -396,7 +396,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         {
             /*
            * We need to check that the request is not already queued because a wait may be pending
-           * and calling SetupAsyncRequest may overwite another wait and cause a deadlock
+           * and calling SetupAsyncRequest may overwrite another wait and cause a deadlock
            */
 
             if (!ActiveRequests.TryAdd(request.MessageId, request))
@@ -417,7 +417,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 throw new FBMInvalidRequestException("The request message id must NOT be 0");
             }
 
-            //Length of the request must contains at least 1 int and header byte
+            //Length of the request must contain at least 1 int and header byte
             if (request.Length < 1 + sizeof(int))
             {
                 throw new FBMInvalidRequestException("Message is not initialized");
@@ -448,7 +448,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 //Recv event loop
                 while (true)
                 {
-                    //Listen for incoming packets with the intial data buffer
+                    //Listen for incoming packets with the initial data buffer
                     ValueWebSocketReceiveResult result = await _socket.ReceiveAsync(rcvMemory, CancellationToken.None);
 
                     //If the message is a close message, its time to exit
@@ -469,7 +469,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                     //Receive packets until the EOF is reached
                     while (!result.EndOfMessage)
                     {
-                        //recive more data
+                        //receive more data
                         result = await _socket.ReceiveAsync(rcvMemory, CancellationToken.None);
 
                         //Make sure the buffer is not too large
@@ -489,14 +489,14 @@ namespace VNLib.Net.Messaging.FBM.Client
                     _ = responseBuffer.Seek(0, SeekOrigin.Begin);
                     ProcessResponse(responseBuffer);
 
-                //Goto skip statment to cleanup resources
+                //Goto skip statement to cleanup resources
                 Skip:
                     ;
                 }
             }
             catch (OperationCanceledException)
             {
-                //Normal closeure, do nothing
+                //Normal closure, do nothing
             }
             catch (Exception ex)
             {                
@@ -543,7 +543,7 @@ namespace VNLib.Net.Messaging.FBM.Client
             //get the id of the message
             int messageId = Helpers.GetMessageId(line);
 
-            //Finalze control frame
+            //Finalize control frame
             if (messageId == Helpers.CONTROL_FRAME_MID)
             {
                 Debug("Control frame received");
@@ -564,7 +564,7 @@ namespace VNLib.Net.Messaging.FBM.Client
                 //Set the new response message
                 if (!request.Waiter.Complete(responseMessage))
                 {
-                    //Falied to complete, dispose the message data
+                    //Failed to complete, dispose the message data
                     responseMessage.Dispose();
                     Debug("Failed to transition waiting request {id}. Message was dropped", messageId, 0);
                 }

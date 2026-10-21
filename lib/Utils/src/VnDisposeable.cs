@@ -28,7 +28,7 @@ using System.Runtime.CompilerServices;
 namespace VNLib.Utils
 {
     /// <summary>
-    /// Provides a base class with abstract methods for for disposable objects, with disposed check method
+    /// Provides a base class with abstract methods for disposable objects, with disposed check method
     /// </summary>
     public abstract class VnDisposeable : IDisposable
     {
@@ -36,7 +36,7 @@ namespace VNLib.Utils
         protected bool Disposed { get; private set; }
 
         /// <summary>
-        /// When overriden in a child class, is responsible for freeing resources
+        /// When overridden in a child class, is responsible for freeing resources
         /// </summary>
         protected abstract void Free();
 
