@@ -363,7 +363,7 @@ namespace VNLib.Net.Http
         /// <param name="ContentType">The mime content type field</param>
         /// <param name="Charset">The mime charset</param>
         /// <param name="Boundry">The multi-part form boundary parameter</param>
-        /// <returns>True if parsing the content type succeded, false otherwise</returns>
+        /// <returns>True if parsing the content type succeeded, false otherwise</returns>
         public static bool TryParseContentType(string header, out string? ContentType, out string? Charset, out string? Boundry)
         {
             try

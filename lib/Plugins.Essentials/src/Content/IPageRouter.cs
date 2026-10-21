@@ -34,7 +34,7 @@ namespace VNLib.Plugins.Essentials.Content
         /// <summary>
         /// Determines what file path to return to a user for the given incoming connection 
         /// </summary>
-        /// <param name="entity">The connection to proccess</param>
+        /// <param name="entity">The connection to process</param>
         /// <returns>A <see cref="ValueTask"/> that returns the <see cref="FileProcessArgs"/> to pass to the file processor</returns>
         ValueTask<FileProcessArgs> RouteAsync(HttpEntity entity);
     }

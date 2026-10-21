@@ -85,7 +85,7 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <param name="str"></param>
         /// <param name="search">The sequence to search for</param>
-        /// <param name="comparison">The <see cref="StringComparison"/> type to use in searchr</param>
+        /// <param name="comparison">The <see cref="StringComparison"/> type to use in search</param>
         /// <returns>The 0 based index of the occurrence, -1 if the sequence was not found</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -114,7 +114,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Returns the realtive index after the specified sequence within the <see cref="VnString"/> instance
+        /// Returns the relative index after the specified sequence within the <see cref="VnString"/> instance
         /// </summary>
         /// <param name="str"></param>
         /// <param name="search">The sequence to search for</param>
@@ -129,7 +129,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Allows for trimming whitespace characters in a realtive sequence from 
+        /// Allows for trimming whitespace characters in a relative sequence from
         /// within a <see cref="VnString"/> buffer defined by the start and end parameters
         /// and returning the trimmed entry.
         /// </summary>
@@ -182,7 +182,7 @@ namespace VNLib.Utils.Extensions
         }
 
         /// <summary>
-        /// Allows for trimming whitespace characters in a realtive sequence from 
+        /// Allows for trimming whitespace characters in a relative sequence from
         /// within a <see cref="VnString"/> buffer and returning the trimmed entry.
         /// </summary>
         /// <param name="data"></param>

@@ -96,7 +96,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Advances the writer forward the specified number of elements
+        /// Advances the writer forward by the specified number of elements
         /// </summary>
         /// <param name="count">The number of elements to advance the writer by</param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>

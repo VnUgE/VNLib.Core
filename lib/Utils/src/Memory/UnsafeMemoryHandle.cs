@@ -97,7 +97,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Initializes a new <see cref="UnsafeMemoryHandle{T}"/> for block of memory allocated from
+        /// Initializes a new <see cref="UnsafeMemoryHandle{T}"/> for a block of memory allocated from
         /// an <see cref="IUnmanagedHeap"/>
         /// </summary>
         /// <param name="heap">The heap the initial memory block belongs to</param>
@@ -125,7 +125,7 @@ namespace VNLib.Utils.Memory
         /// After this method is called, this handle points to invalid memory
         /// </para>
         /// <para>
-        /// Warning: Double Free -> Do not call more than once. Using statement is encouraged
+        /// Warning: Double Free -> Do not call more than once. A using statement is encouraged
         /// </para>
         /// </summary>
         public readonly void Dispose()

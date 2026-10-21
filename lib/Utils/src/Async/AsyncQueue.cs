@@ -58,10 +58,10 @@ namespace VNLib.Utils.Async
         /// Initializes a new queue that allows specifying concurrency requirements 
         /// and a bound/unbound channel capacity
         /// </summary>
-        /// <param name="singleWriter">A value that specifies only a single thread be enqueuing items?</param>
-        /// <param name="singleReader">A value that specifies only a single thread will be dequeuing</param>
+        /// <param name="singleWriter">A value that specifies whether only a single thread will enqueue items</param>
+        /// <param name="singleReader">A value that specifies whether only a single thread will dequeue</param>
         /// <param name="capacity">
-        /// The maximum number of items to enqueue without failing. If set to <see cref="int.MaxValue"/> maximum is disabled
+        /// The maximum number of items to enqueue without failing. If set to <see cref="int.MaxValue"/> the maximum is disabled
         /// </param>
         public AsyncQueue(bool singleWriter, bool singleReader, int capacity = int.MaxValue)
         {

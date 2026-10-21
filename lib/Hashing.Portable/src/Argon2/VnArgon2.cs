@@ -125,7 +125,7 @@ namespace VNLib.Hashing
 
         /// <summary>
         /// Loads a native Argon2 shared library from the specified path 
-        /// and returns a <see cref="IArgon2Library"/> instance wrapper.
+        /// and returns an <see cref="IArgon2Library"/> instance.
         /// </summary>
         /// <param name="dllPath">The path to the native shared library to load</param>
         /// <param name="searchPath">The dll search path</param>

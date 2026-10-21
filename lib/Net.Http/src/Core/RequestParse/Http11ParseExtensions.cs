@@ -123,7 +123,7 @@ namespace VNLib.Net.Http.Core
             
             //location string should be from end of verb to HTTP/ NOTE: Only supports http... this is an http server
             
-            //Client must specify an http version prepended by a single whitespace(rfc2616)
+            //Client must specify an http version preceded by a single whitespace (rfc2616)
             if ((endloc = requestLine.LastIndexOf(" HTTP/", StringComparison.OrdinalIgnoreCase)) == -1)
             {
                 return HttpStatusCode.HttpVersionNotSupported;
@@ -224,7 +224,7 @@ namespace VNLib.Net.Http.Core
                  * WebHeaderCollection .NET class, which I think is still worth using instead of a
                  * custom header data structure class. 
                  * 
-                 * Some case statements are custom HttpRequestHeader enum values via internal casted
+                 * Some case statements are custom HttpRequestHeader enum values via internally cast
                  * constants to be consistent with the .NET implementation.
                  */
                 do

@@ -81,7 +81,7 @@ namespace VNLib.Net.Http.Core
         public string? UserAgent;
         
         /// <summary>
-        /// Boundary header value if request send data using MIME multi-part form data
+        /// Boundary header value if the request sends data using MIME multi-part form data
         /// </summary>
         public string? Boundry;
         

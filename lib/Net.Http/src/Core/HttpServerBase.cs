@@ -75,8 +75,8 @@ namespace VNLib.Net.Http
     {
         /// <summary>
         /// The host key that determines a "wildcard" host, meaning the 
-        /// default connection handler when an incoming connection has
-        /// not specific route
+        /// default connection handler when an incoming connection has no
+        /// specific route
         /// </summary>
         public const string WILDCARD_KEY = "*";
 

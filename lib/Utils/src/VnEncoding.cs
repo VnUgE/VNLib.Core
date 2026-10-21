@@ -243,7 +243,7 @@ namespace VNLib.Utils
                 bufferLong <<= 5;
             }
 
-            //If remaining data has not be written, but has been buffered, finalize it
+            //If remaining data has not been written, but has been buffered, finalize it
             if (writer.Written < outputSize)
             {
                 //calculate how many bits the buffer still needs to be shifted by (will be 5 bits off because of the previous loop)
@@ -955,7 +955,7 @@ namespace VNLib.Utils
         /// <param name="buffer">The input binary buffer to base64url encode</param>
         /// <param name="dataLength">The data within the buffer to encode, must be smaller than the entire buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if an error occurred.</returns>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if an error occurred.</returns>
         public static ERRNO Base64UrlEncodeInPlace(Span<byte> buffer, int dataLength, bool includePadding)
         {
             //Convert to base64
@@ -1013,7 +1013,7 @@ namespace VNLib.Utils
         /// <param name="input">The input binary buffer to base64url encode</param>
         /// <param name="output">The output buffer to write the base64url safe encoded data to</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if an error occurred.</returns>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if an error occurred.</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<byte> output, bool includePadding)
         {
             //Do base64 encoding avoiding the triple copy
@@ -1041,9 +1041,9 @@ namespace VNLib.Utils
         /// <summary>
         /// Encodes the binary input buffer to its base64url safe encoding, then converts the binary
         /// value to its character encoded value and allocates a new string. Defaults to UTF8 character
-        /// encoding. Base64url is a subset of ASCII,UTF7,UTF8,UTF16 etc so most encodings should be safe.
+        /// encoding. Base64url is a subset of ASCII, UTF7, UTF8, UTF16 etc so most encodings should be safe.
         /// </summary>
-        /// <param name="input">The binary input buffer</param>
+        /// <param name="input">The binary input buffer to base64url encode</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
         /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>
         /// <returns>The base64url encoded string of the input data using the desired encoding</returns>
@@ -1076,10 +1076,10 @@ namespace VNLib.Utils
         /// <summary>
         /// Encodes the binary input buffer to its base64url safe encoding, then converts the internal buffer
         /// to its character encoding using the supplied <paramref name="encoding"/>, and writes the characters
-        /// to the output buffer. Defaults to UTF8 character encoding. Base64url is a subset of ASCII,UTF7,UTF8,UTF16 etc
+        /// to the output buffer. Defaults to UTF8 character encoding. Base64url is a subset of ASCII, UTF7, UTF8, UTF16 etc
         /// so most encodings should be safe.
         /// </summary>
-        /// <param name="input">The binary input buffer</param>
+        /// <param name="input">The binary input buffer to base64url encode</param>
         /// <param name="output">The character output buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
         /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>

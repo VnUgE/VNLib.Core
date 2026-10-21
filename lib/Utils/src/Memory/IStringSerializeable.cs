@@ -27,8 +27,8 @@ using System;
 namespace VNLib.Utils.Memory
 {
     /// <summary>
-    /// A interface that provides indempodent abstractions for compiling an instance
-    /// to its representitive string.
+    /// An interface that provides idempotent abstractions for compiling an instance
+    /// to its representative string.
     /// </summary>
     public interface IStringSerializeable
     {

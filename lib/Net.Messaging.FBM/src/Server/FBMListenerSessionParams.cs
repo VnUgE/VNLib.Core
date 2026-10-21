@@ -53,7 +53,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         public required readonly Encoding HeaderEncoding { get; init; }
 
         /// <summary>
-        /// The absolute maximum size (in bytes) message to process before
+        /// The absolute maximum size (in bytes) of a message to process before
         /// closing the websocket connection. This value should be negotiated
         /// by clients or hard-coded to avoid connection issues
         /// </summary>

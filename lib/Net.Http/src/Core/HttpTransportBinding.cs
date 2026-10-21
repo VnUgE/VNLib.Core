@@ -27,7 +27,7 @@ using System.Collections.Generic;
 namespace VNLib.Net.Http
 {
     /// <summary>
-    /// Presents a one-to-many relationship between a transport provider and it's virtual hosts
+    /// Presents a one-to-many relationship between a transport provider and its virtual hosts
     /// </summary>
     /// <param name="Transport">The transport to listen for incoming connections on</param>
     /// <param name="Roots">The enumeration of web roots that will route connections</param>

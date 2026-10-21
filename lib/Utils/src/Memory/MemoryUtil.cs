@@ -161,7 +161,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Initializes a new <see cref="IUnmanagedHeap"/> determined by compilation/runtime flags
-        /// and operating system type for the current proccess.
+        /// and operating system type for the current process.
         /// </summary>
         /// <param name="globalZero">If true, sets the <see cref="HeapCreation.GlobalZero"/> flag</param>
         /// <returns>An <see cref="IUnmanagedHeap"/> for the current process</returns>

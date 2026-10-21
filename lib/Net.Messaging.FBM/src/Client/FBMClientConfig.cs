@@ -36,7 +36,7 @@ namespace VNLib.Net.Messaging.FBM.Client
     {
         /// <summary>
         /// The size (in bytes) of the internal buffer used to buffer incoming messages,
-        /// this value will also be sent to the server to synchronous recv buffer sizes
+        /// this value will also be sent to the server to synchronize recv buffer sizes
         /// </summary>
         public readonly int RecvBufferSize { get; init; }
         /// <summary>

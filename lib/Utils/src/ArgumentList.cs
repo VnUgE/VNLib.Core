@@ -68,7 +68,7 @@ namespace VNLib.Utils
         }
 
         /// <summary>
-        /// Determines of the given argument is present in the argument list
+        /// Determines if the given argument is present in the argument list
         /// </summary>
         /// <param name="arg">The name of the argument to check existence of</param>
         /// <returns>A value that indicates if the argument is present in the list</returns>
@@ -84,7 +84,7 @@ namespace VNLib.Utils
 
         /// <summary>
         /// Gets the value following the specified argument, or 
-        /// null no value follows the specified argument
+        /// null if no value follows the specified argument
         /// </summary>
         /// <param name="arg">The argument to get following value of</param>
         /// <returns>The argument value if found</returns>
@@ -113,7 +113,7 @@ namespace VNLib.Utils
         }
 
         /// <summary>
-        /// Determines of the given argument is present in the argument list
+        /// Determines if the given argument is present in the argument list
         /// </summary>
         /// <param name="argsList">The collection to search for the argument within</param>
         /// <param name="argName">The name of the argument to check existence of</param>
@@ -133,7 +133,7 @@ namespace VNLib.Utils
 
         /// <summary>
         /// Gets the value following the specified argument, or 
-        /// null no value follows the specified argument
+        /// null if no value follows the specified argument
         /// </summary>
         /// <param name="argsList">The collection to search for the argument within</param>
         /// <param name="argName">The name of the argument to check existence of</param>
