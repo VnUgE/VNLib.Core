@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -44,14 +44,14 @@ namespace VNLib.Utils.Async
         /// Waits for exclusive access to the resource until the specified number of milliseconds
         /// </summary>
         /// <param name="millisecondsTimeout">Time in milliseconds to wait for exclusive access to the resource</param>
-        /// <returns>true if the current thread received the signal, false if the timout expired, and access was not granted</returns>
+        /// <returns>true if the current thread received the signal, false if the timeout expired, and access was not granted</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         bool WaitOne(int millisecondsTimeout);
         /// <summary>
         /// Waits for exclusive access to the resource until the specified <see cref="TimeSpan"/>
         /// </summary>
-        /// <returns>true if the current thread received the signal, false if the timout expired, and access was not granted</returns>
+        /// <returns>true if the current thread received the signal, false if the timeout expired, and access was not granted</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public virtual bool WaitOne(TimeSpan timeout) => WaitOne(Convert.ToInt32(timeout.TotalMilliseconds));

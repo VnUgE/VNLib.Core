@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -48,16 +48,16 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Allocates a buffer for a new http context connection attachment.
         /// </summary>
-        /// <param name="bufferSize">The minium size of the buffer required</param>
+        /// <param name="bufferSize">The minimum size of the buffer required</param>
         /// <returns>A handle to the allocated buffer</returns>
         IHttpContextBuffer AllocateBufferForContext(int bufferSize);
 
         /// <summary>
         /// <para>
-        /// Free's a buffer previously allocated from a call to <see cref="AllocateBufferForContext(int)"/>
+        /// Frees a buffer previously allocated from a call to <see cref="AllocateBufferForContext(int)"/>
         /// </para>
         /// </summary>
-        /// <param name="buffer">A refernce to the buffer previously allocated</param>
+        /// <param name="buffer">A reference to the buffer previously allocated</param>
         void FreeBufferForContext(IHttpContextBuffer buffer);
 
         /// <summary>

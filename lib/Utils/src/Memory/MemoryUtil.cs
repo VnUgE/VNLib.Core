@@ -161,7 +161,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Initializes a new <see cref="IUnmanagedHeap"/> determined by compilation/runtime flags
-        /// and operating system type for the current proccess.
+        /// and operating system type for the current process.
         /// </summary>
         /// <param name="globalZero">If true, sets the <see cref="HeapCreation.GlobalZero"/> flag</param>
         /// <returns>An <see cref="IUnmanagedHeap"/> for the current process</returns>
@@ -1602,7 +1602,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Slices the current array by the specified starting offset to including the 
-        /// speciifed number of items
+        /// specified number of items
         /// </summary>
         /// <typeparam name="T">The array type</typeparam>
         /// <param name="arr"></param>

@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
-* File: NativeLibraryException.cs 
+* File: InternalBufferTooSmallException.cs
 *
-* NativeLibraryException.cs is part of VNLib.Utils which is part of the larger 
+* InternalBufferTooSmallException.cs is part of VNLib.Utils which is part of the larger
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Utils is free software: you can redistribute it and/or modify 
@@ -27,7 +27,7 @@ using System;
 namespace VNLib.Utils
 {
     /// <summary>
-    /// Raised when an internal buffer was not propery sized for the opreation
+    /// Raised when an internal buffer was not properly sized for the operation
     /// </summary>
     public class InternalBufferTooSmallException : OutOfMemoryException
     {

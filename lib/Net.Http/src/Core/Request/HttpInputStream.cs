@@ -166,8 +166,8 @@ namespace VNLib.Net.Http.Core
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             /*
-             * Iniitally I'm calculating the amount of data that can be read into 
-             * the buffer, up to the maxium input data size. This value will clamp
+             * Initially I'm calculating the amount of data that can be read into
+             * the buffer, up to the maximum input data size. This value will clamp
              * the buffer in the writer below, so it cannot read more than is 
              * available from the transport.
              */
@@ -209,7 +209,7 @@ namespace VNLib.Net.Http.Core
         /// <summary>
         /// Asynchronously discards all remaining data in the stream 
         /// </summary>
-        /// <returns>A task that represents the discard operations</returns>
+        /// <returns>A task that represents the discard operation</returns>
         public ValueTask DiscardRemainingAsync()
         {
             long remaining = Remaining;
@@ -222,11 +222,11 @@ namespace VNLib.Net.Http.Core
             //See if all data has already been buffered
             if(_initialData.HasValue && remaining <= _initialData.Value.Remaining)
             {
-                //All data has been buffred, so just clear the buffer
+                //All data has been buffered, so just clear the buffer
                 _state.Position = Length;
                 return ValueTask.CompletedTask;
             }
-            //We must actaully disacrd data from the stream
+            //We must actually discard data from the stream
             else
             {
                 return DiscardStreamDataAsync();
@@ -261,7 +261,7 @@ namespace VNLib.Net.Http.Core
         }
 
         /// <summary>
-        /// Seek is not a supported operation, a seek request is ignored and nothin happens
+        /// Seek is not a supported operation, a seek request is ignored and nothing happens
         /// </summary>
         /// <param name="offset"></param>
         /// <param name="origin"></param>

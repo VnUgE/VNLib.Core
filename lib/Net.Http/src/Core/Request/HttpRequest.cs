@@ -87,7 +87,7 @@ namespace VNLib.Net.Http.Core
         { }
 
         /// <summary>
-        /// Initializes the <see cref="HttpRequest"/> for an incomming connection
+        /// Initializes the <see cref="HttpRequest"/> for an incoming connection
         /// </summary>
         /// <param name="ctx">The <see cref="ITransportContext"/> to attach the request to</param>
         /// <param name="defaultHttpVersion">The default http version</param>

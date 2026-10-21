@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -210,7 +210,7 @@ namespace VNLib.Hashing
         /// <param name="data">The character buffer to compute the encoded HMAC of</param>
         /// <param name="output">The buffer to write the hash to</param>
         /// <param name="type">The <see cref="HashAlg"/> type used to compute the HMAC</param>
-        /// <returns>The number of bytes written to the ouput buffer or <see cref="ERRNO.E_FAIL"/> if the operation failed</returns>
+        /// <returns>The number of bytes written to the output buffer or <see cref="ERRNO.E_FAIL"/> if the operation failed</returns>
         /// <exception cref="ArgumentException"></exception>
         public static ERRNO ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<char> data, Span<byte> output, HashAlg type) 
             => ComputeHashInternal(type, data, output, key);      
@@ -222,7 +222,7 @@ namespace VNLib.Hashing
         /// <param name="key">The HMAC key</param>
         /// <param name="data">The data buffer to compute the HMAC of</param>
         /// <param name="type">The <see cref="HashAlg"/> type used to compute the HMAC</param>
-        /// <returns>A buffer containg the computed HMAC</returns>
+        /// <returns>A buffer containing the computed HMAC</returns>
         /// <exception cref="ArgumentException"></exception>
         public static byte[] ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<char> data, HashAlg type) 
             => ComputeHashInternal(type, data, key);
@@ -235,7 +235,7 @@ namespace VNLib.Hashing
         /// <param name="data">The data buffer to compute the HMAC of</param>
         /// <param name="output">The buffer to write the hash to</param>
         /// <param name="type">The <see cref="HashAlg"/> type used to compute the HMAC</param>
-        /// <returns>The number of bytes written to the ouput buffer or <see cref="ERRNO.E_FAIL"/> if the operation failed</returns>
+        /// <returns>The number of bytes written to the output buffer or <see cref="ERRNO.E_FAIL"/> if the operation failed</returns>
         /// <exception cref="ArgumentException"></exception>
         public static ERRNO ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, Span<byte> output, HashAlg type)
             => ComputeHashInternal(type, data, output, key);
@@ -247,7 +247,7 @@ namespace VNLib.Hashing
         /// <param name="key">The HMAC key</param>
         /// <param name="data">The data buffer to compute the HMAC of</param>
         /// <param name="type">The <see cref="HashAlg"/> type used to compute the HMAC</param>
-        /// <returns>A buffer containg the computed HMAC</returns>
+        /// <returns>A buffer containing the computed HMAC</returns>
         /// <exception cref="ArgumentException"></exception>
         public static byte[] ComputeHmac(ReadOnlySpan<byte> key, ReadOnlySpan<byte> data, HashAlg type) 
             => ComputeHashInternal(type, data, key);

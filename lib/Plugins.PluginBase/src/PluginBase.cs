@@ -47,7 +47,7 @@ namespace VNLib.Plugins
     {
         /*
          * CTS exists for the life of the plugin, its resources are never disposed
-         * such not to disturb late running tasks that depend on the cts's state
+         * so as not to disturb late running tasks that depend on the cts's state
          */
         private readonly CancellationTokenSource Cts = new();
 
@@ -288,7 +288,7 @@ namespace VNLib.Plugins
                     tasks = DeferredTasks.ToArray();
                 }
 
-                //Wait for all tasks to complete for a maxium of 10 seconds
+                //Wait for all tasks to complete for a maximum of 10 seconds
                 if (!Task.WaitAll(tasks, TimeSpan.FromSeconds(10)))
                 {
                     Log.Error("Tasks failed to complete in the allotted timeout period");
@@ -332,7 +332,7 @@ namespace VNLib.Plugins
         /// <summary>
         /// Invoked when the host requests the plugin to publish services
         /// <para>
-        /// If overriden, the base implementation must be called to 
+        /// If overridden, the base implementation must be called to
         /// publish all services in the internal service collection
         /// </para>
         /// </summary>
