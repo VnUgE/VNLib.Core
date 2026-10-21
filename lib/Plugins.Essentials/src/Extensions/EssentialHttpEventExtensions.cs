@@ -60,7 +60,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
         /// <param name="code">The <see cref="HttpStatusCode"/> result of the connection</param>
-        /// <param name="response">The JSON object to serialzie and send as response body</param>
+        /// <param name="response">The JSON object to serialize and send as response body</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
@@ -75,7 +75,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
         /// <param name="code">The <see cref="HttpStatusCode"/> result of the connection</param>
-        /// <param name="response">The JSON object to serialzie and send as response body</param>
+        /// <param name="response">The JSON object to serialize and send as response body</param>
         /// <param name="options"><see cref="JsonSerializerOptions"/> to use during serialization</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="NotSupportedException"></exception>
@@ -99,7 +99,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             try
             {
-                //Serialze the object on the thread local serializer
+                //Serialize the object on the thread local serializer
                 LocalSerializer.Value!.Serialize(vms, response, options);
 
                 //Set the response as the buffer, 
@@ -117,7 +117,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">The <see cref="HttpStatusCode"/> result of the connection</param>
-        /// <param name="response">The JSON object to serialzie and send as response body</param>
+        /// <param name="response">The JSON object to serialize and send as response body</param>
         /// <param name="type">The type to use during de-serialization</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="NotSupportedException"></exception>
@@ -132,7 +132,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">The <see cref="HttpStatusCode"/> result of the connection</param>
-        /// <param name="response">The JSON object to serialzie and send as response body</param>
+        /// <param name="response">The JSON object to serialize and send as response body</param>
         /// <param name="type">The type to use during de-serialization</param>
         /// <param name="options"><see cref="JsonSerializerOptions"/> to use during serialization</param>
         /// <exception cref="ArgumentNullException"></exception>
@@ -156,7 +156,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             try
             {
-                //Serialze the object on the thread local serializer
+                //Serialize the object on the thread local serializer
                 LocalSerializer.Value!.Serialize(vms, response, type, options);
 
                 //Set the response as the buffer, 
@@ -205,7 +205,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             try
             {
-                //Serialze the object on the thread local serializer
+                //Serialize the object on the thread local serializer
                 LocalSerializer.Value!.Serialize(vms, data);
 
                 //Set the response as the buffer, 
@@ -222,7 +222,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         /// Close as response to a client with an <see cref="HttpStatusCode.OK"/> and serializes a <see cref="WebMessage"/> as the message response
         /// </summary>
         /// <param name="ev"></param>
-        /// <param name="webm">The <see cref="WebMessage"/> to serialize and response to client with</param>
+        /// <param name="webm">The <see cref="WebMessage"/> to serialize and respond to client with</param>
         /// <exception cref="ContentTypeUnacceptableException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CloseResponse<T>(this IHttpEvent ev, T webm) where T:WebMessage
@@ -241,7 +241,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
 
         /// <summary>
-        /// Close a response to a connection with a file as an attachment (set content dispostion)
+        /// Close a response to a connection with a file as an attachment (set content disposition)
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">Status code</param>
@@ -259,12 +259,12 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             //Close with file
             ev.CloseResponse(code, file);
-            //Set content dispostion as attachment (only if successfull)
+            //Set content disposition as attachment (only if successful)
             ev.Server.Headers["Content-Disposition"] = $"attachment; filename=\"{file.Name}\"";
         }
         
         /// <summary>
-        /// Close a response to a connection with a file as an attachment (set content dispostion)
+        /// Close a response to a connection with a file as an attachment (set content disposition)
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">Status code</param>
@@ -278,16 +278,16 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             //Close with file
             ev.CloseResponse(code, file);
-            //Set content dispostion as attachment (only if successfull)
+            //Set content disposition as attachment (only if successful)
             ev.Server.Headers["Content-Disposition"] = $"attachment; filename=\"{file.Name}\"";
         }
        
         /// <summary>
-        /// Close a response to a connection with a file as an attachment (set content dispostion)
+        /// Close a response to a connection with a file as an attachment (set content disposition)
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">Status code</param>
-        /// <param name="data">The data to straem to the client as an attatcment</param>
+        /// <param name="data">The data to stream to the client as an attachment</param>
         /// <param name="ct">The <see cref="ContentType"/> that represents the file</param>
         /// <param name="fileName">The name of the file to attach</param>
         /// <param name="length">Explicit length of the stream data</param>
@@ -300,7 +300,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             //Close with file
             ev.CloseResponse(code, ct, data, length);
-            //Set content dispostion as attachment (only if successfull)
+            //Set content disposition as attachment (only if successful)
             ev.Server.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
         }
 
@@ -327,12 +327,12 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 //Set the input as a stream
                 ev.CloseResponse(code, fs);
-                //Set last modified time only if successfull
+                //Set last modified time only if successful
                 ev.Server.Headers[HttpResponseHeader.LastModified] = file.LastWriteTimeUtc.ToString("R");
             }
             catch 
             {
-                //If their is an exception close the stream and re-throw
+                //If there is an exception close the stream and re-throw
                 fs.Dispose();
                 throw;
             }
@@ -403,7 +403,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
 
         /// <summary>
-        /// Close a response to a connection by copying the speciifed binary buffer
+        /// Close a response to a connection by copying the specified binary buffer
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="code">The response status code</param>
@@ -489,11 +489,11 @@ namespace VNLib.Plugins.Essentials.Extensions
                 throw new ArgumentException("Invalid redirect type of none", nameof(type));
             }
 
-            //Encode the string for propery http url formatting and set the location header
+            //Encode the string for property http url formatting and set the location header
             ev.Server.Headers[HttpResponseHeader.Location] = location.ToString();
             ev.Server.SetNoCache();
 
-            //Set redirect the ressponse redirect code type
+            //Set redirect the response redirect code type
             ev.CloseResponse((HttpStatusCode)type);
         }
 
@@ -577,12 +577,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
 
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
-        /// file. It will be deserialzied to the specified object
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// file. It will be deserialized to the specified object
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
         /// <param name="options"><see cref="JsonSerializerOptions"/> to use during deserialization </param>
         /// <returns>Returns the deserialized object if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
@@ -608,7 +608,7 @@ namespace VNLib.Plugins.Essentials.Extensions
 
             try
             {
-                //Beware this will buffer the entire file object before it attmepts to de-serialize it
+                //Beware this will buffer the entire file object before it attempts to de-serialize it
                 return JsonSerializer.Deserialize<T>(file.FileData, options);
             }
             catch (JsonException je)
@@ -618,12 +618,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
         /// file. It will be parsed into a new <see cref="JsonDocument"/>
         /// </summary>
         /// <param name="ev"></param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
-        /// <returns>Returns the parsed <see cref="JsonDocument"/>if found, default otherwise</returns>
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
+        /// <returns>Returns the parsed <see cref="JsonDocument"/> if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="InvalidJsonRequestException"></exception>
@@ -656,12 +656,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
-        /// file. It will be deserialzied to the specified object
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// file. It will be deserialized to the specified object
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="ev"></param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
         /// <param name="options"><see cref="JsonSerializerOptions"/> to use during deserialization </param>
         /// <returns>The deserialized object if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
@@ -692,12 +692,12 @@ namespace VNLib.Plugins.Essentials.Extensions
                 return ValueTask.FromResult<T?>(default);
             }
 
-            //avoid copying the ev struct, so return deserialze task
+            //avoid copying the ev struct, so return deserialize task
             static async ValueTask<T?> Deserialze(Stream data, JsonSerializerOptions? options, CancellationToken token)
             {
                 try
                 {
-                    //Beware this will buffer the entire file object before it attmepts to de-serialize it                        
+                    //Beware this will buffer the entire file object before it attempts to de-serialize it
                     return await JsonSerializer.DeserializeAsync<T?>(data, options, token)
                         .ConfigureAwait(false);
                 }
@@ -713,12 +713,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         static readonly Task<JsonDocument?> DocTaskDefault = Task.FromResult<JsonDocument?>(null);
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) and the file is <see cref="ContentType.Json"/>
+        /// If there are file attachments (form data files or content body) and the file is <see cref="ContentType.Json"/>
         /// file. It will be parsed into a new <see cref="JsonDocument"/>
         /// </summary>
         /// <param name="ev"></param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
-        /// <returns>Returns the parsed <see cref="JsonDocument"/>if found, default otherwise</returns>
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
+        /// <returns>Returns the parsed <see cref="JsonDocument"/> if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="NotSupportedException"></exception>
         /// <exception cref="IndexOutOfRangeException"></exception>
@@ -744,7 +744,7 @@ namespace VNLib.Plugins.Essentials.Extensions
             {
                 try
                 {
-                    //Beware this will buffer the entire file object before it attmepts to de-serialize it
+                    //Beware this will buffer the entire file object before it attempts to de-serialize it
                     return await JsonDocument.ParseAsync(data, cancellationToken: token);
                 }
                 catch (JsonException je)
@@ -757,12 +757,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) the specified parser will be called to parse the 
+        /// If there are file attachments (form data files or content body) the specified parser will be called to parse the
         /// content body asynchronously into a .net object or its default if no attachments are included
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="parser">A function to asynchronously parse the entity body into its object representation</param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
         /// <returns>Returns the parsed <typeparamref name="T"/> if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="IndexOutOfRangeException"></exception>
@@ -783,12 +783,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) the specified parser will be called to parse the 
+        /// If there are file attachments (form data files or content body) the specified parser will be called to parse the
         /// content body asynchronously into a .net object or its default if no attachments are included
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="parser">A function to asynchronously parse the entity body into its object representation</param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
         /// <returns>Returns the parsed <typeparamref name="T"/> if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="IndexOutOfRangeException"></exception>
@@ -810,12 +810,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) the specified parser will be called to parse the 
+        /// If there are file attachments (form data files or content body) the specified parser will be called to parse the
         /// content body asynchronously into a .net object or its default if no attachments are included
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="parser">A function to asynchronously parse the entity body into its object representation</param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
         /// <returns>Returns the parsed <typeparamref name="T"/> if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="IndexOutOfRangeException"></exception>
@@ -836,12 +836,12 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
         
         /// <summary>
-        /// If there are file attachements (form data files or content body) the specified parser will be called to parse the 
+        /// If there are file attachments (form data files or content body) the specified parser will be called to parse the
         /// content body asynchronously into a .net object or its default if no attachments are included
         /// </summary>
         /// <param name="ev"></param>
         /// <param name="parser">A function to asynchronously parse the entity body into its object representation</param>
-        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/></param> list of the file to read
+        /// <param name="uploadIndex">The index within <see cref="HttpEntity.Files"/> list of the file to read</param>
         /// <returns>Returns the parsed <typeparamref name="T"/> if found, default otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="IndexOutOfRangeException"></exception>
@@ -861,7 +861,7 @@ namespace VNLib.Plugins.Essentials.Extensions
         }
 
         /// <summary>
-        /// Reads the contents of an uploaded file at the desired intex into memory
+        /// Reads the contents of an uploaded file at the desired index into memory
         /// and returns a managed byte array containing the file data
         /// </summary>
         /// <param name="ev"></param>
@@ -1098,7 +1098,7 @@ namespace VNLib.Plugins.Essentials.Extensions
                 }
             }
 
-            //Set the client up for a bad request response, nod a valid websocket request
+            //Set the client up for a bad request response, not a valid websocket request
             entity.CloseResponse(HttpStatusCode.BadRequest);
             return false;
         }

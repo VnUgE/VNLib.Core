@@ -40,7 +40,7 @@ using VNLib.Hashing.Native.MonoCypher;
  * 
  * Functions have explicit parameters to avoid accidental buffer mixup
  * when calling nested/overload functions. Please keep it that way for now
- * I really want to avoid a whoopsie in password hasing.
+ * I really want to avoid a whoopsie in password hashing.
  */
 
 namespace VNLib.Hashing
@@ -125,7 +125,7 @@ namespace VNLib.Hashing
 
         /// <summary>
         /// Loads a native Argon2 shared library from the specified path 
-        /// and returns a <see cref="IArgon2Library"/> instance. wrapper
+        /// and returns a <see cref="IArgon2Library"/> instance wrapper.
         /// </summary>
         /// <param name="dllPath">The path to the native shared library to load</param>
         /// <param name="searchPath">The dll search path</param>
@@ -286,7 +286,7 @@ namespace VNLib.Hashing
         /// <param name="rawHashOutput">The output buffer to store the raw hash output</param>
         /// <param name="salt">Span of characters containing the salt to include in the hashing</param>
         /// <param name="secret">Optional secret to include in hash</param>
-        /// <param name="costParams">Argon2 cost parameters</param>>
+        /// <param name="costParams">Argon2 cost parameters</param>
         /// <exception cref="VnArgon2Exception"></exception>
         public static void Hash2id(
             this IArgon2Library lib,
@@ -330,7 +330,7 @@ namespace VNLib.Hashing
                 ctx.outlen = (uint)rawHashOutput.Length;    //Clamp to actual desired hash size
 
                 Argon2_ErrorCodes argResult = (Argon2_ErrorCodes)lib.Argon2Hash(new IntPtr(&ctx));
-                //Throw an excpetion if an error ocurred
+                //Throw an exception if an error occurred
                 ThrowOnArgonErr(argResult);
             }
         }

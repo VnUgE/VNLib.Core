@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,7 +27,7 @@ using System.Threading.Tasks;
 namespace VNLib.Plugins.Essentials.Content
 {
     /// <summary>
-    /// Determines file routines (routing) for incomming connections
+    /// Determines file routines (routing) for incoming connections
     /// </summary>
     public interface IPageRouter
     {

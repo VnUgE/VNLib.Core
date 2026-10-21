@@ -383,7 +383,7 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <param name="data"></param>
         /// <param name="search">The delimiting character sequence</param>
-        /// <returns>The segment of data before the search character, or the entire <paramref name="data"/> if the seach sequence is not found</returns>
+        /// <returns>The segment of data before the search character, or the entire <paramref name="data"/> if the search sequence is not found</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ReadOnlySpan<char> SliceBeforeParam(this ReadOnlySpan<char> data, ReadOnlySpan<char> search)
         {
@@ -553,7 +553,7 @@ namespace VNLib.Utils.Extensions
                 //Shift the buffer to the beginning of the search parameter
                 buffer = buffer[start..];
 
-                //Overwite the search parameter
+                //Overwrite the search parameter
                 replace.CopyTo(buffer);
 
                 //Search for next index of the search character

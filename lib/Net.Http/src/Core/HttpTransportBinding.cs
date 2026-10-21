@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -29,7 +29,7 @@ namespace VNLib.Net.Http
     /// <summary>
     /// Presents a one-to-many relationship between a transport provider and it's virtual hosts
     /// </summary>
-    /// <param name="Transport">The transport to listen for incomming connections on</param>
+    /// <param name="Transport">The transport to listen for incoming connections on</param>
     /// <param name="Roots">The enumeration of web roots that will route connections</param>
     /// <remarks>
     /// An HTTP server accepts a collection of these bindings to allow for a many-to-many 

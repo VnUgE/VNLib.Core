@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -32,7 +32,7 @@ namespace VNLib.Utils.IO
     /// <summary>
     /// Provides basic stream support sync/async stream operations to a 
     /// backing stream with virtual event methods. Provides a pass-through 
-    /// as best as possbile. 
+    /// as best as possible.
     /// </summary>
     public abstract class BackingStream<T> : Stream where T: Stream
     {
@@ -111,7 +111,7 @@ namespace VNLib.Utils.IO
         /// </summary>
         protected virtual void OnFlush() { }
         /// <summary>
-        /// Raised directly after a successfull write operation.
+        /// Raised directly after a successful write operation.
         /// </summary>
         /// <param name="count">The number of bytes written to the stream</param>
         protected virtual void OnWrite(int count) { }
@@ -140,7 +140,7 @@ namespace VNLib.Utils.IO
             {
                 throw new NotSupportedException("Stream is set to readonly mode");
             }
-            //We want to maintain pass through as much as possible, so supress warning
+            //We want to maintain pass through as much as possible, so suppress warning
 #pragma warning disable CA1835 // Prefer the 'Memory'-based overloads for 'ReadAsync' and 'WriteAsync'
             await BaseStream.WriteAsync(buffer, offset, count, cancellationToken);
 #pragma warning restore CA1835 // Prefer the 'Memory'-based overloads for 'ReadAsync' and 'WriteAsync'

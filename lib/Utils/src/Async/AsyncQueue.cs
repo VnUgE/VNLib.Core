@@ -44,7 +44,7 @@ namespace VNLib.Utils.Async
         /// the <paramref name="capacity"/> number of items before it will 
         /// return asynchronously, or fail to enqueue items
         /// </summary>
-        /// <param name="capacity">The maxium number of items to allow in the queue</param>
+        /// <param name="capacity">The maximum number of items to allow in the queue</param>
         public AsyncQueue(int capacity) : this(false, false, capacity)
         { }
 
@@ -58,10 +58,10 @@ namespace VNLib.Utils.Async
         /// Initializes a new queue that allows specifying concurrency requirements 
         /// and a bound/unbound channel capacity
         /// </summary>
-        /// <param name="singleWriter">A value that specifies only a single thread be enqueing items?</param>
-        /// <param name="singleReader">A value that specifies only a single thread will be dequeing</param>
+        /// <param name="singleWriter">A value that specifies only a single thread be enqueuing items?</param>
+        /// <param name="singleReader">A value that specifies only a single thread will be dequeuing</param>
         /// <param name="capacity">
-        /// The maxium number of items to enque without failing. If set to <see cref="int.MaxValue"/> maximum is disabled
+        /// The maximum number of items to enqueue without failing. If set to <see cref="int.MaxValue"/> maximum is disabled
         /// </param>
         public AsyncQueue(bool singleWriter, bool singleReader, int capacity = int.MaxValue)
         {

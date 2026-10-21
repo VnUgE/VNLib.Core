@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -26,7 +26,7 @@ namespace VNLib.Utils.Resources
 {
 
     /// <summary>
-    /// An object, that when used in a mulithreading context, guaruntees that the caller has exclusive 
+    /// An object, that when used in a multithreading context, guarantees that the caller has exclusive
     /// access to the instance and relinquishes exclusive access when Release() is called;
     /// </summary>
     public interface IExclusiveResource : IResource

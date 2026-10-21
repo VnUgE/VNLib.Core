@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -86,13 +86,13 @@ namespace VNLib.Utils.Extensions
         /// <param name="str"></param>
         /// <param name="search">The sequence to search for</param>
         /// <param name="comparison">The <see cref="StringComparison"/> type to use in searchr</param>
-        /// <returns>The 0 based index of the occurance, -1 if the sequence was not found</returns>
+        /// <returns>The 0 based index of the occurrence, -1 if the sequence was not found</returns>
         /// <exception cref="ObjectDisposedException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int IndexOf(this VnString str, ReadOnlySpan<char> search, StringComparison comparison) => str.AsSpan().IndexOf(search, comparison);
         
         /// <summary>
-        /// Searches for the 0 based index of the first occurance of the search parameter after the start index.
+        /// Searches for the 0 based index of the first occurrence of the search parameter after the start index.
         /// </summary>
         /// <param name="str"></param>
         /// <param name="search">The sequence of data to search for</param>

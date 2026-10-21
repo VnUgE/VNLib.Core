@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -89,7 +89,7 @@ namespace VNLib.Utils.Memory
              * Why does this function exist? For centralized memmove operations primarily.
              * 
              * When the block is known to be small, all of the branches in memmove can be
-             * alot of overhead including the possability of Avx2 being used for really 
+             * a lot of overhead including the possibility of Avx2 being used for really
              * small blocks if they are aligned. If the block is known to be small, we
              * can just skip all of that and use the fastest method for small blocks,
              * which is currently the Unsafe.CopyBlock method. It is intrinsic to 

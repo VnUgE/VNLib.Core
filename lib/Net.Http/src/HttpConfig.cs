@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -86,7 +86,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// The maximum size in bytes allowed for an MIME form-data content type upload
         /// </summary>
-        /// <remarks>Set to 0 to disabled mulit-part/form-data uploads</remarks>
+        /// <remarks>Set to 0 to disabled multi-part/form-data uploads</remarks>
         public readonly int MaxFormDataUploadSize { get; init; } = 40 * 1024;
 
         /// <summary>

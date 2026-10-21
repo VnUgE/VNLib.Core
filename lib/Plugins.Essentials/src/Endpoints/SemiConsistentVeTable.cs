@@ -59,7 +59,7 @@ namespace VNLib.Plugins.Essentials.Endpoints
 
         /// <summary>
         /// A "lookup table" that represents virtual endpoints to be processed when an
-        /// incomming connection matches its path parameter
+        /// incoming connection matches its path parameter
         /// </summary>
         private FrozenDictionary<string, IVirtualEndpoint<HttpEntity>> VirtualEndpoints =
             new Dictionary<string, IVirtualEndpoint<HttpEntity>>(StringComparer.OrdinalIgnoreCase)

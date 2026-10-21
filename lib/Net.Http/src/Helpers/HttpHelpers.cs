@@ -124,7 +124,7 @@ namespace VNLib.Net.Http
 
         /*
          * Provides a lookup table for request header hashcodes (that are hashed in 
-         * the static constructor) to ouput an http request header enum value from 
+         * the static constructor) to output an http request header enum value from
          * a header string's hashcode (allows for spans to produce an enum value
          * during request parsing)
          * 
@@ -167,7 +167,7 @@ namespace VNLib.Net.Http
         {
             /*
              * Http methods are hashed at runtime using the HttpMethod enum
-             * values, purley for compatability and automation
+             * values, purely for compatibility and automation
              */
             return ComputeCodeHashLookup(
                 Enum.GetValues<HttpMethod>()
@@ -362,7 +362,7 @@ namespace VNLib.Net.Http
         /// <param name="header">The Content-Type header value field</param>
         /// <param name="ContentType">The mime content type field</param>
         /// <param name="Charset">The mime charset</param>
-        /// <param name="Boundry">The multi-part form boundry parameter</param>
+        /// <param name="Boundry">The multi-part form boundary parameter</param>
         /// <returns>True if parsing the content type succeded, false otherwise</returns>
         public static bool TryParseContentType(string header, out string? ContentType, out string? Charset, out string? Boundry)
         {

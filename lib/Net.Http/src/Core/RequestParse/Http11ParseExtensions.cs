@@ -56,7 +56,7 @@ namespace VNLib.Net.Http.Core
 
         /*
          * Reduces load when parsing uri components 
-         * and allows a one-time vaidation once the uri
+         * and allows a one-time validation once the uri
          * is compiled
          */
         internal ref struct UriSegments
@@ -123,7 +123,7 @@ namespace VNLib.Net.Http.Core
             
             //location string should be from end of verb to HTTP/ NOTE: Only supports http... this is an http server
             
-            //Client must specify an http version prepended by a single whitespace(rfc2612)
+            //Client must specify an http version prepended by a single whitespace(rfc2616)
             if ((endloc = requestLine.LastIndexOf(" HTTP/", StringComparison.OrdinalIgnoreCase)) == -1)
             {
                 return HttpStatusCode.HttpVersionNotSupported;
@@ -143,11 +143,11 @@ namespace VNLib.Net.Http.Core
             //Process an absolute uri, 
             if (pathAndQuery.Contains("://", StringComparison.Ordinal))
             {
-                //Convert the location string to a .net string and init the location builder (will perform validation when the Uri propery is used)
+                //Convert the location string to a .net string and init the location builder (will perform validation when the Uri property is used)
                 parseState.AbsoluteUri = new(pathAndQuery.ToString());
                 return 0;
             }
-            //Must be a relaive uri that starts with /
+            //Must be a relative uri that starts with /
             else if (pathAndQuery.Length > 0 && pathAndQuery[0] == '/')
             {
                 //Set default scheme
@@ -171,7 +171,7 @@ namespace VNLib.Net.Http.Core
                 return 0;
             }
 
-            //Cannot service an unknonw location
+            //Cannot service an unknown location
             return HttpStatusCode.BadRequest;
         }
 
@@ -215,17 +215,17 @@ namespace VNLib.Net.Http.Core
                  * or the reader binary buffer while reading lines. Buffer sizes are fixed 
                  * to the system memory page size. Depending on the encoding the user chooses
                  * this should not be an issue for most configurations. This strategy is 
-                 * most efficient for realtivly small header sizes. 
+                 * most efficient for relatively small header sizes.
                  * 
                  * The header's key is hashed by the HttpHelpers class and the hash is used to 
-                 * index a lookup table to return its enumeration value which is used in the swtich 
+                 * index a lookup table to return its enumeration value which is used in the switch
                  * statement to reduce the number of strings added to the request header container.
                  * This was a major effort to reduce memory and CPU overhead while using the 
                  * WebHeaderCollection .NET class, which I think is still worth using instead of a
                  * custom header data structure class. 
                  * 
-                 * Some case statments are custom HttpRequestHeader enum values via internal casted 
-                 * constants to be consistant with he .NET implementation.
+                 * Some case statements are custom HttpRequestHeader enum values via internal casted
+                 * constants to be consistent with the .NET implementation.
                  */
                 do
                 {
@@ -281,7 +281,7 @@ namespace VNLib.Net.Http.Core
                                 //Update keepalive, if the connection header contains "closed" and with the current value of keepalive
                                 reqState.KeepAlive &= !requestHeaderValue.Contains("close", StringComparison.OrdinalIgnoreCase);
 
-                                //Also store the connecion header into the store
+                                //Also store the connection header into the store
                                 Request.Headers.Add(HttpRequestHeader.Connection, requestHeaderValue.ToString());
                             }
                             break;
@@ -319,7 +319,7 @@ namespace VNLib.Net.Http.Core
                                     return HttpStatusCode.BadRequest;
                                 }
                                 
-                                //Request size it too large to service
+                                //Request size is too large to service
                                 if (parseState.ContentLength > Config.MaxUploadSize)
                                 {
                                     return HttpStatusCode.RequestEntityTooLarge;
@@ -334,7 +334,7 @@ namespace VNLib.Net.Http.Core
                                 //Split the host value by the port parameter 
                                 ReadOnlySpan<char> port = requestHeaderValue.SliceAfterParam(':').Trim();
 
-                                //Slicing before the colon should always provide a useable hostname, so allocate a string for it
+                                //Slicing before the colon should always provide a usable hostname, so allocate a string for it
                                 string hostOnly = requestHeaderValue.SliceBeforeParam(':').Trim().ToString();
                                 
                                 //Verify that the host is usable
@@ -343,7 +343,7 @@ namespace VNLib.Net.Http.Core
                                     return HttpStatusCode.BadRequest;
                                 }
                                 
-                                //Verify that the host matches the host header if absolue uri is set
+                                //Verify that the host matches the host header if absolute uri is set
                                 if (parseState.AbsoluteUri != null)
                                 {
                                     if (!hostOnly.Equals(parseState.Location.Host, StringComparison.OrdinalIgnoreCase))
@@ -515,7 +515,7 @@ namespace VNLib.Net.Http.Core
                 }
                 
             }
-            //Catch an arugment exception within the header add function to cause a bad request result
+            //Catch an argument exception within the header add function to cause a bad request result
             catch (ArgumentException)
             {
                 return HttpStatusCode.BadRequest;
@@ -608,7 +608,7 @@ namespace VNLib.Net.Http.Core
                 }
             }
             
-            //Check for chuncked transfer encoding
+            //Check for chunked transfer encoding
             ReadOnlySpan<char> transfer = Request.Headers[HttpRequestHeader.TransferEncoding];
 
             if (!transfer.IsEmpty && transfer.Contains("chunked", StringComparison.OrdinalIgnoreCase))
@@ -653,7 +653,7 @@ namespace VNLib.Net.Http.Core
 
                 if (available > 0)
                 {
-                    //Alloc the buffer and asign it
+                    //Alloc the buffer and assign it
                     initData = InitDataBuffer.AllocBuffer(InputDataBufferPool, available);
 
                     //Read remaining data into the buffer's data segment

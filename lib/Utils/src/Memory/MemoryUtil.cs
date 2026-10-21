@@ -1602,7 +1602,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Slices the current array by the specified starting offset to including the 
-        /// speciifed number of items
+        /// specified number of items
         /// </summary>
         /// <typeparam name="T">The array type</typeparam>
         /// <param name="arr"></param>

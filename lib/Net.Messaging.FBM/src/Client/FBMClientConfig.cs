@@ -35,7 +35,7 @@ namespace VNLib.Net.Messaging.FBM.Client
     public readonly record struct FBMClientConfig
     {
         /// <summary>
-        /// The size (in bytes) of the internal buffer used to buffer incomming messages,
+        /// The size (in bytes) of the internal buffer used to buffer incoming messages,
         /// this value will also be sent to the server to synchronous recv buffer sizes
         /// </summary>
         public readonly int RecvBufferSize { get; init; }
@@ -65,7 +65,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         public readonly TimeSpan KeepAliveInterval { get; init; }
 
         /// <summary>
-        /// If configured, configures a maximum request timout
+        /// If configured, configures a maximum request timeout
         /// </summary>
         public readonly TimeSpan RequestTimeout { get; init; }
         /// <summary>
@@ -78,7 +78,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         public readonly Encoding HeaderEncoding { get; init; }
 
         /// <summary>
-        /// An optional log provider to write debug logs to. If this propery is not null,
+        /// An optional log provider to write debug logs to. If this property is not null,
         /// debugging information will be logged with the debug log-level
         /// </summary>
         public readonly ILogProvider? DebugLog { get; init; }
