@@ -580,6 +580,7 @@ typedef struct mi_page_queue_s {
   mi_page_t* last;
   size_t     count;
   size_t     block_size;
+  size_t     xcollect_score;          // how often full pages here revived by cross-thread frees
 } mi_page_queue_t;
 
 // Random context
