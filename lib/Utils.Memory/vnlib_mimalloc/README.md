@@ -4,25 +4,24 @@
 
 `vnlib_mimalloc` wraps [Microsoft's mimalloc](https://github.com/microsoft/mimalloc) allocator and
 exposes it through the vnlib `NativeHeapApi`, so it can be used interchangeably with the other native
-heap providers. Both a static and a shared library are produced. 
+heap providers. Both a static and a shared library are produced.
 
-Mimalloc is a general purpose allocator with excellent performance characteristics, a small and
-well tested core, and support for cross thread private heaps. It is MIT licensed by Microsoft, see
+Mimalloc is a general-purpose allocator with excellent performance characteristics, a small and
+well-tested core, and support for cross-thread private heaps. It is MIT licensed by Microsoft, see
 the `vendor/LICENSE` file.
 
 ## Vendored source
 
 The upstream source lives in the `vendor` directory and is pinned to a specific upstream commit,
-which is recorded in the `vendor/COMMIT` file. This source may contained patched or cherry-picked 
-commits from upstream. Ideally the latest stable release is used, unless patches exist for 
-performance, security, or bug fixes. This vendor image focuses _only_ on the C source code and 
-requires C build tooling
+which is recorded in the `vendor/COMMIT` file. This source may contain patched or cherry-picked
+commits from upstream. Ideally the latest stable release is used, unless patches exist for
+performance, security, or bug fixes. This vendor image focuses _only_ on the C source code and
+requires C build tooling, and a C++ toolchain on Windows.
 
 | | |
 | --- | --- |
 | Upstream | [microsoft/mimalloc](https://github.com/microsoft/mimalloc) |
-| Pinned commit | `d4881d338125e1cb7c47ba4cfb398d6f7c0c8d45` (`v3.5.3`) |
-| Upstream version | 3.5.3 |
+| Upstream release | 3.5.3 |
 
 ## License
 

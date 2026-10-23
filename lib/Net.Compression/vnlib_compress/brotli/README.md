@@ -20,19 +20,12 @@ Brotli is open-sourced under the MIT License, see the LICENSE file.
 ## VNLib Modifications
 This library is vendored from the official [Google Brotli repository](https://github.com/google/brotli) and has been modified to be built exclusivly as a C static library using CMake. The package has been trimmed to exactly the bare minimum needed to build the C library. I will likely trim this even more to include only the necessary features required for network compression.
 
-See the COMMIT file to see what upstream source commit this copy was created from.
+See the COMMIT file for the latest upstream commit included in this copy.
 
 ## Updates
 <s>As of late 2023, Google no longer publishes releases or stable tags but the continually push updates. I must manually verify and test stability and compatability directly from the latest branch (usually master). I will try to keep this library up to date with the latest changes from the official repository and ensure the stability and compatability is preserved as best as I can.</s>
 
 Google has been actively making commits to cbrotli on GitHub as of 2025 when this commit was made.
-
-### Security patches
-The following upstream commits are cherry-picked on top of the pinned release and are not part of it:
-
-| Upstream commit | Description |
-| --- | --- |
-| [4792c8e](https://github.com/google/brotli/commit/4792c8e4c4235f6b501f13dbd07a8b4b253eee21) | Check that total compound dictionary size does not overflow. Reported in [#1438](https://github.com/google/brotli/issues/1438). |
 
 ## License
 This project was licensed to me under the MIT License. The original license can be found in the [LICENSE](LICENSE) file, and these changes will be licensed to you under the same terms :).

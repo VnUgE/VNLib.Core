@@ -117,7 +117,7 @@ int ZstdAllocCompressor(comp_state_t* state)
 		break;
 
 	case COMP_LEVEL_FASTEST:
-		compLevel = ZSTD_COMP_LEVEL_FASTEST;  
+		compLevel = ZSTD_COMP_LEVEL_FASTEST;
 		break;
 
 	case COMP_LEVEL_OPTIMAL:
@@ -132,7 +132,7 @@ int ZstdAllocCompressor(comp_state_t* state)
 		compLevel = ZSTD_CLEVEL_DEFAULT;  /* Default level */
 		break;
 	}
-	
+
 	/* Initialize the compression stream */
 	result = ZSTD_initCStream(streamState->stream, compLevel);
 
