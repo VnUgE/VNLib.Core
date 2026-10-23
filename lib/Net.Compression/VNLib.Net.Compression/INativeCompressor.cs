@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -87,7 +87,7 @@ namespace VNLib.Net.Compression
         /// specified by the size parameter
         /// </summary>
         /// <param name="size">The number of bytes to get the compressed size of</param>
-        /// <returns>The maxium size of the compressed data</returns>
+        /// <returns>The maximum size of the compressed data</returns>
         /// <exception cref="OverflowException"></exception>
         uint GetCompressedSize(uint size);
     }

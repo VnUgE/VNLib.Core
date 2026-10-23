@@ -54,7 +54,7 @@ namespace VNLib.Utils
         /// and writing the encoded data to the output buffer.
         /// </summary>
         /// <param name="input">The input buffer to convert</param>
-        /// <param name="output">The ouput buffer to write encoded data to</param>
+        /// <param name="output">The output buffer to write encoded data to</param>
         /// <returns>The number of characters written, false if no data was written or output buffer was too small</returns>
         public static ERRNO TryToBase32Chars(ReadOnlySpan<byte> input, Span<char> output)
         {
@@ -105,7 +105,7 @@ namespace VNLib.Utils
             //Check proc endianness
             if (BitConverter.IsLittleEndian)
             {
-                //store each byte consecutivley and allow for padding
+                //store each byte consecutively and allow for padding
                 for (int i = 0; (i < 5 && i < input.Length); i++)
                 {
                     //Write bytes from upper to lower byte order for little endian systems
@@ -114,7 +114,7 @@ namespace VNLib.Utils
             }
             else
             {
-                //store each byte consecutivley and allow for padding
+                //store each byte consecutively and allow for padding
                 for (int i = 0; (i < 5 && i < input.Length); i++)
                 {
                     //Write bytes from lower to upper byte order for Big Endian systems
@@ -220,7 +220,7 @@ namespace VNLib.Utils
                  * ignores the zeros when the next byte is written, and anything 
                  * leading is shifted off the end when 8 bytes are written.
                  * 
-                 * Reemeber: each character only contains 5 bits of useful data
+                 * Remember: each character only contains 5 bits of useful data
                  */
                 
                 buffer[0] |= GetCharCode(input[count]);
@@ -243,7 +243,7 @@ namespace VNLib.Utils
                 bufferLong <<= 5;
             }
 
-            //If remaining data has not be written, but has been bufferedd, finalize it
+            //If remaining data has not been written, but has been buffered, finalize it
             if (writer.Written < outputSize)
             {
                 //calculate how many bits the buffer still needs to be shifted by (will be 5 bits off because of the previous loop)
@@ -361,7 +361,7 @@ namespace VNLib.Utils
         /// <exception cref="InternalBufferTooSmallException"></exception>
         public static string ToBase32String(ReadOnlySpan<byte> binBuffer, bool withPadding = false)
         {            
-            //Calculate the base32 entropy to alloc an appropriate buffer (minium buffer of 2 chars)
+            //Calculate the base32 entropy to alloc an appropriate buffer (minimum buffer of 2 chars)
             int entropy = Base32CalcMaxBufferSize(binBuffer.Length);
            
             using UnsafeMemoryHandle<char> charBuffer = MemoryUtil.UnsafeAlloc<char>(entropy);
@@ -453,7 +453,7 @@ namespace VNLib.Utils
         private static readonly byte[] HexToUtf8Pos = "0123456789ABCDEF"u8.ToArray();
 
         /// <summary>
-        /// Deterimes the size of the buffer needed to encode a utf8 encoded 
+        /// Determines the size of the buffer needed to encode a utf8 encoded
         /// character buffer into its url-safe percent/hex encoded representation
         /// </summary>
         /// <param name="utf8Bytes">The buffer to examine</param>
@@ -465,7 +465,7 @@ namespace VNLib.Utils
              * For every illegal character, the percent encoding adds 3 bytes of 
              * entropy. So a single byte will be replaced by 3, so adding 
              * 2 bytes for every illegal character plus the length of the 
-             * intial buffer, we get the exact size of the buffer needed to 
+             * initial buffer, we get the exact size of the buffer needed to
              * percent encode.
              */
             int count = 0, len = utf8Bytes.Length;
@@ -590,7 +590,7 @@ namespace VNLib.Utils
         /// Decodes a percent (url/hex) encoded utf8 encoded character buffer to its utf8
         /// encoded binary value
         /// </summary>
-        /// <param name="utf8Encoded">The buffer containg characters to be decoded</param>
+        /// <param name="utf8Encoded">The buffer containing characters to be decoded</param>
         /// <param name="utf8Output">The buffer to write decoded values to</param>
         /// <returns>The number of bytes written to the output buffer</returns>
         /// <exception cref="FormatException"></exception>
@@ -644,7 +644,7 @@ namespace VNLib.Utils
              * I cannot avoid the allocation of a binary buffer without doing some sketchy
              * byte -> char cast on the string.create method. Which would also require object 
              * allocation for state data, and since spans are used, we cannot cross that 
-             * callback boundry anyway. 
+             * callback boundary anyway.
              */
 
             int bufferSize = PercentEncodeCalcBufferSize(utf8Bytes, allowedChars);
@@ -684,7 +684,7 @@ namespace VNLib.Utils
         /// </summary>
         /// <param name="base64">Base64 character data to recover</param>
         /// <param name="buffer">The binary output buffer to write converted characters to</param>
-        /// <returns>The number of bytes written, or <see cref="ERRNO.E_FAIL"/> of the conversion was unsucessful</returns>
+        /// <returns>The number of bytes written, or <see cref="ERRNO.E_FAIL"/> if the conversion was unsuccessful</returns>
         public static ERRNO TryFromBase64Chars(ReadOnlySpan<char> base64, Span<byte> buffer)
         {
             return Convert.TryFromBase64Chars(base64, buffer, out int bytesWritten) ? bytesWritten : ERRNO.E_FAIL;
@@ -853,7 +853,7 @@ namespace VNLib.Utils
             {
                 return ERRNO.E_FAIL;
             }
-            //url deocde
+            //url decode
             ERRNO count = Base64FromUrlSafe(utf8Base64Url, output);
 
             //Writer for adding padding bytes
@@ -921,7 +921,7 @@ namespace VNLib.Utils
             Encoding encoding
         )
         {
-            //Conver to base64
+            //Convert to base64
             OperationStatus status = Base64.EncodeToUtf8(rawData, buffer, out _, out int written, isFinalBlock: true);
 
             //Check for invalid states
@@ -952,10 +952,10 @@ namespace VNLib.Utils
         /// <summary>
         /// Base64url encodes the binary buffer to its utf8 binary representation
         /// </summary>
-        /// <param name="buffer">The intput binary buffer to base64url encode</param>
+        /// <param name="buffer">The input binary buffer to base64url encode</param>
         /// <param name="dataLength">The data within the buffer to encode, must be smaller than the entire buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred.</returns>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if an error occurred.</returns>
         public static ERRNO Base64UrlEncodeInPlace(Span<byte> buffer, int dataLength, bool includePadding)
         {
             //Convert to base64
@@ -986,7 +986,7 @@ namespace VNLib.Utils
         /// encode the data, if not the operation will fail. The data in this span will be overwritten
         /// to do the conversion
         /// </summary>
-        /// <param name="rawData">The raw data buffer that will be used to encode data aswell as read it</param>
+        /// <param name="rawData">The raw data buffer that will be used to encode data as well as read it</param>
         /// <param name="length">The length of the binary data to encode</param>
         /// <param name="includePadding">A value specifying whether base64 padding should be encoded</param>
         /// <returns>The base64url encoded string</returns>
@@ -1010,13 +1010,13 @@ namespace VNLib.Utils
         /// to the supplied buffer. Be sure to call <see cref="Base64.GetMaxEncodedToUtf8Length(int)"/>
         /// to allocate the correct size buffer for encoding
         /// </summary>
-        /// <param name="input">The intput binary buffer to base64url encode</param>
-        /// <param name="output">The output buffer to write the base64url safe encodded date to</param>
+        /// <param name="input">The input binary buffer to base64url encode</param>
+        /// <param name="output">The output buffer to write the base64url safe encoded data to</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
-        /// <returns>The number characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred.</returns>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if an error occurred.</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<byte> output, bool includePadding)
         {
-            //Do bsae64 encoding avoiding the tripple copy
+            //Do base64 encoding avoiding the triple copy
             if (Base64.EncodeToUtf8(input, output, out _, out int bytesWritten) != OperationStatus.Done)
             {
                 return ERRNO.E_FAIL;
@@ -1039,11 +1039,11 @@ namespace VNLib.Utils
         }
 
         /// <summary>
-        /// Encodes the binary intput buffer to its base64url safe encoding, then converts the binary 
-        /// value to it character encoded value and allocates a new string. Defaults to UTF8 character 
-        /// encoding. Base64url is a subset of ASCII,UTF7,UTF8,UTF16 etc so most encodings should be safe.
+        /// Encodes the binary input buffer to its base64url safe encoding, then converts the binary
+        /// value to its character encoded value and allocates a new string. Defaults to UTF8 character
+        /// encoding. Base64url is a subset of ASCII, UTF7, UTF8, UTF16 etc so most encodings should be safe.
         /// </summary>
-        /// <param name="input">The input binary intput buffer</param>
+        /// <param name="input">The binary input buffer to base64url encode</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
         /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>
         /// <returns>The base64url encoded string of the input data using the desired encoding</returns>
@@ -1074,16 +1074,16 @@ namespace VNLib.Utils
         }
 
         /// <summary>
-        /// Encodes the binary intput buffer to its base64url safe encoding, then converts the internal buffer
+        /// Encodes the binary input buffer to its base64url safe encoding, then converts the internal buffer
         /// to its character encoding using the supplied <paramref name="encoding"/>, and writes the characters
-        /// to the output buffer. Defaults to UTF8 character encoding. Base64url is a subset of ASCII,UTF7,UTF8,UTF16 etc
+        /// to the output buffer. Defaults to UTF8 character encoding. Base64url is a subset of ASCII, UTF7, UTF8, UTF16 etc
         /// so most encodings should be safe.
         /// </summary>
-        /// <param name="input">The input binary intput buffer</param>
+        /// <param name="input">The binary input buffer to base64url encode</param>
         /// <param name="output">The character output buffer</param>
         /// <param name="includePadding">A value that indicates if base64 padding should be url encoded(true), or removed(false).</param>
         /// <param name="encoding">The encoding used to convert the binary buffer to its character representation.</param>
-        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if a error occurred</returns>
+        /// <returns>The number of characters written to the buffer, or <see cref="ERRNO.E_FAIL"/> if an error occurred</returns>
         public static ERRNO Base64UrlEncode(ReadOnlySpan<byte> input, Span<char> output, bool includePadding, Encoding? encoding = null)
         {
             encoding ??= Encoding.UTF8;

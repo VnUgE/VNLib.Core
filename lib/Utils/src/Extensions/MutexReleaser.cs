@@ -31,7 +31,7 @@ namespace VNLib.Utils.Extensions
     /// <summary>
     /// Represents a releaser handle for a <see cref="Mutex"/>
     /// that has been entered and will be released. Best if used
-    /// within a using() statment
+    /// within a using() statement
     /// </summary>
     /// <param name="Handle">The Mutex reference</param>
     public readonly record struct MutexReleaser(Mutex Handle) : IDisposable

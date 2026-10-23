@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2022 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -34,15 +34,15 @@ namespace VNLib.Net.Messaging.FBM.Client
     public interface IStatefulConnection
     {
         /// <summary>
-        /// An event that is raised when the connection state has transition from connected to disconnected
+        /// An event that is raised when the connection state has transitioned from connected to disconnected
         /// </summary>
         event EventHandler ConnectionClosed;
         /// <summary>
         /// Connects the client to the remote resource
         /// </summary>
         /// <param name="serverUri">The resource location to connect to</param>
-        /// <param name="cancellationToken">A token to cancel the connect opreation</param>
-        /// <returns>A task that compeltes when the connection has succedded</returns>
+        /// <param name="cancellationToken">A token to cancel the connect operation</param>
+        /// <returns>A task that completes when the connection has succeeded</returns>
         Task ConnectAsync(Uri serverUri, CancellationToken cancellationToken = default);
         /// <summary>
         /// Gracefully disconnects the client from the remote resource

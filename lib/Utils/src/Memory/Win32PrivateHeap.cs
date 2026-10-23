@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -115,12 +115,12 @@ namespace VNLib.Utils.Memory
         /// <summary>
         /// Create a new <see cref="Win32PrivateHeap"/> with the specified sizes and flags
         /// </summary>
-        /// <param name="initialSize">Intial size of the heap</param>
+        /// <param name="initialSize">Initial size of the heap</param>
         /// <param name="maxHeapSize">Maximum size allowed for the heap (disabled = 0, default)</param>
-        /// <param name="flags">Defalt heap flags to set globally for all blocks allocated by the heap (default = 0)</param>
+        /// <param name="flags">Default heap flags to set globally for all blocks allocated by the heap (default = 0)</param>
         /// <param name="cFlags">Flags to configure heap creation</param>
         /// <remarks>
-        /// Win32 heaps are not thread safe, so synchronization is required, you may disabled internal locking if you use 
+        /// Win32 heaps are not thread safe, so synchronization is required, you may disable internal locking if you use
         /// your own synchronization.
         /// </remarks>
         public static Win32PrivateHeap Create(nuint initialSize, HeapCreation cFlags, nuint maxHeapSize = 0, DWORD flags = HEAP_NO_FLAGS)

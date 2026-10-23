@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -75,8 +75,8 @@ namespace VNLib.Net.Http
     {
         /// <summary>
         /// The host key that determines a "wildcard" host, meaning the 
-        /// default connection handler when an incomming connection has 
-        /// not specific route
+        /// default connection handler when an incoming connection has no
+        /// specific route
         /// </summary>
         public const string WILDCARD_KEY = "*";
 
@@ -252,9 +252,9 @@ namespace VNLib.Net.Http
                 throw new ArgumentException("SendTimeout cannot be less than 1 millisecond", nameof(conf));
             }
 
-            if(conf.MaxUploadSize > 0 && conf.MaxUploadsPerRequest == 0)
+            if(conf.MaxUploadsPerRequest > 0 && conf.MaxUploadSize <= 0)
             {
-                throw new ArgumentException("MaxUploadsPerRequest must be greater than 0 when MaxUploadSize is set", nameof(conf));
+                throw new ArgumentException("MaxUploadSize must be greater than 0 when uploads are allowed", nameof(conf));
             }
         }
 
@@ -289,7 +289,7 @@ namespace VNLib.Net.Http
         /// <summary>
         /// Begins listening for connections on configured interfaces for configured hostnames.
         /// </summary>
-        /// <param name="cancellationToken">A token used to stop listening for incomming connections and close all open websockets</param>
+        /// <param name="cancellationToken">A token used to stop listening for incoming connections and close all open websockets</param>
         /// <returns>A task that resolves when the server has exited</returns>
         /// <exception cref="SocketException"></exception>
         /// <exception cref="ThreadStateException"></exception>

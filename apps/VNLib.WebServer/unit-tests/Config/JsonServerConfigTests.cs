@@ -236,6 +236,40 @@ namespace VNLib.WebServerTests.Config
         }
 
         /// <summary>
+        /// Verifies that a missing nested property returns the default value so
+        /// optional sections compose with caller null handling.
+        /// </summary>
+        [TestMethod]
+        public void GetConfigProperty_NestedMissingProperty_ReturnsDefault()
+        {
+            string configPath = GetTestDataPath("nested-properties.json");
+            JsonServerConfig? config = JsonServerConfig.FromFile(configPath);
+
+            Assert.IsNotNull(config);
+
+            string? value = config.GetConfigProperty<string>("level1::level2::missing");
+
+            Assert.IsNull(value);
+        }
+
+        /// <summary>
+        /// Verifies that traversing through a non-object value throws instead of
+        /// silently ignoring the remaining path segments.
+        /// </summary>
+        [TestMethod]
+        public void GetConfigProperty_TraverseThroughScalar_ThrowsArgumentException()
+        {
+            string configPath = GetTestDataPath("nested-properties.json");
+            JsonServerConfig? config = JsonServerConfig.FromFile(configPath);
+
+            Assert.IsNotNull(config);
+
+            Assert.ThrowsExactly<ArgumentException>(() =>
+                config.GetConfigProperty<int>("number::extra")
+            );
+        }
+
+        /// <summary>
         /// Verifies that array properties are correctly deserialized with proper element access.
         /// </summary>
         [TestMethod]

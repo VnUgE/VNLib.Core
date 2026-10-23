@@ -138,7 +138,7 @@ namespace VNLib.Net.Http.Core.Response
                 writer.AppendSmall(HttpHelpers.CRLF);
             }
 
-            //Remove writen headers
+            //Remove written headers
             Headers.Clear();
 
             //Write cookies if any are set

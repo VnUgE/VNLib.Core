@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -48,13 +48,13 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// </summary>
         public required readonly int ResponseBufferSize { get; init; }        
         /// <summary>
-        /// The FMB message header character encoding
+        /// The FBM message header character encoding
         /// </summary>
         public required readonly Encoding HeaderEncoding { get; init; }
 
         /// <summary>
-        /// The absolute maxium size (in bytes) message to process before
-        /// closing the websocket connection. This value should be negotiaed 
+        /// The absolute maximum size (in bytes) of a message to process before
+        /// closing the websocket connection. This value should be negotiated
         /// by clients or hard-coded to avoid connection issues
         /// </summary>
         public required readonly int MaxMessageSize { get; init; }

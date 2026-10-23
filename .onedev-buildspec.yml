@@ -119,7 +119,6 @@ jobs:
 
         apt update; apt install curl -y
         chmod +x ./mise
-        ./mise settings experimental=true
         ./mise bootstrap --yes
         ./mise test
     runAs: 0:0
@@ -160,7 +159,6 @@ jobs:
         cd @project_name@/ci
 
         chmod +x ./mise
-        ./mise settings experimental=true
         ./mise bootstrap --yes
         ./mise test
     runAs: 0:0

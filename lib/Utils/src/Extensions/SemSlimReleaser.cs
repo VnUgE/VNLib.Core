@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -30,7 +30,7 @@ namespace VNLib.Utils.Extensions
     /// <summary>
     /// Represents a releaser handle for a <see cref="SemaphoreSlim"/>
     /// that has been entered and will be released. Best if used
-    /// within a using() statment
+    /// within a using() statement
     /// </summary>
     public readonly record struct SemSlimReleaser(SemaphoreSlim Semaphore) : IDisposable
     {
