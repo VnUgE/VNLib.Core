@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Updated mimalloc from v3.3.2 to v3.5.3 and disabled sampled profiling in distribution builds - (mimalloc) [178b720](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=178b720eeca1bc0ba5fc09dfa1521fca75396876)
+- Cherry-picked adaptive page_full_retain from upstream mimalloc (d8a81d3b, 41f42d5d, 902849a6) - (mimalloc) [050c78a](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=050c78af6f2a4fdca0eec349071a50a96cc6ccb0)
+- Updated zstd from 5233c58 to 01b7154 - (compression) [c8b67ad](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=c8b67ad122a2b99ae612f2da81ba3df8e1b0ba7f)
+- Updated cloudflare/zlib to 3944b7d with inflate hardening fixes - (compression) [95ca16c](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=95ca16ca129fd2f6b1962ffc9a0ace50d8d90b99)
+- Capped zstd smallest-size level at 9 for streaming latency - (compression) [27d43ff](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=27d43ffccbf02bb8907c7f79c23a1008f7071e57)
+- Updated brotli to v1.2.1 (CVE-2026-111497) and cherry-picked compound dictionary overflow check (4792c8e) - (compression) [0d440da](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=0d440dadff0985e25fc1e9b7995bcd47a9bfa912)
+
 ## [0.2.0] - 2026-09-23
 
 ### Added
