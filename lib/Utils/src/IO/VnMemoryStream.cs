@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -250,8 +250,8 @@ namespace VNLib.Utils.IO
         }
 
         /// <summary>
-        /// Allocates a temporary buffer of the desired size, copies data from the internal 
-        /// buffer and writes it to the destination buffer asynchronously.
+        /// Slices the internal buffer and writes it to the destination stream
+        /// asynchronously in chunks of <paramref name="bufferSize"/> bytes.
         /// </summary>
         /// <param name="destination">The stream to write output data to</param>
         /// <param name="bufferSize">The size of the buffer to use when copying data</param>
@@ -283,7 +283,7 @@ namespace VNLib.Utils.IO
                 /*
                  * CopyTo starts at the current position, as if calling Read() 
                  * so the reader must be offset to match and the _length gives us the 
-                 * actual length of the stream and therefor the segment size
+                 * actual length of the stream and therefore the segment size
                  */
 
                 while (LenToPosDiff > 0)
@@ -456,8 +456,9 @@ namespace VNLib.Utils.IO
                     ArgumentOutOfRangeException.ThrowIfLessThan(_offset, -_length, nameof(offset));
 
                     //Calc new seek position from end of stream, offset 0 seeks to the end (length)
+                    //The bounds checks above guarantee the resulting position is never negative
                     nint realIndex = _length + _offset;
-                    return _position = Math.Max(realIndex, 0);
+                    return _position = realIndex;
 
                 default:
                     throw new ArgumentException("Stream operation is not supported on current stream");

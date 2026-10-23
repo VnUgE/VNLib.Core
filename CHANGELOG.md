@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Capped zstd smallest-size level at 9 for streaming latency - (compression) [27d43ff](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=27d43ffccbf02bb8907c7f79c23a1008f7071e57)
 - Updated brotli to v1.2.1 (CVE-2026-111497) and cherry-picked compound dictionary overflow check (4792c8e) - (compression) [0d440da](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=0d440dadff0985e25fc1e9b7995bcd47a9bfa912)
 
+### Fixed
+
+- Fixed `VnMemoryStream.CopyToAsync()` advancing the stream position by the copy buffer size instead of the number of bytes written - (utils) [870e44b](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=870e44ba93495d26aa25007127379d12c1f1d848)
+- Fixed `VnMemoryStream.Seek()` returning zero for `SeekOrigin.End` offsets instead of the position from the end of the stream - (utils) [3a081a9](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=3a081a9f6b9f5a1d1fc3873fcd50d942cffa724c)
+
 ## [0.2.0] - 2026-09-23
 
 ### Added

@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -39,7 +39,7 @@ namespace VNLib.Utils.IO.Tests
         #region Constructors
 
         /// <summary>
-        /// Verifies all constructor overloads initialize an empty stream with the expected length, position, and capabilities.
+        /// Verifies every constructor shape initializes the expected length, position, and capabilities.
         /// </summary>
         [TestMethod]
         public void Constructor_Overloads_InitializeExpectedState()
@@ -78,7 +78,7 @@ namespace VNLib.Utils.IO.Tests
                 Assert.IsTrue(vms.CanWrite);
             }
 
-            //Handle should throw since the stream owns the handle and it gets dispoed
+            //Handle should throw since the stream owns the handle and it gets disposed
             Assert.ThrowsExactly<ObjectDisposedException>(handle.ThrowIfClosed);
 
             //From existing data
@@ -111,6 +111,26 @@ namespace VNLib.Utils.IO.Tests
             }
         }
 
+        /// <summary>
+        /// Verifies a zero-size stream initializes empty and allows later resizing.
+        /// </summary>
+        [TestMethod]
+        public void Constructor_EmptyStream_AllowsResize()
+        {
+            using VnMemoryStream vms = new(0, false);
+
+            Assert.AreEqual(0, vms.Length);
+            Assert.AreEqual(0, vms.Position);
+            Assert.IsTrue(vms.CanSeek);
+            Assert.IsTrue(vms.CanRead);
+            Assert.IsTrue(vms.CanWrite);
+
+            //Resize should be allowed
+            vms.SetLength(128);
+            Assert.AreEqual(128, vms.Length);
+            Assert.AreEqual(0, vms.Position);
+        }
+
         #endregion
 
         #region Readonly
@@ -139,7 +159,7 @@ namespace VNLib.Utils.IO.Tests
 
         #endregion
 
-        #region Clone
+        #region Shallow copies
 
         /// <summary>
         /// Verifies <see cref="VnMemoryStream.Clone"/> creates a readonly shallow copy sharing the stream data without taking ownership of the handle.
@@ -244,16 +264,16 @@ namespace VNLib.Utils.IO.Tests
 
             Assert.AreEqual(0, vms.Length);
 
-            // Set length to 0
+            //Set length to 0
             vms.SetLength(0);
             Assert.AreEqual(0, vms.Length);
 
-            // Set length to a positive value
+            //Set length to a positive value
             vms.SetLength(512);
             Assert.AreEqual(512, vms.Length);
             Assert.AreEqual(0, vms.Position);
 
-            // Check that position smaller than length gets reset below new length
+            //Check that a position within the current length is left unchanged
             vms.Seek(100, System.IO.SeekOrigin.Begin);           
             Assert.AreEqual(100, vms.Position, "Position should not change if it is less than the new length.");
 
@@ -261,28 +281,8 @@ namespace VNLib.Utils.IO.Tests
             Assert.AreEqual(25, vms.Length);
             Assert.AreEqual(25, vms.Position, "Position should be shrunk to point within the new length");
 
-            // Check invalid arguments
+            //Check invalid arguments
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => vms.SetLength(-1), "Setting length to a negative value should throw ArgumentOutOfRangeException.");
-        }
-
-        /// <summary>
-        /// Verifies a zero-size stream initializes empty and allows later resizing.
-        /// </summary>
-        [TestMethod]
-        public void Constructor_EmptyStream_AllowsResize()
-        {
-            using VnMemoryStream vms = new(0, false);
-            
-            Assert.AreEqual(0, vms.Length);          
-            Assert.AreEqual(0, vms.Position);
-            Assert.IsTrue(vms.CanSeek);            
-            Assert.IsTrue(vms.CanRead);            
-            Assert.IsTrue(vms.CanWrite);
-
-            // Resize should be allowed
-            vms.SetLength(128);
-            Assert.AreEqual(128, vms.Length);
-            Assert.AreEqual(0, vms.Position);
         }
 
         #endregion
@@ -327,6 +327,7 @@ namespace VNLib.Utils.IO.Tests
 
             //Reading into an empty buffer returns zero without moving the position
             Assert.AreEqual(0, vms.Read([]), "Read with an empty buffer should return 0.");
+            Assert.AreEqual(100, vms.Position, "Reading an empty buffer should not advance the position.");
         }
 
         #endregion
@@ -346,7 +347,7 @@ namespace VNLib.Utils.IO.Tests
                 vms.WriteByte((byte)i);
             }
 
-            //Regression: Seek from end used Math.Min instead of Math.Max and always returned 0
+            //Regression: Seek from end used Math.Min and always returned 0
             long position = vms.Seek(0, SeekOrigin.End);
 
             Assert.AreEqual(100, position, "Seek(0, End) should return the stream length.");
@@ -639,7 +640,7 @@ namespace VNLib.Utils.IO.Tests
 
         #endregion
 
-        #region AsyncIO
+        #region ReadAsync
 
         /// <summary>
         /// Verifies <see cref="VnMemoryStream.ReadAsync(Memory{byte}, CancellationToken)"/> completes synchronously with the requested data.
@@ -668,6 +669,10 @@ namespace VNLib.Utils.IO.Tests
                 Assert.AreEqual((byte)i, chunk[i], "Read data should match the written data.");
             }
         }
+
+        #endregion
+
+        #region WriteAsync
 
         /// <summary>
         /// Verifies <see cref="VnMemoryStream.WriteAsync(ReadOnlyMemory{byte}, CancellationToken)"/> writes synchronously and updates the stream.
