@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `VnMemoryStream.CopyToAsync()` advancing the stream position by the copy buffer size instead of the number of bytes written - (utils) [870e44b](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=870e44ba93495d26aa25007127379d12c1f1d848)
 - Fixed `VnMemoryStream.Seek()` returning zero for `SeekOrigin.End` offsets instead of the position from the end of the stream - (utils) [3a081a9](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=3a081a9f6b9f5a1d1fc3873fcd50d942cffa724c)
+- `FBMClient.StreamDataAsync()` now sends complete requests and safely terminates or aborts streamed messages - (fbm) [1ae23df](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=1ae23df58760fe96816a82f5a6b22d45934bf7f7), [eeb7637](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=eeb76377b0d33ea649eb5442bc1f77c8dbeb8bec)
+- Hardened FBM response handling for short frames and oversized messages - (fbm) [a29e743](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=a29e7434e3ff7e18fa9fa7ee250d02550b258fcc), [eeb7637](https://git.vaughnnugent.com/cgit/vnuge/vnlib-core.git/commit/?id=eeb76377b0d33ea649eb5442bc1f77c8dbeb8bec)
 
 ## [0.2.0] - 2026-09-23
 

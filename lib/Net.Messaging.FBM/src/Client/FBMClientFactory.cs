@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -39,7 +39,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         private readonly IFbmWebsocketFactory _socketMan;
 
         /// <summary>
-        /// Initlaizes a new client factory from the websocket manager
+        /// Initializes a new client factory from the websocket manager
         /// </summary>
         /// <param name="config">The configuration state</param>
         /// <param name="webSocketManager">The client websocket factory</param>
@@ -60,7 +60,7 @@ namespace VNLib.Net.Messaging.FBM.Client
              * and destroyed frequently. It also allows this factory
              * to manage the cache for all created clients.
              */
-            _internalRequestPool = ObjectRental.CreateReusable(ReuseableRequestConstructor, maxClients);
+            _internalRequestPool = ObjectRental.CreateReusable(ReusableRequestConstructor, maxClients);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace VNLib.Net.Messaging.FBM.Client
         /// Allocates and configures a new <see cref="FBMRequest"/> message object for use within the reusable store
         /// </summary>
         /// <returns>The configured <see cref="FBMRequest"/></returns>
-        private FBMRequest ReuseableRequestConstructor() => new(in _config);
+        private FBMRequest ReusableRequestConstructor() => new(in _config);
 
         /// <summary>
         /// Initializes a new websocket and creates a new <see cref="FBMClient"/> instance
