@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
-* File: HttpRequest.cs 
+* File: HttpRequestState.cs
 *
-* HttpRequest.cs is part of VNLib.Net.Http which is part of the larger 
+* HttpRequestState.cs is part of VNLib.Net.Http which is part of the larger
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Net.Http is free software: you can redistribute it and/or modify 
@@ -81,7 +81,7 @@ namespace VNLib.Net.Http.Core
         public string? UserAgent;
         
         /// <summary>
-        /// Boundry header value if reuqest send data using MIME mulit-part form data
+        /// Boundary header value if the request sends data using MIME multi-part form data
         /// </summary>
         public string? Boundry;
         

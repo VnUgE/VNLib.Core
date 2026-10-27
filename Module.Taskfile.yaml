@@ -8,7 +8,7 @@
 
 #this file must be in the same directory as the solution file
 
-version: '3'
+version: '3.45'
 
 vars:  
   ARCHIVE_FILE_NAME: '{{ .ARCHIVE_FILE_NAME | default "archive.tgz" }}'
@@ -168,12 +168,3 @@ tasks:
     cmds:
      - for: { var: NATIVE_LIB_DIRS }
        cmd: cd {{ .ITEM }} && task clean
-
-  write-changelog:
-    cmds:
-     - cmd: git-cliff
-         --verbose
-         --config ci/cliff.toml
-         --output 'CHANGELOG.md'
-         --tag v{{ .VERSION }}
-         {{ .CLI_ARGS }}

@@ -796,32 +796,28 @@ namespace VNLib.WebServerTests.Config
         }
 
         /// <summary>
-        /// Verifies that a default file name with no extension throws ServerConfigurationException.
+        /// Verifies that a default file name with no extension is accepted.
+        /// Extensionless names (e.g. extensionless binaries, README) are valid default files.
         /// </summary>
         [TestMethod]
-        public void OnDeserialized_DefaultFileWithoutExtension_ThrowsException()
+        public void OnDeserialized_DefaultFileWithoutExtension_Success()
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.DefaultFiles = ["index"];
 
-            Assert.ThrowsExactly<ServerConfigurationException>(() =>
-                config.OnDeserialized()
-            );
+            config.OnDeserialized();
         }
 
         /// <summary>
-        /// Verifies that a default file name with a single-character extension throws ServerConfigurationException.
-        /// Extensions must be at least two characters (e.g., "js", "cs").
+        /// Verifies that a default file name with a single-character extension is accepted.
         /// </summary>
         [TestMethod]
-        public void OnDeserialized_DefaultFileWithSingleCharExtension_ThrowsException()
+        public void OnDeserialized_DefaultFileWithSingleCharExtension_Success()
         {
             VirtualHostServerConfig config = CreateValidConfig();
             config.DefaultFiles = ["index.h"];
 
-            Assert.ThrowsExactly<ServerConfigurationException>(() =>
-                config.OnDeserialized()
-            );
+            config.OnDeserialized();
         }
 
         /// <summary>
@@ -848,6 +844,49 @@ namespace VNLib.WebServerTests.Config
             config.DefaultFiles = ["my-page.html", "my_file.js", "index.min.js"];
 
             config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that leading-dot files, extensionless names, and digit extensions pass validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DefaultFileDotfilesAndDigitExtensions_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DefaultFiles = [".htaccess", "README", "song.mp3", "data.7z"];
+
+            config.OnDeserialized();
+        }
+
+        #endregion
+
+        #region Path Filter Validation Tests
+
+        /// <summary>
+        /// Verifies that a valid path filter regex passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_ValidPathFilter_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.PathFilter = @"^/[a-z0-9/\-_.]*$";
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that an invalid path filter regex throws ServerConfigurationException
+        /// during config loading instead of failing later during host building.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_InvalidPathFilter_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.PathFilter = "([unclosed";
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
         }
 
         #endregion
@@ -1028,6 +1067,224 @@ namespace VNLib.WebServerTests.Config
             {
                 { ".", 3600 }
             };
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        #endregion
+
+        #region Hostname Format Tests
+
+        /// <summary>
+        /// Verifies that a single-label hostname (e.g., "localhost") passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_SingleLabelHostname_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = ["localhost"];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a fully-qualified hostname with a trailing dot passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_TrailingDotHostname_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = ["example.com."];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a wildcard subdomain hostname (e.g., "*.example.com") passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_WildcardHostname_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = ["*.example.com"];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a hostname with a port suffix passes validation. Hostnames are
+        /// only dictionary lookup keys, so out-of-band values are acceptable.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_HostnameWithPort_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = ["example.com:8080"];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a hostname containing whitespace throws ServerConfigurationException.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_HostnameWithWhitespace_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = ["exa mple.com"];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a hostname with leading/trailing whitespace throws ServerConfigurationException.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_HostnameWithSurroundingWhitespace_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = [" example.com "];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a hostname with a leading dot passes validation. Hostnames are
+        /// only dictionary lookup keys, so out-of-band values are acceptable.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_HostnameWithLeadingDot_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = [".example.com"];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a hostname with consecutive dots passes validation. Hostnames are
+        /// only dictionary lookup keys, so out-of-band values are acceptable.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_HostnameWithConsecutiveDots_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = ["example..com"];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a hostname containing a path separator passes validation. Hostnames are
+        /// only dictionary lookup keys, so out-of-band values are acceptable.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_HostnameWithSlash_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.Hostnames = ["example.com/path"];
+
+            config.OnDeserialized();
+        }
+
+        #endregion
+
+        #region Deny Extensions Tests
+
+        /// <summary>
+        /// Verifies that a valid deny extensions list passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_ValidDenyExtensions_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DenyExtensions = [".exe", ".bat"];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a null deny extensions list passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_NullDenyExtensions_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DenyExtensions = null;
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that an empty deny extensions list passes validation.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_EmptyDenyExtensions_Success()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DenyExtensions = [];
+
+            config.OnDeserialized();
+        }
+
+        /// <summary>
+        /// Verifies that a null deny extension entry throws ServerConfigurationException.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_NullDenyExtensionEntry_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DenyExtensions = [null!];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a deny extension without a leading dot throws ServerConfigurationException.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DenyExtensionWithoutDot_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DenyExtensions = ["exe"];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a bare dot deny extension "." throws ServerConfigurationException.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DenyExtensionBareDot_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DenyExtensions = ["."];
+
+            Assert.ThrowsExactly<ServerConfigurationException>(() =>
+                config.OnDeserialized()
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a multi-extension deny entry (e.g., ".tar.gz") throws
+        /// ServerConfigurationException, since runtime matching uses
+        /// Path.GetExtension results which only contain the final extension.
+        /// </summary>
+        [TestMethod]
+        public void OnDeserialized_DenyExtensionMultiDot_ThrowsException()
+        {
+            VirtualHostServerConfig config = CreateValidConfig();
+            config.DenyExtensions = [".tar.gz"];
 
             Assert.ThrowsExactly<ServerConfigurationException>(() =>
                 config.OnDeserialized()

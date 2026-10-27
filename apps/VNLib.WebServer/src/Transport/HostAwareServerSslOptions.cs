@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.WebServer
@@ -36,7 +36,7 @@ namespace VNLib.WebServer.Transport
 
     internal sealed class HostAwareServerSslOptions : SslServerAuthenticationOptions
     {
-        //TODO programatically setup ssl protocols, but for now we only use HTTP/1.1 so this can be hard-coded
+        //TODO programmatically setup ssl protocols, but for now we only use HTTP/1.1 so this can be hard-coded
         internal static readonly List<SslApplicationProtocol> SslAppProtocols = new()
         {
             SslApplicationProtocol.Http11,

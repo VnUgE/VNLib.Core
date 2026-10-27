@@ -51,7 +51,12 @@ namespace VNLib.Net.Messaging.FBM.Client
 
             //Setup the socket receive buffer
             byte[] poolBuffer = ArrayPool<byte>.Shared.Rent(clientConfig.MaxMessageSize);
-            socket.Options.SetBuffer(clientConfig.MaxMessageSize, clientConfig.MaxMessageSize, poolBuffer);
+
+            socket.Options.SetBuffer(
+                clientConfig.MaxMessageSize, 
+                clientConfig.MaxMessageSize, 
+                poolBuffer
+            );
 
             //If config specifies a sub protocol, set it
             if (!string.IsNullOrEmpty(clientConfig.SubProtocol))
@@ -68,29 +73,27 @@ namespace VNLib.Net.Messaging.FBM.Client
         private sealed record class FBMWebsocket(ClientWebSocket Socket, byte[] Buffer) : IFbmClientWebsocket
         {
             ///<inheritdoc/>
-            public async Task ConnectAsync(Uri address, VnWebHeaderCollection headers, CancellationToken cancellation)
+            public Task ConnectAsync(Uri address, VnWebHeaderCollection headers, CancellationToken cancellation)
             {
-                //Set headers
+                //copy headers from collection over to websocket options
                 for (int i = 0; i < headers.Count; i++)
                 {
                     string name = headers.GetKey(i);
                     string? value = headers.Get(i);
-                    //Set header
+                    
                     Socket.Options.SetRequestHeader(name, value);
                 }
 
                 //Connect to server
-                await Socket.ConnectAsync(address, cancellation);
+                return Socket.ConnectAsync(address, cancellation);
             }
 
             ///<inheritdoc/>
             public Task DisconnectAsync(WebSocketCloseStatus status, CancellationToken cancellation)
             {
-                if (Socket?.State == WebSocketState.Open || Socket?.State == WebSocketState.CloseSent)
-                {
-                    return Socket.CloseOutputAsync(status, "Socket disconnected", cancellation);
-                }
-                return Task.CompletedTask;
+                return Socket?.State == WebSocketState.Open || Socket?.State == WebSocketState.CloseSent
+                    ? Socket.CloseOutputAsync(status, statusDescription: "Socket disconnected", cancellation)
+                    : Task.CompletedTask;
             }
 
             ///<inheritdoc/>

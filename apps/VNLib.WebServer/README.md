@@ -13,14 +13,14 @@ A high performance, reference .NET 8 web server built with VNLib.Core and Essent
 <img src="https://www.vaughnnugent.com/public/blogs/docs/content/pvsa5sttunurphjljc73jhg3mi.png" width="100%">
 
 ## Short Intro
-VNLib.Webserver is a runtime host for http or "web" bassed server applications. As a standalone application, it can only do basic http file processing via virtual hosts similar to nginx and appache, but when plugins are configured, it becomes a highly versitlile dynamic server application. VNLib.WebServer inclues only the bare minimum binaries for any application, and is infinitly expandable using dynamic assembly loading.  
+VNLib.WebServer is a runtime host for HTTP or "web" based server applications. As a standalone application, it can only do basic HTTP file processing via virtual hosts similar to nginx and apache, but when plugins are configured, it becomes a highly versatile dynamic server application. VNLib.WebServer includes only the bare minimum binaries for any application, and is infinitely expandable using dynamic assembly loading.  
 
 ### Some features
 - HTTP 0.9-1.1 support with granular control over http and tcp settings 
 - Virtual Hosts: many-to-many hostname-transport configuration (similar to nginx)
 - Strong TLS support using .NET SslStream library
 - Static file processing
-- JSON and Yaml coniguration language support
+- JSON and YAML configuration language support
 - CORS resource support and protections
 - Per-host error file caching (ex: 403, 404)
 - IP based whitelist and blacklist

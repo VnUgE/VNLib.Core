@@ -1,11 +1,11 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
-* File: AccountUtil.cs 
+* File: IVirtualEndpointDefinition.cs 
 *
-* AccountUtil.cs is part of VNLib.Plugins.Essentials which is part of the larger 
+* IVirtualEndpointDefinition.cs is part of VNLib.Plugins.Essentials which is part of the larger 
 * VNLib collection of libraries and utilities.
 *
 * VNLib.Plugins.Essentials is free software: you can redistribute it and/or modify 
@@ -22,23 +22,20 @@
 * along with this program.  If not, see https://www.gnu.org/licenses/.
 */
 
+using System.Collections.Generic;
 
-namespace VNLib.Plugins.Essentials.Accounts
+namespace VNLib.Plugins.Essentials.Endpoints
 {
     /// <summary>
-    /// Exposed the required security information for a <see cref="IAccountSecurityProvider"/>
-    /// to authorized a connection.
+    /// Represents a runtime factory for exporting 
+    /// <see cref="IEndpoint"/> instances
     /// </summary>
-    public interface IClientSecInfo
+    public interface IVirtualEndpointDefinition
     {
         /// <summary>
-        /// The clients public-key
+        /// Gets all routable endpoints 
         /// </summary>
-        string PublicKey { get; }
-
-        /// <summary>
-        /// The unique id the client provided to this server
-        /// </summary>
-        string ClientId { get; }
+        /// <returns>The endpoint enumeration</returns>
+        IEnumerable<IEndpoint> GetEndpoints();
     }
 }

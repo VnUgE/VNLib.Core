@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -196,7 +196,7 @@ namespace VNLib.Utils.Memory.Caching
             /*
              * If the type is disposable, we need to collect all the stored items
              * and dispose them individually. We need to spend as little time in
-             * the lock as possbile (busywaiting...) so get the array and exit 
+             * the lock as possible (busywaiting...) so get the array and exit
              * the lock after clearing. Then we can dispose the elements.
              * 
              * If the type is not disposable, we don't need to get the items 

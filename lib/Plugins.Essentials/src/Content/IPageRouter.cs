@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Plugins.Essentials
@@ -27,14 +27,14 @@ using System.Threading.Tasks;
 namespace VNLib.Plugins.Essentials.Content
 {
     /// <summary>
-    /// Determines file routines (routing) for incomming connections
+    /// Determines file routines (routing) for incoming connections
     /// </summary>
     public interface IPageRouter
     {
         /// <summary>
         /// Determines what file path to return to a user for the given incoming connection 
         /// </summary>
-        /// <param name="entity">The connection to proccess</param>
+        /// <param name="entity">The connection to process</param>
         /// <returns>A <see cref="ValueTask"/> that returns the <see cref="FileProcessArgs"/> to pass to the file processor</returns>
         ValueTask<FileProcessArgs> RouteAsync(HttpEntity entity);
     }

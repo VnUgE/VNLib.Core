@@ -64,7 +64,7 @@ namespace VNLib.Utils.IO
         /// <param name="handle"><see cref="IResizeableMemoryHandle{T}"/> to consume</param>
         /// <param name="length">Length of the stream</param>
         /// <param name="readOnly">Should the stream be readonly?</param>
-        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentException">Thrown when the handle is not resizable on a writable stream</exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
         public static VnMemoryStream ConsumeHandle(IResizeableMemoryHandle<byte> handle, nint length, bool readOnly)
             => FromHandle(handle, true, length, readOnly);
@@ -78,7 +78,7 @@ namespace VNLib.Utils.IO
         /// <param name="length">The initial length of the stream</param>
         /// <param name="readOnly">Should the stream be readonly?</param>
         /// <param name="ownsHandle">A value that indicates if the current stream owns the memory handle</param>
-        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentException">Thrown when the handle is not resizable on a writable stream</exception>
         /// <returns>A <see cref="VnMemoryStream"/> wrapper to access the handle data</returns>
         public static VnMemoryStream FromHandle(IResizeableMemoryHandle<byte> handle, bool ownsHandle, nint length, bool readOnly)
         {
@@ -117,7 +117,7 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// Create a new memory stream where buffers will be allocated from the specified heap
         /// </summary>
-        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
+        /// <param name="heap"><see cref="IUnmanagedHeap"/> to allocate memory from</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
         public VnMemoryStream(IUnmanagedHeap heap) : this(heap, DefaultBufferSize, false) { }
@@ -132,8 +132,8 @@ namespace VNLib.Utils.IO
         /// Creates a new memory stream and pre-allocates the internal
         /// buffer of the specified size on the specified heap to avoid resizing.
         /// </summary>
-        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
-        /// <param name="bufferSize">The initial internal buffer size, does not effect the length/size of the stream, helps pre-alloc</param>
+        /// <param name="heap"><see cref="IUnmanagedHeap"/> to allocate memory from</param>
+        /// <param name="bufferSize">The initial internal buffer size, does not affect the length/size of the stream, helps pre-alloc</param>
         /// <param name="zero">Zero memory allocations during buffer expansions</param>
         /// <exception cref="OutOfMemoryException"></exception>
         /// <exception cref="ArgumentNullException"></exception>
@@ -149,7 +149,7 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// Creates a new memory stream from the data provided
         /// </summary>
-        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
+        /// <param name="heap"><see cref="IUnmanagedHeap"/> to allocate memory from</param>
         /// <param name="data">Initial data</param>
         public VnMemoryStream(IUnmanagedHeap heap, ReadOnlySpan<byte> data)
         {
@@ -164,7 +164,7 @@ namespace VNLib.Utils.IO
         /// <summary>
         /// Creates a new memory stream from the data provided
         /// </summary>
-        /// <param name="heap"><see cref="Win32PrivateHeap"/> to allocate memory from</param>
+        /// <param name="heap"><see cref="IUnmanagedHeap"/> to allocate memory from</param>
         /// <param name="data">Initial data</param>
         public VnMemoryStream(IUnmanagedHeap heap, ReadOnlyMemory<byte> data)
         {
@@ -231,7 +231,7 @@ namespace VNLib.Utils.IO
 
             if (!destination.CanWrite)
             {
-                throw new IOException("The destination stream is not writeable");
+                throw new IOException("The destination stream is not writable");
             }
 
             while (LenToPosDiff > 0)
@@ -250,8 +250,8 @@ namespace VNLib.Utils.IO
         }
 
         /// <summary>
-        /// Allocates a temporary buffer of the desired size, copies data from the internal 
-        /// buffer and writes it to the destination buffer asynchronously.
+        /// Slices the internal buffer and writes it to the destination stream
+        /// asynchronously in chunks of <paramref name="bufferSize"/> bytes.
         /// </summary>
         /// <param name="destination">The stream to write output data to</param>
         /// <param name="bufferSize">The size of the buffer to use when copying data</param>
@@ -283,7 +283,7 @@ namespace VNLib.Utils.IO
                 /*
                  * CopyTo starts at the current position, as if calling Read() 
                  * so the reader must be offset to match and the _length gives us the 
-                 * actual length of the stream and therefor the segment size
+                 * actual length of the stream and therefore the segment size
                  */
 
                 while (LenToPosDiff > 0)
@@ -293,10 +293,11 @@ namespace VNLib.Utils.IO
                     ReadOnlyMemory<byte> window = asMemory.Slice((int)_position, blockSize);
 
                     //write async
-                    await destination.WriteAsync(window, cancellationToken);
+                    await destination.WriteAsync(window, cancellationToken)
+                        .ConfigureAwait(false);
 
                     //Update position
-                    _position += bufferSize;
+                    _position += blockSize;
                 }
             }
             else
@@ -454,9 +455,10 @@ namespace VNLib.Utils.IO
                     ArgumentOutOfRangeException.ThrowIfGreaterThan(_offset, 0, nameof(offset));
                     ArgumentOutOfRangeException.ThrowIfLessThan(_offset, -_length, nameof(offset));
 
-                    //Calc new seek position from end of stream, should be len -1 so 0 can be specified from the end
+                    //Calc new seek position from end of stream, offset 0 seeks to the end (length)
+                    //The bounds checks above guarantee the resulting position is never negative
                     nint realIndex = _length + _offset;
-                    return _position = Math.Min(realIndex, 0);
+                    return _position = realIndex;
 
                 default:
                     throw new ArgumentException("Stream operation is not supported on current stream");
@@ -603,7 +605,7 @@ namespace VNLib.Utils.IO
 
         /// <summary>
         /// Returns a <see cref="ReadOnlyMemory{T}"/> structure which is a window of the buffered
-        /// data as it currently sits. For writeable streams, you must call this function 
+        /// data as it currently sits. For writable streams, you must call this function 
         /// every time the size of the stream changes. The memory structure is just a "pointer" to 
         /// the internal buffer.
         /// </summary>

@@ -23,16 +23,12 @@
 */
 
 using System;
-using System.Net;
 using System.Text.Json;
-using System.Security.Authentication;
 using System.Runtime.CompilerServices;
 
 using VNLib.Utils;
-using VNLib.Net.Http;
-using VNLib.Plugins.Essentials.Extensions;
-using static VNLib.Plugins.Essentials.Statics;
 
+using static VNLib.Plugins.Essentials.Statics;
 
 /*
  * SessionInfo is a structure since it is only meant used in 
@@ -43,8 +39,6 @@ using static VNLib.Plugins.Essentials.Statics;
  * should not be cached until a safe use policy is created.
  */
 
-
-
 namespace VNLib.Plugins.Essentials.Sessions
 {   
     /// <summary>
@@ -53,48 +47,25 @@ namespace VNLib.Plugins.Essentials.Sessions
     /// </summary>
     /// <remarks>
     /// This structure should not be stored and should not be accessed when the parent http entity 
-    /// has been closed.
+    /// has been closed. Members will throw if accessed when <see cref="IsSet"/> is false;
+    /// always check <see cref="IsSet"/> before accessing other members.
     /// </remarks>
     public readonly struct SessionInfo : IObjectStorage, IEquatable<SessionInfo>
-    {
-        /*
-         * Store status flags as a 1 byte enum
-         */
-        [Flags]
-        private enum SessionFlags : byte
-        {
-            None = 0x00,
-            IsSet = 0x01,
-            IpMatch = 0x02
-        }
+    { 
 
         private readonly ISession UserSession;
-        private readonly SessionFlags _flags;
 
         /// <summary>
         /// A value indicating if the current instance has been initialized 
         /// with a session. Otherwise properties are undefined
         /// </summary>
-        public readonly bool IsSet
+        public readonly bool IsSet;
+
+        internal SessionInfo(ISession session)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _flags.HasFlag(SessionFlags.IsSet);
-        }
-
-        /// <summary>
-        /// The origin header specified during session creation
-        /// </summary>
-        public readonly Uri? SpecifiedOrigin;
-
-        /// <summary>
-        /// Was the session Initially established on a secure connection?
-        /// </summary>
-        public readonly SslProtocols SecurityProtocol;
-
-        /// <summary>
-        /// Session stored User-Agent
-        /// </summary>
-        public readonly string? UserAgent;
+            UserSession = session;
+            IsSet = true;
+        }     
 
         /// <summary>
         /// Key that identifies the current session. (Identical to cookie::sessionid)
@@ -103,16 +74,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.SessionID;
-        }
-        
-        /// <summary>
-        /// If the stored IP and current user's IP matches
-        /// </summary>
-        public readonly bool IPMatch
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _flags.HasFlag(SessionFlags.IpMatch);
-        }
+        }       
 
         /// <summary>
         /// Was this session just created on this connection?
@@ -144,6 +106,7 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.UserID;
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession.UserID = value;
         }
@@ -155,27 +118,10 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession.Privileges;
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession.Privileges = value;
-        }
-
-        /// <summary>
-        /// The IP address belonging to the client
-        /// </summary>
-        public readonly IPAddress UserIP
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.UserIP;
-        }      
-
-        /// <summary>
-        /// A value specifying the type of the backing session
-        /// </summary>
-        public readonly SessionType SessionType
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => UserSession.SessionType;
-        }
+        } 
 
         /// <summary>
         /// Flags the session as invalid. IMPORTANT: the user's session data is no longer valid, no data 
@@ -195,7 +141,6 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// </summary>
         public readonly void Detach()
             => UserSession.Detach();
-
 
 #nullable disable
 
@@ -218,37 +163,10 @@ namespace VNLib.Plugins.Essentials.Sessions
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => UserSession[index];
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => UserSession[index] = value;
-        }
-
-        internal SessionInfo(ISession session, IConnectionInfo ci, IPAddress trueIp)
-        {
-            UserSession = session;
-
-            _flags |= SessionFlags.IsSet;
-
-            //Set ip match flag if current ip and stored ip match
-            _flags |= trueIp.Equals(session.UserIP) ? SessionFlags.IpMatch : SessionFlags.None;
-          
-            //If the session is new, we can store initial security variables
-            if (session.IsNew)
-            {
-                session.InitNewSession(ci);
-
-                //Since all values will be the same as the connection, cache the connection values
-                UserAgent = ci.UserAgent;
-                SpecifiedOrigin = ci.Origin;
-                SecurityProtocol = ci.GetSslProtocol();
-            }
-            else
-            {
-                //Load/decode stored variables
-                UserAgent = session.GetUserAgent();
-                SpecifiedOrigin = session.GetOriginUri();
-                SecurityProtocol = session.GetSecurityProtocol();
-            }
-        }
+        }       
 
         ///<inheritdoc/>
         public readonly bool Equals(SessionInfo other) 

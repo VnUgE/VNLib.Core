@@ -44,6 +44,6 @@ namespace VNLib.Plugins.Essentials.Sessions
         /// <exception cref="TimeoutException"></exception>
         /// <exception cref="SessionException"></exception>
         /// <exception cref="OperationCanceledException"></exception>
-        public ValueTask<SessionHandle> GetSessionAsync(IHttpEvent entity, CancellationToken cancellationToken);
+        ValueTask<SessionHandle> GetSessionAsync(IHttpEvent entity, CancellationToken cancellationToken);
     }
 }

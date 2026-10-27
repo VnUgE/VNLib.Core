@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Hashing.Portable
@@ -33,7 +33,7 @@ using VNLib.Utils.Memory;
 namespace VNLib.Hashing.IdentityUtility
 {
     /// <summary>
-    /// Contains .NET cryptography hasing library extensions
+    /// Contains .NET cryptography hashing library extensions
     /// </summary>
     public static class HashingExtensions
     {

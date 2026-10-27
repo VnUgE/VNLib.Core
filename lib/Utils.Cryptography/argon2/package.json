@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "output_dir": "bin",
   "author": "Vaughn Nugent",
-  "description": "A vendored copy of the offical Argon2 repository that only produces the dependent Argon2 dynamic library required for some VNLib projects that wish to support secure password hashing",
+  "description": "A vendored copy of the official Argon2 repository that only produces the dependent Argon2 dynamic library required for some VNLib projects that wish to support secure password hashing",
   "copyright": "Copyright \u00A9 phc-winner-argon2 authors",
   "company": "Vaughn Nugent",
   "repository": "https://github.com/VnUgE/VNLib.Core/tree/main/lib/Utils.Cryptography/argon2",

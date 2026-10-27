@@ -10,7 +10,7 @@ project(
 #export header files to the main project
 file(GLOB HEADERS src/*.h)
 
-#Add indepednent source files to the project
+#Add independent source files to the project
 set(ARGON_SRCS 
 	src/argon2.c
 	src/core.c
@@ -65,14 +65,14 @@ if(MSVC)
 		${CMAKE_PROJECT_NAME}
 		PRIVATE
 
-		#disable warnings for struct padding and spectre mitigation wuen WX is enabled
+		#disable warnings for struct padding and spectre mitigation when WX is enabled
 		$<$<CONFIG:Debug>:/wd5045>
 		$<$<CONFIG:Debug>:/wd4820>
 		$<$<CONFIG:Debug>:/wd4574>
 
 		#for debug configs
 		$<$<CONFIG:Debug>:/options:strict>
-		#disable warnings for struct padding and spectre mitigation wuen WX is enabled
+		#disable warnings for struct padding and spectre mitigation when WX is enabled
 		$<$<CONFIG:Debug>:/Wall>
 		$<$<CONFIG:Debug>:/Zi>
 		$<$<CONFIG:Debug>:/Zo>
@@ -82,7 +82,7 @@ if(MSVC)
 	add_compile_definitions( 
 		$<$<CONFIG:DEBUG>:DEBUG>
 		$<$<CONFIG:RELEASE>:RELEASE>
-		_CRT_SECURE_NO_WARNINGS		#NOTE! from Argon2 offical project files, supresses warning about sprintf being an insecure function call
+		_CRT_SECURE_NO_WARNINGS		#NOTE! from Argon2 official project files, suppresses warning about sprintf being an insecure function call
 	)
 
 #configure gcc flags

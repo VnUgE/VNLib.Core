@@ -79,24 +79,24 @@ namespace VNLib.WebServer.Config
         {
             JsonElement current = doc.RootElement;
 
-            //Loop through the namespace properties to find nested json objects
+            //Loop through the namespace parts to resolve nested objects or the terminal value            
             foreach (string name in key.Split("::"))
             {
                 switch (current.ValueKind)
                 {
-                    //If the current element is an object, try to get a nested property
-                    case JsonValueKind.Object:
-                        if (current.TryGetProperty(name, out JsonElement value))
-                        {
-                            current = value;
-                        }
-                        else
-                        {
-                            return default;
-                        }
+                    // Move to next value if object and has nested value
+                    // if no more keys, loop ends and current will be deserialized
+                    case JsonValueKind.Object when current.TryGetProperty(name, out JsonElement value):
+                        current = value;
                         break;
+
+                    case JsonValueKind.Object:
+                        return default;
+
                     default:
-                        return current.Deserialize<T>(_ops);
+                        //Only objects have named properties. Anything else means the configured
+                        //value has the wrong shape and must fail loudly, it is never a miss.
+                        throw new ArgumentException($"Config key path '{key}' does not resolve, '{name}' traverses through a non-object value");
                 }
             }
 

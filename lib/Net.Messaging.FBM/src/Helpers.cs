@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Messaging.FBM
@@ -150,7 +150,7 @@ namespace VNLib.Net.Messaging.FBM
         /// <param name="vms">The FBM packet buffer</param>
         /// <param name="buffer">The header character buffer to write headers to</param>
         /// <param name="headers">The collection to store headers in</param>
-        /// <param name="encoding">The encoding type used to deocde header values</param>
+        /// <param name="encoding">The encoding type used to decode header values</param>
         /// <returns>The results of the parse operation</returns>
         internal static HeaderParseError ParseHeaders(VnMemoryStream vms, IFBMHeaderBuffer buffer, ICollection<FBMMessageHeader> headers, Encoding encoding)
         {
@@ -212,7 +212,7 @@ namespace VNLib.Net.Messaging.FBM
         public static HeaderCommand GetHeaderCommand(ReadOnlySpan<byte> line) => (HeaderCommand)line[0];
 
         /// <summary>
-        /// Gets the value of the header following the colon bytes in the specifed
+        /// Gets the value of the header following the colon bytes in the specified
         /// data message data line
         /// </summary>
         /// <param name="line">The message header line to get the value of</param>

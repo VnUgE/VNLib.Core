@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Rest.Client
@@ -43,7 +43,7 @@ namespace VNLib.Net.Rest.Client.Construction
 
         /// <summary>
         /// Adds a request message handler/converter, callback method used to modify 
-        /// the request message programatically.
+        /// the request message programmatically.
         /// </summary>
         /// <param name="requestBuilder"></param>
         /// <returns>The chainable <see cref="IRestRequestBuilder{TModel}"/></returns>
