@@ -151,10 +151,10 @@ namespace VNLib.Hashing.IdentityUtility
         }
 
         /// <summary>
-        /// Deserialzes the jwt payload as the specified object
+        /// Deserializes the jwt payload as the specified object
         /// </summary>
         /// <param name="jwt"></param>
-        /// <param name="jso">Optional serialzie options</param>
+        /// <param name="jso">Optional serialize options</param>
         /// <returns>The <see cref="JsonDocument"/> of the jwt body</returns>
         /// <exception cref="JsonException"></exception>
         /// <exception cref="OutOfMemoryException"></exception>
@@ -177,7 +177,7 @@ namespace VNLib.Hashing.IdentityUtility
             //Decode from urlsafe base64
             int decoded = DecodeUnpadded(payload, buffer.Span);
 
-            //Deserialze as an object
+            //Deserialize as an object
             return JsonSerializer.Deserialize<T>(buffer.Span[..decoded], jso);
         }
 

@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -59,7 +59,7 @@ namespace VNLib.Utils.Extensions
         /// <typeparam name="TValue">An unmanaged structure type</typeparam>
         /// <param name="lookup"></param>
         /// <param name="key">The key used to identify the value</param>
-        /// <param name="value">The value to serialze</param>
+        /// <param name="value">The value to serialize</param>
         public static void SetValueType<TKey, TValue>(this IIndexable<TKey, string> lookup, TKey key, TValue value) where TValue : unmanaged where TKey : notnull
         {
             ArgumentNullException.ThrowIfNull(lookup);

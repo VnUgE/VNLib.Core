@@ -1,0 +1,50 @@
+min_version = "2024.9.5"
+
+# Experimental features (bootstrap package managers) enabled
+[settings]
+experimental = true
+
+# OS-level build dependencies installed via apt (Debian/Ubuntu) or dnf (Fedora/RHEL)
+[bootstrap.packages]
+"apt:build-essential" = "latest"
+"apt:libicu-dev" = "latest"
+"dnf:gcc" = "latest"
+"dnf:gcc-c++" = "latest"
+"dnf:libicu" = "latest"
+"dnf:make" = "latest"
+
+[tools]
+dotnet = "8.0"
+cmake = "4.4"
+task = "3.54"
+"dotnet:GitVersion.Tool" = "6.4.0"
+
+[tools."http:vnbuild"]
+version = "1.3.0-alpha.21"
+postinstall = "chmod +x $MISE_TOOL_INSTALL_PATH/vnbuild"
+
+[tools."http:vnbuild".platforms]
+windows-x64 = { url = "https://www.vaughnnugent.com/public/resources/software/builds/vnbuild/4893ab2fee867f8120403689bf6b3f484c66b995/vnbuild/win-x64.tgz", checksum = "sha256:306383A1DD3896821390F3E3853454D090D7FBD3FA0E76BD4FFF9AEA990161B3" }
+linux-x64 = { url = "https://www.vaughnnugent.com/public/resources/software/builds/vnbuild/4893ab2fee867f8120403689bf6b3f484c66b995/vnbuild/linux-x64.tgz", checksum = "sha256:BD972CEE5787F3A9A47DC278A5E648EB88B417B34BD62DC255C0F71978ED859D" }
+linux-arm64 = { url = "https://www.vaughnnugent.com/public/resources/software/builds/vnbuild/4893ab2fee867f8120403689bf6b3f484c66b995/vnbuild/linux-arm64.tgz", checksum = "sha256:381EF78DE52CAE74AA195EB597497E8DFA6D97DA032FB160B7D2F8CD90C8E94F" }
+osx-x64 = { url = "https://www.vaughnnugent.com/public/resources/software/builds/vnbuild/4893ab2fee867f8120403689bf6b3f484c66b995/vnbuild/osx-x64.tgz", checksum = "sha256:A083C30DF84D41467B1D7233CF8C2C7484AF6988B0E43492C0A467462E413BDB" }
+osx-arm64 = { url = "https://www.vaughnnugent.com/public/resources/software/builds/vnbuild/4893ab2fee867f8120403689bf6b3f484c66b995/vnbuild/osx-arm64.tgz", checksum = "sha256:13E5FEFDCB1E8BDA428D49D325E3EFD206752F8CB71C156E0FC2DA43FC2D1F70" }
+
+[env]
+DOTNET_SYSTEM_GLOBALIZATION_INVARIANT = "1"
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+
+[tasks.test]
+dir = '../'
+run = [
+	'task -t Module.Taskfile.yaml dev-init',
+	'task -t Module.Taskfile.yaml test'
+]
+
+[tasks.vnbuild-build]
+dir = '../'
+run = 'vnbuild build --no-delay'
+
+[tasks.vnbuild-publish]
+dir = '../'
+run = 'vnbuild publish'

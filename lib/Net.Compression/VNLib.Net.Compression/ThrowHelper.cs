@@ -1,5 +1,5 @@
-﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+/*
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Compression
@@ -47,6 +47,9 @@ namespace VNLib.Net.Compression
             ErrGzInvalidState = -16,
             ErrGzOverflow = -17,
 
+            ErrZstdInvalidState = -18,
+            ErrZstdCompressionFailed = -19,
+
             ErrBrInvalidState = -24
         }
 
@@ -73,6 +76,8 @@ namespace VNLib.Net.Compression
                 NativeErrorType.ErrInvalidOutput => new NativeCompressionException("The output buffer was null and the output size was greater than 0"),
                 NativeErrorType.ErrGzInvalidState => new NativeCompressionException("A gzip operation failed because the compressor state is invalid (null compressor pointer)"),
                 NativeErrorType.ErrGzOverflow => new NativeCompressionException("A gzip operation failed because the output buffer is too small"),
+                NativeErrorType.ErrZstdInvalidState => new NativeCompressionException("A zstd operation failed because the compressor state is invalid (null compressor pointer)"),
+                NativeErrorType.ErrZstdCompressionFailed => new NativeCompressionException("A zstd operation failed because the underlying compression operation failed"),
                 NativeErrorType.ErrBrInvalidState => new NativeCompressionException("A brotli operation failed because the compressor state is invalid (null compressor pointer)"),
                 NativeErrorType.ErrCompOverflow => new OverflowException("A call to compress block or get block size failed because the library would cause an integer overflow processing your data"),
                 NativeErrorType.ErrCompressionFailed => new NativeCompressionException("An operation failes because the underlying implementation would cause a memory related error. State is considered corrupted"),

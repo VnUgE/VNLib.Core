@@ -62,7 +62,7 @@ namespace VNLib.Net.Messaging.FBM.Server
         /// </summary>
         /// <param name="wss">The <see cref="WebSocketSession"/> to receive messages on</param>
         /// <param name="handler">The callback method to handle incoming requests</param>
-        /// <param name="args">The arguments used to configured this listening session</param>
+        /// <param name="args">The arguments used to configure this listening session</param>
         /// <returns>A <see cref="Task"/> that completes when the connection closes</returns>
         public async Task ListenAsync(WebSocketSession wss, IFBMServerMessageHandler handler, FBMListenerSessionParams args)
         {
@@ -221,7 +221,7 @@ namespace VNLib.Net.Messaging.FBM.Server
                 if (await messageEnumerator.MoveNextAsync() && !session.CancellationToken.IsCancellationRequested)
                 {                  
 
-                    //Syncrhonize access to send data because we may need to stream data to the client
+                    //Synchronize access to send data because we may need to stream data to the client
                     await session.ResponseLock.WaitAsync(SEND_SEMAPHORE_TIMEOUT_MS);
 
                     try
@@ -312,7 +312,7 @@ namespace VNLib.Net.Messaging.FBM.Server
             private FBMContext ContextCtor() => new(Params.MaxHeaderBufferSize, Params.ResponseBufferSize, Params.HeaderEncoding, MemManager);
 
             /// <summary>
-            /// Cancels any pending opreations relating to the current session
+            /// Cancels any pending operations relating to the current session
             /// </summary>
             public void CancelSession()
             {

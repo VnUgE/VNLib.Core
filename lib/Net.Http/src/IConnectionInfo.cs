@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2023 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Net.Http
@@ -63,7 +63,7 @@ namespace VNLib.Net.Http
         bool CrossOrigin { get; }
 
         /// <summary>
-        /// Is the current connecion a websocket request
+        /// Is the current connection a websocket request
         /// </summary>
         bool IsWebSocketRequest { get; }
 

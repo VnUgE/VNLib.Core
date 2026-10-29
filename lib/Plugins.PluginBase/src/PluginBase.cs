@@ -47,7 +47,7 @@ namespace VNLib.Plugins
     {
         /*
          * CTS exists for the life of the plugin, its resources are never disposed
-         * such not to disturb late running tasks that depend on the cts's state
+         * so as not to disturb late running tasks that depend on the cts's state
          */
         private readonly CancellationTokenSource Cts = new();
 
@@ -211,30 +211,7 @@ namespace VNLib.Plugins
                 outputTemplate: conf.Template,
                 flushToDiskInterval: TimeSpan.FromSeconds(conf.FlushIntervalSeconds)
             );
-        }
-
-        /// <summary>
-        /// When overriden handles a console command
-        /// </summary>
-        /// <param name="cmd"></param>
-        [ConsoleEventHandler]
-        public void HandleCommand(string cmd)
-        {
-            try
-            {
-                ProcessHostCommand(cmd);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex);
-            }
-        }
-
-        /// <summary>
-        /// Invoked when the host process has a command message to send 
-        /// </summary>
-        /// <param name="cmd">The command message</param>
-        protected abstract void ProcessHostCommand(string cmd);
+        }      
 
         ///<inheritdoc/>
         void IPlugin.PublishServices(IPluginServicePool pool) => OnPublishServices(pool);
@@ -311,7 +288,7 @@ namespace VNLib.Plugins
                     tasks = DeferredTasks.ToArray();
                 }
 
-                //Wait for all tasks to complete for a maxium of 10 seconds
+                //Wait for all tasks to complete for a maximum of 10 seconds
                 if (!Task.WaitAll(tasks, TimeSpan.FromSeconds(10)))
                 {
                     Log.Error("Tasks failed to complete in the allotted timeout period");
@@ -355,7 +332,7 @@ namespace VNLib.Plugins
         /// <summary>
         /// Invoked when the host requests the plugin to publish services
         /// <para>
-        /// If overriden, the base implementation must be called to 
+        /// If overridden, the base implementation must be called to
         /// publish all services in the internal service collection
         /// </para>
         /// </summary>

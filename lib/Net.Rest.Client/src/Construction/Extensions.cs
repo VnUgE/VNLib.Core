@@ -127,7 +127,7 @@ namespace VNLib.Net.Rest.Client.Construction
         /// <param name="site"></param>
         /// <param name="entity">The request entity model to send to the server</param>
         /// <param name="cancellation">A token to cancel the operation</param>
-        /// <returns>A task that resolves the response message with json resonse support</returns>
+        /// <returns>A task that resolves the response message with json response support</returns>
         public static async Task<RestResponse<TJson>> ExecuteAsync<TModel, TJson>(
             this IRestSiteAdapter site, 
             TModel entity, 

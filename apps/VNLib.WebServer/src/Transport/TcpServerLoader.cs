@@ -49,7 +49,7 @@ namespace VNLib.WebServer.Transport
 
         private readonly LazyInitializer<TcpConfigJson> _conf = new(() =>
         {
-            TcpConfigJson conf = hostConfig.GetConfigProperty<TcpConfigJson>(Entry.TCP_CONF_PROP_NAME) ?? new TcpConfigJson();
+            TcpConfigJson conf = hostConfig.GetConfigProperty<TcpConfigJson>() ?? new TcpConfigJson();
 
             conf.ReuseAddress |= args.HasArgument("--reuse-address");
             conf.ReusePort    |= args.HasArgument("--reuse-port");          //TODO: port reuse currently not supported
@@ -172,6 +172,12 @@ namespace VNLib.WebServer.Transport
             if (iface.Ssl && noDelay)
             {
                 tcpLogger.Warn("Socket option TCP_NODELAY was enabled for {iface} but is not recommended for SSL connections", iface);
+            }
+
+            //Port reuse is accepted for forward compatibility but not implemented, warn so it is not silently ignored
+            if (baseConfig.ReusePort)
+            {
+                tcpLogger.Warn("Socket option SO_REUSEPORT was enabled for {iface} but port reuse is not currently supported and will be ignored", iface);
             }
 
             //Print warning message, since inline scheduler is an advanced feature

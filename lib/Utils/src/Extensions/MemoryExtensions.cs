@@ -760,7 +760,7 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        /// <param name="start">Intial offset into the handle</param>
+        /// <param name="start">Initial offset into the handle</param>
         /// <returns>The sub-sequence of the current handle</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -789,7 +789,7 @@ namespace VNLib.Utils.Extensions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        /// <param name="start">Intial offset into the handle</param>
+        /// <param name="start">Initial offset into the handle</param>
         /// <param name="count">The number of elements within the new sequence</param>
         /// <returns>The sub-sequence of the current handle</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>

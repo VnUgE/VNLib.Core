@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -48,7 +48,7 @@ namespace VNLib.Utils.Native
         /// </summary>
         /// <typeparam name="T">The native method delegate type</typeparam>
         /// <param name="functionName">The name of the native function</param>
-        /// <returns>A wapper handle around the native method delegate</returns>
+        /// <returns>A wrapper handle around the native method delegate</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
         /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
@@ -75,13 +75,13 @@ namespace VNLib.Utils.Native
         }
 
         /// <summary>
-        /// Gets an delegate wrapper for the specified native function without tracking its reference.
+        /// Gets a delegate wrapper for the specified native function without tracking its reference.
         /// The caller must manage the <see cref="SafeLibraryHandle"/> reference count in order
         /// to not leak resources or cause process corruption
         /// </summary>
         /// <typeparam name="T">The native method delegate type</typeparam>
         /// <param name="functionName">The name of the native library function</param>
-        /// <returns>A the delegate wrapper on the native method</returns>
+        /// <returns>The delegate wrapper on the native method</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ObjectDisposedException">If the handle is closed or invalid</exception>
         /// <exception cref="EntryPointNotFoundException">When the specified entrypoint could not be found</exception>
@@ -106,12 +106,12 @@ namespace VNLib.Utils.Native
         }
 
         /// <summary>
-        /// Finds and loads the specified native libary into the current process by its name at runtime.
+        /// Finds and loads the specified native library into the current process by its name at runtime.
         /// This function defaults to the executing assembly
         /// </summary>
-        /// <param name="libPath">The path (or name of libary) to search for</param>
+        /// <param name="libPath">The path (or name of library) to search for</param>
         /// <param name="searchPath">
-        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// The <see cref="DllImportSearchPath"/> used to search for libraries
         /// within the current filesystem
         /// </param>
         /// <returns>The loaded <see cref="SafeLibraryHandle"/></returns>
@@ -126,11 +126,11 @@ namespace VNLib.Utils.Native
         }
 
         /// <summary>
-        /// Finds and loads the specified native libary into the current process by its name at runtime 
+        /// Finds and loads the specified native library into the current process by its name at runtime
         /// </summary>
-        /// <param name="libPath">The path (or name of libary) to search for</param>
+        /// <param name="libPath">The path (or name of library) to search for</param>
         /// <param name="searchPath">
-        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// The <see cref="DllImportSearchPath"/> used to search for libraries
         /// within the current filesystem
         /// </param>
         /// <param name="assembly">The assembly loading the native library</param>
@@ -163,16 +163,16 @@ namespace VNLib.Utils.Native
         }
 
         /// <summary>
-        /// Attempts to load the specified native libary into the current process by its name at runtime.
+        /// Attempts to load the specified native library into the current process by its name at runtime.
         /// This function defaults to the executing assembly
         /// </summary>
-        ///<param name="libPath">The path (or name of libary) to search for</param>
+        ///<param name="libPath">The path (or name of library) to search for</param>
         /// <param name="searchPath">
-        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// The <see cref="DllImportSearchPath"/> used to search for libraries
         /// within the current filesystem
         /// </param>
-        /// <param name="library">The handle to the libary if successfully loaded</param>
-        /// <returns>True if the libary was found and loaded into the current process</returns>
+        /// <param name="library">The handle to the library if successfully loaded</param>
+        /// <returns>True if the library was found and loaded into the current process</returns>
         public static bool TryLoadLibrary(
             string libPath,
             DllImportSearchPath searchPath,
@@ -190,16 +190,16 @@ namespace VNLib.Utils.Native
       
 
         /// <summary>
-        /// Attempts to load the specified native libary into the current process by its name at runtime 
+        /// Attempts to load the specified native library into the current process by its name at runtime
         /// </summary>
-        ///<param name="libPath">The path (or name of libary) to search for</param>
+        ///<param name="libPath">The path (or name of library) to search for</param>
         /// <param name="searchPath">
-        /// The <see cref="DllImportSearchPath"/> used to search for libaries 
+        /// The <see cref="DllImportSearchPath"/> used to search for libraries
         /// within the current filesystem
         /// </param>
-        /// <param name="library">The handle to the libary if successfully loaded</param>
+        /// <param name="library">The handle to the library if successfully loaded</param>
         /// <param name="assembly">The assembly loading the native library</param>
-        /// <returns>True if the libary was found and loaded into the current process</returns>
+        /// <returns>True if the library was found and loaded into the current process</returns>
         /// <exception cref="ArgumentNullException"></exception>
         public static bool TryLoadLibrary(
             string libPath, 

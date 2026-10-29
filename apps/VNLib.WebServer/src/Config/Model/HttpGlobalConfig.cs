@@ -27,8 +27,13 @@ using System.Text.Json.Serialization;
 
 namespace VNLib.WebServer.Config.Model
 {
+    [ConfigurationKey(ConfigKey)]
     internal class HttpGlobalConfig : IJsonOnDeserialized
     {
+        /// <summary>
+        /// The name of the configuration element 
+        /// </summary>
+        internal const string ConfigKey = "http";
 
         [JsonPropertyName("default_version")]
         public string DefaultHttpVersion { get; set; } = "HTTP/1.1";
@@ -129,7 +134,8 @@ namespace VNLib.WebServer.Config.Model
             Validate.EnsureRange(ResponseHeaderBufSize, 0, int.MaxValue);
             Validate.EnsureRange(MultipartMaxBufSize, 0, int.MaxValue);
 
-            Validate.Assert(MaxEntitySize <= 0 || MaxUploadsPerRequest != 0, "Max uploads per request must be greater than 0 if max entity size is set");
+            //Uploads are only usable when a max entity size is configured, otherwise every body is rejected
+            Validate.Assert(MaxUploadsPerRequest == 0 || MaxEntitySize > 0, "Max entity size must be greater than 0 when uploads are allowed");
 
             //Validate compression config
             Validate.EnsureNotNull(Compression, "Compression configuration should not be set to null. Comment to enable defaults");

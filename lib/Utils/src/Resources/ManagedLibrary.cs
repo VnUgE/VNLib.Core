@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2024 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -102,7 +102,7 @@ namespace VNLib.Utils.Resources
         }
 
         /*
-         * Resolves a native libary isolated to the requested assembly, which 
+         * Resolves a native library isolated to the requested assembly, which
          * should be isolated to this assembly or one of its dependencies.
          * 
          * We can usually assume the alc has the ability to fall back to safe 
@@ -117,7 +117,7 @@ namespace VNLib.Utils.Resources
 
             AdvancedTrace.WriteLineIf(requestedDll != null,$"Resolving native library {libname} to path {requestedDll} for library {AssemblyPath}");
 
-            //if the dep is resolved, seach in the assembly directory for the manageed dll only
+            //if the dep is resolved, search in the assembly directory for the managed dll only
             return requestedDll == null ? 
                 IntPtr.Zero : 
                 NativeLibrary.Load(requestedDll, assembly, DllImportSearchPath.AssemblyDirectory);
@@ -191,11 +191,11 @@ namespace VNLib.Utils.Resources
 
         /// <summary>
         /// Creates a new loader for the desired assembly. The assembly and its dependencies
-        /// will be loaded into the specified context. If no context is specified the current assemblie's load
+        /// will be loaded into the specified context. If no context is specified the current assembly's load
         /// context is captured.
         /// </summary>
-        /// <param name="assemblyName">The name of the assmbly within the current plugin directory</param>
-        /// <param name="loadContext">The assembly load context to load the assmbly into</param>
+        /// <param name="assemblyName">The name of the assembly within the current plugin directory</param>
+        /// <param name="loadContext">The assembly load context to load the assembly into</param>
         /// <exception cref="FileNotFoundException"></exception>
         public static ManagedLibrary LoadManagedAssembly(string assemblyName, AssemblyLoadContext loadContext)
         {
@@ -220,7 +220,7 @@ namespace VNLib.Utils.Resources
         /// <param name="obj">The object to discover and bind the found method to</param>
         /// <param name="methodName">The name of the method to capture</param>
         /// <param name="flags">The method binding flags</param>
-        /// <returns>The namaed method delegate for the object type, or null if the method was not found</returns>
+        /// <returns>The named method delegate for the object type, or null if the method was not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
         public static TDelegate? TryGetMethod<TDelegate>(
             object obj, 
@@ -240,7 +240,7 @@ namespace VNLib.Utils.Resources
         /// <param name="obj">The object to discover and bind the found method to</param>
         /// <param name="methodName">The name of the method to capture</param>
         /// <param name="flags">The method binding flags</param>
-        /// <returns>The namaed method delegate for the object type or an exception if not found</returns>
+        /// <returns>The named method delegate for the object type or an exception if not found</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="MissingMethodException"></exception>
         public static TDelegate GetMethod<TDelegate>(
@@ -260,7 +260,7 @@ namespace VNLib.Utils.Resources
         /// <typeparam name="TDelegate"></typeparam>
         /// <param name="type">The type to get the static method for</param>
         /// <param name="methodName">The name of the static method</param>
-        /// <param name="flags">The optional method binind flags</param>
+        /// <param name="flags">The optional method binding flags</param>
         /// <returns>The delegate if found <see langword="null"/> otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         public static TDelegate? TryGetStaticMethod<TDelegate>(Type type, string methodName, BindingFlags flags = BindingFlags.Public) 
@@ -274,7 +274,7 @@ namespace VNLib.Utils.Resources
         /// <typeparam name="TDelegate">The delegate method type</typeparam>
         /// <typeparam name="TType">The type to get the static method for</typeparam>
         /// <param name="methodName">The name of the static method</param>
-        /// <param name="flags">The optional method binind flags</param>
+        /// <param name="flags">The optional method binding flags</param>
         /// <returns>The delegate if found <see langword="null"/> otherwise</returns>
         /// <exception cref="ArgumentNullException"></exception>
         public static TDelegate? TryGetStaticMethod<TDelegate, TType>(string methodName,BindingFlags flags = BindingFlags.Public) 
@@ -297,7 +297,7 @@ namespace VNLib.Utils.Resources
         }
 
         /*
-         * NOTE: These functions cannot be optimized (condensed) any furhter. IE: static 
+         * NOTE: These functions cannot be optimized (condensed) any further. IE: static
          * and instance method searches. This is because the C# compiler will embed the 
          * call to getType() of the object instead of loading reflection if possible 
          * at runtime. This can cause the type to be undefined at runtime and will not 

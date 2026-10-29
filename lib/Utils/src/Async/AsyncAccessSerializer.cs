@@ -1,5 +1,5 @@
 ﻿/*
-* Copyright (c) 2025 Vaughn Nugent
+* Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
 * Package: VNLib.Utils
@@ -41,7 +41,7 @@ namespace VNLib.Utils.Async
     /// Initializes a new <see cref="AsyncAccessSerializer{TMoniker}"/> with the desired 
     /// caching pool size and initial capacity
     /// </remarks>
-    /// <param name="maxPoolSize">The maxium number of cached wait entry objects</param>
+    /// <param name="maxPoolSize">The maximum number of cached wait entry objects</param>
     /// <param name="initialCapacity">The initial capacity of the wait table</param>
     /// <param name="keyComparer">The moniker key comparer</param>
     public class AsyncAccessSerializer<TMoniker>(int maxPoolSize, int initialCapacity, IEqualityComparer<TMoniker>? keyComparer) 
@@ -63,7 +63,7 @@ namespace VNLib.Utils.Async
         protected Dictionary<TMoniker, WaitEntry> WaitTable { get; } = new(initialCapacity, keyComparer);
 
         /// <summary>
-        /// The maxium number of elements allowed in the internal entry cache pool
+        /// The maximum number of elements allowed in the internal entry cache pool
         /// </summary>
         protected int MaxPoolSize { get; } = maxPoolSize;
 
@@ -364,7 +364,7 @@ namespace VNLib.Utils.Async
             }
 
             /// <summary>
-            /// Prepres a new <see cref="WaitEntry"/> for 
+            /// Prepares a new <see cref="WaitEntry"/> for
             /// its new moniker object.
             /// </summary>
             /// <param name="moniker">The reference to the moniker to hold</param>
@@ -468,7 +468,7 @@ namespace VNLib.Utils.Async
             /// <para>
             /// If <see cref="WillTransition"/> is true, this method may cause a waiting 
             /// task to transition. The result must be examined to determine if the
-            /// transition was successful.If a transition is not successful, then a deadlock may occur if 
+            /// transition was successful. If a transition is not successful, then a deadlock may occur if
             /// another waiter is not selected.
             /// </para>
             /// </summary>

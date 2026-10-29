@@ -1,18 +1,34 @@
 {
   "http": {
     "default_version": "HTTP/1.1",
-    "timeout_ms": 30000,
+    "recv_timeout_ms": 5000,
     "max_connections": 1000
   },
   "virtual_hosts": [
     {
-      "hostname": "example.com",
-      "path": "/var/www"
+      "hostnames": ["example.com"],
+      "path": "/var/www",
+      "interfaces": [
+        {
+          "address": "127.0.0.1",
+          "port": 8080
+        }
+      ]
     }
   ],
   "plugins": {
     "enabled": true,
     "path": "./plugins",
     "config_dir": "./config"
+  },
+  "tcp": {
+    "keepalive_sec": 5,
+    "keepalive_interval_sec": 2,
+    "max_recv_buffer": 655360,
+    "max_connections": 50000,
+    "backlog": 1000,
+    "tx_buffer": 65536,
+    "rx_buffer": 65536,
+    "no_delay": true
   }
 }
