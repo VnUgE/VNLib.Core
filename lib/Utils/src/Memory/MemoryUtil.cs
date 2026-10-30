@@ -39,7 +39,7 @@ namespace VNLib.Utils.Memory
 {
 
     /// <summary>
-    /// Provides optimized cross-platform maanged/umanaged safe/unsafe memory operations
+    /// Provides optimized cross-platform managed/unmanaged safe/unsafe memory operations
     /// </summary>
     [SecurityCritical]
     [ComVisible(false)]
@@ -243,7 +243,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
+        /// Zeros a block of memory of unmanaged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
         /// <typeparam name="T">Unmanaged datatype</typeparam>
         /// <param name="block">Block of memory to be cleared</param>
@@ -262,7 +262,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Zeros a block of memory of umanged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
+        /// Zeros a block of memory of unmanaged type.  If Windows is detected at runtime, calls RtlSecureZeroMemory Win32 function
         /// </summary>
         /// <typeparam name="T">Unmanaged datatype</typeparam>
         /// <param name="block">Block of memory to be cleared</param>
@@ -733,7 +733,7 @@ namespace VNLib.Utils.Memory
 
 
         /// <summary>
-        /// Copies data from source memory to destination memory of an umanged data type
+        /// Copies data from source memory to destination memory of an unmanaged data type
         /// </summary>
         /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="ReadOnlySpan{T}"/></param>
@@ -765,7 +765,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Copies data from source memory to destination memory of an umanged data type
+        /// Copies data from source memory to destination memory of an unmanaged data type
         /// </summary>
         /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="ReadOnlyMemory{T}"/></param>
@@ -795,7 +795,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Copies data from source memory to destination memory of an umanged data type
+        /// Copies data from source memory to destination memory of an unmanaged data type
         /// </summary>
         /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="MemoryHandle{T}"/></param>
@@ -830,7 +830,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Copies data from source memory to destination memory of an umanged data type
+        /// Copies data from source memory to destination memory of an unmanaged data type
         /// </summary>
         /// <typeparam name="T">Unmanaged type</typeparam>
         /// <param name="source">Source data <see cref="MemoryHandle{T}"/></param>
@@ -862,7 +862,7 @@ namespace VNLib.Utils.Memory
         }
 
         /// <summary>
-        /// Copies data from source memory to destination memory of an umanged data type 
+        /// Copies data from source memory to destination memory of an unmanaged data type 
         /// using references for blocks smaller than <see cref="UInt32.MaxValue"/> and 
         /// pinning for larger blocks
         /// </summary>
@@ -929,7 +929,7 @@ namespace VNLib.Utils.Memory
         /// <param name="source">The source memory handle to copy data from</param>
         /// <param name="sourceOffset">The element offset to begin reading from</param>
         /// <param name="dest">The destination array to write data to</param>
-        /// <param name="destOffset">The detination element offset</param>
+        /// <param name="destOffset">The destination element offset</param>
         /// <param name="count">The number of elements to copy</param>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
@@ -957,7 +957,7 @@ namespace VNLib.Utils.Memory
         /// <param name="source">The source memory handle to copy data from</param>
         /// <param name="sourceOffset">The element offset to begin reading from</param>
         /// <param name="dest">The destination array to write data to</param>
-        /// <param name="destOffset">The detination element offset</param>
+        /// <param name="destOffset">The destination element offset</param>
         /// <param name="count">The number of elements to copy</param>
         public static void CopyArray<T>(T[] source, nuint sourceOffset, T[] dest, nuint destOffset, nuint count)
             where T : unmanaged
@@ -1017,7 +1017,7 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Low level api for copying data from source memory to destination memory of an
-        /// umanged data type. Pointers to src and dst may be overlapping regions of memory.
+        /// unmanaged data type. Pointers to src and dst may be overlapping regions of memory.
         /// </summary>
         /// <remarks>
         /// WARNING: It's not possible to do bounds checking when using references. Be sure you 
@@ -1026,7 +1026,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The unmanaged or structure type to copy</typeparam>
         /// <param name="src">A reference to the source data to copy from</param>
         /// <param name="srcOffset">The offset (in elements) from the reference to begin the copy from</param>
-        /// <param name="dst">The detination</param>
+        /// <param name="dst">The destination buffer</param>
         /// <param name="dstOffset"></param>
         /// <param name="elementCount"></param>
         /// <exception cref="ArgumentException"></exception>
@@ -1050,15 +1050,12 @@ namespace VNLib.Utils.Memory
 
         /// <summary>
         /// Low level api for copying data from source memory to destination memory of an
-        /// umanged data type. This call attempts to force hadrware acceleration if supported.
-        /// Pointers to src and dst may be overlapping regions of memory.
+        /// unmanaged data type. Pointers to src and dst may be overlapping regions of memory.
         /// <para>
-        /// Understand that using this function attempts to force hardware acceleration, which 
-        /// may hurt performance if the data is not large enough to justify the overhead.
-        /// </para>
-        /// <para>
-        /// If the <see cref="Avx.IsSupported"/> flag is false, this function will fallback to
-        /// the default method used by <see cref="Memmove{T}(ref readonly T, nuint, ref T, nuint, nuint)"/>
+        /// Hardware acceleration is now applied automatically by
+        /// <see cref="Memmove{T}(ref readonly T, nuint, ref T, nuint, nuint)"/> and can no longer
+        /// be forced, so this method is deprecated and simply forwards to
+        /// <see cref="Memmove{T}(ref readonly T, nuint, ref T, nuint, nuint)"/>.
         /// </para>
         /// </summary>
         /// <remarks>
@@ -1068,7 +1065,7 @@ namespace VNLib.Utils.Memory
         /// <typeparam name="T">The unmanaged or structure type to copy</typeparam>
         /// <param name="src">A reference to the source data to copy from</param>
         /// <param name="srcOffset">The offset (in elements) from the reference to begin the copy from</param>
-        /// <param name="dst">The detination</param>
+        /// <param name="dst">The destination</param>
         /// <param name="dstOffset"></param>
         /// <param name="elementCount"></param>
         /// <exception cref="ArgumentException"></exception>
@@ -1756,23 +1753,23 @@ namespace VNLib.Utils.Memory
                 => ref AsByte(ref Unsafe.AsRef<T>(ptr), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByteR<T>(scoped ref readonly T ptr, nuint elementOffset) 
+            public static ref byte AsByteR<T>(scoped ref readonly T ptr, nuint elementOffset)
                 => ref AsByte(ref Unsafe.AsRef(in ptr), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(T[] arr, nuint elementOffset) 
+            public static ref byte AsByte<T>(T[] arr, nuint elementOffset)
                 => ref AsByte(ref MemoryMarshal.GetArrayDataReference(arr), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(Span<T> span, nuint elementOffset) 
+            public static ref byte AsByte<T>(Span<T> span, nuint elementOffset)
                 => ref AsByte(ref MemoryMarshal.GetReference(span), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset) 
+            public static ref byte AsByte<T>(ReadOnlySpan<T> span, nuint elementOffset)
                 => ref AsByte(ref MemoryMarshal.GetReference(span), elementOffset);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset) 
+            public static ref byte AsByte<T>(IMemoryHandle<T> handle, nuint elementOffset)
                 => ref AsByte(ref handle.GetReference(), elementOffset);
         }
 
