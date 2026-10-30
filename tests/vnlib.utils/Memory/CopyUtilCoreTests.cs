@@ -23,7 +23,6 @@
 */
 
 using System;
-using System.Drawing;
 using System.Runtime.Intrinsics;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -107,8 +106,11 @@ namespace VNLib.Utils.Memory.Tests
 
             for (int i = 0; i < 32; i++)
             {
-                Assert.AreEqual((byte)((i % 251) + 1), buffer[i + 1],
-                    $"Offset-1 forward overlap failed at index {i + 1}");
+                Assert.AreEqual(
+                    expected:(byte)((i % 251) + 1), 
+                    actual: buffer[i + 1],
+                    $"Offset-1 forward overlap failed at index {i + 1}"
+                );
             }
         }
 
@@ -141,7 +143,7 @@ namespace VNLib.Utils.Memory.Tests
                 FillPattern(buffer, 0, 32);
 
                 // Copy bytes [0..15] to [4..19] — forward overlap, dst > src
-                MemoryUtil.Memmove(in buffer[0], 0, ref buffer[4], 0, 16);
+                MemoryUtil.Memmove(in buffer[0], 0, ref buffer[0], 4, 16);
 
                 // Verify the shifted region contains the original values
                 for (int i = 0; i < 16; i++)
@@ -263,12 +265,12 @@ namespace VNLib.Utils.Memory.Tests
         }     
 
         /// <summary>
-        /// Tests that memmove with non-vector-aligned sizes does not overread
-        /// or overrun the destination buffer. The Vector256Copy tail logic in
-        /// the current implementation loads a full 32-byte vector at
-        /// byteCount - 32, which would read/write past the end of the buffer
-        /// for sizes like 33, 47, etc. This test uses a small, isolated buffer
-        /// with guard bytes after the destination region to detect overrun.
+        /// Regression test: verifies that memmove with non-vector-aligned sizes
+        /// does not overread the source or overrun the destination buffer.
+        /// The Vector256Copy tail logic loads a full 32-byte vector at
+        /// byteCount - 32 to cover the sub-32-byte remainder; this test uses
+        /// a small, isolated buffer with guard bytes after the destination
+        /// region to detect any access past the region's end.
         /// </summary>
         [TestMethod]
         public void Memmove_VectorTail_NoOverrun()
@@ -298,29 +300,305 @@ namespace VNLib.Utils.Memory.Tests
                 FillConst(dstGuard, 0xAA);
 
                 MemoryUtil.Memmove(
-                    in srcSpan[0], 
-                    srcOffset: 0, 
-                    ref dst.Span[0], 
-                    dstOffset: 0, 
+                    in src.GetReference(),
+                    srcOffset: 0,
+                    ref dst.GetReference(),
+                    dstOffset: 0,
                     (nuint)size
                 );
 
                 // Verify copied region
-                for (int i = 0; i < size; i++)
                 {
-                    Assert.AreEqual(srcSpan[i], dst.Span[i], $"Size {size}: data mismatch at {i}");
+                    Span<byte> dstSpan = dst.Span[..size];
+
+                    int mismatchIndex = FindMismatch(srcSpan, dstSpan);
+
+                    Assert.AreEqual(
+                        expected: -1,
+                        actual: mismatchIndex,
+                        $"Size {size}: data mismatch at {mismatchIndex}"
+                    );
                 }
 
                 // Verify guard bytes were not touched – overrun would corrupt them
-                for (int i = 0; i < dstGuard.Length; i++)
                 {
-                    Assert.AreEqual(0xAA, dstGuard[i], $"Size {size}: guard byte {i} corrupted – overrun detected");
+                    for (int i = 0; i < dstGuard.Length; i++)
+                    {
+                        Assert.AreEqual(
+                            expected: 0xAA, 
+                            dstGuard[i], 
+                            $"Size {size}: guard byte {i} corrupted – overrun detected"
+                        );
+                    }
                 }
 
                 // Reset full buffer for reuse
                 MemoryUtil.InitializeBlock(src.Span);
                 MemoryUtil.InitializeBlock(dst.Span);
             }
+        }
+
+        /// <summary>
+        /// Tests that memmove handles the overlap detection boundary correctly:
+        /// adjacent regions (dst = src +/- size) are not overlapping and may
+        /// use the vector fast path, while regions that overlap by a single
+        /// byte must use the overlap safe copy. An off-by-one in the overlap
+        /// check would corrupt data in the one byte overlap cases.
+        /// </summary>
+        [TestMethod]
+        public void Memmove_AdjacentRegions_CopiesCorrectly()
+        {
+            // Test with managed references
+            {
+                Span<byte> buffer = new byte[256];
+                TestBoundaries(buffer);
+            }
+
+            // Test with unmanaged references
+            {
+                using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(256, true);
+                TestBoundaries(buffer.Span);
+            }
+
+            // Test with stack buffers
+            {
+                Span<byte> buffer = stackalloc byte[256];
+                TestBoundaries(buffer);
+            }
+
+            static void TestBoundaries(Span<byte> buffer)
+            {
+                // Sizes that exercise the SmallMemmove and Vector256 dispatch paths
+                int[] sizes = [16, 64];
+
+                foreach (int size in sizes)
+                {
+                    // Forward adjacent: dst = src + size
+                    {
+                        FillPattern(buffer, 0, size);
+
+                        MemoryUtil.Memmove(in buffer[0], 0, ref buffer[0], (uint)size, (nuint)size);
+
+                        AssertShifted(buffer, size, 0, size, "Forward adjacent copy");
+                        AssertShifted(buffer, 0, 0, size, "Forward adjacent source");
+                    }
+
+                    // Backward adjacent: dst = src - size
+                    {
+                        FillPattern(buffer, size, size);
+
+                        MemoryUtil.Memmove(in buffer[size], 0, ref buffer[0], 0, (nuint)size);
+
+                        AssertShifted(buffer, 0, size, size, "Backward adjacent copy");
+                        AssertShifted(buffer, size, size, size, "Backward adjacent source");
+                    }
+
+                    // One byte forward overlap: dst = src + size - 1
+                    {
+                        FillPattern(buffer, 0, size);
+
+                        MemoryUtil.Memmove(in buffer[0], srcOffset: 0, ref buffer[0], (uint)(size - 1), (nuint)size);
+
+                        AssertShifted(buffer, size - 1, 0, size, "One byte forward overlap");
+                    }
+
+                    // One byte backward overlap: dst = src - size + 1
+                    {
+                        FillPattern(buffer, size, size);
+
+                        MemoryUtil.Memmove(in buffer[size], 0, ref buffer[0], 1, (nuint)size);
+
+                        AssertShifted(buffer, 1, size, size, "One byte backward overlap");
+                    }
+                }
+
+                // Verifies the region [regionStart..regionStart+count) holds the
+                // pattern copied from patternStart
+                static void AssertShifted(Span<byte> buffer, int regionStart, int patternStart, int count, string caseName)
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        Assert.AreEqual(
+                            expected: (byte)(((patternStart + i) % 251) + 1),
+                            actual: buffer[regionStart + i],
+                            $"Size {count}: {caseName} failed at index {regionStart + i}"
+                        );
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tests that memmove copies correctly when the source and destination
+        /// start at unaligned offsets. The vector fast path relies on unaligned
+        /// vector loads and stores, so a regression to aligned vector
+        /// instructions would be detected here.
+        /// </summary>
+        [TestMethod]
+        public void Memmove_VectorUnaligned_CopiesCorrectly()
+        {
+            if (!Vector256.IsHardwareAccelerated)
+            {
+                Assert.Inconclusive("Vector256 hardware acceleration not available on this platform");
+            }
+
+            // Test with unmanaged references
+            {
+                using UnsafeMemoryHandle<byte> src = MemoryUtil.UnsafeAlloc<byte>(512, true);
+                using UnsafeMemoryHandle<byte> dst = MemoryUtil.UnsafeAlloc<byte>(512, true);
+                RunAll(src.Span, dst.Span, 3, 31);
+            }
+
+            // Test with managed byte arrays
+            {
+                byte[] src = new byte[512];
+                byte[] dst = new byte[512];
+                RunAll(src, dst, 7, 31);
+            }
+
+            // Test with stack buffers
+            {
+                Span<byte> src = stackalloc byte[512];
+                Span<byte> dst = stackalloc byte[512];
+                RunAll(src, dst, 31, 7);
+            }
+
+            // Runs the full size/offset matrix, then a mixed offset pair
+            static void RunAll(Span<byte> src, Span<byte> dst, int mixedSrcOffset, int mixedDstOffset)
+            {
+                // Sizes that exercise the vector loop with and without a tail
+                int[] sizes = [33, 64, 96, 129, 448];
+
+                // Unaligned start offsets
+                int[] offsets = [1, 3, 7, 31];
+
+                foreach (int size in sizes)
+                {
+                    foreach (int offset in offsets)
+                    {
+                        CopyAndAssert(src, dst, offset, offset, size);
+                    }
+                }
+
+                // Also with different source and destination offsets
+                CopyAndAssert(src, dst, mixedSrcOffset, mixedDstOffset, 129);
+            }
+
+            static void CopyAndAssert(Span<byte> src, Span<byte> dst, int srcOffset, int dstOffset, int size)
+            {
+                // Pre-fill the destination with a sentinel so partial copies are detected
+                FillConst(dst, 0x5A);
+
+                // Fill the source region at the unaligned offset
+                FillPattern(src, srcOffset, size);
+
+                MemoryUtil.Memmove(
+                    in src[0], 
+                    (uint)srcOffset, 
+                    ref dst[0], 
+                    (uint)dstOffset, 
+                    (nuint)size
+                );
+
+                int mismatch = FindMismatch(
+                    expected: src.Slice(srcOffset, size),
+                    actual: dst.Slice(dstOffset, size)
+                );
+
+                Assert.AreEqual(
+                    expected: -1,
+                    actual: mismatch,
+                    $"Src offset {srcOffset}, dst offset {dstOffset}, size {size}: mismatch at index {srcOffset + mismatch}"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Differential test: compares memmove results against a simple, overlap
+        /// safe byte by byte reference copy across a matrix of sizes and offsets
+        /// spanning non-overlapping, adjacent, and overlapping regions in both
+        /// directions. Any dispatch regression that corrupts data is detected
+        /// here regardless of which internal path is taken.
+        /// </summary>
+        [TestMethod]
+        public void Memmove_OverlapMatrix_MatchesReferenceMemmove()
+        {
+            const int BaseOffset = 256;
+
+            // Sizes across the internal dispatch boundaries
+            int[] sizes = [1, 31, 32, 33, 63, 64, 129, 512];
+
+            // Offsets spanning non-overlapping, adjacent, and overlapping regions
+            int[] offsets = [-255, -129, -65, -64, -63, -33, -32, -31, -1, 0, 1, 31, 32, 33, 63, 64, 65, 129, 255];
+
+            using UnsafeMemoryHandle<byte> buffer = MemoryUtil.UnsafeAlloc<byte>(1024, true);
+
+            foreach (int size in sizes)
+            {
+                foreach (int offset in offsets)
+                {
+                    VerifyAgainstReference(buffer, size, offset);
+                }
+            }
+
+            static void VerifyAgainstReference(UnsafeMemoryHandle<byte> buffer, int size, int offset)
+            {
+                // Initialize the buffer with the deterministic pattern
+                FillPattern(buffer.Span);
+
+                // Snapshot the initial state for the reference copy
+                byte[] snapshot = buffer.Span.ToArray();
+
+                // Copy under test
+                MemoryUtil.Memmove(
+                    in buffer.GetReference(),
+                    srcOffset: BaseOffset,
+                    ref buffer.GetReference(),
+                    dstOffset: (nuint)(BaseOffset + offset),
+                    (nuint)size
+                );
+
+                // Reference copy: the destination region receives the source's
+                // original values, read from the snapshot so the copy direction
+                // is irrelevant
+                byte[] expected = (byte[])snapshot.Clone();
+
+                for (int i = 0; i < size; i++)
+                {
+                    expected[BaseOffset + offset + i] = snapshot[BaseOffset + i];
+                }
+
+                // Find the first mismatch, if any
+                int mismatch = FindMismatch(expected, buffer.Span);
+
+                Assert.AreEqual(
+                    expected: -1,
+                    actual: mismatch,
+                    message: $"Size {size}, offset {offset}: result differs from the reference memmove at index {mismatch}"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Finds the first index where expected and actual differ.
+        /// Returns -1 when no mismatch is found in the overlapping range.
+        /// </summary>
+        private static int FindMismatch(ReadOnlySpan<byte> expected, ReadOnlySpan<byte> actual)
+        {
+            // Compare only the overlapping range so mismatched lengths
+            // report the first difference instead of throwing
+            int length = Math.Min(expected.Length, actual.Length);
+            int mismatch = -1;
+            for (int i = 0; i < length; i++)
+            {
+                if (actual[i] != expected[i])
+                {
+                    mismatch = i;
+                    break;
+                }
+            }
+
+            return mismatch;
         }
 
         /// <summary>
