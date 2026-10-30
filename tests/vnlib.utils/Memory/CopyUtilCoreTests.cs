@@ -23,6 +23,7 @@
 */
 
 using System;
+using System.Drawing;
 using System.Runtime.Intrinsics;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -262,6 +263,67 @@ namespace VNLib.Utils.Memory.Tests
         }     
 
         /// <summary>
+        /// Tests that memmove with non-vector-aligned sizes does not overread
+        /// or overrun the destination buffer. The Vector256Copy tail logic in
+        /// the current implementation loads a full 32-byte vector at
+        /// byteCount - 32, which would read/write past the end of the buffer
+        /// for sizes like 33, 47, etc. This test uses a small, isolated buffer
+        /// with guard bytes after the destination region to detect overrun.
+        /// </summary>
+        [TestMethod]
+        public void Memmove_VectorTail_NoOverrun()
+        {
+            if (!Vector256.IsHardwareAccelerated)
+            {
+                Assert.Inconclusive("Vector256 hardware acceleration not available on this platform");
+            }
+
+            // Sizes that trigger the tail path: 33, 47, 63, 65, etc.
+            int[] sizes = [33, 47, 63, 65, 95, 97, 127, 129];
+
+            // Alloc buffers up to the max size and pad with some guard bytes
+            const int buffPlusGuard = 256;
+
+            using UnsafeMemoryHandle<byte> src = MemoryUtil.UnsafeAlloc<byte>(buffPlusGuard, true);
+            using UnsafeMemoryHandle<byte> dst = MemoryUtil.UnsafeAlloc<byte>(buffPlusGuard, true);
+
+            foreach (int size in sizes)
+            {
+                Span<byte> srcSpan = src.Span[..size];
+                Span<byte> dstGuard = dst.Span[size..];
+
+                FillPattern(srcSpan);
+
+                // Fill guard with known sentinel
+                FillConst(dstGuard, 0xAA);
+
+                MemoryUtil.Memmove(
+                    in srcSpan[0], 
+                    srcOffset: 0, 
+                    ref dst.Span[0], 
+                    dstOffset: 0, 
+                    (nuint)size
+                );
+
+                // Verify copied region
+                for (int i = 0; i < size; i++)
+                {
+                    Assert.AreEqual(srcSpan[i], dst.Span[i], $"Size {size}: data mismatch at {i}");
+                }
+
+                // Verify guard bytes were not touched – overrun would corrupt them
+                for (int i = 0; i < dstGuard.Length; i++)
+                {
+                    Assert.AreEqual(0xAA, dstGuard[i], $"Size {size}: guard byte {i} corrupted – overrun detected");
+                }
+
+                // Reset full buffer for reuse
+                MemoryUtil.InitializeBlock(src.Span);
+                MemoryUtil.InitializeBlock(dst.Span);
+            }
+        }
+
+        /// <summary>
         /// Fills a span with a deterministic pattern using a prime modulus.
         /// </summary>
         private static void FillPattern(Span<byte> span, int offset = 0, int? count = null)
@@ -270,6 +332,17 @@ namespace VNLib.Utils.Memory.Tests
             for (int i = offset; i < end; i++)
             {
                 span[i] = (byte)((i % 251) + 1);
+            }
+        }
+
+        /// <summary>
+        /// Fills a span with a constant byte value.
+        /// </summary>
+        private static void FillConst(Span<byte> span, byte value)
+        {
+            for (int i = 0; i < span.Length; i++)
+            {
+                span[i] = value;
             }
         }
 
