@@ -46,8 +46,13 @@ namespace VNLib.Utils.Memory.Tests
 
         const HeapCreation _defaultFlags = HeapCreation.Shared | HeapCreation.SupportsRealloc;
 
+        /// <summary>
+        /// A basic lifecycle test of an in-tree local build of rpmalloc through load, function load
+        /// create a new shared/default heap, then allocate, resize (if supported) and free blocks
+        /// of various sizes with and without the zero flag set.
+        /// </summary>
         [TestMethod()]
-        public void LoadInTreeRpmallocTest()
+        public void RpMalloc_LoadInTree_Basic()
         {
             //Try to rpmalloc shared heap
             using NativeHeap heap = NativeHeap.LoadHeap(
@@ -62,8 +67,13 @@ namespace VNLib.Utils.Memory.Tests
             TestBasicHeapApi(heap);
         }
 
+        /// <summary>
+        /// A basic lifecycle test of an in-tree local build of mimalloc through load, function load
+        /// create a new shared/default heap, then allocate, resize (if supported) and free blocks
+        /// of various sizes with and without the zero flag set.
+        /// </summary>
         [TestMethod()]
-        public void LoadInTreeMimallocTest()
+        public void Mimalloc_LoadInTree_Basic()
         {
             //Try to load Mimalloc shared heap
             using NativeHeap heap = NativeHeap.LoadHeap(
@@ -78,32 +88,36 @@ namespace VNLib.Utils.Memory.Tests
             TestBasicHeapApi(heap);
         }
 
+        /// <summary>
+        /// A basic load and shared allocation test of the win32 GetDefaultHeap() and 
+        /// various familial methods
+        /// </summary>
         [TestMethod()]
-        public void LoadNativeWindowsHeap()
+        [OSCondition(OperatingSystems.Windows)]
+        public void Win32Heap_Load_Basic_Windows()
         {
-            if (OperatingSystem.IsWindows())
-            {
-                using Win32PrivateHeap heap = Win32PrivateHeap.Create(MemoryUtil.SHARED_HEAP_INIT_SIZE, _defaultFlags, flags: 0);
+#pragma warning disable CA1416 // Validate platform compatibility
+            using Win32PrivateHeap heap = Win32PrivateHeap.Create(
+                MemoryUtil.SHARED_HEAP_INIT_SIZE,
+                _defaultFlags, 
+                flags: 0
+            );
+#pragma warning restore CA1416 // Validate platform compatibility
 
-                Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.Shared), "Heap should be created with Shared flag");
+            Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.Shared), "Heap should be created with Shared flag");
 
-                TestBasicHeapApi(heap);
-            }
-            else
-            {
-                Assert.Inconclusive("This test is only applicable on Windows platforms.");
-            }
-        }
+            TestBasicHeapApi(heap);
+        }   
 
         [TestMethod]
-        public void LoadNativePlatformHeap()
+        public void NativeHeap_Load_Basic()
         {
             using ProcessHeap heap = new (HeapCreation.Shared);
 
             Assert.IsTrue(heap.CreationFlags.HasFlag(HeapCreation.Shared), "Heap should be created with Shared flag");
 
             TestBasicHeapApi(heap);
-        }
+        }     
 
         /// <summary>
         /// Tests that first-class heap support works for mimalloc and multi-threaded allocations
@@ -149,13 +163,42 @@ namespace VNLib.Utils.Memory.Tests
             MultithreadedAllocAndFree(heap);
         }
 
-       /// <summary>
-       /// Attempts to allocate a bunch of blocks from the heap in parallel 
-       /// then free them in parallel. Parallel should introduce some uncertainty 
-       /// in which thread ids are used to allocate/free blocks testing the heaps 
-       /// durability during-cross thread allocations/frees
-       /// </summary>
-       /// <param name="heap">The heap to test support for</param>
+        /// <summary>
+        /// Tests that first-class heap support works for Win32 heap api and multi-threaded allocations
+        /// don't cause corruption. UnmanagedHeapBase synchronization is used for safe MT support
+        /// </summary>
+        [TestMethod]
+        [OSCondition(OperatingSystems.Windows)]
+        public void Win32Heap_FirstClass_SupportsMultithreaded()
+        {
+#pragma warning disable CA1416 // Validate platform compatibility
+            using Win32PrivateHeap heap = Win32PrivateHeap.Create(
+                MemoryUtil.SHARED_HEAP_INIT_SIZE,
+                HeapCreation.SupportsRealloc | HeapCreation.UseSynchronization,
+                flags: 0
+            );
+#pragma warning restore CA1416 // Validate platform compatibility
+
+            Assert.IsFalse(
+                heap.CreationFlags.HasFlag(HeapCreation.Shared), 
+                "win32 heap should be private/first-class"
+            );
+
+            Assert.IsTrue(
+                heap.CreationFlags.HasFlag(HeapCreation.UseSynchronization), 
+                "Private heap requires synchronization for multi-threaded tasks"
+            );
+
+            TestBasicHeapApi(heap);
+        }
+
+        /// <summary>
+        /// Attempts to allocate a bunch of blocks from the heap in parallel 
+        /// then free them in parallel. Parallel should introduce some uncertainty 
+        /// in which thread ids are used to allocate/free blocks testing the heaps 
+        /// durability during-cross thread allocations/frees
+        /// </summary>
+        /// <param name="heap">The heap to test support for</param>
         private static void MultithreadedAllocAndFree(IUnmanagedHeap heap)
         {
             IntPtr[] blocks = new IntPtr[5000];
