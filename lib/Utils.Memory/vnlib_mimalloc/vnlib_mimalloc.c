@@ -79,8 +79,34 @@ VNLIB_HEAP_API ERRNO VNLIB_CC heapDestroy(HeapHandle heap)
     //Destroy non-shared heaps
     if (heap != SHARED_HEAP_HANDLE_VALUE)
     {
+        /*
+        * NOTE!!!!! Workaround
+        *
+        * During testing a fault condition exists on windows platforms when
+        * a heap is destroyed, likely due to the way the .NET threadpool operates
+        * on Windows. Destroy assumes that all theaps have seen thread exit 
+        * events freeing any associated blocks back to their heap. For some reason
+        * that doesn't happen, likely due to .NET tp threads not causing exit events
+        * before this function is called on a first class heap. 
+        * 
+        * For now, since we know that NativeHeap in vnlib uses SafeHandle ref counts
+        * for each allocation, destroy can never be called with leaked or abandoned 
+        * blocks. So if it's ever called, no blocks need to migrate and delete will
+        * clean up the heap structures, and if any blocks _are_ leaked somehow they
+        * will return to the main heap when feed. 
+        * 
+        * Not totally sure if this is a bug, we know for now, it's not hit on linux 
+        * platforms, a conditional compilation will ensure destroy usage where possible. 
+        *
+        */
+
+#ifdef _P_IS_WINDOWS
+        mi_heap_delete(heap);
+#else 
         //Free all live blocks and destroy the heap
         mi_heap_destroy(heap);
+#endif
+
     }
 
     return (ERRNO)TRUE;
@@ -98,16 +124,16 @@ VNLIB_HEAP_API void* VNLIB_CC heapAlloc(HeapHandle heap, uint64_t elements, uint
     if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         //Allocate the block from default functions
-        return zero ?
-            mi_calloc((size_t)elements, (size_t)alignment) :
-            mi_mallocn((size_t)elements, (size_t)alignment);
+        return zero
+            ? mi_calloc((size_t)elements, (size_t)alignment)
+            : mi_mallocn((size_t)elements, (size_t)alignment);
     }
     else
     {
         //First class heap allocation with alignment info
-        return zero ?
-            mi_heap_calloc(heap, (size_t)elements, (size_t)alignment) :
-            mi_heap_mallocn(heap, (size_t)elements, (size_t)alignment);
+        return zero 
+            ? mi_heap_calloc(heap, (size_t)elements, (size_t)alignment) 
+            : mi_heap_mallocn(heap, (size_t)elements, (size_t)alignment);
     }
 }
 
@@ -123,16 +149,16 @@ VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, uint64_t
     if (heap == SHARED_HEAP_HANDLE_VALUE)
     {
         //reallocate on default heap
-        return zero ?
-            mi_recalloc(block, (size_t)elements, (size_t)alignment) :
-            mi_reallocn(block, (size_t)elements, (size_t)alignment);
+        return zero 
+            ? mi_recalloc(block, (size_t)elements, (size_t)alignment) 
+            : mi_reallocn(block, (size_t)elements, (size_t)alignment);
     }
     else
     {
         //First class heap realloc
-        return zero ?
-            mi_heap_recalloc(heap, block, (size_t)elements, (size_t)alignment) :
-            mi_heap_reallocn(heap, block, (size_t)elements, (size_t)alignment);
+        return zero 
+            ? mi_heap_recalloc(heap, block, (size_t)elements, (size_t)alignment) 
+            : mi_heap_reallocn(heap, block, (size_t)elements, (size_t)alignment);
     }
 }
 
@@ -140,6 +166,20 @@ VNLIB_HEAP_API void* VNLIB_CC heapRealloc(HeapHandle heap, void* block, uint64_t
 VNLIB_HEAP_API ERRNO VNLIB_CC heapFree(HeapHandle heap, void* block)
 {
     (void)heap;
+    ERRNO result = (ERRNO)TRUE;
+
+    /*
+    * In debug mode, with first class heaps we can test that the block belongs 
+    * to the supplied heap to detect some corruption early
+    */
+#ifdef DEBUG
+    if (heap != SHARED_HEAP_HANDLE_VALUE)
+    {
+        result = (mi_heap_contains(heap, block) ? (ERRNO)TRUE : (ERRNO)FALSE);
+    }
+#endif
+
     mi_free(block);
-    return (ERRNO)TRUE;
+
+    return result;
 }
