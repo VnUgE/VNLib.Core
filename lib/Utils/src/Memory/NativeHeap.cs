@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2025 Vaughn Nugent
 * 
 * Library: VNLib
@@ -138,7 +138,7 @@ namespace VNLib.Utils.Memory
         private unsafe static NativeHeap CreateHeap(Owned<SafeLibraryHandle> libHandle, UnmanagedHeapDescriptor* flags)
         {
             //Open method table
-            HeapMethods table = new(libHandle);           
+            HeapMethods table = new(libHandle);   
 
             //Get the create method
             CreateHeapDelegate create = libHandle.Value.DangerousGetFunction<CreateHeapDelegate>();
@@ -157,7 +157,7 @@ namespace VNLib.Utils.Memory
        
         private HeapMethods MethodTable;
 
-        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable) 
+        private unsafe NativeHeap(UnmanagedHeapDescriptor* flags, HeapMethods methodTable)
             : base(flags->CreationFlags, ownsHandle: true)
         {
             //Store heap pointer
@@ -165,6 +165,15 @@ namespace VNLib.Utils.Memory
 
             //Copy method table
             MethodTable = methodTable;
+
+            // Increment library handle ref counter
+
+            bool inc = false;
+            methodTable.Library.Value.DangerousAddRef(ref inc);
+            if (!inc)
+            {
+                throw new ArgumentException("Failed to increment reference counter for library handle.");
+            }
         }
 
         ///<inheritdoc/>
@@ -188,7 +197,10 @@ namespace VNLib.Utils.Memory
             //Destroy the heap
             bool ret = MethodTable.Destroy(handle);
 
-            //Free the library
+            // Decrement library counter
+            MethodTable.Library.Value.DangerousRelease();
+
+            //Free the library (only if owned by us) 
             MethodTable.Library.Dispose();
 
             //Cleanup the method table

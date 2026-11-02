@@ -27,13 +27,14 @@ using System.Buffers;
 using System.Security;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.Loader;
 using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
 
 using VNLib.Utils.Memory.Diagnostics;
 using VNLib.Utils.Resources;
+using VNLib.Utils.Native;
 
 namespace VNLib.Utils.Memory
 {
@@ -116,6 +117,7 @@ namespace VNLib.Utils.Memory
 
 
         private static readonly LazyInitializer<IUnmanagedHeap> _lazyHeap = new(InitSharedHeapInternal);
+        private static readonly LazyInitializer<SafeLibraryHandle?> _lazyCustomHeapLib = new(LoadCustomHeapLib);
 
         //Avoiding static initializer
         private static IUnmanagedHeap InitSharedHeapInternal()
@@ -135,7 +137,7 @@ namespace VNLib.Utils.Memory
             );
 
             //Register domain unload event
-            AppDomain.CurrentDomain.DomainUnload += (_, _) => heap.Dispose();
+            AssemblyLoadContext.Default.Unloading += (_) => heap.Dispose();
 
             // Enable diagnostics if requested
             return diagEnable ? new TrackedHeapWrapper(heap, true) : heap;
@@ -174,12 +176,35 @@ namespace VNLib.Utils.Memory
                 globalZero
             );
 
+        /// <summary>
+        /// Loads the native heap library if the <see cref="SHARED_HEAP_FILE_PATH"/> variable 
+        /// is set to a non-empty string. 
+        /// </summary>
+        /// <returns>The loaded library handle or null if no library is specified</returns>
+        /// <exception cref="DllNotFoundException"></exception>
+        private static SafeLibraryHandle? LoadCustomHeapLib()
+        {
+            string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
+
+            if (string.IsNullOrWhiteSpace(heapDllPath))
+            {
+                return null;
+            }
+
+            // If path is specified, try to load the library
+            SafeLibraryHandle lib = SafeLibraryHandle.LoadLibrary(heapDllPath, DllImportSearchPath.SafeDirectories);
+
+            // Register cleanup handler
+            AssemblyLoadContext.Default.Unloading += (_) => lib.Dispose();
+           
+            return lib;
+        }
+
         private static IUnmanagedHeap InitHeapInternal(HeapCreation defaultFlags, bool globalZero)
         {
-            //Get environment varable
-            string? heapDllPath = Environment.GetEnvironmentVariable(SHARED_HEAP_FILE_PATH);
-            string? rawFlagsEnv = Environment.GetEnvironmentVariable(SHARED_HEAP_RAW_FLAGS);
-        
+            //Get environment variable            
+            string? rawFlagsEnv = Environment.GetEnvironmentVariable(SHARED_HEAP_RAW_FLAGS);          
+
             //Set global zero flag if requested
             defaultFlags |= globalZero ? HeapCreation.GlobalZero : HeapCreation.None;
 
@@ -191,11 +216,19 @@ namespace VNLib.Utils.Memory
                 userFlags = new(result);
             }
 
+            // Try to load custom heap library, may be null if not defined
+            SafeLibraryHandle? sharedCustomHeapLib = _lazyCustomHeapLib.Instance;
+
             //Check for heap api dll
-            if (!string.IsNullOrWhiteSpace(heapDllPath))
+            if (sharedCustomHeapLib != null)
             {
                 //Attempt to load the heap
-                return NativeHeap.LoadHeap(heapDllPath, DllImportSearchPath.SafeDirectories, defaultFlags, userFlags);
+                return NativeHeap.CreateHeap(
+                    sharedCustomHeapLib, 
+                    ownsHandle: false, 
+                    defaultFlags, 
+                    userFlags
+                );
             }
             //No user heap was specified, use fallback on windows
             else if (OperatingSystem.IsWindows())
