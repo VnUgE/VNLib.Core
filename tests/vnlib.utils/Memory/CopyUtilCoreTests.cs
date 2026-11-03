@@ -215,13 +215,11 @@ namespace VNLib.Utils.Memory.Tests
         /// </list>
         /// </summary>
         [TestMethod]
+        [MemberCondition(typeof(Vector256), nameof(Vector256.IsHardwareAccelerated), 
+            IgnoreMessage = "Vector256 hardware acceleration not available on this platform"
+        )]
         public void Memmove_VectorBoundarySizes_CopiesCorrectly()
-        {
-            if (!Vector256.IsHardwareAccelerated)
-            {
-                Assert.Inconclusive("Vector256 hardware acceleration not available on this platform");
-            }
-
+        {          
             int[] sizes = [1, 15, 16, 31, 32, 33, 47, 63, 64, 128, 256, 4096];
 
             // Test with non-overlapped unmanaged memory buffers
@@ -273,13 +271,11 @@ namespace VNLib.Utils.Memory.Tests
         /// region to detect any access past the region's end.
         /// </summary>
         [TestMethod]
+        [MemberCondition(typeof(Vector256), nameof(Vector256.IsHardwareAccelerated),
+            IgnoreMessage = "Vector256 hardware acceleration not available on this platform"
+        )]
         public void Memmove_VectorTail_NoOverrun()
         {
-            if (!Vector256.IsHardwareAccelerated)
-            {
-                Assert.Inconclusive("Vector256 hardware acceleration not available on this platform");
-            }
-
             // Sizes that trigger the tail path: 33, 47, 63, 65, etc.
             int[] sizes = [33, 47, 63, 65, 95, 97, 127, 129];
 
@@ -435,13 +431,11 @@ namespace VNLib.Utils.Memory.Tests
         /// instructions would be detected here.
         /// </summary>
         [TestMethod]
+        [MemberCondition(typeof(Vector256), nameof(Vector256.IsHardwareAccelerated),
+            IgnoreMessage = "Vector256 hardware acceleration not available on this platform"
+        )]
         public void Memmove_VectorUnaligned_CopiesCorrectly()
         {
-            if (!Vector256.IsHardwareAccelerated)
-            {
-                Assert.Inconclusive("Vector256 hardware acceleration not available on this platform");
-            }
-
             // Test with unmanaged references
             {
                 using UnsafeMemoryHandle<byte> src = MemoryUtil.UnsafeAlloc<byte>(512, true);
