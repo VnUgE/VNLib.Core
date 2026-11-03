@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Copyright (c) 2026 Vaughn Nugent
 * 
 * Library: VNLib
@@ -152,7 +152,7 @@ namespace VNLib.Utils.Memory
                 flags |= HEAP_NO_SERIALIZE;
             }
 
-            //Call create, throw exception if the heap falled to allocate
+            //Call create, throw exception if the heap failed to allocate
             ERRNO heapHandle = (ERRNO)HeapCreate(flags, initialSize, maxHeapSize);
             
             if (!heapHandle)
@@ -209,12 +209,8 @@ namespace VNLib.Utils.Memory
         /// <remarks>This can be a consuming operation which will block all allocations</remarks>
         public bool Validate()
         {
-            //Lock the heap before validating
-            lock (HeapLock)
-            {
-                //validate the entire heap
-                return HeapValidate(handle, HEAP_NO_FLAGS, IntPtr.Zero);
-            }
+            IntPtr block = IntPtr.Zero;
+            return Validate(ref block);
         }
 
         ///<inheritdoc/>

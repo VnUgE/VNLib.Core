@@ -37,11 +37,33 @@ namespace VNLib.Utils.Memory.Tests
     {
         private const int TEST_BLOCK_SIZE = 4096; // Typical page size
 
+        /// <summary>
+        /// Ensures that the MemoryLockSupported value is true on supported
+        /// platforms and false otherwise.
+        /// </summary>
+        [TestMethod]
+        public void LockMemory_IsSupported_OnSupportedPlatforms()
+        {
+            // Only run on supported platforms
+            if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+            {
+                Assert.IsTrue(MemoryUtil.MemoryLockSupported);
+            }
+            else
+            {
+                Assert.IsFalse(MemoryUtil.MemoryLockSupported);
+            }           
+        }
+
+        // Compatibility is ensured by MemoryUtil.MemoryLockSupported, the above
+        // test ensures platform compat
+#pragma warning disable CA1416 // Validate platform compatibility
+
         [TestMethod]
         public void LockMemoryNintAddrTest()
         {
             // Only run on supported platforms
-            if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+            if (MemoryUtil.MemoryLockSupported)
             {
                 Assert.Inconclusive("Test only runs on Windows or Linux");
                 return;
@@ -49,12 +71,14 @@ namespace VNLib.Utils.Memory.Tests
 
             // Allocate a block of memory           
             nint ptr = MemoryUtil.Shared.Alloc(TEST_BLOCK_SIZE, sizeof(byte), zero: true);
-         
+
             // Should be able to lock on supported platforms
+
             Assert.IsTrue(
                 MemoryUtil.LockMemory(ptr, TEST_BLOCK_SIZE), 
                 message: "Failed to lock memory region"
             );
+
 
             //try to read and write
             Marshal.WriteByte(ptr, 0, 0x01);
@@ -73,7 +97,7 @@ namespace VNLib.Utils.Memory.Tests
         public void LockMemoryHandleTest()
         {
             // Only run on supported platforms
-            if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+            if (MemoryUtil.MemoryLockSupported)
             {
                 Assert.Inconclusive("Test only runs on Windows or Linux");
                 return;
@@ -98,7 +122,7 @@ namespace VNLib.Utils.Memory.Tests
         public void LockMemoryHandleRefTest()
         {
             // Only run on supported platforms
-            if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+            if (MemoryUtil.MemoryLockSupported)
             {
                 Assert.Inconclusive("Test only runs on Windows or Linux");
                 return;
@@ -125,7 +149,7 @@ namespace VNLib.Utils.Memory.Tests
         public void UnlockMemoryHandleRefTest()
         {
             // Only run on supported platforms
-            if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+            if (MemoryUtil.MemoryLockSupported)
             {
                 Assert.Inconclusive("Test only runs on Windows or Linux");
                 return;
@@ -152,5 +176,6 @@ namespace VNLib.Utils.Memory.Tests
                 message: "Unlock memory operation via handle reference failed"
             );
         }
+#pragma warning restore CA1416 // Validate platform compatibility
     }
 }
