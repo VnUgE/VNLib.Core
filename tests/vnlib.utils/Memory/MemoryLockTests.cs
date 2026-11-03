@@ -60,25 +60,16 @@ namespace VNLib.Utils.Memory.Tests
 #pragma warning disable CA1416 // Validate platform compatibility
 
         [TestMethod]
+        [MemberCondition(typeof(MemoryUtil), nameof(MemoryUtil.MemoryLockSupported), IgnoreMessage = "Mlock is not supported on current platform.")]
         public void LockMemoryNintAddrTest()
         {
-            // Only run on supported platforms
-            if (MemoryUtil.MemoryLockSupported)
-            {
-                Assert.Inconclusive("Test only runs on Windows or Linux");
-                return;
-            }
-
             // Allocate a block of memory           
-            nint ptr = MemoryUtil.Shared.Alloc(TEST_BLOCK_SIZE, sizeof(byte), zero: true);
-
-            // Should be able to lock on supported platforms
+            nint ptr = MemoryUtil.Shared.Alloc(TEST_BLOCK_SIZE, sizeof(byte), zero: true);           
 
             Assert.IsTrue(
                 MemoryUtil.LockMemory(ptr, TEST_BLOCK_SIZE), 
                 message: "Failed to lock memory region"
             );
-
 
             //try to read and write
             Marshal.WriteByte(ptr, 0, 0x01);
@@ -94,15 +85,9 @@ namespace VNLib.Utils.Memory.Tests
         }
 
         [TestMethod]
+        [MemberCondition(typeof(MemoryUtil), nameof(MemoryUtil.MemoryLockSupported), IgnoreMessage = "Mlock is not supported on current platform.")]
         public void LockMemoryHandleTest()
-        {
-            // Only run on supported platforms
-            if (MemoryUtil.MemoryLockSupported)
-            {
-                Assert.Inconclusive("Test only runs on Windows or Linux");
-                return;
-            }
-
+        {           
             // Allocate memory using a MemoryHandle
             using MemoryHandle<byte> handle = MemoryUtil.Shared.Alloc<byte>(TEST_BLOCK_SIZE, zero: true);
 
@@ -119,15 +104,9 @@ namespace VNLib.Utils.Memory.Tests
         }
 
         [TestMethod]
+        [MemberCondition(typeof(MemoryUtil), nameof(MemoryUtil.MemoryLockSupported), IgnoreMessage = "Mlock is not supported on current platform.")]
         public void LockMemoryHandleRefTest()
         {
-            // Only run on supported platforms
-            if (MemoryUtil.MemoryLockSupported)
-            {
-                Assert.Inconclusive("Test only runs on Windows or Linux");
-                return;
-            }
-
             // Pin an array to get a MemoryHandle
             byte[] buffer = new byte[TEST_BLOCK_SIZE];
             using MemoryHandle memHandle = MemoryUtil.PinArrayAndGetHandle(buffer, 0);
@@ -146,15 +125,9 @@ namespace VNLib.Utils.Memory.Tests
         }
 
         [TestMethod]
+        [MemberCondition(typeof(MemoryUtil), nameof(MemoryUtil.MemoryLockSupported), IgnoreMessage = "Mlock is not supported on current platform.")]
         public void UnlockMemoryHandleRefTest()
         {
-            // Only run on supported platforms
-            if (MemoryUtil.MemoryLockSupported)
-            {
-                Assert.Inconclusive("Test only runs on Windows or Linux");
-                return;
-            }
-
             // Pin an array to get a MemoryHandle
             byte[] buffer = new byte[TEST_BLOCK_SIZE];
             using MemoryHandle memHandle = MemoryUtil.PinArrayAndGetHandle(buffer, 0);
